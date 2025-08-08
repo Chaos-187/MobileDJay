@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Send Message - MobileDJay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-music me-2"></i>MobileDJay
+            </a>
+            <a href="/" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <!-- Message Form -->
+                <form id="messageForm" action="/submit-message" method="POST">
+                    <!-- Hidden input for customer name -->
+                    <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Your Message</h5>
+                            <div class="form-group mb-3">
+                                <label for="message" class="form-label">Message *</label>
+                                <textarea id="message" name="message" class="form-control" 
+                                          rows="6" required maxlength="500"
+                                          placeholder="Write your message to the DJ here..."></textarea>
+                                <div class="form-text">
+                                    <span id="charCount">0</span>/500 characters
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Message Templates -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Quick Message Templates</h5>
+                            <p class="text-muted small">Click on any template to use it as a starting point:</p>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
+                                            data-template="Happy Birthday! Can you please play my favorite song for my special day?">
+                                        <i class="fas fa-birthday-cake me-1"></i>Birthday Request
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
+                                            data-template="Thank you for the amazing music! The crowd is loving it!">
+                                        <i class="fas fa-thumbs-up me-1"></i>Compliment
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
+                                            data-template="Could you please play something for slow dancing? Thank you!">
+                                        <i class="fas fa-heart me-1"></i>Slow Dance Request
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
+                                            data-template="Can you turn up the volume a bit? We want to dance!">
+                                        <i class="fas fa-volume-up me-1"></i>Volume Request
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-info btn-lg">
+                            <i class="fas fa-paper-plane me-2"></i>Send Message
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/send-message.js"></script>
+</body>
+</html>

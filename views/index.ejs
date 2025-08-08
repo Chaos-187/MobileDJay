@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MobileDJay - DJ Request System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-music me-2"></i>MobileDJay - DJ Chaos
+            </a>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="text-center mb-4">
+                    <h1 class="display-4 text-primary">
+                        <i class="fas fa-headphones"></i> Welcome to MobileDJay
+                    </h1>
+                    <p class="lead">Make your requests and send messages to the DJ!</p>
+                </div>
+
+                <!-- Customer Name Input -->
+                <div class="card mb-4" id="nameInputCard">
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <i class="fas fa-user me-2"></i>Enter Your Name
+                        </h5>
+                        <div class="form-group">
+                            <input type="text" id="customerName" class="form-control form-control-lg" 
+                                   placeholder="Your name..." maxlength="50">
+                            <div class="form-text">Please enter your name to continue</div>
+                        </div>
+                        <div class="d-grid mt-3">
+                            <button type="button" id="nameSubmitBtn" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check me-2"></i>OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Options (initially hidden) -->
+                <div class="row g-3" id="optionsContainer" style="display: none;">
+                    <div class="col-12 mb-3">
+                        <div class="alert alert-success text-center">
+                            <i class="fas fa-user-check me-2"></i>
+                            Welcome, <strong id="welcomeName"></strong>! 
+                            <button type="button" id="editNameBtn" class="btn btn-sm btn-outline-success ms-2">
+                                <i class="fas fa-edit me-1"></i>Edit Name
+                            </button>
+                            <div class="mt-2">Choose an option below:</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 option-card" data-target="song-request">
+                            <div class="card-body text-center">
+                                <i class="fas fa-music fa-3x text-success mb-3"></i>
+                                <h5 class="card-title">Song Request</h5>
+                                <p class="card-text">Browse and request songs from our music library</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 option-card" data-target="karaoke-request">
+                            <div class="card-body text-center">
+                                <i class="fas fa-microphone fa-3x text-warning mb-3"></i>
+                                <h5 class="card-title">Karaoke Request</h5>
+                                <p class="card-text">Find your favorite karaoke songs to sing along</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 option-card" data-target="send-message">
+                            <div class="card-body text-center">
+                                <i class="fas fa-envelope fa-3x text-info mb-3"></i>
+                                <h5 class="card-title">Send Message</h5>
+                                <p class="card-text">Send a custom message or special request to the DJ</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

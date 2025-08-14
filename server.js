@@ -23,6 +23,11 @@ app.use(express.json());
 let songCatalogue = [];
 let karaokeCatalogue = [];
 
+// Storage for DJ requests and messages
+let djRequests = [];
+let djMessages = [];
+let djReplies = [];
+
 // Function to load songs from VirtualDJ XML database
 async function loadSongsFromXML() {
     try {
@@ -300,6 +305,94 @@ function followRedirect(redirectUrl, postData, resolve, reject) {
 }
 
 // Routes
+// DJ Routes
+app.get('/dj', (req, res) => {
+    res.render('dj-dashboard', { requests: djRequests, messages: djMessages });
+});
+
+app.get('/dj/display', (req, res) => {
+    res.render('dj-display', { messages: djMessages });
+});
+
+// New API endpoint for dashboard data (for background refresh)
+app.get('/api/dj/dashboard-data', (req, res) => {
+    res.json({ 
+        requests: djRequests, 
+        messages: djMessages 
+    });
+});
+
+app.get('/api/dj/messages', (req, res) => {
+    res.json(djMessages.filter(msg => !msg.displayed));
+});
+
+app.post('/api/dj/message/:id/mark-displayed', (req, res) => {
+    const messageId = parseInt(req.params.id);
+    const message = djMessages.find(msg => msg.id === messageId);
+    if (message) {
+        message.displayed = true;
+    }
+    res.json({ success: true });
+});
+
+app.delete('/api/dj/request/:id', (req, res) => {
+    const requestId = parseInt(req.params.id);
+    const index = djRequests.findIndex(req => req.id === requestId);
+    if (index !== -1) {
+        djRequests.splice(index, 1);
+    }
+    res.json({ success: true });
+});
+
+app.post('/api/dj/reply', (req, res) => {
+    const { customerName, replyMessage, originalType, originalId } = req.body;
+    
+    if (!customerName || !replyMessage) {
+        return res.status(400).json({ error: 'Customer name and reply message are required' });
+    }
+    
+    // Create reply entry
+    const reply = {
+        id: Date.now(),
+        customerName,
+        replyMessage,
+        originalType, // 'request' or 'message'
+        originalId,
+        timestamp: new Date().toISOString(),
+        displayed: false
+    };
+    
+    djReplies.push(reply);
+    
+    // Also add to djMessages for display system
+    const displayMessage = {
+        id: Date.now() + 1,
+        customerName: `DJ Reply to ${customerName}`,
+        message: replyMessage,
+        timestamp: new Date().toISOString(),
+        displayed: false,
+        isReply: true
+    };
+    
+    djMessages.push(displayMessage);
+    
+    console.log('DJ reply sent:', reply);
+    res.json({ success: true, reply });
+});
+
+app.get('/api/dj/replies', (req, res) => {
+    res.json(djReplies);
+});
+
+app.get('/api/customer/replies/:customerName', (req, res) => {
+    const customerName = req.params.customerName;
+    const customerReplies = djReplies.filter(reply => 
+        reply.customerName.toLowerCase() === customerName.toLowerCase()
+    );
+    res.json(customerReplies);
+});
+
+// Customer Routes
 app.get('/', (req, res) => {
     res.render('index');
 });
@@ -359,6 +452,18 @@ app.post('/submit-song-request', async (req, res) => {
     const { customerName, songId, message } = req.body;
     const selectedSong = songCatalogue.find(s => s.id == songId);
     
+    // Store the request for DJ dashboard
+    const request = {
+        id: Date.now(),
+        type: 'song',
+        customerName,
+        song: selectedSong,
+        message: message || '',
+        timestamp: new Date().toISOString(),
+        status: 'pending'
+    };
+    djRequests.push(request);
+    
     // Prepare message for VirtualDJ
     const djMessage = `Song Request from ${customerName}: "${selectedSong.title}" by ${selectedSong.artist}${message ? ` - Additional message: ${message}` : ''}`;
     
@@ -385,6 +490,18 @@ app.post('/submit-karaoke-request', async (req, res) => {
     const { customerName, karaokeId, message } = req.body;
     const selectedKaraoke = karaokeCatalogue.find(k => k.id == karaokeId);
     
+    // Store the request for DJ dashboard
+    const request = {
+        id: Date.now() + 1, // Ensure unique ID
+        type: 'karaoke',
+        customerName,
+        song: selectedKaraoke,
+        message: message || '',
+        timestamp: new Date().toISOString(),
+        status: 'pending'
+    };
+    djRequests.push(request);
+    
     // Prepare message for VirtualDJ
     const djMessage = `Karaoke Request from ${customerName}: "${selectedKaraoke.title}" by ${selectedKaraoke.artist} (${selectedKaraoke.difficulty})${message ? ` - Additional message: ${message}` : ''}`;
     
@@ -410,6 +527,16 @@ app.post('/submit-karaoke-request', async (req, res) => {
 app.post('/submit-message', async (req, res) => {
     const { customerName, message } = req.body;
     
+    // Store the message for DJ display
+    const djDisplayMessage = {
+        id: Date.now() + 2, // Ensure unique ID
+        customerName,
+        message,
+        timestamp: new Date().toISOString(),
+        displayed: false
+    };
+    djMessages.push(djDisplayMessage);
+    
     try {
         // Send to VirtualDJ endpoint
         await sendToVirtualDJ(customerName, message);
@@ -433,10 +560,21 @@ app.post('/submit-message', async (req, res) => {
 async function startServer() {
     await initializeCatalogues();
     
+    // Add some test replies for debugging
+    djReplies.push({
+        id: Date.now(),
+        customerName: 'TestUser',
+        replyMessage: 'Hello TestUser, this is a test reply from the DJ!',
+        originalType: 'request',
+        originalId: '123',
+        timestamp: new Date().toISOString()
+    });
+    
     app.listen(PORT, () => {
         console.log(`MobileDJay server is running on http://localhost:${PORT}`);
         console.log(`Songs loaded: ${songCatalogue.length}`);
         console.log(`Karaoke songs loaded: ${karaokeCatalogue.length}`);
+        console.log(`Test replies added: ${djReplies.length}`);
     });
 }
 

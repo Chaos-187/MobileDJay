@@ -145,6 +145,127 @@ document.addEventListener('DOMContentLoaded', function() {
         showLoading(submitButton);
     });
 
+    // Check for replies functionality
+    if (checkRepliesBtn) {
+        console.log('Check replies button found and event listener added');
+        checkRepliesBtn.addEventListener('click', function() {
+            console.log('Check replies button clicked'); // Debug log
+            alert('Button clicked! Testing...'); // Temporary alert for debugging
+            
+            const customerName = customerNameInput.value.trim() || sessionStorage.getItem('customerName');
+            console.log('Customer name:', customerName);
+            
+            if (!customerName) {
+                showError('Please enter your name first.');
+                return;
+            }
+
+            // Show loading state
+            const originalText = checkRepliesBtn.innerHTML;
+            checkRepliesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
+            checkRepliesBtn.disabled = true;
+
+            console.log('Fetching replies for:', customerName); // Debug log
+
+            fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
+                .then(response => {
+                    console.log('Response received:', response); // Debug log
+                    return response.json();
+                })
+                .then(replies => {
+                    console.log('Replies data:', replies); // Debug log
+                    showReplies(replies, customerName);
+                })
+                .catch(error => {
+                    console.error('Error fetching replies:', error);
+                    showError('Failed to check for replies. Please try again.');
+                })
+                .finally(() => {
+                    checkRepliesBtn.innerHTML = originalText;
+                    checkRepliesBtn.disabled = false;
+                });
+        });
+    } else {
+        console.error('Check replies button not found');
+    }
+
+    // Show replies in a modal-like display
+    function showReplies(replies, customerName) {
+        // Remove existing replies display
+        const existingReplies = document.getElementById('repliesDisplay');
+        if (existingReplies) {
+            existingReplies.remove();
+        }
+
+        if (replies.length === 0) {
+            showSuccess('No DJ replies yet. The DJ will respond to your requests when possible!');
+            return;
+        }
+
+        // Create replies display
+        const repliesHtml = `
+            <div id="repliesDisplay" class="card mt-4 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-reply me-2"></i>DJ Replies for ${customerName}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    ${replies.map(reply => `
+                        <div class="alert alert-success border-start border-4 border-success">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">
+                                        <i class="fas fa-user-tie me-1"></i>DJ Reply
+                                        <span class="badge bg-success ms-2">${reply.originalType}</span>
+                                    </h6>
+                                    <p class="mb-2">${escapeHtml(reply.replyMessage)}</p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        ${new Date(reply.timestamp).toLocaleString()}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-outline-success" onclick="document.getElementById('repliesDisplay').remove()">
+                            <i class="fas fa-times me-2"></i>Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Insert after the form
+        form.insertAdjacentHTML('afterend', repliesHtml);
+        
+        // Scroll to replies
+        document.getElementById('repliesDisplay').scrollIntoView({ behavior: 'smooth' });
+        
+        showSuccess(`Found ${replies.length} DJ reply(s) for you!`);
+    }
+
+    // Show success message function
+    function showSuccess(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.querySelector('main .container').insertBefore(alert, document.querySelector('main .container').firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
+    }
+
     // Utility function to escape HTML
     function escapeHtml(text) {
         const div = document.createElement('div');

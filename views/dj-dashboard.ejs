@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Dashboard - MobileDJay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+    <style>
+        .dj-header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .request-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        .request-card.song-request {
+            border-left-color: #28a745;
+        }
+        .request-card.karaoke-request {
+            border-left-color: #ffc107;
+        }
+        .request-timestamp {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .auto-refresh {
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .message-preview {
+            background: #f8f9fa;
+            border-left: 3px solid #007bff;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dj-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="display-4 mb-0">
+                        <i class="fas fa-headphones me-3"></i>DJ Dashboard
+                    </h1>
+                    <p class="lead mb-0">Manage customer requests and messages</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="/dj/display" class="btn btn-light btn-lg me-2" target="_blank">
+                        <i class="fas fa-tv me-2"></i>Message Display
+                    </a>
+                    <button id="refreshBtn" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="container mt-4">
+        <div class="row">
+            <!-- Requests Section -->
+            <div class="col-lg-8">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3><i class="fas fa-music me-2"></i>Song & Karaoke Requests (<span id="requestCount"><%= requests.length %></span>)</h3>
+                    <button id="clearAllRequests" class="btn btn-outline-danger">
+                        <i class="fas fa-trash me-2"></i>Clear All
+                    </button>
+                </div>
+
+                <div id="requestsList">
+                    <% if (requests.length === 0) { %>
+                        <div class="card text-center">
+                            <div class="card-body py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No requests yet</h5>
+                                <p class="text-muted">Customer requests will appear here</p>
+                            </div>
+                        </div>
+                    <% } else { %>
+                        <% requests.reverse().forEach(function(request) { %>
+                            <div class="card request-card <%= request.type %>-request mb-3" data-request-id="<%= request.id %>">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-2">
+                                                <span class="badge bg-<%= request.type === 'song' ? 'success' : 'warning' %> me-2">
+                                                    <i class="fas fa-<%= request.type === 'song' ? 'music' : 'microphone' %> me-1"></i>
+                                                    <%= request.type.toUpperCase() %>
+                                                </span>
+                                                <strong class="me-2"><%= request.customerName %></strong>
+                                                <span class="request-timestamp">
+                                                    <%= new Date(request.timestamp).toLocaleString() %>
+                                                </span>
+                                            </div>
+                                            <h6 class="card-title mb-1">
+                                                "<%= request.song.title %>" by <%= request.song.artist %>
+                                            </h6>
+                                            <% if (request.song.genre) { %>
+                                                <span class="badge bg-secondary me-2"><%= request.song.genre %></span>
+                                            <% } %>
+                                            <% if (request.song.difficulty) { %>
+                                                <span class="badge bg-info"><%= request.song.difficulty %></span>
+                                            <% } %>
+                                            <% if (request.message) { %>
+                                                <div class="message-preview">
+                                                    <small><strong>Message:</strong> <%= request.message %></small>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                        <button class="btn btn-outline-danger btn-sm ms-3 remove-request" 
+                                                data-request-id="<%= request.id %>">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        <button class="btn btn-outline-primary btn-sm ms-2 reply-request" 
+                                                data-customer-name="<%= request.customerName %>"
+                                                data-request-id="<%= request.id %>"
+                                                data-original-type="request">
+                                            <i class="fas fa-reply"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Messages Section -->
+            <div class="col-lg-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4><i class="fas fa-envelope me-2"></i>Messages (<span id="messageCount"><%= messages.length %></span>)</h4>
+                    <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-check me-1"></i>Mark All Displayed
+                    </button>
+                </div>
+
+                <div id="messagesList">
+                    <% if (messages.length === 0) { %>
+                        <div class="card text-center">
+                            <div class="card-body py-4">
+                                <i class="fas fa-comments fa-2x text-muted mb-2"></i>
+                                <p class="text-muted mb-0">No messages</p>
+                            </div>
+                        </div>
+                    <% } else { %>
+                        <% messages.reverse().forEach(function(message) { %>
+                            <div class="card mb-2 <%= message.displayed ? 'bg-light' : '' %>" data-message-id="<%= message.id %>">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <strong class="me-2"><%= message.customerName %></strong>
+                                                <% if (!message.displayed) { %>
+                                                    <span class="badge bg-primary">New</span>
+                                                <% } %>
+                                            </div>
+                                            <p class="mb-1 small"><%= message.message %></p>
+                                            <small class="text-muted">
+                                                <%= new Date(message.timestamp).toLocaleString() %>
+                                            </small>
+                                        </div>
+                                        <% if (!message.displayed) { %>
+                                            <button class="btn btn-outline-primary btn-sm ms-2 mark-displayed" 
+                                                    data-message-id="<%= message.id %>">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-outline-success btn-sm ms-1 reply-message" 
+                                                    data-customer-name="<%= message.customerName %>"
+                                                    data-message-id="<%= message.id %>"
+                                                    data-original-type="message">
+                                                <i class="fas fa-reply"></i>
+                                            </button>
+                                        <% } else { %>
+                                            <button class="btn btn-outline-success btn-sm ms-2 reply-message" 
+                                                    data-customer-name="<%= message.customerName %>"
+                                                    data-message-id="<%= message.id %>"
+                                                    data-original-type="message">
+                                                <i class="fas fa-reply"></i>
+                                            </button>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Reply Modal -->
+    <div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="replyModalLabel">
+                        <i class="fas fa-reply me-2"></i>Reply to <span id="replyCustomerName"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="replyForm">
+                        <div class="mb-3">
+                            <label for="replyMessage" class="form-label">Your Reply</label>
+                            <textarea class="form-control" id="replyMessage" name="replyMessage" rows="4" 
+                                      placeholder="Type your reply to the customer..." required></textarea>
+                            <div class="form-text">This message will be displayed on the public message screen</div>
+                        </div>
+                        <input type="hidden" id="replyCustomerNameInput" name="customerName">
+                        <input type="hidden" id="replyOriginalType" name="originalType">
+                        <input type="hidden" id="replyOriginalId" name="originalId">
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="sendReplyBtn">
+                        <i class="fas fa-paper-plane me-2"></i>Send Reply
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/dj-dashboard.js"></script>
+</body>
+</html>

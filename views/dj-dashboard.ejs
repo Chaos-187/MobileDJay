@@ -41,6 +41,68 @@
             margin-top: 0.5rem;
             border-radius: 0.25rem;
         }
+
+        /* Dark mode overrides for DJ dashboard */
+        body.dark-mode {
+            background: #0f1720;
+            color: #e6eef8;
+        }
+        body.dark-mode .dj-header {
+            background: linear-gradient(135deg, #061322 0%, #0b2540 100%);
+            color: #e6eef8;
+        }
+        body.dark-mode .card {
+            background: #101419;
+            color: #d7e6f5;
+            box-shadow: none;
+            border-color: rgba(255,255,255,0.03);
+        }
+        body.dark-mode .request-timestamp,
+        body.dark-mode .text-muted { color: #98a9bf !important; }
+        body.dark-mode .btn-outline-light { color: #fff; border-color: rgba(255,255,255,0.12); }
+        body.dark-mode .badge { opacity: 0.95; }
+
+        /* Ensure message preview also adapts to dark mode */
+        body.dark-mode .message-preview {
+            background: rgba(255,255,255,0.03);
+            border-left-color: rgba(59,130,246,0.9); /* bluish */
+            color: #d7e6f5;
+        }
+
+        /* Override Bootstrap's .bg-light when in dark mode so message cards don't stay white */
+        body.dark-mode .bg-light,
+        body.dark-mode .card.bg-light {
+            background-color: #0b1114 !important;
+            color: #d7e6f5 !important;
+            border-color: rgba(255,255,255,0.03) !important;
+        }
+
+        /* Ensure text-muted and other utilities look correct */
+        body.dark-mode .text-muted { color: #98a9bf !important; }
+
+        /* Style adjustments for header buttons for better alignment and contrast */
+        .dj-header .btn {
+            min-width: 48px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+        }
+        .dj-header .btn.btn-lg {
+            padding: .45rem .9rem;
+            font-size: 0.95rem;
+        }
+        .dj-header .btn i { margin-right: .4rem; }
+
+        /* Make the messages list buttons more compact on small screens */
+        @media (max-width: 768px) {
+            .dj-header .btn { min-width: 40px; }
+            .dj-header .btn.btn-lg { padding: .35rem .6rem; }
+        }
+
+        /* Ensure reply/mark buttons in message cards are visible in dark-mode */
+        body.dark-mode .btn-outline-primary { color: #cfe8ff; border-color: rgba(79,174,255,0.18); }
+        body.dark-mode .btn-outline-secondary { color: #c7d5e6; border-color: rgba(255,255,255,0.06); }
     </style>
 </head>
 <body>
@@ -57,6 +119,11 @@
                     <a href="/dj/display" class="btn btn-light btn-lg me-2" target="_blank">
                         <i class="fas fa-tv me-2"></i>Message Display
                     </a>
+                    <!-- Dark mode toggle next to refresh -->
+                    <button id="darkModeToggle" class="btn btn-outline-light btn-lg me-2" title="Toggle dark mode" type="button">
+                        <i class="fas fa-moon me-1"></i>
+                        <span id="darkModeLabel">Dark</span>
+                    </button>
                     <button id="refreshBtn" class="btn btn-outline-light btn-lg">
                         <i class="fas fa-sync-alt me-2"></i>Refresh
                     </button>
@@ -143,7 +210,8 @@
                     </button>
                 </div>
 
-                <div id="messagesList">
+                <!-- Make the messages list scrollable and show newest at top -->
+                <div id="messagesList" style="max-height: 60vh; overflow-y: auto;">
                     <% if (messages.length === 0) { %>
                         <div class="card text-center">
                             <div class="card-body py-4">
@@ -152,7 +220,8 @@
                             </div>
                         </div>
                     <% } else { %>
-                        <% messages.reverse().forEach(function(message) { %>
+                        <% let sortedMessages = messages.slice().sort(function(a,b){ return new Date(b.timestamp) - new Date(a.timestamp); }); %>
+                        <% sortedMessages.forEach(function(message) { %>
                             <div class="card mb-2 <%= message.displayed ? 'bg-light' : '' %>" data-message-id="<%= message.id %>">
                                 <div class="card-body py-2">
                                     <div class="d-flex justify-content-between align-items-start">
@@ -164,7 +233,8 @@
                                                 <% } %>
                                             </div>
                                             <p class="mb-1 small"><%= message.message %></p>
-                                            <small class="text-muted">
+                                            <small class="text-muted d-block">
+                                                <i class="fas fa-clock me-1"></i>
                                                 <%= new Date(message.timestamp).toLocaleString() %>
                                             </small>
                                         </div>
@@ -232,5 +302,38 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/dj-dashboard.js"></script>
+
+    <script>
+    // Persist dark mode toggle for DJ dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('darkModeToggle');
+        const label = document.getElementById('darkModeLabel');
+        if (!toggle) return;
+
+        function setMode(enabled) {
+            if (enabled) {
+                document.body.classList.add('dark-mode');
+                if (label) label.textContent = 'Dark';
+                const icon = toggle.querySelector('i');
+                if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
+            } else {
+                document.body.classList.remove('dark-mode');
+                if (label) label.textContent = 'Light';
+                const icon = toggle.querySelector('i');
+                if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
+            }
+        }
+
+        // Initialize from storage (default: false)
+        const saved = localStorage.getItem('djDashboardDarkMode') === 'true';
+        setMode(saved);
+
+        toggle.addEventListener('click', function() {
+            const enabled = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('djDashboardDarkMode', enabled ? 'true' : 'false');
+            setMode(enabled);
+        });
+    });
+    </script>
 </body>
 </html>

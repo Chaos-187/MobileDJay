@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const noSongsFound = document.getElementById('noSongsFound');
     const customerNameInput = document.getElementById('customerName');
     const form = document.getElementById('songRequestForm');
+    // Optional replies button on this page (may not exist). Declare explicitly to avoid ReferenceError.
+    const checkRepliesBtn = document.getElementById('checkRepliesBtn');
 
     // Auto-fill customer name from session storage (fallback)
     if (!customerNameInput.value && sessionStorage.getItem('customerName')) {
@@ -147,35 +149,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Check for replies functionality
     if (checkRepliesBtn) {
-        console.log('Check replies button found and event listener added');
         checkRepliesBtn.addEventListener('click', function() {
-            console.log('Check replies button clicked'); // Debug log
-            alert('Button clicked! Testing...'); // Temporary alert for debugging
-            
             const customerName = customerNameInput.value.trim() || sessionStorage.getItem('customerName');
-            console.log('Customer name:', customerName);
-            
             if (!customerName) {
                 showError('Please enter your name first.');
                 return;
             }
 
-            // Show loading state
             const originalText = checkRepliesBtn.innerHTML;
             checkRepliesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
             checkRepliesBtn.disabled = true;
 
-            console.log('Fetching replies for:', customerName); // Debug log
-
             fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
-                .then(response => {
-                    console.log('Response received:', response); // Debug log
-                    return response.json();
-                })
-                .then(replies => {
-                    console.log('Replies data:', replies); // Debug log
-                    showReplies(replies, customerName);
-                })
+                .then(response => response.json())
+                .then(replies => showReplies(replies, customerName))
                 .catch(error => {
                     console.error('Error fetching replies:', error);
                     showError('Failed to check for replies. Please try again.');
@@ -185,8 +172,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     checkRepliesBtn.disabled = false;
                 });
         });
-    } else {
-        console.error('Check replies button not found');
     }
 
     // Show replies in a modal-like display

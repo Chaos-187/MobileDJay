@@ -96,11 +96,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Create request card HTML
     function createRequestCard(request) {
-        const requestType = request.type || 'song-request';
-        const cardClass = requestType === 'karaoke-request' ? 'karaoke-request' : 'song-request';
-        const icon = requestType === 'karaoke-request' ? 'microphone' : 'music';
-        const color = requestType === 'karaoke-request' ? 'warning' : 'success';
-        
+        // Normalize type and song data (API returns request.song on server-side render)
+        const requestType = request.type || (request.song && request.song.type) || 'song';
+        const isKaraoke = requestType === 'karaoke' || requestType === 'karaoke-request';
+        const cardClass = isKaraoke ? 'karaoke-request' : 'song-request';
+        const icon = isKaraoke ? 'microphone' : 'music';
+        const color = isKaraoke ? 'warning' : 'success';
+
+        // Prefer request.song fields when present (matches server-side rendering)
+        const title = request.song ? (request.song.title || request.songTitle || request.title) : (request.title || request.songTitle || 'Unknown Title');
+        const artist = request.song ? (request.song.artist || request.artist || '') : (request.artist || '');
+        const difficulty = request.song ? request.song.difficulty : request.difficulty;
+
         return `
             <div class="card mb-3 request-card ${cardClass}" data-request-id="${request.id}">
                 <div class="card-body">
@@ -109,12 +116,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="d-flex align-items-center mb-2">
                                 <i class="fas fa-${icon} text-${color} me-2"></i>
                                 <h6 class="mb-0">${escapeHtml(request.customerName)}</h6>
-                                <span class="badge bg-${color} ms-2">${requestType === 'karaoke-request' ? 'Karaoke' : 'Song'}</span>
+                                <span class="badge bg-${color} ms-2">${isKaraoke ? 'Karaoke' : 'Song'}</span>
                             </div>
                             <div class="request-details">
-                                <strong>${escapeHtml(request.title || request.songTitle)}</strong>
-                                ${request.artist ? `<br><small class="text-muted">by ${escapeHtml(request.artist)}</small>` : ''}
-                                ${request.difficulty ? `<br><span class="badge bg-secondary">${escapeHtml(request.difficulty)}</span>` : ''}
+                                <strong>${escapeHtml(title)}</strong>
+                                ${artist ? `<br><small class="text-muted">by ${escapeHtml(artist)}</small>` : ''}
+                                ${difficulty ? `<br><span class="badge bg-secondary">${escapeHtml(difficulty)}</span>` : ''}
                             </div>
                             <div class="request-timestamp">
                                 <i class="fas fa-clock me-1"></i>

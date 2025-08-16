@@ -311,7 +311,9 @@ app.get('/dj', (req, res) => {
 });
 
 app.get('/dj/display', (req, res) => {
-    res.render('dj-display', { messages: djMessages });
+    // Only pass non-private messages to the public display
+    const publicMessages = djMessages.filter(msg => !msg.private);
+    res.render('dj-display', { messages: publicMessages });
 });
 
 // New API endpoint for dashboard data (for background refresh)
@@ -322,8 +324,21 @@ app.get('/api/dj/dashboard-data', (req, res) => {
     });
 });
 
+// API endpoint for DJ messages (supports includePrivate with secret)
 app.get('/api/dj/messages', (req, res) => {
-    res.json(djMessages.filter(msg => !msg.displayed));
+    const includePrivate = req.query.includePrivate === 'true';
+
+    // Start with messages that haven't been marked displayed
+    const pending = djMessages.filter(msg => !msg.displayed);
+
+    if (includePrivate) {
+        // Return all pending messages (including private) when requested
+        return res.json(pending);
+    }
+
+    // Default: return only non-private pending messages
+    const publicPending = pending.filter(msg => !msg.private);
+    res.json(publicPending);
 });
 
 app.post('/api/dj/message/:id/mark-displayed', (req, res) => {
@@ -356,7 +371,7 @@ app.post('/api/dj/reply', (req, res) => {
         id: Date.now(),
         customerName,
         replyMessage,
-        originalType, // 'request' or 'message'
+        originalType: originalType || 'request', // Default to 'request' if not provided
         originalId,
         timestamp: new Date().toISOString(),
         displayed: false
@@ -399,12 +414,14 @@ app.get('/', (req, res) => {
 
 app.get('/song-request', (req, res) => {
     const customerName = req.query.customerName || '';
-    res.render('song-request', { songs: [], customerName }); // Pass customer name
+    // Pass the loaded song catalogue so the song selection page can show songs
+    res.render('song-request', { songs: songCatalogue, customerName });
 });
 
 app.get('/karaoke-request', (req, res) => {
     const customerName = req.query.customerName || '';
-    res.render('karaoke-request', { karaoke: [], customerName }); // Pass empty array like song-request
+    // Pass the loaded karaoke catalogue so the karaoke selection page can show options
+    res.render('karaoke-request', { karaoke: karaokeCatalogue, customerName });
 });
 
 app.get('/send-message', (req, res) => {
@@ -526,30 +543,36 @@ app.post('/submit-karaoke-request', async (req, res) => {
 
 app.post('/submit-message', async (req, res) => {
     const { customerName, message } = req.body;
-    
-    // Store the message for DJ display
+    // djOnly may be submitted as '1', 'on', 'true' or boolean
+    const rawDjOnly = req.body.djOnly;
+    const djOnly = rawDjOnly === '1' || rawDjOnly === 'on' || rawDjOnly === 'true' || rawDjOnly === true;
+
+    // Store the message for DJ display; mark private if djOnly is true
     const djDisplayMessage = {
         id: Date.now() + 2, // Ensure unique ID
         customerName,
         message,
         timestamp: new Date().toISOString(),
-        displayed: false
+        displayed: false,
+        private: !!djOnly
     };
+
+    // Always keep the message in the djMessages array so DJs can view private messages
     djMessages.push(djDisplayMessage);
-    
+
     try {
-        // Send to VirtualDJ endpoint
+        // Send to VirtualDJ endpoint (still send regardless of privacy)
         await sendToVirtualDJ(customerName, message);
-        console.log('Message sent to VirtualDJ:', { customerName, message });
-        
-        res.render('thank-you', { 
-            customerName, 
+        console.log('Message sent to VirtualDJ:', { customerName, message, djOnly });
+
+        res.render('thank-you', {
+            customerName,
             requestType: 'message',
             details: { message }
         });
     } catch (error) {
         console.error('Error sending message to VirtualDJ:', error);
-        res.status(500).render('error', { 
+        res.status(500).render('error', {
             error: 'Failed to send message. Please try again.',
             customerName
         });

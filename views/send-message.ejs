@@ -14,9 +14,18 @@
             <a class="navbar-brand" href="/">
                 <i class="fas fa-music me-2"></i>MobileDJay
             </a>
-            <a href="/" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-arrow-left me-1"></i>Back
-            </a>
+
+            <!-- Right-side controls: messages icon + back button -->
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <button id="repliesBellBtn" type="button" class="btn btn-outline-light btn-sm position-relative" title="Messages" aria-pressed="false" role="button">
+                    <i class="fas fa-envelope fa-lg"></i>
+                    <span id="repliesBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; display: none;">0</span>
+                </button>
+
+                <a href="/" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>Back
+                </a>
+            </div>
         </div>
     </nav>
 
@@ -43,37 +52,15 @@
                         </div>
                     </div>
 
-                    <!-- Quick Message Templates -->
+                    <!-- Privacy / DJ-only checkbox -->
                     <div class="card mb-4">
                         <div class="card-body">
-                            <h5 class="card-title">Quick Message Templates</h5>
-                            <p class="text-muted small">Click on any template to use it as a starting point:</p>
-                            <div class="row g-2">
-                                <div class="col-md-6">
-                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
-                                            data-template="Happy Birthday! Can you please play my favorite song for my special day?">
-                                        <i class="fas fa-birthday-cake me-1"></i>Birthday Request
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
-                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
-                                            data-template="Thank you for the amazing music! The crowd is loving it!">
-                                        <i class="fas fa-thumbs-up me-1"></i>Compliment
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
-                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
-                                            data-template="Could you please play something for slow dancing? Thank you!">
-                                        <i class="fas fa-heart me-1"></i>Slow Dance Request
-                                    </button>
-                                </div>
-                                <div class="col-md-6">
-                                    <button type="button" class="btn btn-outline-info btn-sm w-100 template-btn" 
-                                            data-template="Can you turn up the volume a bit? We want to dance!">
-                                        <i class="fas fa-volume-up me-1"></i>Volume Request
-                                    </button>
-                                </div>
+                            <h5 class="card-title">Privacy</h5>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="1" id="djOnly" name="djOnly">
+                                <label class="form-check-label" for="djOnly">Send to DJ only (private)</label>
                             </div>
+                            <div class="form-text mt-2">When checked, the message will be delivered only to the DJ and not shown publicly on displays.</div>
                         </div>
                     </div>
 

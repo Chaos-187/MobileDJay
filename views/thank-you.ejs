@@ -80,9 +80,23 @@
                         <a href="/" class="btn btn-primary btn-lg">
                             <i class="fas fa-home me-2"></i>Back to Home
                         </a>
-                        <button onclick="history.back()" class="btn btn-outline-secondary btn-lg">
-                            <i class="fas fa-arrow-left me-2"></i>Make Another Request
-                        </button>
+                        <% if (requestType === 'song request') { %>
+                            <a href="/song-request?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i>Make Another Song Request
+                            </a>
+                        <% } else if (requestType === 'karaoke request') { %>
+                            <a href="/karaoke-request?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i>Make Another Karaoke Request
+                            </a>
+                        <% } else if (requestType === 'message') { %>
+                            <a href="/send-message?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i>Send Another Message
+                            </a>
+                        <% } else { %>
+                            <a href="/?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                                <i class="fas fa-arrow-left me-2"></i>Make Another Request
+                            </a>
+                        <% } %>
                     </div>
                 </div>
             </div>

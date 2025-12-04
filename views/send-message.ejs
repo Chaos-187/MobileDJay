@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Enable rich media input for mobile keyboards -->
+    <meta name="supports-keyboard-gifs" content="true">
+    <meta name="supports-keyboard-stickers" content="true">
+    <link rel="manifest" href="/manifest.json">
     <title>Send Message - MobileDJay</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -41,12 +47,43 @@
                         <div class="card-body">
                             <h5 class="card-title">Your Message</h5>
                             <div class="form-group mb-3">
-                                <label for="message" class="form-label">Message *</label>
-                                <textarea id="message" name="message" class="form-control" 
-                                          rows="6" required maxlength="500"
-                                          placeholder="Write your message to the DJ here..."></textarea>
+                                <label for="messageInput" class="form-label">Message *</label>
+                                
+                                <!-- Inline rich text editor with GBoard support -->
+                                <div id="messageInput" 
+                                     class="form-control" 
+                                     contenteditable="true"
+                                     role="textbox"
+                                     aria-label="Message with media support"
+                                     data-placeholder="Write your message... Use your keyboard's GIF button!"
+                                     style="min-height: 120px; max-height: 300px; overflow-y: auto; white-space: pre-wrap;"
+                                     
+                                     accept="image/*"
+                                     data-supports="gifs stickers emojis"
+                                     
+                                     inputmode="text"
+                                     enterkeyhint="send"
+                                     spellcheck="true"
+                                     tabindex="0"></div>
+                                
+                                <!-- Hidden field for form submission -->
+                                <input type="hidden" id="message" name="message" required>
+                                
+                                <!-- Clear button -->
+                                <div class="mt-3">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="button" id="clearBtn" class="btn btn-outline-danger btn-sm">
+                                            <i class="fas fa-trash me-1"></i>Clear Content
+                                        </button>
+                                    </div>
+                                </div>
+                                
                                 <div class="form-text">
                                     <span id="charCount">0</span>/500 characters
+                                    <div class="small text-muted mt-1">
+                                        📱 <strong>Mobile:</strong> Use your keyboard's GIF/sticker button to add GIFs inline!
+                                        <br>🖥️ <strong>Desktop:</strong> Paste images directly into the text area above.
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -74,7 +111,36 @@
         </div>
     </main>
 
+    <!-- Replies Screen (hidden by default) -->
+    <div id="repliesScreen" class="container-fluid" style="display: none; height: 100vh; background-color: #f8f9fa;">
+        <div class="row h-100">
+            <div class="col-12 d-flex flex-column">
+                <!-- Header -->
+                <div class="bg-white border-bottom p-3 mb-0">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0">
+                            <i class="fas fa-comments me-2 text-primary"></i>
+                            Messages for <span id="repliesCustomerName" class="text-primary"></span>
+                        </h5>
+                        <button id="refreshRepliesBtn" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat Messages -->
+                <div id="chatMessages" class="flex-grow-1 p-3" style="overflow-y: auto;">
+                    <div class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <p>Loading your conversation...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/app.js"></script>
     <script src="/js/send-message.js"></script>
 </body>
 </html>

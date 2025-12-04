@@ -77,9 +77,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide waiting message
         waitingMessage.style.display = 'none';
         
-        // Set message content
-        messageContent.textContent = message.message;
+        // Set message content - use innerHTML for rich content
+        if (message.message && message.message.includes('<')) {
+            // Rich HTML content
+            messageContent.innerHTML = message.message;
+        } else {
+            // Plain text content
+            messageContent.textContent = message.message || message.textMessage;
+        }
         messageFrom.textContent = `- ${message.customerName}`;
+        
+        // Add special styling for messages with media
+        if (message.hasMedia) {
+            messageDisplay.classList.add('has-media');
+            messageDisplay.querySelector('.message-icon i').className = 'fas fa-images';
+        } else {
+            messageDisplay.classList.remove('has-media');
+        }
         
         // Style differently for replies
         if (message.isReply) {

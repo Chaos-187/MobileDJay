@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshBtn = document.getElementById('refreshBtn');
     const clearAllRequests = document.getElementById('clearAllRequests');
     const markAllDisplayed = document.getElementById('markAllDisplayed');
+    const spinKaraokeBtn = document.getElementById('spinKaraoke');
     const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
     const replyForm = document.getElementById('replyForm');
     const sendReplyBtn = document.getElementById('sendReplyBtn');
@@ -478,6 +479,37 @@ document.addEventListener('DOMContentLoaded', function() {
             startAutoRefresh();
         }
     });
+
+    // Spin Karaoke button handler
+    if (spinKaraokeBtn) {
+        spinKaraokeBtn.addEventListener('click', function() {
+            const originalHtml = spinKaraokeBtn.innerHTML;
+            spinKaraokeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Spinning...';
+            spinKaraokeBtn.disabled = true;
+            
+            fetch('/api/karaoke/trigger-spin', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(`Karaoke spinner triggered! Selected: "${data.song.title}" by ${data.song.artist}`, 'success');
+                } else {
+                    showAlert('Error triggering karaoke spinner', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error triggering spinner:', error);
+                showAlert('Error triggering karaoke spinner', 'danger');
+            })
+            .finally(() => {
+                setTimeout(() => {
+                    spinKaraokeBtn.innerHTML = originalHtml;
+                    spinKaraokeBtn.disabled = false;
+                }, 2000);
+            });
+        });
+    }
 
     // Show keyboard shortcuts on load
     setTimeout(() => {

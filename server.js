@@ -5,8 +5,14 @@ const querystring = require('querystring');
 const fs = require('fs');
 const xml2js = require('xml2js');
 const csv = require('csv-parser');
+const { JSDOM } = require('jsdom');
+const createDOMPurify = require('dompurify');
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Initialize DOMPurify
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
 
 // Set EJS as the templating engine
 app.set('view engine', 'ejs');
@@ -27,6 +33,13 @@ let karaokeCatalogue = [];
 let djRequests = [];
 let djMessages = [];
 let djReplies = [];
+
+// Storage for karaoke spinner
+let karaokeSpinState = {
+    shouldSpin: false,
+    selectedSong: null,
+    timestamp: null
+};
 
 // Function to load songs from VirtualDJ XML database
 async function loadSongsFromXML() {
@@ -316,6 +329,10 @@ app.get('/dj/display', (req, res) => {
     res.render('dj-display', { messages: publicMessages });
 });
 
+app.get('/karaoke-spinner', (req, res) => {
+    res.render('karaoke-spinner');
+});
+
 // New API endpoint for dashboard data (for background refresh)
 app.get('/api/dj/dashboard-data', (req, res) => {
     res.json({ 
@@ -405,6 +422,73 @@ app.get('/api/customer/replies/:customerName', (req, res) => {
         reply.customerName.toLowerCase() === customerName.toLowerCase()
     );
     res.json(customerReplies);
+});
+
+// Karaoke Spinner API endpoints
+app.get('/api/karaoke/all', (req, res) => {
+    res.json(karaokeCatalogue);
+});
+
+// Shared function to trigger karaoke spin
+function triggerKaraokeSpin() {
+    // Select a random karaoke song
+    if (karaokeCatalogue.length === 0) {
+        return { error: 'No karaoke songs available' };
+    }
+    
+    const randomIndex = Math.floor(Math.random() * karaokeCatalogue.length);
+    const selectedSong = karaokeCatalogue[randomIndex];
+    
+    karaokeSpinState = {
+        shouldSpin: true,
+        selectedSong: selectedSong,
+        timestamp: Date.now()
+    };
+    
+    // Add the randomly selected song to DJ requests
+    const request = {
+        id: Date.now(),
+        type: 'karaoke',
+        customerName: '🎲 Random Spinner',
+        song: selectedSong,
+        message: 'Randomly selected by DJ spinner',
+        timestamp: new Date().toISOString(),
+        status: 'pending'
+    };
+    djRequests.push(request);
+    
+    console.log('Karaoke spin triggered:', selectedSong.title);
+    return { success: true, song: selectedSong };
+}
+
+app.post('/api/karaoke/trigger-spin', (req, res) => {
+    const result = triggerKaraokeSpin();
+    if (result.error) {
+        return res.status(400).json(result);
+    }
+    res.json(result);
+});
+
+// GET endpoint for external devices (e.g., Stream Deck, automation)
+app.get('/api/karaoke/trigger-spin', (req, res) => {
+    const result = triggerKaraokeSpin();
+    if (result.error) {
+        return res.status(400).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/karaoke/spin-status', (req, res) => {
+    res.json(karaokeSpinState);
+});
+
+app.post('/api/karaoke/clear-spin', (req, res) => {
+    karaokeSpinState = {
+        shouldSpin: false,
+        selectedSong: null,
+        timestamp: null
+    };
+    res.json({ success: true });
 });
 
 // Customer Routes
@@ -542,33 +626,62 @@ app.post('/submit-karaoke-request', async (req, res) => {
 });
 
 app.post('/submit-message', async (req, res) => {
-    const { customerName, message } = req.body;
+    const { customerName } = req.body;
+    let { message } = req.body;
+    
     // djOnly may be submitted as '1', 'on', 'true' or boolean
     const rawDjOnly = req.body.djOnly;
     const djOnly = rawDjOnly === '1' || rawDjOnly === 'on' || rawDjOnly === 'true' || rawDjOnly === true;
 
-    // Store the message for DJ display; mark private if djOnly is true
+    // Handle inline HTML content directly
+    let richContent = message || '';
+    let hasMedia = false;
+    
+    // Check if message contains inline images
+    hasMedia = richContent.includes('<img');
+    
+    // Sanitize HTML content while preserving inline images
+    const cleanMessage = DOMPurify.sanitize(richContent, {
+        ALLOWED_TAGS: ['img', 'br', 'p', 'div', 'span', 'strong', 'em', 'u', 'b', 'i'],
+        ALLOWED_ATTR: ['src', 'alt', 'style', 'class'],
+        ALLOW_DATA_ATTR: false,
+        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+    });
+
+    // Extract plain text content for VirtualDJ
+    const textContent = DOMPurify.sanitize(richContent, { 
+        ALLOWED_TAGS: [],
+        KEEP_CONTENT: true 
+    }).trim();
+
+    // Store the message for DJ display
     const djDisplayMessage = {
-        id: Date.now() + 2, // Ensure unique ID
+        id: Date.now() + 2,
         customerName,
-        message,
+        message: cleanMessage, // Rich HTML with inline images
+        textMessage: textContent || 'Message with inline media',
         timestamp: new Date().toISOString(),
         displayed: false,
-        private: !!djOnly
+        private: !!djOnly,
+        hasMedia: hasMedia
     };
 
-    // Always keep the message in the djMessages array so DJs can view private messages
     djMessages.push(djDisplayMessage);
 
     try {
-        // Send to VirtualDJ endpoint (still send regardless of privacy)
-        await sendToVirtualDJ(customerName, message);
-        console.log('Message sent to VirtualDJ:', { customerName, message, djOnly });
+        // Send plain text version to VirtualDJ
+        await sendToVirtualDJ(customerName, textContent || 'Message with inline GIFs/images');
+        console.log('Inline message sent:', { 
+            customerName, 
+            hasMedia, 
+            textLength: textContent.length,
+            djOnly 
+        });
 
         res.render('thank-you', {
             customerName,
             requestType: 'message',
-            details: { message }
+            details: { message: textContent || 'Message with inline GIFs/images' }
         });
     } catch (error) {
         console.error('Error sending message to VirtualDJ:', error);

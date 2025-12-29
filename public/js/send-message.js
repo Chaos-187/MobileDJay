@@ -8,11 +8,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('messageForm');
     const clearBtn = document.getElementById('clearBtn');
 
+    // Replies screen elements
+    const repliesBellBtn = document.getElementById('repliesBellBtn');
+    const repliesBadge = document.getElementById('repliesBadge');
+    const repliesScreen = document.getElementById('repliesScreen');
+    const refreshRepliesBtn = document.getElementById('refreshRepliesBtn');
+    const chatMessages = document.getElementById('chatMessages');
+    const repliesCustomerName = document.getElementById('repliesCustomerName');
+    const mainContainer = document.querySelector('main.container');
+    const navbar = document.querySelector('nav.navbar');
+    const backToMessageBtn = document.getElementById('backToMessageBtn');
+
     // Check if required elements exist
     if (!messageInput) {
         console.error('messageInput element not found');
         return;
     }
+
+    // Initialize replies functionality
+    initializeReplies();
 
     // Auto-fill customer name from session storage
     if (customerNameInput && !customerNameInput.value && sessionStorage.getItem('customerName')) {
@@ -306,4 +320,229 @@ document.addEventListener('DOMContentLoaded', function() {
         element.classList.add('loading');
         element.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
     }
+
+    // ============================================
+    // Replies Screen Functionality
+    // ============================================
+    
+    function initializeReplies() {
+        const customerName = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
+        
+        // Check for replies on load
+        if (customerName) {
+            checkForReplies(customerName);
+        }
+        
+        // Handle bell icon click
+        if (repliesBellBtn) {
+            repliesBellBtn.addEventListener('click', function() {
+                const name = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
+                
+                if (!name) {
+                    showError('Please enter your name first');
+                    return;
+                }
+                
+                // Toggle between message form and replies screen
+                if (repliesScreen.style.display === 'block') {
+                    hideRepliesScreen();
+                } else {
+                    showRepliesScreen(name);
+                }
+            });
+        }
+        
+        // Handle refresh replies button
+        if (refreshRepliesBtn) {
+            refreshRepliesBtn.addEventListener('click', function() {
+                const name = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
+                if (name) {
+                    loadReplies(name);
+                }
+            });
+        }
+        
+        // Handle back to message button
+        if (backToMessageBtn) {
+            backToMessageBtn.addEventListener('click', function() {
+                hideRepliesScreen();
+            });
+        }
+        
+        // Start periodic reply checking
+        if (customerName) {
+            startReplyChecking(customerName);
+        }
+    }
+    
+    function showRepliesScreen(customerName) {
+        if (mainContainer) mainContainer.style.display = 'none';
+        if (repliesScreen) repliesScreen.style.display = 'block';
+        if (repliesCustomerName) repliesCustomerName.textContent = customerName;
+        
+        // Update bell button appearance
+        if (repliesBellBtn) {
+            repliesBellBtn.setAttribute('aria-pressed', 'true');
+            repliesBellBtn.classList.remove('btn-outline-light');
+            repliesBellBtn.classList.add('btn-light');
+        }
+        
+        loadReplies(customerName);
+    }
+    
+    function hideRepliesScreen() {
+        if (repliesScreen) repliesScreen.style.display = 'none';
+        if (mainContainer) mainContainer.style.display = 'block';
+        
+        // Update bell button appearance
+        if (repliesBellBtn) {
+            repliesBellBtn.setAttribute('aria-pressed', 'false');
+            repliesBellBtn.classList.remove('btn-light');
+            repliesBellBtn.classList.add('btn-outline-light');
+        }
+    }
+    
+    function checkForReplies(customerName) {
+        fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
+            .then(response => response.json())
+            .then(replies => {
+                updateBellIcon(replies.length);
+            })
+            .catch(error => {
+                console.error('Error checking replies:', error);
+            });
+    }
+    
+    function updateBellIcon(replyCount) {
+        if (repliesBadge) {
+            if (replyCount > 0) {
+                repliesBadge.textContent = replyCount;
+                repliesBadge.style.display = 'block';
+                // Add a subtle animation to the bell
+                if (repliesBellBtn) {
+                    repliesBellBtn.classList.add('text-warning');
+                }
+            } else {
+                repliesBadge.style.display = 'none';
+                if (repliesBellBtn) {
+                    repliesBellBtn.classList.remove('text-warning');
+                }
+            }
+        }
+    }
+    
+    function loadReplies(customerName) {
+        // Show loading state in chat
+        if (chatMessages) {
+            chatMessages.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                    <p>Loading your conversation...</p>
+                </div>
+            `;
+        }
+
+        // Disable refresh button
+        if (refreshRepliesBtn) {
+            refreshRepliesBtn.disabled = true;
+            const originalText = refreshRepliesBtn.innerHTML;
+            refreshRepliesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+
+            fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
+                .then(response => response.json())
+                .then(replies => {
+                    displayChatMessages(replies, customerName);
+                    updateBellIcon(replies.length);
+                })
+                .catch(error => {
+                    console.error('Error fetching replies:', error);
+                    showError('Failed to load messages. Please try again.');
+                    if (chatMessages) {
+                        chatMessages.innerHTML = `
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                                <p>Failed to load messages. Please try again.</p>
+                            </div>
+                        `;
+                    }
+                })
+                .finally(() => {
+                    // Reset refresh button
+                    refreshRepliesBtn.disabled = false;
+                    refreshRepliesBtn.innerHTML = originalText;
+                });
+        }
+    }
+    
+    function displayChatMessages(replies, customerName) {
+        if (!chatMessages) return;
+        
+        if (replies.length === 0) {
+            chatMessages.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No messages yet</h5>
+                    <p class="text-muted">The DJ will reply to your requests and messages here.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const messagesHtml = replies.map(reply => createChatBubble(reply)).join('');
+        chatMessages.innerHTML = messagesHtml;
+        
+        // Scroll to bottom of chat
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function createChatBubble(reply) {
+        const timestamp = new Date(reply.timestamp).toLocaleString();
+        
+        return `
+            <div class="mb-3">
+                <div class="d-flex justify-content-start">
+                    <div class="chat-bubble from-dj" style="max-width: 80%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="fas fa-user-tie me-2" style="color: #ffc107;"></i>
+                            <strong style="color: #ffc107;">DJ Chaos</strong>
+                            <span class="badge bg-secondary ms-2 small">${escapeHtmlReply(reply.originalType)}</span>
+                        </div>
+                        <p class="mb-1">${escapeHtmlReply(reply.replyMessage)}</p>
+                        <small style="opacity: 0.8;">
+                            <i class="fas fa-clock me-1"></i>
+                            ${timestamp}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    function escapeHtmlReply(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Periodically check for new replies
+    let replyCheckInterval;
+    
+    function startReplyChecking(customerName) {
+        // Clear any existing interval
+        if (replyCheckInterval) {
+            clearInterval(replyCheckInterval);
+        }
+        
+        // Check every 30 seconds
+        replyCheckInterval = setInterval(() => {
+            checkForReplies(customerName);
+        }, 30000);
+    }
+    
+    // Stop checking when leaving the page
+    window.addEventListener('beforeunload', function() {
+        if (replyCheckInterval) {
+            clearInterval(replyCheckInterval);
+        }
+    });
 });

@@ -11,7 +11,7 @@
         .dj-header {
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             color: white;
-            padding: 2rem 0;
+            padding: 0.75rem 0;
         }
         .request-card {
             transition: all 0.3s ease;
@@ -42,6 +42,40 @@
             border-radius: 0.25rem;
         }
 
+        /* Event management styles */
+        .event-card {
+            transition: all 0.3s ease;
+        }
+        .event-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .event-card.active {
+            border-color: #28a745;
+            border-width: 2px;
+        }
+        .event-card.inactive {
+            opacity: 0.6;
+        }
+        .event-url {
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #f8f9fa;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            word-break: break-all;
+        }
+        .qr-code-container {
+            text-align: center;
+            padding: 1rem;
+        }
+        .copy-btn {
+            cursor: pointer;
+        }
+        .copy-btn:hover {
+            color: #0056b3;
+        }
+
         /* Dark mode overrides for DJ dashboard */
         body.dark-mode {
             background: #0f1720;
@@ -61,26 +95,38 @@
         body.dark-mode .text-muted { color: #98a9bf !important; }
         body.dark-mode .btn-outline-light { color: #fff; border-color: rgba(255,255,255,0.12); }
         body.dark-mode .badge { opacity: 0.95; }
-
-        /* Ensure message preview also adapts to dark mode */
         body.dark-mode .message-preview {
             background: rgba(255,255,255,0.03);
-            border-left-color: rgba(59,130,246,0.9); /* bluish */
+            border-left-color: rgba(59,130,246,0.9);
             color: #d7e6f5;
         }
-
-        /* Override Bootstrap's .bg-light when in dark mode so message cards don't stay white */
         body.dark-mode .bg-light,
         body.dark-mode .card.bg-light {
             background-color: #0b1114 !important;
             color: #d7e6f5 !important;
             border-color: rgba(255,255,255,0.03) !important;
         }
+        body.dark-mode .event-url {
+            background: rgba(255,255,255,0.05);
+            color: #cfe8ff;
+        }
+        body.dark-mode .modal-content {
+            background: #101419;
+            color: #d7e6f5;
+        }
+        body.dark-mode .modal-header,
+        body.dark-mode .modal-footer {
+            border-color: rgba(255,255,255,0.1);
+        }
+        body.dark-mode .form-control,
+        body.dark-mode .form-select {
+            background: #0b1114;
+            color: #d7e6f5;
+            border-color: rgba(255,255,255,0.1);
+        }
+        body.dark-mode .btn-outline-primary { color: #cfe8ff; border-color: rgba(79,174,255,0.18); }
+        body.dark-mode .btn-outline-secondary { color: #c7d5e6; border-color: rgba(255,255,255,0.06); }
 
-        /* Ensure text-muted and other utilities look correct */
-        body.dark-mode .text-muted { color: #98a9bf !important; }
-
-        /* Style adjustments for header buttons for better alignment and contrast */
         .dj-header .btn {
             min-width: 48px;
             display: inline-flex;
@@ -94,38 +140,63 @@
         }
         .dj-header .btn i { margin-right: .4rem; }
 
-        /* Make the messages list buttons more compact on small screens */
         @media (max-width: 768px) {
             .dj-header .btn { min-width: 40px; }
             .dj-header .btn.btn-lg { padding: .35rem .6rem; }
         }
 
-        /* Ensure reply/mark buttons in message cards are visible in dark-mode */
-        body.dark-mode .btn-outline-primary { color: #cfe8ff; border-color: rgba(79,174,255,0.18); }
-        body.dark-mode .btn-outline-secondary { color: #c7d5e6; border-color: rgba(255,255,255,0.06); }
+        /* Nav tabs styling */
+        .nav-tabs .nav-link {
+            color: #6c757d;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: 600;
+        }
+        body.dark-mode .nav-tabs .nav-link {
+            color: #98a9bf;
+        }
+        body.dark-mode .nav-tabs .nav-link.active {
+            background: #101419;
+            color: #cfe8ff;
+            border-color: rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
     <div class="dj-header">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="display-4 mb-0">
-                        <i class="fas fa-headphones me-3"></i>DJ Dashboard
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-headphones me-2"></i>DJ Dashboard
                     </h1>
-                    <p class="lead mb-0">Manage customer requests and messages</p>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="activeEventSelect" class="text-white-50 small mb-0 d-none d-sm-inline">Event:</label>
+                        <select id="activeEventSelect" class="form-select form-select-sm" style="min-width: 180px; max-width: 250px;">
+                            <option value="all">All Events</option>
+                            <% events.forEach(function(event) { %>
+                                <option value="<%= event.id %>" <%= event.is_active ? '' : 'class="text-muted"' %>>
+                                    <%= event.name %><%= event.is_active ? '' : ' (inactive)' %>
+                                </option>
+                            <% }); %>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-md-4 text-end">
-                    <a href="/dj/display" class="btn btn-light btn-lg me-2" target="_blank">
-                        <i class="fas fa-tv me-2"></i>Message Display
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <a href="/dj/events" class="btn btn-info btn-sm" title="Event Management">
+                        <i class="fas fa-calendar-alt me-1"></i><span class="d-none d-md-inline">Events</span>
                     </a>
-                    <!-- Dark mode toggle next to refresh -->
-                    <button id="darkModeToggle" class="btn btn-outline-light btn-lg me-2" title="Toggle dark mode" type="button">
-                        <i class="fas fa-moon me-1"></i>
-                        <span id="darkModeLabel">Dark</span>
+                    <button id="triggerSpinBtn" class="btn btn-warning btn-sm" title="Trigger Karaoke Spin">
+                        <i class="fas fa-dice me-1"></i><span class="d-none d-md-inline">Spin!</span>
                     </button>
-                    <button id="refreshBtn" class="btn btn-outline-light btn-lg">
-                        <i class="fas fa-sync-alt me-2"></i>Refresh
+                    <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" target="_blank" title="Open Spinner Display">
+                        <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">Spinner</span>
+                    </a>
+                    <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button id="refreshBtn" class="btn btn-outline-light btn-sm" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
                     </button>
                 </div>
             </div>
@@ -133,11 +204,25 @@
     </div>
 
     <main class="container mt-4">
-        <div class="row">
-            <!-- Requests Section -->
-            <div class="col-lg-8">
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab">
+                    <i class="fas fa-music me-2"></i>Requests (<span id="requestCount"><%= requests.length %></span>)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="messages-tab" data-bs-toggle="tab" data-bs-target="#messages" type="button" role="tab">
+                    <i class="fas fa-envelope me-2"></i>Messages (<span id="messageCount"><%= messages.length %></span>)
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="dashboardTabContent">
+            <!-- Requests Tab -->
+            <div class="tab-pane fade show active" id="requests" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3><i class="fas fa-music me-2"></i>Song & Karaoke Requests (<span id="requestCount"><%= requests.length %></span>)</h3>
+                    <h3><i class="fas fa-music me-2"></i>Song & Karaoke Requests</h3>
                     <button id="clearAllRequests" class="btn btn-outline-danger">
                         <i class="fas fa-trash me-2"></i>Clear All
                     </button>
@@ -154,15 +239,18 @@
                         </div>
                     <% } else { %>
                         <% requests.reverse().forEach(function(request) { %>
-                            <div class="card request-card <%= request.type %>-request mb-3" data-request-id="<%= request.id %>">
+                            <div class="card request-card <%= request.type %>-request mb-3" data-request-id="<%= request.id %>" data-event-id="<%= request.eventId || '' %>">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <span class="badge bg-<%= request.type === 'song' ? 'success' : 'warning' %> me-2">
+                                            <div class="d-flex align-items-center mb-2 flex-wrap gap-1">
+                                                <span class="badge bg-<%= request.type === 'song' ? 'success' : 'warning' %> me-1">
                                                     <i class="fas fa-<%= request.type === 'song' ? 'music' : 'microphone' %> me-1"></i>
                                                     <%= request.type.toUpperCase() %>
                                                 </span>
+                                                <% if (request.eventName) { %>
+                                                <span class="badge bg-dark me-1" title="Event"><%= request.eventName %></span>
+                                                <% } %>
                                                 <strong class="me-2"><%= request.customerName %></strong>
                                                 <span class="request-timestamp">
                                                     <%= new Date(request.timestamp).toLocaleString() %>
@@ -201,30 +289,15 @@
                 </div>
             </div>
 
-            <!-- Messages Section -->
-            <div class="col-lg-4">
+            <!-- Messages Tab -->
+            <div class="tab-pane fade" id="messages" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4><i class="fas fa-envelope me-2"></i>Messages (<span id="messageCount"><%= messages.length %></span>)</h4>
+                    <h4><i class="fas fa-envelope me-2"></i>Messages</h4>
                     <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-check me-1"></i>Mark All Displayed
                     </button>
                 </div>
-                
-                <!-- Karaoke Spinner Section -->
-                <div class="card mb-3" style="background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 107, 107, 0.1)); border: 2px solid #ffc107;">
-                    <div class="card-body text-center">
-                        <h5 class="card-title"><i class="fas fa-dice me-2"></i>Random Karaoke Spinner</h5>
-                        <p class="card-text small">Spin to select a random karaoke song with animation!</p>
-                        <button id="spinKaraoke" class="btn btn-warning w-100 mb-2">
-                            <i class="fas fa-dice me-2"></i>Spin Random Karaoke!
-                        </button>
-                        <a href="/karaoke-spinner" target="_blank" class="btn btn-outline-info btn-sm w-100">
-                            <i class="fas fa-external-link-alt me-2"></i>Open Spinner Display
-                        </a>
-                    </div>
-                </div>
 
-                <!-- Make the messages list scrollable and show newest at top -->
                 <div id="messagesList" style="max-height: 60vh; overflow-y: auto;">
                     <% if (messages.length === 0) { %>
                         <div class="card text-center">
@@ -236,17 +309,23 @@
                     <% } else { %>
                         <% let sortedMessages = messages.slice().sort(function(a,b){ return new Date(b.timestamp) - new Date(a.timestamp); }); %>
                         <% sortedMessages.forEach(function(message) { %>
-                            <div class="card mb-2 <%= message.displayed ? 'bg-light' : '' %>" data-message-id="<%= message.id %>">
+                            <div class="card mb-2 <%= message.displayed ? 'bg-light' : '' %>" data-message-id="<%= message.id %>" data-event-id="<%= message.eventId || '' %>">
                                 <div class="card-body py-2">
                                     <div class="d-flex justify-content-between align-items-start">
                                         <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center mb-1">
-                                                <strong class="me-2"><%= message.customerName %></strong>
+                                            <div class="d-flex align-items-center mb-1 flex-wrap gap-1">
+                                                <strong class="me-1"><%= message.customerName %></strong>
+                                                <% if (message.eventName) { %>
+                                                    <span class="badge bg-dark" title="Event"><%= message.eventName %></span>
+                                                <% } %>
                                                 <% if (!message.displayed) { %>
                                                     <span class="badge bg-primary">New</span>
                                                 <% } %>
+                                                <% if (message.private) { %>
+                                                    <span class="badge bg-secondary">Private</span>
+                                                <% } %>
                                             </div>
-                                            <p class="mb-1 small"><%= message.message %></p>
+                                            <p class="mb-1 small"><%- message.message %></p>
                                             <small class="text-muted d-block">
                                                 <i class="fas fa-clock me-1"></i>
                                                 <%= new Date(message.timestamp).toLocaleString() %>
@@ -257,20 +336,13 @@
                                                     data-message-id="<%= message.id %>">
                                                 <i class="fas fa-check"></i>
                                             </button>
-                                            <button class="btn btn-outline-success btn-sm ms-1 reply-message" 
-                                                    data-customer-name="<%= message.customerName %>"
-                                                    data-message-id="<%= message.id %>"
-                                                    data-original-type="message">
-                                                <i class="fas fa-reply"></i>
-                                            </button>
-                                        <% } else { %>
-                                            <button class="btn btn-outline-success btn-sm ms-2 reply-message" 
-                                                    data-customer-name="<%= message.customerName %>"
-                                                    data-message-id="<%= message.id %>"
-                                                    data-original-type="message">
-                                                <i class="fas fa-reply"></i>
-                                            </button>
                                         <% } %>
+                                        <button class="btn btn-outline-success btn-sm ms-1 reply-message" 
+                                                data-customer-name="<%= message.customerName %>"
+                                                data-message-id="<%= message.id %>"
+                                                data-original-type="message">
+                                            <i class="fas fa-reply"></i>
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -282,14 +354,14 @@
     </main>
 
     <!-- Reply Modal -->
-    <div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
+    <div class="modal fade" id="replyModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="replyModalLabel">
+                    <h5 class="modal-title">
                         <i class="fas fa-reply me-2"></i>Reply to <span id="replyCustomerName"></span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="replyForm">
@@ -315,37 +387,89 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/dj-dashboard.js"></script>
 
     <script>
-    // Persist dark mode toggle for DJ dashboard
+    // Dark mode toggle and Event management
     document.addEventListener('DOMContentLoaded', function() {
         const toggle = document.getElementById('darkModeToggle');
         const label = document.getElementById('darkModeLabel');
-        if (!toggle) return;
-
-        function setMode(enabled) {
-            if (enabled) {
-                document.body.classList.add('dark-mode');
-                if (label) label.textContent = 'Dark';
-                const icon = toggle.querySelector('i');
-                if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
-            } else {
-                document.body.classList.remove('dark-mode');
-                if (label) label.textContent = 'Light';
-                const icon = toggle.querySelector('i');
-                if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
+        if (toggle) {
+            function setMode(enabled) {
+                if (enabled) {
+                    document.body.classList.add('dark-mode');
+                    if (label) label.textContent = 'Dark';
+                    const icon = toggle.querySelector('i');
+                    if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
+                } else {
+                    document.body.classList.remove('dark-mode');
+                    if (label) label.textContent = 'Light';
+                    const icon = toggle.querySelector('i');
+                    if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
+                }
             }
+
+            const saved = localStorage.getItem('djDashboardDarkMode') === 'true';
+            setMode(saved);
+
+            toggle.addEventListener('click', function() {
+                const enabled = document.body.classList.toggle('dark-mode');
+                localStorage.setItem('djDashboardDarkMode', enabled ? 'true' : 'false');
+                setMode(enabled);
+            });
         }
 
-        // Initialize from storage (default: false)
-        const saved = localStorage.getItem('djDashboardDarkMode') === 'true';
-        setMode(saved);
-
-        toggle.addEventListener('click', function() {
-            const enabled = document.body.classList.toggle('dark-mode');
-            localStorage.setItem('djDashboardDarkMode', enabled ? 'true' : 'false');
-            setMode(enabled);
+        // Active Event Filter
+        const eventSelect = document.getElementById('activeEventSelect');
+        
+        // Load saved event selection
+        const savedEventId = localStorage.getItem('djActiveEventId') || 'all';
+        eventSelect.value = savedEventId;
+        
+        function filterByEvent(eventId) {
+            const requestCards = document.querySelectorAll('.request-card');
+            const messageCards = document.querySelectorAll('[data-message-id]');
+            
+            let visibleRequests = 0;
+            let visibleMessages = 0;
+            
+            // Filter requests
+            requestCards.forEach(card => {
+                const cardEventId = card.dataset.eventId;
+                if (eventId === 'all' || cardEventId === eventId || (!cardEventId && eventId === 'all')) {
+                    card.style.display = '';
+                    visibleRequests++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Filter messages
+            messageCards.forEach(card => {
+                const cardEventId = card.dataset.eventId;
+                if (eventId === 'all' || cardEventId === eventId || (!cardEventId && eventId === 'all')) {
+                    card.style.display = '';
+                    visibleMessages++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Update counts in tabs
+            document.getElementById('requestCount').textContent = visibleRequests;
+            document.getElementById('messageCount').textContent = visibleMessages;
+            
+            // Save selection
+            localStorage.setItem('djActiveEventId', eventId);
+        }
+        
+        // Apply initial filter
+        filterByEvent(savedEventId);
+        
+        // Listen for changes
+        eventSelect.addEventListener('change', function() {
+            filterByEvent(this.value);
         });
     });
     </script>

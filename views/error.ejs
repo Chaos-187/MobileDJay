@@ -9,9 +9,10 @@
     <link href="/css/style.css" rel="stylesheet">
 </head>
 <body>
+    <% const baseUrl = (typeof eventSlug !== 'undefined' && eventSlug) ? '/event/' + eventSlug : ''; %>
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="<%= baseUrl || '/' %>">
                 <i class="fas fa-music me-2"></i>MobileDJay
             </a>
         </div>
@@ -45,7 +46,7 @@
                         <button onclick="history.back()" class="btn btn-primary btn-lg">
                             <i class="fas fa-arrow-left me-2"></i>Try Again
                         </button>
-                        <a href="/" class="btn btn-outline-secondary btn-lg">
+                        <a href="<%= baseUrl || '/' %>" class="btn btn-outline-secondary btn-lg">
                             <i class="fas fa-home me-2"></i>Back to Home
                         </a>
                     </div>

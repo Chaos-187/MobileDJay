@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const target = this.dataset.target;
             
             // Navigate to target page with customer name as query parameter
+            // The target may already include the event path (e.g., event/abc123/song-request)
             window.location.href = `/${target}?customerName=${encodeURIComponent(customerName)}`;
         });
     });

@@ -7,6 +7,7 @@ const xml2js = require('xml2js');
 const csv = require('csv-parser');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
+const { eventDb, requestDb, messageDb, replyDb, ensureDefaultEvent } = require('./db/database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -29,10 +30,38 @@ app.use(express.json());
 let songCatalogue = [];
 let karaokeCatalogue = [];
 
-// Storage for DJ requests and messages
+// Legacy in-memory storage (kept for backwards compatibility during transition)
 let djRequests = [];
 let djMessages = [];
 let djReplies = [];
+
+// Helper middleware to get event from slug
+function getEventFromSlug(req, res, next) {
+    const slug = req.params.eventSlug;
+    if (!slug) {
+        return next();
+    }
+    
+    const event = eventDb.getBySlug(slug);
+    if (!event) {
+        return res.status(404).render('error', { 
+            error: 'Event not found', 
+            customerName: '',
+            eventSlug: null
+        });
+    }
+    
+    if (!event.is_active) {
+        return res.status(403).render('error', { 
+            error: 'This event is no longer active', 
+            customerName: '',
+            eventSlug: slug
+        });
+    }
+    
+    req.event = event;
+    next();
+}
 
 // Storage for karaoke spinner
 let karaokeSpinState = {
@@ -85,7 +114,7 @@ async function loadSongsFromXML() {
 // Function to load karaoke from CSV file
 async function loadKaraokeFromCSV() {
     try {
-        const csvPath = path.join(__dirname, 'DB', 'VirtualDJ_Karaoke_Catalog_2025-07-26.csv');
+        const csvPath = path.join(__dirname, 'DB', 'VirtualDJ_Karaoke_Catalog_2025-12-29.csv');
         if (!fs.existsSync(csvPath)) {
             console.warn('Karaoke CSV not found, using sample data');
             karaokeCatalogue = getSampleKaraoke();
@@ -318,15 +347,149 @@ function followRedirect(redirectUrl, postData, resolve, reject) {
 }
 
 // Routes
-// DJ Routes
-app.get('/dj', (req, res) => {
-    res.render('dj-dashboard', { requests: djRequests, messages: djMessages });
+// ==================== Event Management API ====================
+
+// Get all events (for DJ dashboard)
+app.get('/api/events', (req, res) => {
+    const events = eventDb.getAll();
+    // Add stats to each event
+    const eventsWithStats = events.map(event => ({
+        ...event,
+        stats: eventDb.getStats(event.id)
+    }));
+    res.json(eventsWithStats);
 });
 
+// Create a new event
+app.post('/api/events', (req, res) => {
+    const { name, description, venue, eventDate, 
+            heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
+            enable_song_requests, enable_karaoke_requests, enable_messages } = req.body;
+    
+    if (!name) {
+        return res.status(400).json({ error: 'Event name is required' });
+    }
+    
+    try {
+        const eventOptions = { 
+            heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
+            enable_song_requests: enable_song_requests !== undefined ? (enable_song_requests ? 1 : 0) : 1,
+            enable_karaoke_requests: enable_karaoke_requests !== undefined ? (enable_karaoke_requests ? 1 : 0) : 1,
+            enable_messages: enable_messages !== undefined ? (enable_messages ? 1 : 0) : 1
+        };
+        const result = eventDb.create(name, description, venue, eventDate, eventOptions);
+        const event = eventDb.getById(result.id);
+        res.json({ success: true, event });
+    } catch (error) {
+        console.error('Error creating event:', error);
+        res.status(500).json({ error: 'Failed to create event' });
+    }
+});
+
+// Update an event
+app.put('/api/events/:id', (req, res) => {
+    const eventId = parseInt(req.params.id);
+    const updates = req.body;
+    
+    try {
+        const success = eventDb.update(eventId, updates);
+        if (success) {
+            const event = eventDb.getById(eventId);
+            res.json({ success: true, event });
+        } else {
+            res.status(404).json({ error: 'Event not found' });
+        }
+    } catch (error) {
+        console.error('Error updating event:', error);
+        res.status(500).json({ error: 'Failed to update event' });
+    }
+});
+
+// Delete an event
+app.delete('/api/events/:id', (req, res) => {
+    const eventId = parseInt(req.params.id);
+    
+    try {
+        const success = eventDb.delete(eventId);
+        if (success) {
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ error: 'Event not found' });
+        }
+    } catch (error) {
+        console.error('Error deleting event:', error);
+        res.status(500).json({ error: 'Failed to delete event' });
+    }
+});
+
+// Get event by slug (public)
+app.get('/api/events/slug/:slug', (req, res) => {
+    const event = eventDb.getBySlug(req.params.slug);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    res.json(event);
+});
+
+// ==================== DJ Routes ====================
+app.get('/dj', (req, res) => {
+    const events = eventDb.getAll();
+    res.render('dj-dashboard', { events, requests: djRequests, messages: djMessages });
+});
+
+app.get('/dj/events', (req, res) => {
+    const events = eventDb.getAll();
+    res.render('event-management', { events });
+});
+
+// Event-specific display config
+app.get('/dj/display-config/:eventSlug', (req, res) => {
+    const event = eventDb.getBySlug(req.params.eventSlug);
+    if (!event) {
+        return res.status(404).render('error', { error: 'Event not found', customerName: '', eventSlug: null });
+    }
+    res.render('display-config', { event });
+});
+
+// Event-specific display
+app.get('/dj/display/:eventSlug', (req, res) => {
+    const event = eventDb.getBySlug(req.params.eventSlug);
+    if (!event) {
+        return res.status(404).render('error', { error: 'Event not found', customerName: '', eventSlug: null });
+    }
+    // Get messages for this event
+    const publicMessages = djMessages.filter(msg => !msg.private && msg.eventSlug === event.slug);
+    res.render('dj-display', { event, messages: publicMessages });
+});
+
+// Legacy global display (redirect or show all)
 app.get('/dj/display', (req, res) => {
     // Only pass non-private messages to the public display
     const publicMessages = djMessages.filter(msg => !msg.private);
-    res.render('dj-display', { messages: publicMessages });
+    res.render('dj-display', { event: null, messages: publicMessages });
+});
+
+// API endpoint to update event display config
+app.put('/api/events/:id/display-config', (req, res) => {
+    const eventId = req.params.id;
+    const updates = {
+        display_show_qr: req.body.display_show_qr ? 1 : 0,
+        display_qr_position: req.body.display_qr_position || 'top-right',
+        display_qr_size: parseInt(req.body.display_qr_size) || 120,
+        display_qr_label: req.body.display_qr_label || 'Scan to Request Songs!',
+        display_bg_color1: req.body.display_bg_color1 || '#000428',
+        display_bg_color2: req.body.display_bg_color2 || '#004e92',
+        display_bg_image: req.body.display_bg_image || null,
+        display_card_color: req.body.display_card_color || '#ffffff',
+        display_card_opacity: parseInt(req.body.display_card_opacity) || 85
+    };
+    
+    const success = eventDb.update(eventId, updates);
+    if (success) {
+        res.json({ success: true });
+    } else {
+        res.status(400).json({ success: false, error: 'Failed to update display config' });
+    }
 });
 
 app.get('/karaoke-spinner', (req, res) => {
@@ -493,24 +656,62 @@ app.post('/api/karaoke/clear-spin', (req, res) => {
 
 // Customer Routes
 app.get('/', (req, res) => {
-    res.render('index');
+    res.render('index', { eventSlug: null, event: null });
 });
 
 app.get('/song-request', (req, res) => {
     const customerName = req.query.customerName || '';
     // Pass the loaded song catalogue so the song selection page can show songs
-    res.render('song-request', { songs: songCatalogue, customerName });
+    res.render('song-request', { songs: songCatalogue, customerName, eventSlug: null, event: null });
 });
 
 app.get('/karaoke-request', (req, res) => {
     const customerName = req.query.customerName || '';
     // Pass the loaded karaoke catalogue so the karaoke selection page can show options
-    res.render('karaoke-request', { karaoke: karaokeCatalogue, customerName });
+    res.render('karaoke-request', { karaoke: karaokeCatalogue, customerName, eventSlug: null, event: null });
 });
 
 app.get('/send-message', (req, res) => {
     const customerName = req.query.customerName || '';
-    res.render('send-message', { customerName }); // Pass customer name
+    res.render('send-message', { customerName, eventSlug: null }); // Pass customer name
+});
+
+// ==================== Event-specific Customer Routes ====================
+// Event landing page
+app.get('/event/:eventSlug', getEventFromSlug, (req, res) => {
+    res.render('index', { eventSlug: req.event.slug, event: req.event });
+});
+
+// Event-specific song request
+app.get('/event/:eventSlug/song-request', getEventFromSlug, (req, res) => {
+    const customerName = req.query.customerName || '';
+    res.render('song-request', { 
+        songs: songCatalogue, 
+        customerName, 
+        eventSlug: req.event.slug,
+        event: req.event
+    });
+});
+
+// Event-specific karaoke request
+app.get('/event/:eventSlug/karaoke-request', getEventFromSlug, (req, res) => {
+    const customerName = req.query.customerName || '';
+    res.render('karaoke-request', { 
+        karaoke: karaokeCatalogue, 
+        customerName, 
+        eventSlug: req.event.slug,
+        event: req.event
+    });
+});
+
+// Event-specific message
+app.get('/event/:eventSlug/send-message', getEventFromSlug, (req, res) => {
+    const customerName = req.query.customerName || '';
+    res.render('send-message', { 
+        customerName, 
+        eventSlug: req.event.slug,
+        event: req.event
+    });
 });
 
 // API Routes for search functionality
@@ -550,8 +751,11 @@ app.get('/api/search/karaoke', (req, res) => {
 
 // Handle form submissions
 app.post('/submit-song-request', async (req, res) => {
-    const { customerName, songId, message } = req.body;
+    const { customerName, songId, message, eventSlug } = req.body;
     const selectedSong = songCatalogue.find(s => s.id == songId);
+    
+    // Get event info if eventSlug provided
+    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
     
     // Store the request for DJ dashboard
     const request = {
@@ -561,7 +765,10 @@ app.post('/submit-song-request', async (req, res) => {
         song: selectedSong,
         message: message || '',
         timestamp: new Date().toISOString(),
-        status: 'pending'
+        status: 'pending',
+        eventId: event ? event.id : null,
+        eventSlug: eventSlug || null,
+        eventName: event ? event.name : null
     };
     djRequests.push(request);
     
@@ -576,20 +783,25 @@ app.post('/submit-song-request', async (req, res) => {
         res.render('thank-you', { 
             customerName, 
             requestType: 'song request',
-            details: selectedSong
+            details: selectedSong,
+            eventSlug: eventSlug || null
         });
     } catch (error) {
         console.error('Error sending song request to VirtualDJ:', error);
         res.status(500).render('error', { 
             error: 'Failed to send request. Please try again.',
-            customerName
+            customerName,
+            eventSlug: eventSlug || null
         });
     }
 });
 
 app.post('/submit-karaoke-request', async (req, res) => {
-    const { customerName, karaokeId, message } = req.body;
+    const { customerName, karaokeId, message, eventSlug } = req.body;
     const selectedKaraoke = karaokeCatalogue.find(k => k.id == karaokeId);
+    
+    // Get event info if eventSlug provided
+    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
     
     // Store the request for DJ dashboard
     const request = {
@@ -599,7 +811,10 @@ app.post('/submit-karaoke-request', async (req, res) => {
         song: selectedKaraoke,
         message: message || '',
         timestamp: new Date().toISOString(),
-        status: 'pending'
+        status: 'pending',
+        eventId: event ? event.id : null,
+        eventSlug: eventSlug || null,
+        eventName: event ? event.name : null
     };
     djRequests.push(request);
     
@@ -614,20 +829,25 @@ app.post('/submit-karaoke-request', async (req, res) => {
         res.render('thank-you', { 
             customerName, 
             requestType: 'karaoke request',
-            details: selectedKaraoke
+            details: selectedKaraoke,
+            eventSlug: eventSlug || null
         });
     } catch (error) {
         console.error('Error sending karaoke request to VirtualDJ:', error);
         res.status(500).render('error', { 
             error: 'Failed to send request. Please try again.',
-            customerName
+            customerName,
+            eventSlug: eventSlug || null
         });
     }
 });
 
 app.post('/submit-message', async (req, res) => {
-    const { customerName } = req.body;
+    const { customerName, eventSlug } = req.body;
     let { message } = req.body;
+    
+    // Get event info if eventSlug provided
+    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
     
     // djOnly may be submitted as '1', 'on', 'true' or boolean
     const rawDjOnly = req.body.djOnly;
@@ -663,7 +883,10 @@ app.post('/submit-message', async (req, res) => {
         timestamp: new Date().toISOString(),
         displayed: false,
         private: !!djOnly,
-        hasMedia: hasMedia
+        hasMedia: hasMedia,
+        eventId: event ? event.id : null,
+        eventSlug: eventSlug || null,
+        eventName: event ? event.name : null
     };
 
     djMessages.push(djDisplayMessage);
@@ -681,13 +904,15 @@ app.post('/submit-message', async (req, res) => {
         res.render('thank-you', {
             customerName,
             requestType: 'message',
-            details: { message: textContent || 'Message with inline GIFs/images' }
+            details: { message: textContent || 'Message with inline GIFs/images' },
+            eventSlug: eventSlug || null
         });
     } catch (error) {
         console.error('Error sending message to VirtualDJ:', error);
         res.status(500).render('error', {
             error: 'Failed to send message. Please try again.',
-            customerName
+            customerName,
+            eventSlug: eventSlug || null
         });
     }
 });
@@ -696,21 +921,18 @@ app.post('/submit-message', async (req, res) => {
 async function startServer() {
     await initializeCatalogues();
     
-    // Add some test replies for debugging
-    djReplies.push({
-        id: Date.now(),
-        customerName: 'TestUser',
-        replyMessage: 'Hello TestUser, this is a test reply from the DJ!',
-        originalType: 'request',
-        originalId: '123',
-        timestamp: new Date().toISOString()
-    });
+    // Ensure default event exists
+    const defaultEvent = ensureDefaultEvent();
+    if (defaultEvent) {
+        console.log(`Created default event with slug: ${defaultEvent.slug}`);
+    }
     
     app.listen(PORT, () => {
         console.log(`MobileDJay server is running on http://localhost:${PORT}`);
         console.log(`Songs loaded: ${songCatalogue.length}`);
         console.log(`Karaoke songs loaded: ${karaokeCatalogue.length}`);
-        console.log(`Test replies added: ${djReplies.length}`);
+        const events = eventDb.getAll();
+        console.log(`Events in database: ${events.length}`);
     });
 }
 

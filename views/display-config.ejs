@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Configuration - <%= event.name %> - MobileDJay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        }
+        .card {
+            background-color: #16213e;
+            border: 1px solid #0f3460;
+        }
+        .card-header {
+            background-color: #0f3460;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .form-control, .form-select {
+            background-color: #1a1a2e;
+            border-color: #0f3460;
+            color: #eee;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #1a1a2e;
+            border-color: #667eea;
+            color: #eee;
+            box-shadow: 0 0 0 0.25rem rgba(102, 126, 234, 0.25);
+        }
+        .form-control-color {
+            width: 50px;
+            padding: 0.25rem;
+        }
+        .preview-container {
+            background: linear-gradient(180deg, #000428, #004e92);
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+        .preview-qr {
+            position: absolute;
+            background: rgba(255,255,255,0.95);
+            padding: 12px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .preview-qr.top-left { top: 20px; left: 20px; }
+        .preview-qr.top-right { top: 20px; right: 20px; }
+        .preview-qr.bottom-left { bottom: 20px; left: 20px; }
+        .preview-qr.bottom-right { bottom: 20px; right: 20px; }
+        .preview-qr canvas {
+            display: block;
+        }
+        .preview-qr .qr-label {
+            font-size: 0.75rem;
+            color: #333;
+            margin-top: 8px;
+            font-weight: 600;
+            max-width: 150px;
+        }
+        .preview-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.85);
+            padding: 2rem;
+            border-radius: 14px;
+            text-align: center;
+            max-width: 80%;
+        }
+        .preview-message .content {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111;
+        }
+        .preview-message .from {
+            font-size: 1rem;
+            color: #666;
+            font-style: italic;
+            margin-top: 0.5rem;
+        }
+        .btn-apply {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        .btn-apply:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            color: white;
+        }
+        .position-btn {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+        .position-btn.active {
+            background-color: #667eea;
+            border-color: #667eea;
+        }
+        .config-section {
+            margin-bottom: 1.5rem;
+        }
+        .config-section h6 {
+            color: #667eea;
+            border-bottom: 1px solid #0f3460;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .event-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center">
+                <a class="navbar-brand" href="/dj">
+                    <i class="fas fa-headphones-alt me-2"></i>MobileDJay
+                </a>
+                <span class="event-badge ms-3">
+                    <i class="fas fa-calendar-alt me-1"></i><%= event.name %>
+                </span>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="/dj/events" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Events
+                </a>
+                <a href="/dj/display/<%= event.slug %>" class="btn btn-light btn-sm" target="_blank">
+                    <i class="fas fa-tv me-1"></i>Open Display
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="row">
+            <!-- Configuration Panel -->
+            <div class="col-lg-5 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="fas fa-cog me-2"></i>Display Configuration</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- QR Code Settings -->
+                        <div class="config-section">
+                            <h6><i class="fas fa-qrcode me-2"></i>QR Code Settings</h6>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showQrCode" <%= event.display_show_qr !== 0 ? 'checked' : '' %>>
+                                <label class="form-check-label" for="showQrCode">Show QR Code on Display</label>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">QR Code Position</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <button class="btn btn-outline-light position-btn <%= event.display_qr_position === 'top-left' ? 'active' : '' %>" data-position="top-left">
+                                            <i class="fas fa-arrow-up me-1"></i><i class="fas fa-arrow-left"></i> Top Left
+                                        </button>
+                                    </div>
+                                    <div class="col-6">
+                                        <button class="btn btn-outline-light position-btn <%= (!event.display_qr_position || event.display_qr_position === 'top-right') ? 'active' : '' %>" data-position="top-right">
+                                            <i class="fas fa-arrow-up me-1"></i><i class="fas fa-arrow-right"></i> Top Right
+                                        </button>
+                                    </div>
+                                    <div class="col-6">
+                                        <button class="btn btn-outline-light position-btn <%= event.display_qr_position === 'bottom-left' ? 'active' : '' %>" data-position="bottom-left">
+                                            <i class="fas fa-arrow-down me-1"></i><i class="fas fa-arrow-left"></i> Bottom Left
+                                        </button>
+                                    </div>
+                                    <div class="col-6">
+                                        <button class="btn btn-outline-light position-btn <%= event.display_qr_position === 'bottom-right' ? 'active' : '' %>" data-position="bottom-right">
+                                            <i class="fas fa-arrow-down me-1"></i><i class="fas fa-arrow-right"></i> Bottom Right
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="qrSize" class="form-label">QR Code Size</label>
+                                <input type="range" class="form-range" id="qrSize" min="80" max="200" value="<%= event.display_qr_size || 120 %>">
+                                <small class="text-muted"><span id="qrSizeValue"><%= event.display_qr_size || 120 %></span>px</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="qrLabel" class="form-label">QR Code Label</label>
+                                <input type="text" class="form-control" id="qrLabel" value="<%= event.display_qr_label || 'Scan to Request Songs!' %>" placeholder="Custom label text">
+                            </div>
+                        </div>
+
+                        <!-- Background Settings -->
+                        <div class="config-section">
+                            <h6><i class="fas fa-image me-2"></i>Background Settings</h6>
+                            
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label for="bgColor1" class="form-label">Gradient Start</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="bgColor1" value="<%= event.display_bg_color1 || '#000428' %>">
+                                        <input type="text" class="form-control" id="bgColor1Text" value="<%= event.display_bg_color1 || '#000428' %>" maxlength="7">
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <label for="bgColor2" class="form-label">Gradient End</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="bgColor2" value="<%= event.display_bg_color2 || '#004e92' %>">
+                                        <input type="text" class="form-control" id="bgColor2Text" value="<%= event.display_bg_color2 || '#004e92' %>" maxlength="7">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="bgImage" class="form-label">Background Image URL</label>
+                                <input type="url" class="form-control" id="bgImage" value="<%= event.display_bg_image || '' %>" placeholder="https://example.com/image.jpg">
+                                <small class="text-muted">Leave empty to use gradient only</small>
+                            </div>
+                        </div>
+
+                        <!-- Message Card Settings -->
+                        <div class="config-section">
+                            <h6><i class="fas fa-comment me-2"></i>Message Card Settings</h6>
+                            
+                            <div class="row mb-3">
+                                <div class="col-6">
+                                    <label for="cardBgColor" class="form-label">Card Background</label>
+                                    <div class="input-group">
+                                        <input type="color" class="form-control form-control-color" id="cardBgColor" value="<%= event.display_card_color || '#ffffff' %>">
+                                        <input type="text" class="form-control" id="cardBgColorText" value="<%= event.display_card_color || '#ffffff' %>" maxlength="7">
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <label for="cardOpacity" class="form-label">Opacity</label>
+                                    <input type="range" class="form-range" id="cardOpacity" min="50" max="100" value="<%= event.display_card_opacity || 85 %>">
+                                    <small class="text-muted"><span id="cardOpacityValue"><%= event.display_card_opacity || 85 %></span>%</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-apply btn-lg" id="applyConfig">
+                                <i class="fas fa-save me-2"></i>Save Configuration
+                            </button>
+                            <button class="btn btn-outline-secondary" id="resetConfig">
+                                <i class="fas fa-undo me-2"></i>Reset to Defaults
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Panel -->
+            <div class="col-lg-7 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-eye me-2"></i>Preview</h5>
+                        <small class="text-muted">Live preview of your display</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="preview-container" id="previewContainer">
+                            <!-- QR Code Preview -->
+                            <div class="preview-qr top-right" id="previewQr" style="display: none;">
+                                <canvas id="previewQrCanvas"></canvas>
+                                <div class="qr-label" id="previewQrLabel">Scan to Request Songs!</div>
+                            </div>
+                            
+                            <!-- Sample Message Preview -->
+                            <div class="preview-message" id="previewMessage">
+                                <div class="content">Can you play some 80s hits? 🎵</div>
+                                <div class="from">- Happy Customer</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Event URL Display -->
+                <div class="card mt-3">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-link me-2"></i>Event URL (QR Code Links To)</h6>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="eventUrl" value="" readonly>
+                            <button class="btn btn-outline-light" id="copyUrl" title="Copy URL">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <h6 class="card-title mt-3"><i class="fas fa-tv me-2"></i>Display URL</h6>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="displayUrl" value="" readonly>
+                            <button class="btn btn-outline-light" id="copyDisplayUrl" title="Copy Display URL">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const eventId = <%= event.id %>;
+        const eventSlug = '<%= event.slug %>';
+        const previewContainer = document.getElementById('previewContainer');
+        const previewQr = document.getElementById('previewQr');
+        const previewQrCanvas = document.getElementById('previewQrCanvas');
+        const previewQrLabel = document.getElementById('previewQrLabel');
+        const previewMessage = document.getElementById('previewMessage');
+        
+        // Set URLs
+        const eventUrl = window.location.origin + '/event/' + eventSlug;
+        const displayUrl = window.location.origin + '/dj/display/' + eventSlug;
+        document.getElementById('eventUrl').value = eventUrl;
+        document.getElementById('displayUrl').value = displayUrl;
+        
+        // Sync color pickers
+        function setupColorSync(colorId, textId) {
+            const colorInput = document.getElementById(colorId);
+            const textInput = document.getElementById(textId);
+            colorInput.addEventListener('input', () => {
+                textInput.value = colorInput.value;
+                updatePreview();
+            });
+            textInput.addEventListener('input', () => {
+                if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
+                    colorInput.value = textInput.value;
+                    updatePreview();
+                }
+            });
+        }
+        
+        setupColorSync('bgColor1', 'bgColor1Text');
+        setupColorSync('bgColor2', 'bgColor2Text');
+        setupColorSync('cardBgColor', 'cardBgColorText');
+        
+        // Position buttons
+        document.querySelectorAll('.position-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.position-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                updatePreview();
+            });
+        });
+        
+        // Range sliders
+        document.getElementById('qrSize').addEventListener('input', function() {
+            document.getElementById('qrSizeValue').textContent = this.value;
+            updatePreview();
+        });
+        
+        document.getElementById('cardOpacity').addEventListener('input', function() {
+            document.getElementById('cardOpacityValue').textContent = this.value;
+            updatePreview();
+        });
+        
+        // Other inputs
+        document.getElementById('showQrCode').addEventListener('change', updatePreview);
+        document.getElementById('qrLabel').addEventListener('input', updatePreview);
+        document.getElementById('bgImage').addEventListener('input', updatePreview);
+        
+        // Update preview
+        function updatePreview() {
+            const showQr = document.getElementById('showQrCode').checked;
+            const qrPosition = document.querySelector('.position-btn.active')?.dataset.position || 'top-right';
+            const qrSize = document.getElementById('qrSize').value;
+            const qrLabel = document.getElementById('qrLabel').value;
+            const bgColor1 = document.getElementById('bgColor1').value;
+            const bgColor2 = document.getElementById('bgColor2').value;
+            const bgImage = document.getElementById('bgImage').value;
+            const cardBgColor = document.getElementById('cardBgColor').value;
+            const cardOpacity = document.getElementById('cardOpacity').value;
+            
+            // Update background
+            if (bgImage) {
+                previewContainer.style.background = `linear-gradient(180deg, ${bgColor1}aa, ${bgColor2}aa), url('${bgImage}')`;
+                previewContainer.style.backgroundSize = 'cover';
+                previewContainer.style.backgroundPosition = 'center';
+            } else {
+                previewContainer.style.background = `linear-gradient(180deg, ${bgColor1}, ${bgColor2})`;
+            }
+            
+            // Update message card
+            const opacity = Math.round(cardOpacity * 2.55).toString(16).padStart(2, '0');
+            previewMessage.style.background = cardBgColor + opacity;
+            
+            // Update QR code
+            if (showQr) {
+                previewQr.style.display = 'block';
+                previewQr.className = 'preview-qr ' + qrPosition;
+                previewQrLabel.textContent = qrLabel;
+                
+                // Generate QR code
+                QRCode.toCanvas(previewQrCanvas, eventUrl, { 
+                    width: parseInt(qrSize),
+                    margin: 1
+                }, function(error) {
+                    if (error) console.error(error);
+                });
+            } else {
+                previewQr.style.display = 'none';
+            }
+        }
+        
+        // Initial preview
+        updatePreview();
+        
+        // Save configuration to database
+        document.getElementById('applyConfig').addEventListener('click', async function() {
+            const config = {
+                display_show_qr: document.getElementById('showQrCode').checked,
+                display_qr_position: document.querySelector('.position-btn.active')?.dataset.position || 'top-right',
+                display_qr_size: document.getElementById('qrSize').value,
+                display_qr_label: document.getElementById('qrLabel').value,
+                display_bg_color1: document.getElementById('bgColor1').value,
+                display_bg_color2: document.getElementById('bgColor2').value,
+                display_bg_image: document.getElementById('bgImage').value || null,
+                display_card_color: document.getElementById('cardBgColor').value,
+                display_card_opacity: document.getElementById('cardOpacity').value
+            };
+            
+            try {
+                const response = await fetch(`/api/events/${eventId}/display-config`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const result = await response.json();
+                
+                const btn = this;
+                const originalHtml = btn.innerHTML;
+                
+                if (result.success) {
+                    btn.innerHTML = '<i class="fas fa-check me-2"></i>Configuration Saved!';
+                    btn.classList.add('btn-success');
+                    btn.classList.remove('btn-apply');
+                } else {
+                    btn.innerHTML = '<i class="fas fa-times me-2"></i>Save Failed';
+                    btn.classList.add('btn-danger');
+                    btn.classList.remove('btn-apply');
+                }
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('btn-success', 'btn-danger');
+                    btn.classList.add('btn-apply');
+                }, 2000);
+            } catch (error) {
+                console.error('Error saving config:', error);
+                alert('Failed to save configuration');
+            }
+        });
+        
+        // Reset configuration
+        document.getElementById('resetConfig').addEventListener('click', function() {
+            if (confirm('Reset all display settings to defaults?')) {
+                document.getElementById('showQrCode').checked = true;
+                document.querySelectorAll('.position-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('[data-position="top-right"]').classList.add('active');
+                document.getElementById('qrSize').value = 120;
+                document.getElementById('qrSizeValue').textContent = '120';
+                document.getElementById('qrLabel').value = 'Scan to Request Songs!';
+                document.getElementById('bgColor1').value = '#000428';
+                document.getElementById('bgColor1Text').value = '#000428';
+                document.getElementById('bgColor2').value = '#004e92';
+                document.getElementById('bgColor2Text').value = '#004e92';
+                document.getElementById('bgImage').value = '';
+                document.getElementById('cardBgColor').value = '#ffffff';
+                document.getElementById('cardBgColorText').value = '#ffffff';
+                document.getElementById('cardOpacity').value = 85;
+                document.getElementById('cardOpacityValue').textContent = '85';
+                updatePreview();
+            }
+        });
+        
+        // Copy URL functions
+        function copyToClipboard(elementId, buttonId) {
+            const url = document.getElementById(elementId).value;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.getElementById(buttonId);
+                const icon = btn.querySelector('i');
+                icon.classList.remove('fa-copy');
+                icon.classList.add('fa-check');
+                setTimeout(() => {
+                    icon.classList.remove('fa-check');
+                    icon.classList.add('fa-copy');
+                }, 2000);
+            });
+        }
+        
+        document.getElementById('copyUrl').addEventListener('click', () => copyToClipboard('eventUrl', 'copyUrl'));
+        document.getElementById('copyDisplayUrl').addEventListener('click', () => copyToClipboard('displayUrl', 'copyDisplayUrl'));
+    });
+    </script>
+</body>
+</html>

@@ -8,25 +8,57 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageFrom = document.getElementById('messageFrom');
     const controlPanel = document.getElementById('controlPanel');
     const messageStatus = document.getElementById('messageStatus');
+    const spinnerStatus = document.getElementById('spinnerStatus');
+
+    // Spinner elements
+    const spinnerOverlay = document.getElementById('spinnerOverlay');
+    const spinnerSlot = document.getElementById('spinnerSlot');
+    const spinnerWaiting = document.getElementById('spinnerWaiting');
+    const songsList = document.getElementById('songsList');
+    const winnerDisplay = document.getElementById('winnerDisplay');
+    const winnerTitle = document.getElementById('winnerTitle');
+    const winnerArtist = document.getElementById('winnerArtist');
+    const winnerDifficulty = document.getElementById('winnerDifficulty');
 
     let currentMessageIndex = 0;
     let isDisplayingMessage = false;
     let messageQueue = [];
     let refreshInterval;
 
+    // Spinner state
+    let isSpinning = false;
+    let spinPollInterval;
+    let allKaraokeSongs = [];
+
     // Configuration
     const CONFIG = {
         messageDisplayTime: 5000, // 5 seconds per message
         refreshInterval: 3000,    // Check for new messages every 3 seconds
         fadeInTime: 500,         // Animation timing
-        fadeOutTime: 500
+        fadeOutTime: 500,
+        // Spinner config
+        spinPollInterval: 1000,    // Check for spin trigger every second
+        spinDuration: 9500,        // Total spin animation duration
+        winnerDisplayDuration: 5000 // How long to show winner
     };
+
+    // Audio for spinner
+    let spinSound;
+    try {
+        spinSound = new Audio('/audio/spin.mp3');
+    } catch (e) {
+        console.log('Could not load spin sound');
+    }
 
     // Initialize
     function init() {
         startMessagePolling();
         setupKeyboardControls();
         setupMouseActivity();
+        
+        // Initialize spinner
+        loadKaraokeSongs();
+        startSpinnerPolling();
         
         // Show control panel briefly on load
         setTimeout(() => {
@@ -255,14 +287,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('visibilitychange', function() {
         if (document.hidden) {
             clearInterval(refreshInterval);
+            clearInterval(spinPollInterval);
         } else {
             startMessagePolling();
+            startSpinnerPolling();
         }
     });
 
     // Clean up on page unload
     window.addEventListener('beforeunload', function() {
         clearInterval(refreshInterval);
+        clearInterval(spinPollInterval);
     });
 
     // Initialize the display
@@ -273,4 +308,199 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         updateStatus('DJ Message Display ready');
     }, 2000);
+
+    // ============================================
+    // KARAOKE SPINNER FUNCTIONALITY
+    // ============================================
+
+    // Load all karaoke songs for spinner
+    function loadKaraokeSongs() {
+        fetch('/api/karaoke/all')
+            .then(response => response.json())
+            .then(songs => {
+                allKaraokeSongs = songs;
+                updateSpinnerStatus(`${songs.length} songs loaded`);
+            })
+            .catch(error => {
+                console.error('Error loading karaoke songs:', error);
+                updateSpinnerStatus('Error loading songs');
+            });
+    }
+
+    // Start polling for spin trigger
+    function startSpinnerPolling() {
+        spinPollInterval = setInterval(checkForSpinTrigger, CONFIG.spinPollInterval);
+    }
+
+    // Check if DJ triggered a spin
+    function checkForSpinTrigger() {
+        if (isSpinning) return;
+
+        fetch('/api/karaoke/spin-status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.shouldSpin && data.selectedSong) {
+                    startSpin(data.selectedSong);
+                    // Clear the trigger
+                    fetch('/api/karaoke/clear-spin', { method: 'POST' });
+                }
+            })
+            .catch(error => {
+                // Silently ignore - might not have spinner API
+            });
+    }
+
+    // Start the spinning animation
+    function startSpin(targetSong) {
+        if (isSpinning) return;
+        
+        isSpinning = true;
+        updateSpinnerStatus('Spinning...');
+
+        // Play spin sound if available
+        if (spinSound) {
+            spinSound.currentTime = 0;
+            spinSound.play().catch(e => console.log('Could not play spin sound'));
+        }
+
+        // Show spinner overlay
+        spinnerOverlay.classList.add('active');
+        
+        // Hide waiting, show songs list
+        spinnerWaiting.style.display = 'none';
+        songsList.style.display = 'block';
+
+        // Prepare and animate
+        prepareSongsList(targetSong);
+        animateSpin(targetSong);
+    }
+
+    // Prepare the scrolling songs list
+    function prepareSongsList(targetSong) {
+        // Create a list with random songs + target song
+        const shuffled = [...allKaraokeSongs].sort(() => Math.random() - 0.5);
+        const displaySongs = shuffled.slice(0, 50);
+        
+        // Insert target song near the end for dramatic effect
+        const targetIndex = displaySongs.length - 5;
+        displaySongs.splice(targetIndex, 0, targetSong);
+
+        // Render the songs
+        songsList.innerHTML = displaySongs.map(song => `
+            <div class="song-item" data-song-id="${song.id}">
+                <div class="song-title">${escapeHtml(song.title)}</div>
+                <div class="song-artist">by ${escapeHtml(song.artist)}</div>
+                <div class="song-difficulty">${escapeHtml(song.difficulty || 'Medium')}</div>
+            </div>
+        `).join('');
+
+        // Reset position
+        songsList.style.transform = 'translateY(0)';
+    }
+
+    // Animate the spinning effect
+    function animateSpin(targetSong) {
+        const targetElement = songsList.querySelector(`[data-song-id="${targetSong.id}"]`);
+        if (!targetElement) {
+            console.error('Target song not found in list');
+            resetSpinner();
+            return;
+        }
+
+        const targetOffset = targetElement.offsetTop;
+        const centerOffset = (spinnerSlot.offsetHeight - 300) / 2;
+        const finalPosition = -(targetOffset - centerOffset);
+
+        const startTime = Date.now();
+
+        function animate() {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / CONFIG.spinDuration;
+            
+            if (elapsed >= CONFIG.spinDuration) {
+                songsList.style.transform = `translateY(${finalPosition}px)`;
+                finishSpin(targetSong);
+                return;
+            }
+
+            // Easing function: ease-out-cubic for smooth deceleration
+            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+            const currentPosition = finalPosition * easeOutCubic;
+            songsList.style.transform = `translateY(${currentPosition}px)`;
+
+            requestAnimationFrame(animate);
+        }
+
+        songsList.style.transform = 'translateY(0)';
+        songsList.style.transition = 'none';
+        requestAnimationFrame(animate);
+    }
+
+    // Finish the spin and show winner
+    function finishSpin(winner) {
+        setTimeout(() => {
+            showWinner(winner);
+        }, 800);
+    }
+
+    // Show the winner with confetti
+    function showWinner(song) {
+        winnerTitle.textContent = song.title;
+        winnerArtist.textContent = `by ${song.artist}`;
+        winnerDifficulty.textContent = song.difficulty || 'Medium';
+        
+        winnerDisplay.classList.add('show');
+        updateSpinnerStatus('Winner selected!');
+        
+        // Create confetti
+        createConfetti();
+
+        // Hide winner after display duration
+        setTimeout(() => {
+            resetSpinner();
+        }, CONFIG.winnerDisplayDuration);
+    }
+
+    // Create confetti animation
+    function createConfetti() {
+        const colors = ['#ffc107', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'];
+        
+        for (let i = 0; i < 100; i++) {
+            setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => confetti.remove(), 3000);
+            }, i * 30);
+        }
+    }
+
+    // Reset the spinner to hidden state
+    function resetSpinner() {
+        winnerDisplay.classList.remove('show');
+        spinnerOverlay.classList.remove('active');
+        songsList.style.display = 'none';
+        songsList.style.transition = '';
+        spinnerWaiting.style.display = 'flex';
+        isSpinning = false;
+        updateSpinnerStatus('Ready');
+    }
+
+    // Update spinner status
+    function updateSpinnerStatus(status) {
+        if (spinnerStatus) {
+            spinnerStatus.textContent = 'Spinner: ' + status;
+        }
+    }
+
+    // Escape HTML for spinner
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 });

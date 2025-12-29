@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearAllRequests = document.getElementById('clearAllRequests');
     const markAllDisplayed = document.getElementById('markAllDisplayed');
     const spinKaraokeBtn = document.getElementById('spinKaraoke');
+    const triggerSpinBtn = document.getElementById('triggerSpinBtn');
     const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
     const replyForm = document.getElementById('replyForm');
     const sendReplyBtn = document.getElementById('sendReplyBtn');
@@ -22,6 +23,43 @@ document.addEventListener('DOMContentLoaded', function() {
         if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
         }
+    }
+
+    // Trigger Spin button handler
+    if (triggerSpinBtn) {
+        triggerSpinBtn.addEventListener('click', function() {
+            triggerKaraokeSpin();
+        });
+    }
+
+    // Trigger karaoke spin
+    function triggerKaraokeSpin() {
+        const btn = triggerSpinBtn;
+        const originalContent = btn.innerHTML;
+        
+        // Show loading state
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Spinning...';
+        
+        fetch('/api/karaoke/trigger-spin', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(`Spin triggered! Selected: "${data.song.title}" by ${data.song.artist}`, 'success');
+                    // Refresh to show the new request
+                    setTimeout(() => refreshData(false), 1000);
+                } else {
+                    showAlert(data.error || 'Failed to trigger spin', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error triggering spin:', error);
+                showAlert('Failed to trigger spin', 'danger');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            });
     }
 
     // Refresh functionality

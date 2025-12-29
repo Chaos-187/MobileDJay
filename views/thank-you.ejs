@@ -9,9 +9,10 @@
     <link href="/css/style.css" rel="stylesheet">
 </head>
 <body>
+    <% const baseUrl = eventSlug ? '/event/' + eventSlug : ''; %>
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="<%= baseUrl || '/' %>">
                 <i class="fas fa-music me-2"></i>MobileDJay
             </a>
         </div>
@@ -77,23 +78,23 @@
                     </div>
 
                     <div class="d-grid gap-2 d-md-block">
-                        <a href="/" class="btn btn-primary btn-lg">
+                        <a href="<%= baseUrl || '/' %>" class="btn btn-primary btn-lg">
                             <i class="fas fa-home me-2"></i>Back to Home
                         </a>
                         <% if (requestType === 'song request') { %>
-                            <a href="/song-request?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                            <a href="<%= baseUrl %>/song-request?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
                                 <i class="fas fa-arrow-left me-2"></i>Make Another Song Request
                             </a>
                         <% } else if (requestType === 'karaoke request') { %>
-                            <a href="/karaoke-request?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                            <a href="<%= baseUrl %>/karaoke-request?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
                                 <i class="fas fa-arrow-left me-2"></i>Make Another Karaoke Request
                             </a>
                         <% } else if (requestType === 'message') { %>
-                            <a href="/send-message?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                            <a href="<%= baseUrl %>/send-message?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
                                 <i class="fas fa-arrow-left me-2"></i>Send Another Message
                             </a>
                         <% } else { %>
-                            <a href="/?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
+                            <a href="<%= baseUrl || '/' %>?customerName=<%= encodeURIComponent(customerName) %>" class="btn btn-outline-secondary btn-lg">
                                 <i class="fas fa-arrow-left me-2"></i>Make Another Request
                             </a>
                         <% } %>
@@ -107,7 +108,7 @@
     <script>
         // Auto-redirect after 30 seconds
         setTimeout(() => {
-            window.location.href = '/';
+            window.location.href = '<%= baseUrl || '/' %>';
         }, 30000);
     </script>
 </body>

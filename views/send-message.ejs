@@ -17,7 +17,7 @@
 <body>
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="<%= eventSlug ? '/event/' + eventSlug : '/' %>">
                 <i class="fas fa-music me-2"></i>MobileDJay
             </a>
 
@@ -28,7 +28,7 @@
                     <span id="repliesBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; display: none;">0</span>
                 </button>
 
-                <a href="/" class="btn btn-outline-light btn-sm">
+                <a href="<%= eventSlug ? '/event/' + eventSlug : '/' %>" class="btn btn-outline-light btn-sm">
                     <i class="fas fa-arrow-left me-1"></i>Back
                 </a>
             </div>
@@ -40,8 +40,9 @@
             <div class="col-md-8">
                 <!-- Message Form -->
                 <form id="messageForm" action="/submit-message" method="POST">
-                    <!-- Hidden input for customer name -->
+                    <!-- Hidden input for customer name and event -->
                     <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
+                    <input type="hidden" name="eventSlug" value="<%= eventSlug || '' %>">
 
                     <div class="card mb-4">
                         <div class="card-body">
@@ -118,10 +119,15 @@
                 <!-- Header -->
                 <div class="bg-white border-bottom p-3 mb-0">
                     <div class="d-flex align-items-center justify-content-between">
-                        <h5 class="mb-0">
-                            <i class="fas fa-comments me-2 text-primary"></i>
-                            Messages for <span id="repliesCustomerName" class="text-primary"></span>
-                        </h5>
+                        <div class="d-flex align-items-center">
+                            <button id="backToMessageBtn" class="btn btn-outline-secondary btn-sm me-3">
+                                <i class="fas fa-arrow-left me-1"></i>Back
+                            </button>
+                            <h5 class="mb-0">
+                                <i class="fas fa-comments me-2 text-primary"></i>
+                                Messages for <span id="repliesCustomerName" class="text-primary"></span>
+                            </h5>
+                        </div>
                         <button id="refreshRepliesBtn" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-sync-alt me-1"></i>Refresh
                         </button>

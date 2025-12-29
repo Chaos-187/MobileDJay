@@ -11,10 +11,10 @@
 <body>
     <nav class="navbar navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand" href="<%= eventSlug ? '/event/' + eventSlug : '/' %>">
                 <i class="fas fa-music me-2"></i>MobileDJay
             </a>
-            <a href="/" class="btn btn-outline-light btn-sm">
+            <a href="<%= eventSlug ? '/event/' + eventSlug : '/' %>" class="btn btn-outline-light btn-sm">
                 <i class="fas fa-arrow-left me-1"></i>Back
             </a>
         </div>
@@ -41,8 +41,9 @@
 
                 <!-- Karaoke Request Form -->
                 <form id="karaokeRequestForm" action="/submit-karaoke-request" method="POST">
-                    <!-- Hidden input for customer name -->
+                    <!-- Hidden input for customer name and event -->
                     <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
+                    <input type="hidden" name="eventSlug" value="<%= eventSlug || '' %>">
 
                     <!-- Karaoke List -->
                     <div class="card mb-4">

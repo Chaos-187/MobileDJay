@@ -74,8 +74,8 @@
 
     <main class="container mt-4">
         <div class="index-page">
-            <!-- Hero Section -->
-            <header class="hero-section">
+            <!-- Hero Section (hidden when now playing) -->
+            <header class="hero-section" id="heroSection">
                 <div class="hero-icon">
                     <i class="fas fa-headphones-alt"></i>
                 </div>
@@ -83,7 +83,7 @@
                 <p class="hero-subtitle">Make your requests and send messages to the DJ!</p>
             </header>
 
-            <!-- Now Playing Section -->
+            <!-- Now Playing Section (replaces hero when active) -->
             <div id="nowPlayingSection" class="now-playing-section" style="display: none;">
                 <div class="now-playing-card">
                     <div class="now-playing-icon" id="nowPlayingIcon">
@@ -272,6 +272,7 @@
         const nowPlayingArtist = document.getElementById('nowPlayingArtist');
         const nowPlayingArtwork = document.getElementById('nowPlayingArtwork');
         const nowPlayingIcon = document.getElementById('nowPlayingIcon');
+        const heroSection = document.getElementById('heroSection');
         
         let lastTrack = null;
         
@@ -307,11 +308,15 @@
                                 nowPlayingIcon.style.display = 'flex';
                             }
                             
+                            // Hide hero, show now playing
+                            heroSection.style.display = 'none';
                             nowPlayingSection.style.display = 'block';
                         }, 50);
                     }
                 } else {
+                    // Show hero, hide now playing
                     nowPlayingSection.style.display = 'none';
+                    heroSection.style.display = '';
                     lastTrack = null;
                 }
             } catch (error) {

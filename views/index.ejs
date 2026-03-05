@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MobileDJay - DJ Request System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     
     <% if (event) { %>
@@ -46,119 +50,7 @@
     </style>
     <% } %>
     
-    <style>
-        /* Modern card base */
-        .card {
-            border: none;
-            border-radius: 12px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(250,250,255,0.92));
-            box-shadow: 0 8px 24px rgba(2,6,23,0.12);
-            transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
-        }
 
-        /* Make the options row flexible so cards scale smoothly with the parent column */
-        #optionsContainer {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            align-items: stretch;
-        }
-
-        /* Each column inside options should flex and keep three-up layout on large screens */
-        #optionsContainer > .col-md-4 {
-            flex: 1 1 calc(33.333% - 1rem);
-            max-width: calc(33.333% - 1rem);
-        }
-
-        /* On medium and smaller screens stack full width to match header width */
-        @media (max-width: 991.98px) {
-            #optionsContainer > .col-md-4 {
-                flex: 1 1 100%;
-                max-width: 100%;
-            }
-        }
-
-        /* Option card: cleaner, glassy look with accent stripe */
-        .option-card {
-            position: relative;
-            overflow: hidden;
-            border-radius: 12px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245,247,250,0.96));
-            transition: transform 200ms cubic-bezier(.2,.9,.3,1), box-shadow 200ms ease, border-color 200ms ease;
-            cursor: pointer;
-        }
-
-        /* Left accent bar that matches icon color (uses the icon color via currentColor fallback) */
-        .option-card::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 6px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.02));
-            transition: background 200ms ease, opacity 200ms ease;
-        }
-
-        /* Card body becomes a horizontal layout with icon pushed to the right */
-        .option-card .card-body {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1.5rem 1.5rem 1.5rem 1.25rem;
-        }
-
-        /* Move the large icon to the right side of the card */
-        .option-card .card-body i.fa-3x {
-            order: 2;
-            margin-left: auto;
-            font-size: 2.8rem;
-            opacity: 0.95;
-            transform: translateZ(0);
-            transition: transform 260ms cubic-bezier(.2,.9,.3,1), opacity 160ms ease;
-        }
-
-        /* Left-align text and refine typography */
-        .option-card .card-body .card-title {
-            text-align: left;
-            margin: 0 0 4px 0;
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: #0b2a44;
-        }
-        .option-card .card-body .card-text {
-            text-align: left;
-            margin: 0;
-            color: #546987;
-            font-size: 0.95rem;
-        }
-
-        /* Hover / focus state: lift and brighten accent */
-        .option-card:hover,
-        .option-card:focus-within {
-            transform: translateY(-6px) scale(1.02);
-            box-shadow: 0 18px 48px rgba(2,6,23,0.16);
-        }
-        .option-card:hover::before,
-        .option-card:focus-within::before {
-            background: linear-gradient(180deg, rgba(255,107,107,0.95), rgba(107,231,255,0.95));
-            opacity: 0.95;
-        }
-
-        /* Make the option cards feel like buttons on mobile by increasing hit area */
-        .option-card .card-body { padding-top: 1.75rem; padding-bottom: 1.75rem; }
-
-        /* Gentle hover scale so cards feel responsive like the header (kept for compatibility) */
-        .option-card { will-change: transform; }
-
-        /* Small-screen adjustments */
-        @media (max-width: 576px) {
-            .option-card .card-body { padding: 1rem; }
-            .option-card .card-body i.fa-3x { font-size: 2.2rem; }
-            .option-card .card-body .card-title { font-size: 1.05rem; }
-            .option-card .card-body .card-text { font-size: 0.9rem; }
-        }
-    </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-primary">
@@ -169,9 +61,9 @@
 
             <!-- Move message icon to navbar right so it's consistent across pages -->
             <div class="ms-auto d-flex align-items-center gap-2">
-                <button id="repliesBellBtn" class="btn btn-outline-light btn-sm position-relative" title="Messages" aria-pressed="false" role="button" type="button" style="border-radius: 50%; width: 44px; height: 44px;">
-                    <i class="fas fa-envelope fa-lg text-dark"></i>
-                    <span id="repliesBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; display: none;">0</span>
+                <button id="repliesBellBtn" class="nav-msg-btn position-relative" title="Messages" aria-pressed="false" role="button" type="button" aria-label="Messages">
+                    <i class="fas fa-comment-dots"></i>
+                    <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
                 </button>
             </div>
         </div>
@@ -181,107 +73,115 @@
     <script>window.eventSlug = '<%= eventSlug || "" %>';</script>
 
     <main class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="text-center mb-4 position-relative">
-                    <h1 class="display-4 text-primary">
-                        <i class="fas fa-headphones"></i> Welcome to MobileDJay
-                    </h1>
-                    <p class="lead">Make your requests and send messages to the DJ!</p>
-
-                    <!-- removed the previous absolute-positioned bell here to avoid duplication -->
+        <div class="index-page">
+            <!-- Hero Section -->
+            <header class="hero-section">
+                <div class="hero-icon">
+                    <i class="fas fa-headphones-alt"></i>
                 </div>
+                <h1 class="hero-title">Welcome to MobileDJay</h1>
+                <p class="hero-subtitle">Make your requests and send messages to the DJ!</p>
+            </header>
 
-                <!-- Customer Name Input -->
-                <div class="card mb-4" id="nameInputCard">
-                    <div class="card-body">
-                        <h5 class="card-title">
-                            <i class="fas fa-user me-2"></i>Enter Your Name
-                        </h5>
-                        <div class="form-group">
-                            <input type="text" id="customerName" class="form-control form-control-lg" 
-                                   placeholder="Your name..." maxlength="50">
-                            <div class="form-text">Please enter your name to continue</div>
-                        </div>
-                        <div class="d-grid mt-3">
-                            <button type="button" id="nameSubmitBtn" class="btn btn-primary btn-lg">
-                                <i class="fas fa-check me-2"></i>OK
-                            </button>
-                        </div>
+            <!-- Customer Name Input -->
+            <div class="name-card" id="nameInputCard">
+                <div class="name-card-inner">
+                    <div class="name-card-icon">
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                    <h2 class="name-card-title">What's your name?</h2>
+                    <div class="name-input-group">
+                        <input type="text" id="customerName" class="form-control form-control-lg" 
+                               placeholder="Enter your name..." maxlength="50" autocomplete="off">
+                        <button type="button" id="nameSubmitBtn" class="btn btn-primary btn-lg name-submit-btn">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Options (initially hidden) -->
+            <div id="optionsContainer" style="display: none;">
+                <div class="welcome-bar">
+                    <div class="welcome-bar-content">
+                        <span class="welcome-avatar"><i class="fas fa-user-circle"></i></span>
+                        <span class="welcome-text">Welcome, <strong id="welcomeName"></strong>!</span>
+                        <button type="button" id="editNameBtn" class="welcome-edit-btn">
+                            <i class="fas fa-pen me-1"></i>Edit
+                        </button>
                     </div>
                 </div>
 
-                <!-- Options (initially hidden) -->
-                <div class="row g-3" id="optionsContainer" style="display: none;">
-                    <div class="col-12 mb-3">
-                        <div class="alert alert-success text-center">
-                            <i class="fas fa-user-check me-2"></i>
-                            Welcome, <strong id="welcomeName"></strong>! 
-                            <button type="button" id="editNameBtn" class="btn btn-sm btn-outline-success ms-2">
-                                <i class="fas fa-edit me-1"></i>Edit Name
-                            </button>
-                            <div class="mt-2">Choose an option below:</div>
-                        </div>
-                    </div>
+                <p class="options-prompt">What would you like to do?</p>
+
+                <div class="options-grid">
                     <% if (!event || event.enable_song_requests !== 0) { %>
-                    <div class="col-md-4">
-                        <div class="card h-100 option-card" data-target="<%= eventSlug ? 'event/' + eventSlug + '/song-request' : 'song-request' %>">
-                            <div class="card-body text-center">
-                                <i class="fas fa-music fa-3x text-success mb-3"></i>
-                                <h5 class="card-title">Song Request</h5>
-                                <p class="card-text">Browse and request songs from our music library</p>
-                            </div>
+                    <div class="option-card" data-target="<%= eventSlug ? 'event/' + eventSlug + '/song-request' : 'song-request' %>">
+                        <div class="option-card-icon option-card-icon--songs">
+                            <i class="fas fa-music"></i>
+                        </div>
+                        <div class="option-card-content">
+                            <h3 class="option-card-title">Song Request</h3>
+                            <p class="option-card-desc">Browse and request songs from our music library</p>
+                        </div>
+                        <div class="option-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
                     </div>
                     <% } %>
                     <% if (!event || event.enable_karaoke_requests !== 0) { %>
-                    <div class="col-md-4">
-                        <div class="card h-100 option-card" data-target="<%= eventSlug ? 'event/' + eventSlug + '/karaoke-request' : 'karaoke-request' %>">
-                            <div class="card-body text-center">
-                                <i class="fas fa-microphone fa-3x text-warning mb-3"></i>
-                                <h5 class="card-title">Karaoke Request</h5>
-                                <p class="card-text">Find your favorite karaoke songs to sing along</p>
-                            </div>
+                    <div class="option-card" data-target="<%= eventSlug ? 'event/' + eventSlug + '/karaoke-request' : 'karaoke-request' %>">
+                        <div class="option-card-icon option-card-icon--karaoke">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                        <div class="option-card-content">
+                            <h3 class="option-card-title">Karaoke Request</h3>
+                            <p class="option-card-desc">Find your favorite karaoke songs to sing along</p>
+                        </div>
+                        <div class="option-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
                     </div>
                     <% } %>
                     <% if (!event || event.enable_messages !== 0) { %>
-                    <div class="col-md-4">
-                        <div class="card h-100 option-card" data-target="<%= eventSlug ? 'event/' + eventSlug + '/send-message' : 'send-message' %>">
-                            <div class="card-body text-center">
-                                <i class="fas fa-envelope fa-3x text-info mb-3"></i>
-                                <h5 class="card-title">Send Message</h5>
-                                <p class="card-text">Send a custom message or special request to the DJ</p>
-                            </div>
+                    <div class="option-card" data-target="<%= eventSlug ? 'event/' + eventSlug + '/send-message' : 'send-message' %>">
+                        <div class="option-card-icon option-card-icon--message">
+                            <i class="fas fa-paper-plane"></i>
                         </div>
-                    <% } %>
+                        <div class="option-card-content">
+                            <h3 class="option-card-title">Send Message</h3>
+                            <p class="option-card-desc">Send a custom message or special request to the DJ</p>
+                        </div>
+                        <div class="option-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
                         </div>
                     </div>
+                    <% } %>
                 </div>
+            </div>
 
-                <!-- Conversation-style DJ Replies Screen (initially hidden) -->
-                <div id="repliesScreen" style="display: none;">
-                    <div class="card border-warning">
-                        <div class="card-header bg-warning text-dark">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <h5 class="mb-0">
-                                    <i class="fas fa-comments me-2"></i>Chat with DJ for <span id="repliesCustomerName"></span>
-                                </h5>
-                                <button type="button" class="btn btn-sm btn-outline-dark" id="backToMenuBtn">
-                                    <i class="fas fa-arrow-left me-1"></i>Back
-                                </button>
-                            </div>
+            <!-- Conversation-style DJ Replies Screen (initially hidden) -->
+            <div id="repliesScreen" style="display: none;">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-comments me-2"></i>Chat with DJ for <span id="repliesCustomerName"></span>
+                            </h5>
+                            <button type="button" class="btn btn-sm btn-outline-dark" id="backToMenuBtn">
+                                <i class="fas fa-arrow-left me-1"></i>Back
+                            </button>
                         </div>
-                        <div class="card-body p-0">
-                            <!-- Chat messages container -->
-                            <div id="chatMessages" class="p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
-                                <!-- Messages will be loaded here -->
-                            </div>
-                            <div class="p-3 border-top">
-                                <button type="button" class="btn btn-warning w-100" id="refreshRepliesBtn">
-                                    <i class="fas fa-sync-alt me-2"></i>Refresh Messages
-                                </button>
-                            </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- Chat messages container -->
+                        <div id="chatMessages" class="p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                            <!-- Messages will be loaded here -->
+                        </div>
+                        <div class="p-3 border-top">
+                            <button type="button" class="btn btn-warning w-100" id="refreshRepliesBtn">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh Messages
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -348,7 +248,7 @@
         }
     });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>

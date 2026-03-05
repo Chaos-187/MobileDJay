@@ -35,6 +35,10 @@ let djRequests = [];
 let djMessages = [];
 let djReplies = [];
 
+// Current playing track state (for DMX controller integration)
+// Keyed by eventId or 'global' for non-event-specific tracks
+let nowPlayingMap = {};
+
 // Helper middleware to get event from slug
 function getEventFromSlug(req, res, next) {
     const slug = req.params.eventSlug;
@@ -772,6 +776,18 @@ app.post('/submit-song-request', async (req, res) => {
     };
     djRequests.push(request);
     
+    // Also add to djMessages for DJ display screen
+    const displayMessage = {
+        id: Date.now() + 2,
+        customerName: customerName,
+        message: `🎵 Song Request: "${selectedSong.title}" by ${selectedSong.artist}`,
+        timestamp: new Date().toISOString(),
+        displayed: false,
+        isReply: false,
+        type: 'song-request'
+    };
+    djMessages.push(displayMessage);
+    
     // Prepare message for VirtualDJ
     const djMessage = `Song Request from ${customerName}: "${selectedSong.title}" by ${selectedSong.artist}${message ? ` - Additional message: ${message}` : ''}`;
     
@@ -817,6 +833,18 @@ app.post('/submit-karaoke-request', async (req, res) => {
         eventName: event ? event.name : null
     };
     djRequests.push(request);
+    
+    // Also add to djMessages for DJ display screen
+    const displayMessage = {
+        id: Date.now() + 2,
+        customerName: customerName,
+        message: `🎤 Karaoke Request: "${selectedKaraoke.title}" by ${selectedKaraoke.artist}`,
+        timestamp: new Date().toISOString(),
+        displayed: false,
+        isReply: false,
+        type: 'karaoke-request'
+    };
+    djMessages.push(displayMessage);
     
     // Prepare message for VirtualDJ
     const djMessage = `Karaoke Request from ${customerName}: "${selectedKaraoke.title}" by ${selectedKaraoke.artist} (${selectedKaraoke.difficulty})${message ? ` - Additional message: ${message}` : ''}`;
@@ -874,12 +902,16 @@ app.post('/submit-message', async (req, res) => {
         KEEP_CONTENT: true 
     }).trim();
 
+    // If cleanMessage is empty but hasMedia is true, there might be an issue with sanitization
+    // Use the original richContent if cleanMessage got stripped but we know there's media
+    const finalMessage = cleanMessage || (hasMedia ? richContent : '');
+
     // Store the message for DJ display
     const djDisplayMessage = {
         id: Date.now() + 2,
         customerName,
-        message: cleanMessage, // Rich HTML with inline images
-        textMessage: textContent || 'Message with inline media',
+        message: finalMessage, // Rich HTML with inline images
+        textMessage: textContent || (hasMedia ? 'Message with media' : 'Empty message'),
         timestamp: new Date().toISOString(),
         displayed: false,
         private: !!djOnly,
@@ -896,9 +928,11 @@ app.post('/submit-message', async (req, res) => {
         await sendToVirtualDJ(customerName, textContent || 'Message with inline GIFs/images');
         console.log('Inline message sent:', { 
             customerName, 
-            hasMedia, 
+            hasMedia,
+            messageLength: finalMessage.length,
             textLength: textContent.length,
-            djOnly 
+            djOnly,
+            containsImg: finalMessage.includes('<img')
         });
 
         res.render('thank-you', {
@@ -915,6 +949,115 @@ app.post('/submit-message', async (req, res) => {
             eventSlug: eventSlug || null
         });
     }
+});
+
+// ============================================
+// NOW PLAYING API (DMX Controller Integration)
+// ============================================
+
+// Helper to get empty now playing object
+function getEmptyNowPlaying() {
+    return {
+        title: null,
+        artist: null,
+        album: null,
+        duration: null,
+        elapsed: null,
+        artwork: null,
+        eventId: null,
+        eventSlug: null,
+        updatedAt: null
+    };
+}
+
+// POST endpoint to receive current track info from DMX controller
+app.post('/api/now-playing', (req, res) => {
+    const { title, artist, album, duration, elapsed, artwork, eventId, eventSlug } = req.body;
+    
+    if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+    }
+    
+    // Determine the key - use eventId, resolve from eventSlug, or use 'global'
+    let key = 'global';
+    let resolvedEventId = eventId || null;
+    let resolvedEventSlug = eventSlug || null;
+    
+    if (eventId) {
+        key = `event_${eventId}`;
+        // Try to get slug from event
+        const event = eventDb.getById(eventId);
+        if (event) {
+            resolvedEventSlug = event.slug;
+        }
+    } else if (eventSlug) {
+        const event = eventDb.getBySlug(eventSlug);
+        if (event) {
+            key = `event_${event.id}`;
+            resolvedEventId = event.id;
+            resolvedEventSlug = eventSlug;
+        } else {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+    }
+    
+    const nowPlaying = {
+        title: title || null,
+        artist: artist || null,
+        album: album || null,
+        duration: duration || null,
+        elapsed: elapsed || null,
+        artwork: artwork || null,
+        eventId: resolvedEventId,
+        eventSlug: resolvedEventSlug,
+        updatedAt: new Date().toISOString()
+    };
+    
+    nowPlayingMap[key] = nowPlaying;
+    
+    console.log('Now playing updated:', nowPlaying.title, '-', nowPlaying.artist, key !== 'global' ? `(${key})` : '(global)');
+    res.json({ success: true, nowPlaying });
+});
+
+// GET endpoint to retrieve current track info
+app.get('/api/now-playing', (req, res) => {
+    const { eventId, eventSlug } = req.query;
+    
+    // Determine which now playing to return
+    let key = 'global';
+    
+    if (eventId) {
+        key = `event_${eventId}`;
+    } else if (eventSlug) {
+        const event = eventDb.getBySlug(eventSlug);
+        if (event) {
+            key = `event_${event.id}`;
+        }
+    }
+    
+    // Return event-specific track if exists, otherwise fall back to global
+    const nowPlaying = nowPlayingMap[key] || nowPlayingMap['global'] || getEmptyNowPlaying();
+    res.json(nowPlaying);
+});
+
+// DELETE endpoint to clear now playing (when playback stops)
+app.delete('/api/now-playing', (req, res) => {
+    const { eventId, eventSlug } = req.query;
+    
+    let key = 'global';
+    
+    if (eventId) {
+        key = `event_${eventId}`;
+    } else if (eventSlug) {
+        const event = eventDb.getBySlug(eventSlug);
+        if (event) {
+            key = `event_${event.id}`;
+        }
+    }
+    
+    delete nowPlayingMap[key];
+    console.log('Now playing cleared:', key);
+    res.json({ success: true });
 });
 
 // Start server

@@ -1,6 +1,6 @@
 {
   "name": "mobiledjay",
-  "version": "1.0.0",
+  "version": "1.5.0",
   "description": "Mobile DJ request system for customers to search and request songs, karaoke, and send messages",
   "main": "server.js",
   "scripts": {

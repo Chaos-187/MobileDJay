@@ -110,12 +110,16 @@ document.addEventListener('DOMContentLoaded', function() {
         waitingMessage.style.display = 'none';
         
         // Set message content - use innerHTML for rich content
-        if (message.message && message.message.includes('<')) {
-            // Rich HTML content
-            messageContent.innerHTML = message.message;
+        // Check hasMedia flag first, then check for HTML tags in message
+        if (message.hasMedia || (message.message && message.message.includes('<'))) {
+            // Rich HTML content - use message field which contains sanitized HTML
+            messageContent.innerHTML = message.message || message.textMessage;
+        } else if (message.message && message.message.trim()) {
+            // Plain text content with actual message
+            messageContent.textContent = message.message;
         } else {
-            // Plain text content
-            messageContent.textContent = message.message || message.textMessage;
+            // Fallback to textMessage
+            messageContent.textContent = message.textMessage || 'No message content';
         }
         messageFrom.textContent = `- ${message.customerName}`;
         

@@ -262,6 +262,21 @@
         .control-panel:hover { opacity: 1; }
         .control-panel.show { opacity: 0.7; }
 
+        /* Version Display */
+        .version-display {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            z-index: 100;
+            pointer-events: none;
+        }
+
         /* QR Code Overlay */
         .qr-overlay {
             position: fixed;
@@ -547,6 +562,9 @@
         <i class="fas fa-star floating-icon" style="bottom: 20%; right: 25%; animation-delay: 4s;"></i>
         <i class="fas fa-note-musical floating-icon" style="top: 80%; left: 30%; animation-delay: 5s;"></i>
     </div>
+
+    <!-- Version Display -->
+    <div class="version-display" id="versionDisplay">v1.5.0</div>
 
     <!-- Control Panel -->
     <div class="control-panel" id="controlPanel">

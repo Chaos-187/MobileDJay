@@ -78,6 +78,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Tip card with payment links
+            const tipLinksData = this.dataset.tipLinks;
+            if (tipLinksData) {
+                try {
+                    const links = JSON.parse(tipLinksData);
+                    if (links.length === 1) {
+                        window.open(links[0].url, '_blank', 'noopener,noreferrer');
+                    } else if (links.length > 1) {
+                        showTipModal(links);
+                    }
+                } catch(e) {
+                    console.error('Error parsing tip links:', e);
+                }
+                return;
+            }
+            
+            // External link (e.g. legacy single tip link)
+            const href = this.dataset.href;
+            if (href) {
+                window.open(href, '_blank', 'noopener,noreferrer');
+                return;
+            }
+            
             const target = this.dataset.target;
             
             // Navigate to target page with customer name as query parameter
@@ -85,6 +108,35 @@ document.addEventListener('DOMContentLoaded', function() {
             window.location.href = `/${target}?customerName=${encodeURIComponent(customerName)}`;
         });
     });
+
+    // Tip modal
+    const providerMeta = {
+        stripe: { label: 'Stripe', icon: 'fa-credit-card', color: '#635bff', textColor: '#fff' },
+        square: { label: 'Square', icon: 'fa-square', color: '#006aff', textColor: '#fff' },
+        venmo: { label: 'Venmo', icon: 'fa-v', color: '#008cff', textColor: '#fff' },
+        cashapp: { label: 'Cash App', icon: 'fa-dollar-sign', color: '#00d632', textColor: '#fff' },
+        paypal: { label: 'PayPal', icon: 'fa-p', color: '#ffc43a', textColor: '#003087' },
+        other: { label: 'Pay', icon: 'fa-link', color: '#6b7280', textColor: '#fff' }
+    };
+
+    function showTipModal(links) {
+        const container = document.getElementById('tipLinksOptions');
+        if (!container) return;
+        container.innerHTML = '';
+        links.forEach(link => {
+            const meta = providerMeta[link.provider] || providerMeta.other;
+            const btn = document.createElement('a');
+            btn.href = link.url;
+            btn.target = '_blank';
+            btn.rel = 'noopener noreferrer';
+            btn.className = 'btn btn-lg tip-link-btn';
+            btn.style.cssText = `background: ${meta.color}; color: ${meta.textColor}; border: none;`;
+            btn.innerHTML = `<i class="fas ${meta.icon} me-2"></i>${link.label || meta.label}`;
+            container.appendChild(btn);
+        });
+        const modal = new bootstrap.Modal(document.getElementById('tipModal'));
+        modal.show();
+    }
 
     // Handle bell icon click
     if (repliesBellBtn) {

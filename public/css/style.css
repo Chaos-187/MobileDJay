@@ -322,6 +322,59 @@ label { color: var(--text-primary); font-weight: 500; font-size: 0.9rem; }
     color: #ff8533;
     box-shadow: 0 4px 16px rgba(255,107,0,0.10);
 }
+.option-card-icon--tip {
+    background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.06));
+    color: #22c55e;
+    box-shadow: 0 4px 16px rgba(34,197,94,0.15);
+}
+
+/* Tip Modal */
+.tip-modal-content {
+    background: #1a1f2e;
+    border: 2px solid #22c55e;
+    border-radius: 1.25rem;
+    box-shadow: 0 0 40px rgba(34,197,94,0.25), 0 20px 60px rgba(0,0,0,0.6);
+}
+.tip-modal-header {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    border-bottom: none;
+    border-radius: 1.1rem 1.1rem 0 0;
+    color: #fff;
+    padding: 1rem 1.25rem;
+}
+.tip-modal-header .modal-title {
+    font-weight: 700;
+    font-size: 1.2rem;
+}
+.tip-modal-header .btn-close-white {
+    filter: brightness(2);
+}
+.tip-modal-body {
+    padding: 1.5rem;
+    background: #1a1f2e;
+    border-radius: 0 0 1.1rem 1.1rem;
+}
+.tip-modal-subtitle {
+    color: #a0aec0;
+    font-size: 1rem;
+    font-weight: 500;
+}
+.tip-link-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.tip-link-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
 
 .option-card-content {
     position: relative;

@@ -172,6 +172,31 @@
                         </div>
                     </div>
                     <% } %>
+                    <% if (event && event.enable_tips) { %>
+                    <%
+                        let tipLinks = [];
+                        if (event.tip_links) {
+                            try { tipLinks = JSON.parse(event.tip_links); } catch(e) {}
+                        }
+                        if (tipLinks.length === 0 && event.tip_provider && event.tip_payment_link) {
+                            tipLinks = [{ provider: event.tip_provider, url: event.tip_payment_link }];
+                        }
+                    %>
+                    <% if (tipLinks.length > 0) { %>
+                    <div class="option-card" id="tipDjCard" data-tip-links='<%- JSON.stringify(tipLinks) %>'>
+                        <div class="option-card-icon option-card-icon--tip">
+                            <i class="fas fa-hand-holding-dollar"></i>
+                        </div>
+                        <div class="option-card-content">
+                            <h3 class="option-card-title">Tip the DJ</h3>
+                            <p class="option-card-desc">Show your appreciation with a tip!</p>
+                        </div>
+                        <div class="option-card-arrow">
+                            <i class="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                    <% } %>
+                    <% } %>
                 </div>
             </div>
 
@@ -203,6 +228,22 @@
             </div>
         </div>
     </main>
+
+    <!-- Tip Selection Modal -->
+    <div class="modal fade" id="tipModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content tip-modal-content">
+                <div class="modal-header tip-modal-header">
+                    <h5 class="modal-title"><i class="fas fa-hand-holding-dollar me-2"></i>Tip the DJ</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body tip-modal-body">
+                    <p class="text-center mb-3 tip-modal-subtitle">Choose a payment method</p>
+                    <div id="tipLinksOptions" class="d-grid gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
     document.addEventListener('DOMContentLoaded', function(){

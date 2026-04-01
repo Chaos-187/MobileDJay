@@ -268,6 +268,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // Ensure hidden field is synced before form submits
+            if (messageHidden) {
+                messageHidden.value = htmlContent;
+            }
+
             // Show loading state
             const submitButton = form.querySelector('button[type="submit"]');
             if (submitButton) {

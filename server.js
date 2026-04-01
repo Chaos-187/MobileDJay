@@ -368,7 +368,8 @@ app.get('/api/events', (req, res) => {
 app.post('/api/events', (req, res) => {
     const { name, description, venue, eventDate, 
             heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
-            enable_song_requests, enable_karaoke_requests, enable_messages } = req.body;
+            enable_song_requests, enable_karaoke_requests, enable_messages,
+            enable_tips, tip_provider, tip_payment_link, tip_links } = req.body;
     
     if (!name) {
         return res.status(400).json({ error: 'Event name is required' });
@@ -379,7 +380,11 @@ app.post('/api/events', (req, res) => {
             heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
             enable_song_requests: enable_song_requests !== undefined ? (enable_song_requests ? 1 : 0) : 1,
             enable_karaoke_requests: enable_karaoke_requests !== undefined ? (enable_karaoke_requests ? 1 : 0) : 1,
-            enable_messages: enable_messages !== undefined ? (enable_messages ? 1 : 0) : 1
+            enable_messages: enable_messages !== undefined ? (enable_messages ? 1 : 0) : 1,
+            enable_tips: enable_tips ? 1 : 0,
+            tip_provider: tip_provider || null,
+            tip_payment_link: tip_payment_link || null,
+            tip_links: tip_links ? (typeof tip_links === 'string' ? tip_links : JSON.stringify(tip_links)) : null
         };
         const result = eventDb.create(name, description, venue, eventDate, eventOptions);
         const event = eventDb.getById(result.id);
@@ -394,6 +399,11 @@ app.post('/api/events', (req, res) => {
 app.put('/api/events/:id', (req, res) => {
     const eventId = parseInt(req.params.id);
     const updates = req.body;
+    
+    // Serialize tip_links array to JSON string for storage
+    if (updates.tip_links && typeof updates.tip_links !== 'string') {
+        updates.tip_links = JSON.stringify(updates.tip_links);
+    }
     
     try {
         const success = eventDb.update(eventId, updates);

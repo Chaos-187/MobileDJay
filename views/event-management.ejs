@@ -261,6 +261,22 @@
                                         </label>
                                     </div>
                                 </div>
+                                
+                                <h6 class="text-muted mb-3 mt-4"><i class="fas fa-hand-holding-dollar me-2"></i>DJ Tipping</h6>
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="eventEnableTips">
+                                        <label class="form-check-label" for="eventEnableTips">
+                                            <i class="fas fa-dollar-sign me-1 text-success"></i>Enable Tips
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="tipConfigFields" style="display: none;">
+                                    <div id="tipLinksContainer"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-success mb-3" id="addTipLinkBtn">
+                                        <i class="fas fa-plus me-1"></i>Add Payment Link
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <h6 class="text-muted mb-3"><i class="fas fa-palette me-2"></i>Custom Styling</h6>
@@ -375,6 +391,22 @@
                                             <i class="fas fa-envelope me-1 text-warning"></i>Messages
                                         </label>
                                     </div>
+                                </div>
+                                
+                                <h6 class="text-muted mb-3 mt-4"><i class="fas fa-hand-holding-dollar me-2"></i>DJ Tipping</h6>
+                                <div class="mb-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="editEventEnableTips">
+                                        <label class="form-check-label" for="editEventEnableTips">
+                                            <i class="fas fa-dollar-sign me-1 text-success"></i>Enable Tips
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="editTipConfigFields" style="display: none;">
+                                    <div id="editTipLinksContainer"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-success mb-3" id="editAddTipLinkBtn">
+                                        <i class="fas fa-plus me-1"></i>Add Payment Link
+                                    </button>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -521,6 +553,73 @@
         setupColorSync('editEventBgColor', 'editEventBgColorText');
         setupColorSync('editEventAccentColor', 'editEventAccentColorText');
 
+        // Tip toggle visibility
+        function setupTipToggle(checkboxId, fieldsId) {
+            const cb = document.getElementById(checkboxId);
+            const fields = document.getElementById(fieldsId);
+            if (cb && fields) {
+                cb.addEventListener('change', () => fields.style.display = cb.checked ? 'block' : 'none');
+                fields.style.display = cb.checked ? 'block' : 'none';
+            }
+        }
+        setupTipToggle('eventEnableTips', 'tipConfigFields');
+        setupTipToggle('editEventEnableTips', 'editTipConfigFields');
+
+        // Dynamic tip links builder
+        const tipProviders = [
+            { value: 'stripe', label: 'Stripe', icon: 'fa-credit-card' },
+            { value: 'square', label: 'Square', icon: 'fa-square' },
+            { value: 'venmo', label: 'Venmo', icon: 'fa-v' },
+            { value: 'cashapp', label: 'Cash App', icon: 'fa-dollar-sign' },
+            { value: 'paypal', label: 'PayPal', icon: 'fa-p' },
+            { value: 'other', label: 'Other', icon: 'fa-link' }
+        ];
+
+        function createTipLinkRow(container, data = {}) {
+            const row = document.createElement('div');
+            row.className = 'tip-link-row mb-2 p-2 border rounded';
+            row.innerHTML = `
+                <div class="d-flex gap-2 align-items-start">
+                    <div style="min-width: 130px;">
+                        <select class="form-select form-select-sm tip-provider">
+                            <option value="">Provider...</option>
+                            ${tipProviders.map(p => `<option value="${p.value}"${data.provider === p.value ? ' selected' : ''}>${p.label}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="flex-grow-1">
+                        <input type="url" class="form-control form-control-sm tip-url" placeholder="https://..." value="${data.url ? data.url.replace(/"/g, '&quot;') : ''}">
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger tip-remove-btn" title="Remove">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <input type="text" class="form-control form-control-sm mt-1 tip-label" placeholder="Custom label (optional)" value="${data.label ? data.label.replace(/"/g, '&quot;') : ''}">
+            `;
+            row.querySelector('.tip-remove-btn').addEventListener('click', () => row.remove());
+            container.appendChild(row);
+        }
+
+        function getTipLinks(containerId) {
+            const rows = document.querySelectorAll(`#${containerId} .tip-link-row`);
+            const links = [];
+            rows.forEach(row => {
+                const provider = row.querySelector('.tip-provider').value;
+                const url = row.querySelector('.tip-url').value.trim();
+                const label = row.querySelector('.tip-label').value.trim();
+                if (provider && url) {
+                    links.push({ provider, url, label: label || null });
+                }
+            });
+            return links;
+        }
+
+        document.getElementById('addTipLinkBtn').addEventListener('click', () => {
+            createTipLinkRow(document.getElementById('tipLinksContainer'));
+        });
+        document.getElementById('editAddTipLinkBtn').addEventListener('click', () => {
+            createTipLinkRow(document.getElementById('editTipLinksContainer'));
+        });
+
         // Create event
         document.getElementById('saveEventBtn').addEventListener('click', async function() {
             const name = document.getElementById('eventName').value.trim();
@@ -542,7 +641,9 @@
                 custom_css: document.getElementById('eventCustomCss').value.trim() || null,
                 enable_song_requests: document.getElementById('eventEnableSongRequests').checked,
                 enable_karaoke_requests: document.getElementById('eventEnableKaraokeRequests').checked,
-                enable_messages: document.getElementById('eventEnableMessages').checked
+                enable_messages: document.getElementById('eventEnableMessages').checked,
+                enable_tips: document.getElementById('eventEnableTips').checked,
+                tip_links: getTipLinks('tipLinksContainer')
             };
 
             try {
@@ -603,6 +704,22 @@
                         document.getElementById('editEventEnableKaraokeRequests').checked = event.enable_karaoke_requests !== 0;
                         document.getElementById('editEventEnableMessages').checked = event.enable_messages !== 0;
                         
+                        // Load tip settings
+                        document.getElementById('editEventEnableTips').checked = event.enable_tips !== 0;
+                        document.getElementById('editTipConfigFields').style.display = event.enable_tips ? 'block' : 'none';
+                        // Populate tip links
+                        const editContainer = document.getElementById('editTipLinksContainer');
+                        editContainer.innerHTML = '';
+                        let tipLinks = [];
+                        if (event.tip_links) {
+                            try { tipLinks = JSON.parse(event.tip_links); } catch(e) {}
+                        }
+                        // Backward compat: migrate old single link
+                        if (tipLinks.length === 0 && event.tip_provider && event.tip_payment_link) {
+                            tipLinks = [{ provider: event.tip_provider, url: event.tip_payment_link }];
+                        }
+                        tipLinks.forEach(link => createTipLinkRow(editContainer, link));
+                        
                         editEventModal.show();
                     }
                 } catch (error) {
@@ -627,7 +744,9 @@
                 custom_css: document.getElementById('editEventCustomCss').value.trim() || null,
                 enable_song_requests: document.getElementById('editEventEnableSongRequests').checked ? 1 : 0,
                 enable_karaoke_requests: document.getElementById('editEventEnableKaraokeRequests').checked ? 1 : 0,
-                enable_messages: document.getElementById('editEventEnableMessages').checked ? 1 : 0
+                enable_messages: document.getElementById('editEventEnableMessages').checked ? 1 : 0,
+                enable_tips: document.getElementById('editEventEnableTips').checked ? 1 : 0,
+                tip_links: getTipLinks('editTipLinksContainer')
             };
 
             try {

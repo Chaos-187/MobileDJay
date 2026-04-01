@@ -142,6 +142,20 @@ try {
     db.exec(`ALTER TABLE events ADD COLUMN display_card_opacity INTEGER DEFAULT 85`);
 } catch (e) { /* Column already exists */ }
 
+// Tipping columns
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN enable_tips INTEGER DEFAULT 0`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN tip_provider TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN tip_payment_link TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN tip_links TEXT`);
+} catch (e) { /* Column already exists */ }
+
 // Generate a unique slug for events
 function generateSlug(length = 8) {
     return crypto.randomBytes(length).toString('hex').slice(0, length);
@@ -166,18 +180,24 @@ const eventDb = {
             custom_css = null,
             enable_song_requests = 1,
             enable_karaoke_requests = 1,
-            enable_messages = 1
+            enable_messages = 1,
+            enable_tips = 0,
+            tip_provider = null,
+            tip_payment_link = null,
+            tip_links = null
         } = options;
         
         const stmt = db.prepare(`
             INSERT INTO events (slug, name, description, venue, event_date, 
                 heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
-                enable_song_requests, enable_karaoke_requests, enable_messages)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                enable_song_requests, enable_karaoke_requests, enable_messages,
+                enable_tips, tip_provider, tip_payment_link, tip_links)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         const result = stmt.run(slug, name, description, venue, eventDate,
             heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
-            enable_song_requests, enable_karaoke_requests, enable_messages);
+            enable_song_requests, enable_karaoke_requests, enable_messages,
+            enable_tips, tip_provider, tip_payment_link, tip_links);
         return { id: result.lastInsertRowid, slug };
     },
 
@@ -210,6 +230,7 @@ const eventDb = {
         const allowedFields = ['name', 'description', 'venue', 'event_date', 'is_active', 
                                'heading_color', 'text_color', 'bg_color', 'bg_image', 'accent_color', 'custom_css',
                                'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',
+                               'enable_tips', 'tip_provider', 'tip_payment_link', 'tip_links',
                                'display_show_qr', 'display_qr_position', 'display_qr_size', 'display_qr_label',
                                'display_bg_color1', 'display_bg_color2', 'display_bg_image',
                                'display_card_color', 'display_card_opacity'];

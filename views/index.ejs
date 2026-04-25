@@ -11,43 +11,86 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
+    <style>
+        .profile-name-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            max-width: 180px;
+            padding: 0.35rem 0.7rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-weight: 600;
+            line-height: 1;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+        }
+
+        .profile-name-btn:hover,
+        .profile-name-btn:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.6);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .profile-name-btn i {
+            font-size: 0.95rem;
+            opacity: 0.95;
+        }
+
+        .profile-name-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    </style>
     
     <% if (event) { %>
-    <!-- Event Custom Styling -->
-    <style>
-        :root {
-            <% if (event.heading_color) { %>--event-heading-color: <%= event.heading_color %>;<% } %>
-            <% if (event.text_color) { %>--event-text-color: <%= event.text_color %>;<% } %>
-            <% if (event.bg_color) { %>--event-bg-color: <%= event.bg_color %>;<% } %>
-            <% if (event.accent_color) { %>--event-accent-color: <%= event.accent_color %>;<% } %>
-        }
-        <% if (event.bg_color || event.bg_image) { %>
-        body {
-            <% if (event.bg_color) { %>background-color: <%= event.bg_color %>;<% } %>
-            <% if (event.bg_image) { %>
-            background-image: url('<%= event.bg_image %>');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            <% } %>
-        }
-        <% } %>
-        <% if (event.text_color) { %>
-        body, .card-text, p, .lead { color: <%= event.text_color %>; }
-        <% } %>
-        <% if (event.heading_color) { %>
-        h1, h2, h3, h4, h5, h6, .card-title, .display-4 { color: <%= event.heading_color %> !important; }
-        <% } %>
-        <% if (event.accent_color) { %>
-        .navbar, .bg-primary { background-color: <%= event.accent_color %> !important; }
-        .btn-primary { background-color: <%= event.accent_color %>; border-color: <%= event.accent_color %>; }
-        .btn-primary:hover { background-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); border-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); }
-        .text-primary { color: <%= event.accent_color %> !important; }
-        .border-primary { border-color: <%= event.accent_color %> !important; }
-        a { color: <%= event.accent_color %>; }
-        <% } %>
-        <%= event.custom_css || '' %>
-    </style>
+    <script id="eventThemeCss" type="text/plain">
+:root {
+<% if (event.heading_color) { %>--event-heading-color: <%= event.heading_color %>;<% } %>
+<% if (event.text_color) { %>--event-text-color: <%= event.text_color %>;<% } %>
+<% if (event.bg_color) { %>--event-bg-color: <%= event.bg_color %>;<% } %>
+<% if (event.accent_color) { %>--event-accent-color: <%= event.accent_color %>;<% } %>
+}
+<% if (event.bg_color || event.bg_image) { %>
+body {
+<% if (event.bg_color) { %>background-color: <%= event.bg_color %>;<% } %>
+<% if (event.bg_image) { %>
+background-image: url('<%= event.bg_image %>');
+background-size: cover;
+background-position: center;
+background-attachment: fixed;
+<% } %>
+}
+<% } %>
+<% if (event.text_color) { %>
+body, .card-text, p, .lead { color: <%= event.text_color %>; }
+<% } %>
+<% if (event.heading_color) { %>
+h1, h2, h3, h4, h5, h6, .card-title, .display-4 { color: <%= event.heading_color %> !important; }
+<% } %>
+<% if (event.accent_color) { %>
+.navbar, .bg-primary { background-color: <%= event.accent_color %> !important; }
+.btn-primary { background-color: <%= event.accent_color %>; border-color: <%= event.accent_color %>; }
+.btn-primary:hover { background-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); border-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); }
+.text-primary { color: <%= event.accent_color %> !important; }
+.border-primary { border-color: <%= event.accent_color %> !important; }
+a { color: <%= event.accent_color %>; }
+<% } %>
+<%- event.custom_css || '' %>
+    </script>
+    <script>
+        (function() {
+            const themeCss = document.getElementById('eventThemeCss');
+            if (!themeCss) return;
+            const style = document.createElement('style');
+            style.textContent = themeCss.textContent;
+            document.head.appendChild(style);
+        })();
+    </script>
     <% } %>
     
 
@@ -61,6 +104,10 @@
 
             <!-- Move message icon to navbar right so it's consistent across pages -->
             <div class="ms-auto d-flex align-items-center gap-2">
+                <button type="button" id="editNameBtn" class="btn btn-sm profile-name-btn" style="display: none;" aria-label="Edit your name">
+                    <i class="fas fa-user-circle"></i>
+                    <span id="welcomeName" class="profile-name-text"></span>
+                </button>
                 <button id="repliesBellBtn" class="nav-msg-btn position-relative" title="Messages" aria-pressed="false" role="button" type="button" aria-label="Messages">
                     <i class="fas fa-comment-dots"></i>
                     <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
@@ -117,16 +164,6 @@
 
             <!-- Options (initially hidden) -->
             <div id="optionsContainer" style="display: none;">
-                <div class="welcome-bar">
-                    <div class="welcome-bar-content">
-                        <span class="welcome-avatar"><i class="fas fa-user-circle"></i></span>
-                        <span class="welcome-text">Welcome, <strong id="welcomeName"></strong>!</span>
-                        <button type="button" id="editNameBtn" class="welcome-edit-btn">
-                            <i class="fas fa-pen me-1"></i>Edit
-                        </button>
-                    </div>
-                </div>
-
                 <p class="options-prompt">What would you like to do?</p>
 
                 <div class="options-grid">
@@ -200,34 +237,39 @@
                 </div>
             </div>
 
-            <!-- Conversation-style DJ Replies Screen (initially hidden) -->
-            <div id="repliesScreen" style="display: none;">
-                <div class="card border-warning">
-                    <div class="card-header bg-warning text-dark">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">
-                                <i class="fas fa-comments me-2"></i>Chat with DJ for <span id="repliesCustomerName"></span>
-                            </h5>
-                            <button type="button" class="btn btn-sm btn-outline-dark" id="backToMenuBtn">
+        </div>
+    </main>
+
+    <!-- Replies Screen (same layout as send-message page) -->
+    <div id="repliesScreen" class="container-fluid" style="display: none; height: 100vh; background-color: #f8f9fa;">
+        <div class="row h-100">
+            <div class="col-12 d-flex flex-column">
+                <div class="bg-white border-bottom p-3 mb-0">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <button id="backToMenuBtn" class="btn btn-outline-secondary btn-sm me-3">
                                 <i class="fas fa-arrow-left me-1"></i>Back
                             </button>
+                            <h5 class="mb-0">
+                                <i class="fas fa-comments me-2 text-primary"></i>
+                                Messages for <span id="repliesCustomerName" class="text-primary"></span>
+                            </h5>
                         </div>
+                        <button id="refreshRepliesBtn" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
                     </div>
-                    <div class="card-body p-0">
-                        <!-- Chat messages container -->
-                        <div id="chatMessages" class="p-3" style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
-                            <!-- Messages will be loaded here -->
-                        </div>
-                        <div class="p-3 border-top">
-                            <button type="button" class="btn btn-warning w-100" id="refreshRepliesBtn">
-                                <i class="fas fa-sync-alt me-2"></i>Refresh Messages
-                            </button>
-                        </div>
+                </div>
+
+                <div id="chatMessages" class="flex-grow-1 p-3" style="overflow-y: auto;">
+                    <div class="text-center py-4">
+                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                        <p>Loading your conversation...</p>
                     </div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 
     <!-- Tip Selection Modal -->
     <div class="modal fade" id="tipModal" tabindex="-1" aria-hidden="true">
@@ -245,66 +287,6 @@
         </div>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function(){
-        const btn = document.getElementById('repliesBellBtn');
-        const repliesScreen = document.getElementById('repliesScreen');
-        const options = document.getElementById('optionsContainer');
-        const nameCard = document.getElementById('nameInputCard');
-        const repliesCustomerName = document.getElementById('repliesCustomerName');
-        const welcomeName = document.getElementById('welcomeName');
-
-        if(!btn){ console.warn('Replies button not found'); return; }
-        if(!repliesScreen){ console.warn('Replies screen not found'); return; }
-
-        // Ensure button behaves like a toggle button
-        btn.setAttribute('role', 'button');
-        btn.setAttribute('aria-pressed', 'false');
-        try{ btn.type = 'button'; }catch(e){}
-
-        function isNameEntered(){
-            return !!(welcomeName && welcomeName.textContent && welcomeName.textContent.trim());
-        }
-
-        function setVisible(show){
-            if(show){
-                repliesScreen.style.display = 'block';
-                if(options) options.style.display = ''; // allow CSS to decide (we use flex in stylesheet)
-                if(nameCard) nameCard.style.display = 'none';
-                btn.classList.add('active');
-                btn.setAttribute('aria-pressed', 'true');
-                const name = (isNameEntered() && welcomeName.textContent.trim()) || localStorage.getItem('customerName') || 'Guest';
-                if(repliesCustomerName) repliesCustomerName.textContent = name;
-                const refresh = document.getElementById('refreshRepliesBtn');
-                if(refresh) refresh.focus();
-            } else {
-                repliesScreen.style.display = 'none';
-                if(options) options.style.display = isNameEntered() ? '' : 'none';
-                if(nameCard) nameCard.style.display = isNameEntered() ? 'none' : 'block';
-                btn.classList.remove('active');
-                btn.setAttribute('aria-pressed', 'false');
-            }
-        }
-
-        btn.addEventListener('click', function(e){
-            e.preventDefault();
-            const currentlyHidden = window.getComputedStyle(repliesScreen).display === 'none';
-            setVisible(currentlyHidden);
-        });
-
-        const backBtn = document.getElementById('backToMenuBtn');
-        if(backBtn) backBtn.addEventListener('click', function(e){
-            e.preventDefault();
-            setVisible(false);
-        });
-
-        // initialize state
-        if(window.getComputedStyle(repliesScreen).display !== 'block'){
-            repliesScreen.style.display = 'none';
-        }
-    });
-    </script>
-    
     <!-- Now Playing Polling -->
     <script>
     (function() {

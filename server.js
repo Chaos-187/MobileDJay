@@ -882,7 +882,7 @@ app.post('/submit-karaoke-request', async (req, res) => {
 
 app.post('/submit-message', async (req, res) => {
     const { customerName, eventSlug } = req.body;
-    let { message } = req.body;
+    let { message, messageText } = req.body;
     
     // Get event info if eventSlug provided
     const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
@@ -891,8 +891,13 @@ app.post('/submit-message', async (req, res) => {
     const rawDjOnly = req.body.djOnly;
     const djOnly = rawDjOnly === '1' || rawDjOnly === 'on' || rawDjOnly === 'true' || rawDjOnly === true;
 
-    // Handle inline HTML content directly
-    let richContent = message || '';
+    // Handle inline HTML content directly.
+    // Fall back to plain text mirror when rich payload is empty.
+    messageText = typeof messageText === 'string' ? messageText.trim() : '';
+    let richContent = typeof message === 'string' ? message : '';
+    if (!richContent.trim() && messageText) {
+        richContent = messageText;
+    }
     let hasMedia = false;
     
     // Check if message contains inline images

@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const customerNameInput = document.getElementById('customerName');
     const messageInput = document.getElementById('messageInput');
     const messageHidden = document.getElementById('message');
+    const messageTextHidden = document.getElementById('messageText');
     const charCount = document.getElementById('charCount');
     const form = document.getElementById('messageForm');
     const clearBtn = document.getElementById('clearBtn');
@@ -18,6 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const mainContainer = document.querySelector('main.container');
     const navbar = document.querySelector('nav.navbar');
     const backToMessageBtn = document.getElementById('backToMessageBtn');
+    // Declared early to avoid TDZ when initializeReplies() runs.
+    let replyCheckInterval;
 
     // Check if required elements exist
     if (!messageInput) {
@@ -201,13 +204,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Content update handler for contenteditable
     function updateContent() {
-        const htmlContent = messageInput.innerHTML;
-        const textContent = messageInput.textContent || messageInput.innerText || '';
+        const htmlContent = getNormalizedHtmlContent();
+        const textContent = getNormalizedTextContent();
         const hasMedia = htmlContent.includes('<img') || htmlContent.includes('data:image');
         
         // Store HTML content for server processing
         if (messageHidden) {
             messageHidden.value = htmlContent;
+        }
+        if (messageTextHidden) {
+            messageTextHidden.value = textContent;
         }
         
         // Update character counter
@@ -243,26 +249,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Form submission handler
     if (form) {
+        let isProgrammaticSubmit = false;
         form.addEventListener('submit', function(e) {
+            if (isProgrammaticSubmit) {
+                return;
+            }
+            e.preventDefault();
+
+            // On some mobile/IME keyboards, composition text commits on blur.
+            if (document.activeElement === messageInput) {
+                messageInput.blur();
+            }
+
+            window.requestAnimationFrame(() => {
             const customerName = customerNameInput ? customerNameInput.value.trim() : '';
-            const htmlContent = messageInput.innerHTML;
-            const textContent = messageInput.textContent || messageInput.innerText || '';
+            // Force a final sync for mobile/IME keyboards before submit.
+            updateContent();
+            const htmlContent = getNormalizedHtmlContent();
+            const textContent = getNormalizedTextContent();
 
             if (!customerName) {
-                e.preventDefault();
                 window.location.href = '/';
                 return;
             }
 
             if (!htmlContent || (!textContent && !htmlContent.includes('<img'))) {
-                e.preventDefault();
                 showError('Please enter a message or add some media.');
                 messageInput.focus();
                 return;
             }
 
             if (textContent.length > 500) {
-                e.preventDefault();
                 showError('Message text is too long. Please keep it under 500 characters.');
                 messageInput.focus();
                 return;
@@ -270,7 +287,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Ensure hidden field is synced before form submits
             if (messageHidden) {
-                messageHidden.value = htmlContent;
+                messageHidden.value = htmlContent || textContent;
+            }
+            if (messageTextHidden) {
+                messageTextHidden.value = textContent;
             }
 
             // Show loading state
@@ -278,6 +298,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (submitButton) {
                 showLoading(submitButton);
             }
+            isProgrammaticSubmit = true;
+            form.submit();
+            });
         });
     }
 
@@ -324,6 +347,21 @@ document.addEventListener('DOMContentLoaded', function() {
     function showLoading(element) {
         element.classList.add('loading');
         element.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    }
+
+    function getNormalizedHtmlContent() {
+        if (!messageInput) return '';
+        const html = (messageInput.innerHTML || '').trim();
+        // Treat editor placeholders/empty markup as empty content.
+        if (!html || html === '<br>' || html === '<div><br></div>') {
+            return '';
+        }
+        return html;
+    }
+
+    function getNormalizedTextContent() {
+        if (!messageInput) return '';
+        return (messageInput.textContent || messageInput.innerText || '').replace(/\u00a0/g, ' ').trim();
     }
 
     // ============================================
@@ -530,8 +568,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Periodically check for new replies
-    let replyCheckInterval;
-    
     function startReplyChecking(customerName) {
         // Clear any existing interval
         if (replyCheckInterval) {

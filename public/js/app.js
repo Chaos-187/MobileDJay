@@ -15,6 +15,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshRepliesBtn = document.getElementById('refreshRepliesBtn');
     const chatMessages = document.getElementById('chatMessages');
     const repliesCustomerName = document.getElementById('repliesCustomerName');
+    const mainContainer = document.querySelector('main.container');
+
+    // This script is shared across pages; only run full logic on the landing page.
+    if (!customerNameInput || !nameSubmitBtn || !nameInputCard || !optionsContainer || !welcomeName) {
+        return;
+    }
 
     // Check if user already has a name stored and show appropriate view
     const storedName = sessionStorage.getItem('customerName');
@@ -149,7 +155,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            showRepliesScreen(customerName);
+            if (repliesScreen && repliesScreen.style.display === 'block') {
+                hideRepliesScreen();
+            } else {
+                showRepliesScreen(customerName);
+            }
         });
     }
 
@@ -157,10 +167,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (backToMenuBtn) {
         backToMenuBtn.addEventListener('click', function() {
             const customerName = sessionStorage.getItem('customerName');
-            if (customerName) {
-                showOptionsView(customerName);
-            } else {
-                showNameView();
+            hideRepliesScreen();
+            if (customerName && welcomeName) {
+                welcomeName.textContent = customerName;
             }
         });
     }
@@ -181,7 +190,10 @@ document.addEventListener('DOMContentLoaded', function() {
         welcomeName.textContent = customerName;
         optionsContainer.style.display = 'block';
         optionsContainer.classList.add('fade-in');
-        // Show bell icon when options are visible
+        // Show navbar profile and bell when options are visible
+        if (editNameBtn) {
+            editNameBtn.style.display = 'inline-flex';
+        }
         if (repliesBellBtn) {
             repliesBellBtn.style.display = 'block';
         }
@@ -192,18 +204,35 @@ document.addEventListener('DOMContentLoaded', function() {
         repliesScreen.style.display = 'none';
         nameInputCard.style.display = 'block';
         customerNameInput.focus();
-        // Hide bell icon when on name entry
+        // Hide navbar actions when on name entry
+        if (editNameBtn) {
+            editNameBtn.style.display = 'none';
+        }
         if (repliesBellBtn) {
             repliesBellBtn.style.display = 'none';
         }
     }
 
     function showRepliesScreen(customerName) {
-        optionsContainer.style.display = 'none';
-        nameInputCard.style.display = 'none';
+        if (mainContainer) mainContainer.style.display = 'none';
         repliesScreen.style.display = 'block';
-        repliesCustomerName.textContent = customerName;
+        if (repliesCustomerName) repliesCustomerName.textContent = customerName;
+        if (repliesBellBtn) {
+            repliesBellBtn.setAttribute('aria-pressed', 'true');
+            repliesBellBtn.classList.remove('btn-outline-light');
+            repliesBellBtn.classList.add('btn-light');
+        }
         loadReplies(customerName);
+    }
+
+    function hideRepliesScreen() {
+        repliesScreen.style.display = 'none';
+        if (mainContainer) mainContainer.style.display = 'block';
+        if (repliesBellBtn) {
+            repliesBellBtn.setAttribute('aria-pressed', 'false');
+            repliesBellBtn.classList.remove('btn-light');
+            repliesBellBtn.classList.add('btn-outline-light');
+        }
     }
 
     function checkForReplies(customerName) {

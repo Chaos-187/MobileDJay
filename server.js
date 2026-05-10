@@ -77,7 +77,7 @@ let karaokeSpinState = {
 // Function to load songs from VirtualDJ XML database
 async function loadSongsFromXML() {
     try {
-        const xmlPath = path.join(__dirname, 'DB', 'Song_Database.xml');
+        const xmlPath = path.join(__dirname, 'db', 'Song_Database.xml');
         if (!fs.existsSync(xmlPath)) {
             console.warn('Song_Database.xml not found, using sample data');
             songCatalogue = getSampleSongs();
@@ -118,7 +118,7 @@ async function loadSongsFromXML() {
 // Function to load karaoke from CSV file
 async function loadKaraokeFromCSV() {
     try {
-        const csvPath = path.join(__dirname, 'DB', 'VirtualDJ_Karaoke_Catalog_2025-12-29.csv');
+        const csvPath = path.join(__dirname, 'db', 'VirtualDJ_Karaoke_Catalog_2025-12-29.csv');
         if (!fs.existsSync(csvPath)) {
             console.warn('Karaoke CSV not found, using sample data');
             karaokeCatalogue = getSampleKaraoke();

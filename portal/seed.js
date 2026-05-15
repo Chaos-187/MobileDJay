@@ -7,6 +7,7 @@ const { hashPassword } = require('./auth-tokens');
 
 const DEMO_CUSTOMER_EMAIL = process.env.EYUP_PORTAL_SEED_CUSTOMER_EMAIL || 'customer@demo.eyupevents.uk';
 const DEMO_DJ_EMAIL = process.env.EYUP_PORTAL_SEED_DJ_EMAIL || 'dj@demo.eyupevents.uk';
+const DEMO_ADMIN_EMAIL = process.env.EYUP_PORTAL_SEED_ADMIN_EMAIL || 'admin@demo.eyupevents.uk';
 const DEMO_PASSWORD = process.env.EYUP_PORTAL_SEED_PASSWORD || 'ChangeMeDemo123!';
 
 async function ensureUser(email, password, role, names = {}) {
@@ -29,6 +30,7 @@ async function main() {
         last: 'Customer'
     });
     const dj = await ensureUser(DEMO_DJ_EMAIL, DEMO_PASSWORD, 'dj', { first: 'Demo', last: 'DJ' });
+    await ensureUser(DEMO_ADMIN_EMAIL, DEMO_PASSWORD, 'admin', { first: 'Demo', last: 'Admin' });
 
     let booking = portalDb.db.prepare('SELECT id FROM bookings WHERE reference = ?').get('EY-1042');
     let bookingId;
@@ -70,6 +72,7 @@ async function main() {
     console.log('EYUP portal seed complete.');
     console.log(`  Customer login: ${DEMO_CUSTOMER_EMAIL} / ${DEMO_PASSWORD}`);
     console.log(`  DJ login:       ${DEMO_DJ_EMAIL} / ${DEMO_PASSWORD}`);
+    console.log(`  Admin login:    ${DEMO_ADMIN_EMAIL} / ${DEMO_PASSWORD}  (POST /api/v1/auth/login → /api/v1/admin/*)`);
     console.log(`  Booking ref:    EY-1042  id=${bookingId}`);
 }
 

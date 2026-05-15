@@ -24,11 +24,11 @@ Non-goals for v1 (unless product expands scope):
 
 | Role | Description |
 |------|-------------|
-| `customer` | Booked client; accesses dashboard, single-booking detail, music plan, account notes, per-booking notes to crew. |
-| `dj` | Assigned crew / DJ; sees upcoming gigs, briefing, aggregated customer music plan, editable crew notes. |
-| `admin` *(recommended)* | Back-office user creating bookings, assigning DJs, editing internal fields — may be separate product (CRM) feeding the same DB; API may expose admin routes later or rely on server-side jobs only. |
+| `customer` | Booked client; accesses dashboard, booking detail, **details tab** (contact-parity profile), music plan, account notes, per-booking notes to crew. |
+| `dj` | **Crew / field staff** account (API role slug remains `dj` for compatibility). Assigned to gigs for operational execution — includes mobile DJ, karaoke tech, inflatable attendant, PA runner, etc. Sees assigned bookings and crew tooling (`booking_assignments`). |
+| `admin` | Back-office staff: create/manage **customers**, **crew**, and **other admins**; create/edit **bookings**; assign crew; set internal briefing and customer-visible notes. Implemented via **admin JWT routes** and/or **`POST /internal/*`** automation (see §11). |
 
-The demo frontend uses **email + self-selected role** (`events-login.js`). Production must **derive role from verified identity**, not from client-supmitted role.
+The demo frontend historically labelled crew as “DJ”. Production UI should use **Crew** where appropriate while keeping `role: "dj"` in tokens unless you migrate to `crew` with a breaking API change.
 
 ---
 
@@ -49,11 +49,28 @@ The demo frontend uses **email + self-selected role** (`events-login.js`). Produ
 - Display: when/end, venue, service, reference, contact name, **Message from EYUP** (`notes_from_company`).
 - **Customer note** (free text, saved per booking): today `setCustomerNote` / `getCustomerNote` — store server-side as **`booking_customer_note`** (one text blob per customer + booking, or versioned if you prefer audit).
 
-### 3.3 Customer profile — account notes (`customer.html` Account tab)
+### 3.3 Customer portal — “Your details” tab (contact-form parity)
+
+Customers should have a **fourth tab** on `/events/customer` (alongside Bookings, Music plan, Account notes) labelled e.g. **Your details**, used to maintain the same core identity and reachability fields captured on the public **contact form** (`contact.html`). Keeps CRM, bookings, and portal aligned.
+
+**Recommended editable fields (customer):**
+
+| Field | Source | Notes |
+|-------|--------|--------|
+| `first_name`, `last_name` | Contact: First / Last name | Sync to `users` |
+| `email` | Contact: Email | Prefer **read-only** in portal with “request change” flow (verification), or guarded PATCH |
+| `phone` | Contact: Phone | `users.phone` |
+| Future | Billing address, company name | Optional v2 |
+
+**Not duplicated here:** event-specific data lives on **bookings** (dates, venue, services); music preferences stay on **Music plan**; free-form reminders stay on **Account notes**.
+
+**API sketch:** `GET /customer/details` → `{ first_name, last_name, email, phone }`; `PATCH /customer/details` → partial update (exclude or constrain `email` per policy).
+
+### 3.4 Customer profile — account notes (`customer.html` Account tab)
 
 - **`account_notes_list`:** ordered list of short strings (add/remove lines). Not tied to a single booking — stored per **customer user**.
 
-### 3.4 Customer profile — music plan (`customer.html` Music tab)
+### 3.5 Customer profile — music plan (`customer.html` Music tab)
 
 Stored today under `playlist` in `events-customer-profile.js`:
 
@@ -71,13 +88,13 @@ The DJ UI renders a **plain-text summary** via `formatPlaylistSummary()` — API
 
 **Scope:** Music plan may be **global per customer** (demo) or **per booking** (better for repeat clients). **Recommended:** `music_plan` table with **`booking_id` nullable**: if null, treat as default template; if set, overrides for that gig.
 
-### 3.5 DJ dashboard (`/events/dj`)
+### 3.6 DJ / crew dashboard (`/events/dj`)
 
 - Lists **upcoming bookings** where `end_datetime >= now()` ordered by start.
 - Views: cards, list, calendar — same data; client-side only.
 - Each gig shows: status, title, schedule, venue, service, contact name, reference, **`dj_briefing`** (ops text), **customer music plan** for the linked customer/booking, **`crew_notes`** editable textarea.
 
-Persist **`crew_notes`** per **`booking_id`** (+ **`dj_user_id`** if multiple crew edit independently; otherwise single shared note per booking).
+Persist **`crew_notes`** per **`booking_id`** (+ **`dj_user_id`** if multiple crew edit independently; otherwise single shared note per booking). **Rename in UI:** “DJ cockpit” → **Crew** where product prefers inclusive language; API role remains `dj`.
 
 ---
 
@@ -91,15 +108,19 @@ Use UUIDs for primary keys in API responses (`id` fields). Human-readable **`ref
 |--------|------|--------|
 | `id` | UUID PK | |
 | `email` | `citext` unique | Normalised lowercase |
+| `phone` | `text` nullable | E.164 or national format; aligns with **contact form** |
 | `password_hash` | `text` nullable | If using password login |
 | `role` | `enum('customer','dj','admin')` | Derived at signup / invite |
 | `first_name` | `text` nullable | |
 | `last_name` | `text` nullable | |
+| `capabilities` | `jsonb` nullable | Optional list of service / skill codes for **crew** rostering (`karaoke`, `pa_rental`, …); admins edit; irrelevant for customers. |
+| `account_manager_user_id` | `uuid` nullable FK → `users.id` | **Customers only:** primary internal owner (admin user). Enforced in application layer (`role = admin`). |
+| `disabled_at` | `timestamptz` nullable | Soft-disable logins for any role (admin action). |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
 | `email_verified_at` | `timestamptz` nullable | |
 
-Indexes: `(email)`, `(role)`.
+Indexes: `(email)`, `(role)`, `(account_manager_user_id)` where non-null (partial optional).
 
 ### 4.2 `bookings`
 
@@ -115,13 +136,15 @@ Indexes: `(email)`, `(role)`.
 | `status` | `enum('confirmed','pending','cancelled',…)` | Extend as needed |
 | `reference` | `text` unique | e.g. `EY-1042` |
 | `contact_name` | `text` | Primary on-site contact |
+| `guest_count_range` | `text` nullable | e.g. `51-100`, `500+` — mirrors contact form select |
+| `event_type` | `text` nullable | e.g. `wedding`, `corporate`, `birthday`, … — mirrors **`eventType`** on contact |
+| `services_required` | `jsonb` nullable | Array of service codes, e.g. `["mobile_dj","karaoke","lighting"]` — mirrors contact checkboxes |
+| `enquiry_message` | `text` nullable | Long-form “additional details” copied from lead → booking (`contact.html` **`message`**) |
+| `hear_about` | `text` nullable | Mirrors **`hearAbout`** (marketing attribution) |
+| `newsletter_opt_in` | `boolean` default false | Mirrors **`newsletter`** checkbox |
+| `lead_metadata` | `jsonb` nullable | Optional `{ "form_source", "form_timestamp" }` from hidden fields when enquiry becomes a booking |
 | `notes_from_company` | `text` nullable | Shown to customer as “Message from EYUP” |
 | `dj_briefing` | `text` nullable | Crew-only in UI today; still enforce auth |
-| `deposit_paid` | `boolean` | SQLite `INTEGER` 0/1 — DJ/internal may update |
-| `deposit_amount` | `real` nullable | Major units (e.g. `250` for £250) |
-| `deposit_currency` | `text` | Default `GBP` |
-| `deposit_paid_at` | `text` nullable | ISO8601 when marked paid |
-| `deposit_note` | `text` nullable | Free-text (reference, method, etc.) |
 | `created_at` / `updated_at` | `timestamptz` | |
 
 Indexes: `(customer_id, start_datetime)`, `(start_datetime)` for DJ queries.
@@ -131,7 +154,9 @@ Indexes: `(customer_id, start_datetime)`, `(start_datetime)` for DJ queries.
 | Column | Type | Notes |
 |--------|------|--------|
 | `booking_id` | UUID FK | |
-| `dj_user_id` | UUID FK → `users` | |
+| `dj_user_id` | UUID FK → `users` | Crew user (`role = dj`) |
+| `crew_role_label` | `text` nullable | Human label for roster printouts, e.g. “Lead DJ”, “Karaoke tech”, “Inflatable attendant” |
+| `crew_capabilities` | `jsonb` nullable | Optional subset of service codes this crew member covers **on this gig** (subset of `bookings.services_required`) |
 | `assigned_at` | `timestamptz` | |
 
 Unique `(booking_id, dj_user_id)`. DJ list endpoint returns bookings where user appears here **or** rely on role `dj` + org-wide calendar (product choice). **Recommended:** explicit assignments.
@@ -228,6 +253,10 @@ All require `role = customer`. Authorise every booking by `booking.customer_id =
 | `PATCH` | `/customer/bookings/:id/note` | `{ "body": "..." }` | Updated note |
 | `POST` | `/customer/bookings/:id/hide` | — | Sets `hidden_from_dashboard=true` |
 | `DELETE` | `/customer/bookings/:id/hide` | — | Clears hide flag |
+| `GET` | `/customer/details` | — | `{ "first_name", "last_name", "email", "phone" }` — contact parity (§3.3). |
+| `PATCH` | `/customer/details` | Partial JSON | Same shape; **`email`** updates require explicit policy (verification flow vs forbidden). |
+| `GET` | `/customer/profile` | — | Account notes list + default music plan (`booking_id` null). |
+| `PUT` | `/customer/profile` | Replace `account_notes` and/or `music_plan` JSON | Echo saved profile. |
 
 **BookingCard JSON** (align with UI):
 
@@ -245,10 +274,7 @@ All require `role = customer`. Authorise every booking by `booking.customer_id =
 }
 ```
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/customer/profile` | Account notes list + default music plan (`booking_id` null). |
-| `PUT` | `/customer/profile` | Replace `account_notes` array and/or `music_plan` payload. |
+Optional extra keys may mirror **`bookings`** dashboard usefulness (`event_type`, `guest_count_range`, `services_required`) — omit until the UI consumes them.
 
 ---
 
@@ -280,6 +306,27 @@ Require `role = dj` **and** assignment in `booking_assignments` (unless you inte
 | Mock `hideBooking` | `customer_booking_preferences.hidden_from_dashboard` |
 | DJ local crew note | `booking_crew_notes` |
 
+### Contact form (`contact.html`) → persistence
+
+Single enquiry often becomes **one `users` row (customer)** plus **one `bookings` row** once qualified. Map fields as follows (website names → DB/API):
+
+| Contact field | Typical persistence | Notes |
+|---------------|---------------------|--------|
+| `firstName`, `lastName` | `users.first_name`, `users.last_name` | Customer record |
+| `email` | `users.email` | Unique login identity |
+| `phone` | `users.phone` | |
+| `eventType` | `bookings.event_type` | |
+| `services[]` | `bookings.services_required` | Normalise checkbox values to stable codes (`mobile_dj`, `pa_rental`, …) |
+| `eventDate` | `bookings.start_datetime` (and derive **`title`** / **`end_datetime`** if unknown) | May remain **`pending`** until confirmed slot |
+| `guestCount` | `bookings.guest_count_range` | |
+| `venue` | `bookings.venue` | |
+| `message` | `bookings.enquiry_message` | |
+| `hearAbout` | `bookings.hear_about` | Attribution |
+| `newsletter` | `bookings.newsletter_opt_in` **and/or** marketing consent store | If consent is account-wide, copy to a marketing preference keyed by `customer_id` in a future table |
+| `form_source`, `form_timestamp` | `bookings.lead_metadata` | Audit trail |
+
+**`contact_name`** on the booking can default to `first_name + " " + last_name` until a distinct on-site contact is known.
+
 ---
 
 ## 10. Security & privacy
@@ -289,51 +336,74 @@ Require `role = dj` **and** assignment in `booking_assignments` (unless you inte
 3. Rate-limit login and magic-link endpoints.
 4. Log access to personal data for GDPR accountability (who viewed which booking).
 5. Portal pages are currently **`noindex`** — keep until marketing decides otherwise.
+6. **`/admin/*`:** require `role = admin`; audit mutating actions (`who`, `what`, `booking_id` / `user_id`, timestamp). Prefer separate admin tokens or scopes from customer/crew if using a shared issuer.
 
 ---
 
-## 11. Suggested implementation order
+## 11. Admin portal & API
+
+Back-office staff provision **customers**, **crew** (`role = dj`), and **admins**; maintain **bookings** and **assignments**. This can sit beside CRM automation (`POST /internal/*`, n8n) — either CRM stays canonical and pushes here, or this API is canonical and CRM syncs outbound (**§13**).
+
+### 11.1 UX sketch (aligned with customer portal)
+
+Suggested areas or tabs in an **`/events/admin`** style shell:
+
+| Area | Purpose |
+|------|---------|
+| **Customers** | Search/list; open record → **Details** (same fields as §3.3 / contact form identity), **Bookings** list, read/write **account notes** and **music plan** if ops edits on behalf of client, **Account manager** (`users.account_manager_user_id`). |
+| **Crew** | Manage field staff (DJ, karaoke, inflatables, PA, etc.): names, phone, **`capabilities`** (§4.1), `disabled_at`, invite / reset access. Per-gig focus still set on **`booking_assignments.crew_capabilities`**. |
+| **Admins** | Create/disable admin users (optional **super-admin** gate later). |
+| **Bookings** | Full CRUD with **`contact.html` parity** fields on `bookings`; **Message from EYUP** (`notes_from_company`); internal **`dj_briefing`**; manage **`booking_assignments`** including **`crew_role_label`** / **`crew_capabilities`** per row. |
+
+### 11.2 Rules
+
+- **Role elevation:** clients must never `PATCH` their own `role`; only **`/admin/users`** (or server-side invite worker) sets `role`.
+- **Customer record:** creating a booking for a new email should **upsert** customer `users` row (`role = customer`) or leave orphan bookings forbidden — pick one; upsert is usual.
+- **Assignments:** a crew user sees a gig in **`GET /dj/bookings/*`** only if listed in **`booking_assignments`** (recommended).
+
+### 11.3 Admin-authenticated endpoints (sketch)
+
+All require **`role = admin`** unless noted. Paths sit under `/api/v1/admin/…`.
+
+| Method | Path | Body / query | Notes |
+|--------|------|--------------|-------|
+| `GET` | `/admin/users` | `role` (optional), `q` search, pagination | List/filter |
+| `POST` | `/admin/users` | `{ email, role, first_name?, last_name?, phone? }` | Invite-only: sends magic link / sets pending verification |
+| `GET` | `/admin/users/:id` | — | Includes `account_manager_user_id` when customer |
+| `PATCH` | `/admin/users/:id` | Partial user fields + `account_manager_user_id` + `disabled_at` | Cannot demote last admin without guard |
+| `POST` | `/admin/users/:id/reinvite` | — | Re-issue onboarding email |
+| `GET` | `/admin/bookings` | date range, `customer_id`, `status` | Ops calendar / pipeline |
+| `POST` | `/admin/bookings` | Full booking create (customer id or inline email for upsert) | Sets `reference`, status |
+| `GET` | `/admin/bookings/:id` | — | Includes assignments join |
+| `PATCH` | `/admin/bookings/:id` | Partial booking | All fields customers cannot self-edit |
+| `POST` | `/admin/bookings/:id/assignments` | `{ dj_user_id, crew_role_label?, crew_capabilities? }` | Idempotent upsert on `(booking_id, dj_user_id)` |
+| `DELETE` | `/admin/bookings/:id/assignments/:dj_user_id` | — | Un-assign |
+
+**Customer-facing parity:** `PATCH /admin/users/:id` may update the same identity columns exposed by **`GET/PATCH /customer/details`** so ops and client stay aligned.
+
+---
+
+## 12. Suggested implementation order
 
 1. Schema migration + seed matching one demo customer + one DJ + booking `evt-1042` equivalent.
 2. Auth + `/auth/me`.
 3. Customer bookings list + detail + note + hide flag.
-4. Customer profile (account notes + music plan).
+4. Customer **details** (`/customer/details`) + profile (account notes + music plan).
 5. DJ upcoming list + crew notes + read-only music plan join.
-6. Wire frontend: replace `EyupEventsMock` / `EyupEventsCustomerProfile` calls with `fetch` + token storage.
+6. **Admin** users + bookings CRUD + assignments (`/admin/*`) + audit logging.
+7. Wire frontend: replace `EyupEventsMock` / `EyupEventsCustomerProfile` calls with `fetch` + token storage; add admin shell when ready.
 
 ---
 
-## 12. Open questions for product / implementer
+## 13. Open questions for product / implementer
 
 1. **Music plan scope:** global vs per-booking (recommended per-booking with fallback).
 2. **Customer dashboard:** single next gig vs full list.
 3. **Multiple DJs per gig:** separate crew notes per user vs shared notepad.
-4. **Admin:** in-band API vs external CRM (HubSpot, etc.) as source of truth for bookings.
+4. **CRM vs portal:** does HubSpot (or similar) remain **source of truth** with n8n pushing into this API, or does **`/admin/*`** replace spreadsheet workflows with periodic CRM sync?
 5. **Files:** contracts, invoices PDFs — attachment URLs later?
 6. **Timezone:** store UTC vs `Europe/London` for wall-clock consistency at venues.
 
 ---
 
-## 13. MobileDJay implementation (requests.eyupevents.uk)
-
-This repo hosts the portal API **alongside** the existing song-request app without sharing tables.
-
-**HTTP contract (paths, bodies, responses):** [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md).  
-**Song-request gigs** (QR / `/event/:slug`, postpone & cancel): [`mobilejay-events-api.md`](mobilejay-events-api.md).
-
-| Item | Detail |
-|------|--------|
-| **Base URL** | `https://requests.eyupevents.uk/api/v1` (or local `http://localhost:3000/api/v1`) |
-| **Database** | `db/eyup_portal.db` — separate file from `mobiledj.db` (requests/events). |
-| **CORS** | Defaults allow `https://eyupevents.uk`, `https://www.eyupevents.uk`, `https://requests.eyupevents.uk`. Override with env `PORTAL_CORS_ORIGINS` (comma-separated origins). |
-| **Auth secret** | Set `PORTAL_JWT_SECRET` in production (falls back to a dev-only secret when `NODE_ENV` ≠ `production`). Optional: `PORTAL_JWT_EXPIRES_IN` (default `7d`). |
-| **Internal automation key** | `PORTAL_INTERNAL_API_KEY` — minimum **16 characters**. Enables `/api/v1/internal/*` for n8n and other trusted backends (see [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md) §9). If unset or too short, internal routes return **503**. |
-| **Self-signup** | `POST /auth/register` creates **`customer`** accounts only; DJs/admins are created out-of-band (e.g. seed script). |
-| **Demo seed** | `npm run portal-seed` — demo customer, DJ, booking `EY-1042`, default music plan (password `ChangeMeDemo123!` unless overridden via `EYUP_PORTAL_SEED_*` env vars). |
-| **Automation (n8n)** | Server-to-server routes under `/api/v1/internal/*` protected by header `X-Portal-Internal-Key` (env `PORTAL_INTERNAL_API_KEY`, min 16 chars). Use from n8n **HTTP Request** nodes to create users (any role) and bookings. **`POST /internal/events`** mirrors **`POST /internal/bookings`**. JWT routes also expose **`/customer/events`** and **`/dj/events`** as aliases for **`bookings`** (list JSON uses **`events`** key). Details: [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md) §4.5, §8–§10. |
-
-Source layout: `portal/router.js` (routes), `portal/internal-router.js` (n8n/internal), `portal/auth-tokens.js`, `portal/music-plan.js`, `db/portal-database.js`.
-
-**Future:** Link `bookings` to MobileDJay `events` (e.g. optional `mobiledjay_event_id` / slug column) when you automate gig creation.
-
-Document version: 1.0 · Generated from static portal behaviour as implemented in the EYUP_EVENTS repo.
+*Document version: 1.1 · Adds admin portal sketch, contact-form mapping, customer details API, and assignment metadata for crew roles.*

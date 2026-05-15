@@ -3,6 +3,7 @@ const { portalDb } = require('../db/portal-database');
 const { hashPassword, verifyPassword, signAccessToken, verifyAccessToken } = require('./auth-tokens');
 const { normalizePlaylist, formatMusicPlanSummary, parsePayloadRow, emptyPlaylist } = require('./music-plan');
 const internalRouter = require('./internal-router');
+const adminRouter = require('./admin-router');
 
 const router = express.Router();
 
@@ -18,7 +19,14 @@ function authMiddleware(req, res, next) {
     const token = h.slice(7);
     try {
         const payload = verifyAccessToken(token);
-        req.portalUser = { id: payload.sub, role: payload.role, email: payload.email };
+        const user = portalDb.getUserById(payload.sub);
+        if (!user) {
+            return jsonError(res, 'invalid_token', 'Invalid or expired token', 401);
+        }
+        if (user.disabled_at != null && String(user.disabled_at).trim() !== '') {
+            return jsonError(res, 'forbidden', 'Account disabled', 403);
+        }
+        req.portalUser = { id: user.id, role: user.role, email: user.email };
         next();
     } catch {
         return jsonError(res, 'invalid_token', 'Invalid or expired token', 401);
@@ -56,6 +64,46 @@ function bookingCard(b) {
     };
 }
 
+function parseCapabilitiesJson(raw) {
+    if (raw == null || raw === '') return null;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return null;
+    }
+}
+
+function djRowToPayload(row) {
+    const {
+        assignment_crew_role_label: roleLabel,
+        assignment_crew_capabilities_json: capsJson,
+        ...bookingRow
+    } = row;
+    return {
+        ...bookingCard(bookingRow),
+        dj_briefing: bookingRow.dj_briefing || '',
+        assignment: {
+            crew_role_label: roleLabel || null,
+            crew_capabilities: parseCapabilitiesJson(capsJson)
+        }
+    };
+}
+
+function djDetailPayload(booking, djUserId) {
+    const a = portalDb.getAssignmentForDj(booking.id, djUserId);
+    let caps = null;
+    if (a?.crew_capabilities) {
+        caps = parseCapabilitiesJson(a.crew_capabilities);
+    }
+    return {
+        ...bookingCard(booking),
+        dj_briefing: booking.dj_briefing || '',
+        assignment: {
+            crew_role_label: a?.crew_role_label ?? null,
+            crew_capabilities: caps
+        }
+    };
+}
 function resolveMusicPlanForBooking(booking) {
     const specific = portalDb.getMusicPlanRow(booking.customer_id, booking.id);
     const fallback = portalDb.getMusicPlanRow(booking.customer_id, null);
@@ -121,6 +169,9 @@ router.post('/auth/login', async (req, res) => {
         if (!ok) {
             return jsonError(res, 'invalid_credentials', 'Invalid email or password', 401);
         }
+        if (user.disabled_at != null && String(user.disabled_at).trim() !== '') {
+            return jsonError(res, 'forbidden', 'Account disabled', 403);
+        }
         const access_token = signAccessToken(user);
         res.json({
             access_token,
@@ -142,13 +193,18 @@ router.get('/auth/me', authMiddleware, (req, res) => {
     if (!user) {
         return jsonError(res, 'not_found', 'User not found', 404);
     }
-    res.json({
+    const out = {
         id: user.id,
         email: user.email,
         role: user.role,
         first_name: user.first_name,
-        last_name: user.last_name
-    });
+        last_name: user.last_name,
+        phone: user.phone || null
+    };
+    if (user.role === 'dj' || user.role === 'admin') {
+        out.capabilities = parseCapabilitiesJson(user.capabilities);
+    }
+    res.json(out);
 });
 
 // --- Customer bookings / events (same handlers; list key differs for `/events`) ---
@@ -238,6 +294,41 @@ router.use(
     customerBookingRouter
 );
 
+router.get('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {
+    const user = portalDb.getUserById(req.portalUser.id);
+    res.json({
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        phone: user.phone || null
+    });
+});
+
+router.patch('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {
+    const body = req.body || {};
+    if (Object.prototype.hasOwnProperty.call(body, 'email')) {
+        return jsonError(res, 'validation_error', 'email cannot be updated via this endpoint', 422);
+    }
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(body, 'first_name')) patch.first_name = body.first_name;
+    if (Object.prototype.hasOwnProperty.call(body, 'last_name')) patch.last_name = body.last_name;
+    if (Object.prototype.hasOwnProperty.call(body, 'phone')) patch.phone = body.phone;
+    if (Object.keys(patch).length === 0) {
+        return jsonError(res, 'validation_error', 'Provide first_name, last_name, and/or phone', 422);
+    }
+    const ok = portalDb.updateUserPatch(req.portalUser.id, patch);
+    if (!ok) {
+        return jsonError(res, 'validation_error', 'No valid fields to update', 422);
+    }
+    const user = portalDb.getUserById(req.portalUser.id);
+    res.json({
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        phone: user.phone || null
+    });
+});
+
 router.get('/customer/profile', authMiddleware, requireRole('customer'), (req, res) => {
     const notes = portalDb.getAccountNotes(req.portalUser.id);
     const planRow = portalDb.getMusicPlanRow(req.portalUser.id, null);
@@ -281,10 +372,7 @@ const djBookingRouter = express.Router({ mergeParams: true });
 
 djBookingRouter.get('/upcoming', (req, res) => {
     const rows = portalDb.getDjUpcomingBookings(req.portalUser.id);
-    const bookings = rows.map((b) => ({
-        ...bookingCard(b),
-        dj_briefing: b.dj_briefing || ''
-    }));
+    const bookings = rows.map((row) => djRowToPayload(row));
     const key = djPortalCollectionKey(req);
     res.json({ [key]: bookings });
 });
@@ -297,8 +385,7 @@ djBookingRouter.post('/:id/cancel', (req, res) => {
     portalDb.updateBooking(booking.id, { status: 'cancelled' });
     const updated = portalDb.getBookingById(booking.id);
     res.json({
-        ...bookingCard(updated),
-        dj_briefing: updated.dj_briefing || '',
+        ...djDetailPayload(updated, req.portalUser.id),
         message: 'Booking cancelled.'
     });
 });
@@ -402,8 +489,7 @@ djBookingRouter.patch('/:id', (req, res) => {
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(updated);
     const crew = portalDb.getCrewNote(updated.id);
     res.json({
-        ...bookingCard(updated),
-        dj_briefing: updated.dj_briefing || '',
+        ...djDetailPayload(updated, req.portalUser.id),
         music_plan,
         music_plan_summary,
         crew_notes: crew?.body ?? '',
@@ -419,8 +505,7 @@ djBookingRouter.get('/:id', (req, res) => {
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
     const crew = portalDb.getCrewNote(booking.id);
     res.json({
-        ...bookingCard(booking),
-        dj_briefing: booking.dj_briefing || '',
+        ...djDetailPayload(booking, req.portalUser.id),
         music_plan,
         music_plan_summary,
         crew_notes: crew?.body ?? '',
@@ -448,6 +533,8 @@ router.use(
     },
     djBookingRouter
 );
+
+router.use('/admin', authMiddleware, requireRole('admin'), adminRouter);
 
 router.use('/internal', internalRouter);
 

@@ -46,6 +46,15 @@ function randomPassword() {
     return crypto.randomBytes(18).toString('base64url');
 }
 
+function parseJsonMaybe(s) {
+    if (s == null || s === '') return null;
+    try {
+        return JSON.parse(s);
+    } catch {
+        return null;
+    }
+}
+
 router.use(requireInternalKey);
 
 /**
@@ -122,19 +131,46 @@ function handleInternalCreateBooking(req, res) {
             deposit_amount: depositAmountIn,
             deposit_currency: depositCurrencyIn,
             deposit_paid_at: depositPaidAtIn,
-            deposit_note: depositNoteIn
+            deposit_note: depositNoteIn,
+            guest_count_range: guestCountRange,
+            event_type: eventType,
+            services_required: servicesRequired,
+            enquiry_message: enquiryMessage,
+            hear_about: hearAbout,
+            newsletter_opt_in: newsletterOptIn,
+            lead_metadata: leadMetadata,
+            first_name: bodyFirstName,
+            last_name: bodyLastName,
+            phone: bodyPhone,
+            account_manager_user_id: accountManagerUserId
         } = body;
 
         let customerId = customerIdIn;
         if (!customerId && customerEmailIn) {
             const u = portalDb.getUserByEmail(customerEmailIn);
-            if (!u) {
-                return jsonError(res, 'not_found', 'customer_email does not match a portal user', 404);
+            if (u) {
+                if (u.role !== 'customer') {
+                    return jsonError(
+                        res,
+                        'validation_error',
+                        'customer_email must refer to a user with role customer',
+                        422
+                    );
+                }
+                customerId = u.id;
+            } else {
+                const r = portalDb.upsertCustomerForBooking({
+                    email: customerEmailIn,
+                    first_name: bodyFirstName,
+                    last_name: bodyLastName,
+                    phone: bodyPhone,
+                    account_manager_user_id: accountManagerUserId
+                });
+                if (r.error) {
+                    return jsonError(res, 'conflict', 'customer_email matches a non-customer account', 409);
+                }
+                customerId = r.user.id;
             }
-            if (u.role !== 'customer') {
-                return jsonError(res, 'validation_error', 'customer_email must refer to a user with role customer', 422);
-            }
-            customerId = u.id;
         }
         if (!customerId || typeof customerId !== 'string') {
             return jsonError(res, 'validation_error', 'customer_id or customer_email is required', 422);
@@ -166,6 +202,13 @@ function handleInternalCreateBooking(req, res) {
             contact_name: contactName != null ? String(contactName) : '',
             notes_from_company: notesFromCompany != null ? String(notesFromCompany) : null,
             dj_briefing: djBriefing != null ? String(djBriefing) : null,
+            guest_count_range: guestCountRange,
+            event_type: eventType,
+            services_required: servicesRequired,
+            enquiry_message: enquiryMessage,
+            hear_about: hearAbout,
+            newsletter_opt_in: !!newsletterOptIn,
+            lead_metadata: leadMetadata,
             deposit_paid: !!depositPaidIn,
             deposit_amount: depositAmountIn,
             deposit_currency: depositCurrencyIn,
@@ -214,6 +257,13 @@ function handleInternalCreateBooking(req, res) {
             deposit_currency: booking.deposit_currency || 'GBP',
             deposit_paid_at: booking.deposit_paid_at || null,
             deposit_note: booking.deposit_note || null,
+            guest_count_range: booking.guest_count_range || null,
+            event_type: booking.event_type || null,
+            services_required: parseJsonMaybe(booking.services_required),
+            enquiry_message: booking.enquiry_message || null,
+            hear_about: booking.hear_about || null,
+            newsletter_opt_in: booking.newsletter_opt_in === 1,
+            lead_metadata: parseJsonMaybe(booking.lead_metadata),
             assigned_dj_user_ids: [...assignIds]
         });
     } catch (err) {

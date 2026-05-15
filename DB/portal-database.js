@@ -125,6 +125,65 @@ try {
     /* exists */
 }
 
+/** Spec v1.1 — users (contact parity, roster, admins) */
+const userExtCols = [
+    'ALTER TABLE users ADD COLUMN phone TEXT',
+    'ALTER TABLE users ADD COLUMN capabilities TEXT',
+    'ALTER TABLE users ADD COLUMN account_manager_user_id TEXT REFERENCES users(id)',
+    'ALTER TABLE users ADD COLUMN disabled_at TEXT'
+];
+for (const stmt of userExtCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+/** Booking contact-form parity + lead fields */
+const bookingExtCols = [
+    'ALTER TABLE bookings ADD COLUMN guest_count_range TEXT',
+    'ALTER TABLE bookings ADD COLUMN event_type TEXT',
+    'ALTER TABLE bookings ADD COLUMN services_required TEXT',
+    'ALTER TABLE bookings ADD COLUMN enquiry_message TEXT',
+    'ALTER TABLE bookings ADD COLUMN hear_about TEXT',
+    'ALTER TABLE bookings ADD COLUMN newsletter_opt_in INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE bookings ADD COLUMN lead_metadata TEXT'
+];
+for (const stmt of bookingExtCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+/** Crew assignment labels (spec §4.3) */
+const assignExtCols = [
+    'ALTER TABLE booking_assignments ADD COLUMN crew_role_label TEXT',
+    'ALTER TABLE booking_assignments ADD COLUMN crew_capabilities TEXT'
+];
+for (const stmt of assignExtCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS admin_audit_log (
+        id TEXT PRIMARY KEY,
+        admin_user_id TEXT NOT NULL REFERENCES users(id),
+        action TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT,
+        details TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log(created_at);
+`);
+
 function nowIso() {
     return new Date().toISOString();
 }
@@ -140,16 +199,127 @@ function normalizeEmail(email) {
 const portalDb = {
     db,
 
-    createUser({ email, passwordHash, role, firstName, lastName }) {
+    createUser({ email, passwordHash, role, firstName, lastName, phone, capabilities, accountManagerUserId }) {
         const id = uuid();
         const em = normalizeEmail(email);
+        const capJson =
+            capabilities != null ? (typeof capabilities === 'string' ? capabilities : JSON.stringify(capabilities)) : null;
         db.prepare(`
-            INSERT INTO users (id, email, password_hash, role, first_name, last_name, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(id, em, passwordHash, role, firstName || null, lastName || null, nowIso());
+            INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, capabilities, account_manager_user_id, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            id,
+            em,
+            passwordHash ?? null,
+            role,
+            firstName || null,
+            lastName || null,
+            phone != null && String(phone).trim() ? String(phone).trim() : null,
+            capJson,
+            accountManagerUserId || null,
+            nowIso()
+        );
         return id;
     },
 
+    appendAudit(adminUserId, action, entityType, entityId, detailsObj) {
+        db.prepare(`
+            INSERT INTO admin_audit_log (id, admin_user_id, action, entity_type, entity_id, details, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            uuid(),
+            adminUserId,
+            action,
+            entityType,
+            entityId || null,
+            JSON.stringify(detailsObj || {}),
+            nowIso()
+        );
+    },
+
+    countActiveAdmins() {
+        return db.prepare(`
+            SELECT COUNT(*) AS c FROM users
+            WHERE role = 'admin' AND (disabled_at IS NULL OR trim(disabled_at) = '')
+        `).get().c;
+    },
+
+    listUsers({ role, q, limit = 50, offset = 0 }) {
+        let sql = `
+            SELECT id, email, phone, role, first_name, last_name, capabilities, account_manager_user_id,
+                   disabled_at, email_verified_at, created_at, updated_at
+            FROM users WHERE 1=1
+        `;
+        const params = [];
+        if (role) {
+            sql += ' AND role = ?';
+            params.push(role);
+        }
+        if (q && String(q).trim()) {
+            const like = `%${String(q).trim().toLowerCase()}%`;
+            sql += ' AND (LOWER(email) LIKE ? OR IFNULL(LOWER(first_name), "") LIKE ? OR IFNULL(LOWER(last_name), "") LIKE ? OR IFNULL(LOWER(phone), "") LIKE ?)';
+            params.push(like, like, like, like);
+        }
+        sql += ' ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?';
+        params.push(Math.min(Number(limit) || 50, 200), Number(offset) || 0);
+        return db.prepare(sql).all(...params);
+    },
+
+    updateUserPatch(userId, patch) {
+        const allowed = [
+            'first_name',
+            'last_name',
+            'phone',
+            'email',
+            'password_hash',
+            'role',
+            'capabilities',
+            'account_manager_user_id',
+            'disabled_at',
+            'email_verified_at'
+        ];
+        const setClause = [];
+        const values = [];
+        const row = portalDb.getUserById(userId);
+        if (!row) return false;
+        const nextPatch = { ...patch };
+        if (nextPatch.capabilities != null && typeof nextPatch.capabilities !== 'string') {
+            nextPatch.capabilities = JSON.stringify(nextPatch.capabilities);
+        }
+        if (nextPatch.email != null) {
+            nextPatch.email = normalizeEmail(nextPatch.email);
+        }
+        for (const [key, value] of Object.entries(nextPatch)) {
+            if (!allowed.includes(key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(value === undefined ? null : value);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(userId);
+        const stmt = db.prepare(`UPDATE users SET ${setClause.join(', ')} WHERE id = ?`);
+        return stmt.run(...values).changes > 0;
+    },
+
+    /** Find or create customer by email for admin/internal booking flows */
+    upsertCustomerForBooking({ email, first_name: firstName, last_name: lastName, phone, account_manager_user_id: am }) {
+        const existing = portalDb.getUserByEmail(email);
+        if (existing) {
+            if (existing.role !== 'customer') {
+                return { error: 'email_in_use_non_customer', user: existing };
+            }
+            return { error: null, user: existing, created: false };
+        }
+        const id = uuid();
+        const em = normalizeEmail(email);
+        const capJson = null;
+        db.prepare(`
+            INSERT INTO users (id, email, password_hash, role, first_name, last_name, phone, capabilities, account_manager_user_id, updated_at)
+            VALUES (?, ?, NULL, 'customer', ?, ?, ?, ?, ?, ?)
+        `).run(id, em, firstName || null, lastName || null, phone != null ? String(phone).trim() : null, capJson, am || null, nowIso());
+        return { error: null, user: portalDb.getUserById(id), created: true };
+    },
     getUserByEmail(email) {
         return db.prepare('SELECT * FROM users WHERE email = ?').get(normalizeEmail(email));
     },
@@ -259,15 +429,156 @@ const portalDb = {
         return id;
     },
 
-    /** DJ: upcoming assigned bookings */
+    /** DJ: upcoming assigned bookings + this crew member's assignment row */
     getDjUpcomingBookings(djUserId) {
         const now = nowIso();
         return db.prepare(`
-            SELECT b.* FROM bookings b
+            SELECT b.*,
+                   a.crew_role_label AS assignment_crew_role_label,
+                   a.crew_capabilities AS assignment_crew_capabilities_json
+            FROM bookings b
             INNER JOIN booking_assignments a ON a.booking_id = b.id AND a.dj_user_id = ?
             WHERE b.end_datetime >= ? AND b.status != 'cancelled'
             ORDER BY b.start_datetime ASC
         `).all(djUserId, now);
+    },
+
+    getAssignmentForDj(bookingId, djUserId) {
+        return db.prepare(
+            `SELECT * FROM booking_assignments WHERE booking_id = ? AND dj_user_id = ?`
+        ).get(bookingId, djUserId);
+    },
+
+    /** Partial update — DJ scope or full admin booking fields (+ JSON coercion). */
+    updateBooking(bookingId, patch, { admin = false } = {}) {
+        const djCols = [
+            'status',
+            'deposit_paid',
+            'deposit_amount',
+            'deposit_currency',
+            'deposit_paid_at',
+            'deposit_note'
+        ];
+        const adminCols = [
+            ...djCols,
+            'customer_id',
+            'title',
+            'start_datetime',
+            'end_datetime',
+            'venue',
+            'service',
+            'reference',
+            'contact_name',
+            'notes_from_company',
+            'dj_briefing',
+            'guest_count_range',
+            'event_type',
+            'services_required',
+            'enquiry_message',
+            'hear_about',
+            'newsletter_opt_in',
+            'lead_metadata'
+        ];
+        const allowed = admin ? adminCols : djCols;
+        const setClause = [];
+        const values = [];
+        const normalized = { ...patch };
+        if (normalized.services_required != null && typeof normalized.services_required !== 'string') {
+            normalized.services_required = JSON.stringify(normalized.services_required);
+        }
+        if (normalized.lead_metadata != null && typeof normalized.lead_metadata !== 'string') {
+            normalized.lead_metadata = JSON.stringify(normalized.lead_metadata);
+        }
+        if (normalized.newsletter_opt_in !== undefined) {
+            normalized.newsletter_opt_in = normalized.newsletter_opt_in ? 1 : 0;
+        }
+        for (const [key, value] of Object.entries(normalized)) {
+            if (!allowed.includes(key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(value === undefined ? null : value);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(bookingId);
+        const stmt = db.prepare(`UPDATE bookings SET ${setClause.join(', ')} WHERE id = ?`);
+        return stmt.run(...values).changes > 0;
+    },
+
+    upsertBookingAssignment(bookingId, djUserId, opts = {}) {
+        const lblIn = opts.crew_role_label;
+        const lbl = lblIn !== undefined && lblIn !== null && String(lblIn).trim() !== '' ? String(lblIn).trim() : null;
+        let capsJson = null;
+        if (opts.crew_capabilities !== undefined && opts.crew_capabilities !== null) {
+            capsJson =
+                typeof opts.crew_capabilities === 'string'
+                    ? opts.crew_capabilities
+                    : JSON.stringify(opts.crew_capabilities);
+        }
+        db.prepare(`
+            INSERT INTO booking_assignments (booking_id, dj_user_id, crew_role_label, crew_capabilities, assigned_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(booking_id, dj_user_id) DO UPDATE SET
+                crew_role_label = COALESCE(excluded.crew_role_label, booking_assignments.crew_role_label),
+                crew_capabilities = COALESCE(excluded.crew_capabilities, booking_assignments.crew_capabilities)
+        `).run(bookingId, djUserId, lbl, capsJson, nowIso());
+    },
+
+    assignDj(bookingId, djUserId) {
+        db.prepare(`
+            INSERT INTO booking_assignments (booking_id, dj_user_id, crew_role_label, crew_capabilities, assigned_at)
+            VALUES (?, ?, NULL, NULL, ?)
+            ON CONFLICT(booking_id, dj_user_id) DO NOTHING
+        `).run(bookingId, djUserId, nowIso());
+    },
+
+    deleteBookingAssignment(bookingId, djUserId) {
+        return db.prepare('DELETE FROM booking_assignments WHERE booking_id = ? AND dj_user_id = ?').run(
+            bookingId,
+            djUserId
+        ).changes > 0;
+    },
+
+    getAssignmentsWithUsers(bookingId) {
+        return db.prepare(`
+            SELECT a.*, u.email AS user_email, u.first_name AS user_first_name, u.last_name AS user_last_name, u.phone AS user_phone
+            FROM booking_assignments a
+            INNER JOIN users u ON u.id = a.dj_user_id
+            WHERE a.booking_id = ?
+            ORDER BY a.assigned_at ASC
+        `).all(bookingId);
+    },
+
+    listBookingsAdmin(filters = {}) {
+        const {
+            customer_id: customerId,
+            status,
+            start_from: startFrom,
+            start_to: startTo,
+            limit = 100,
+            offset = 0
+        } = filters;
+        let sql = 'SELECT * FROM bookings WHERE 1=1';
+        const params = [];
+        if (customerId) {
+            sql += ' AND customer_id = ?';
+            params.push(customerId);
+        }
+        if (status) {
+            sql += ' AND status = ?';
+            params.push(status);
+        }
+        if (startFrom) {
+            sql += ' AND start_datetime >= ?';
+            params.push(startFrom);
+        }
+        if (startTo) {
+            sql += ' AND start_datetime <= ?';
+            params.push(startTo);
+        }
+        sql += ' ORDER BY start_datetime DESC LIMIT ? OFFSET ?';
+        params.push(Math.min(Number(limit) || 100, 500), Number(offset) || 0);
+        return db.prepare(sql).all(...params);
     },
 
     isDjAssigned(djUserId, bookingId) {
@@ -296,32 +607,7 @@ const portalDb = {
         }
     },
 
-    /** Partial update for bookings (DJ/internal use). Whitelisted columns only. */
-    updateBooking(bookingId, patch) {
-        const allowed = [
-            'status',
-            'deposit_paid',
-            'deposit_amount',
-            'deposit_currency',
-            'deposit_paid_at',
-            'deposit_note'
-        ];
-        const setClause = [];
-        const values = [];
-        for (const [key, value] of Object.entries(patch)) {
-            if (!allowed.includes(key)) continue;
-            setClause.push(`${key} = ?`);
-            values.push(value);
-        }
-        if (setClause.length === 0) return false;
-        setClause.push('updated_at = ?');
-        values.push(nowIso());
-        values.push(bookingId);
-        const stmt = db.prepare(`UPDATE bookings SET ${setClause.join(', ')} WHERE id = ?`);
-        return stmt.run(...values).changes > 0;
-    },
-
-    /** Admin/seed: create booking */
+    /** Admin/seed: create booking — contact-form parity fields optional */
     insertBooking(row) {
         const depositPaid = row.deposit_paid ? 1 : 0;
         const depositAmount =
@@ -338,14 +624,30 @@ const portalDb = {
                 ? String(row.deposit_note).trim()
                 : null;
 
+        const servicesRequired =
+            row.services_required != null
+                ? typeof row.services_required === 'string'
+                    ? row.services_required
+                    : JSON.stringify(row.services_required)
+                : null;
+        const leadMetadata =
+            row.lead_metadata != null
+                ? typeof row.lead_metadata === 'string'
+                    ? row.lead_metadata
+                    : JSON.stringify(row.lead_metadata)
+                : null;
+        const newsletter = row.newsletter_opt_in ? 1 : 0;
+
         db.prepare(`
             INSERT INTO bookings (
                 id, customer_id, title, start_datetime, end_datetime, venue, service, status, reference,
                 contact_name, notes_from_company, dj_briefing,
                 deposit_paid, deposit_amount, deposit_currency, deposit_paid_at, deposit_note,
+                guest_count_range, event_type, services_required, enquiry_message, hear_about,
+                newsletter_opt_in, lead_metadata,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             row.id,
             row.customer_id,
@@ -364,13 +666,15 @@ const portalDb = {
             depositCurrency,
             depositPaidAt,
             depositNote,
+            row.guest_count_range != null ? String(row.guest_count_range) : null,
+            row.event_type != null ? String(row.event_type) : null,
+            servicesRequired,
+            row.enquiry_message != null ? String(row.enquiry_message) : null,
+            row.hear_about != null ? String(row.hear_about) : null,
+            newsletter,
+            leadMetadata,
             nowIso()
         );
-    },
-    assignDj(bookingId, djUserId) {
-        db.prepare(`
-            INSERT OR IGNORE INTO booking_assignments (booking_id, dj_user_id) VALUES (?, ?)
-        `).run(bookingId, djUserId);
     }
 };
 

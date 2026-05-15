@@ -1,6 +1,6 @@
 # EYUP Events Portal — HTTP API endpoint reference
 
-**Purpose:** Machine- and human-readable contract for consumers (e.g. `eyupevents.uk` static site). Aligns with the implementation in `portal/router.js`.
+**Purpose:** Machine- and human-readable contract for consumers (e.g. `eyupevents.uk` static site). Aligns with `portal/router.js` (including `portal/admin-router.js`).
 
 **Related:** Product/domain notes — [`events-portal-api-spec.md`](events-portal-api-spec.md).  
 **Separate:** MobileDJay **song-request event** routes (`/api/events/…`, cancel/postpone) — [`mobilejay-events-api.md`](mobilejay-events-api.md).
@@ -31,6 +31,7 @@ Authorization: Bearer <access_token>
 - Token type: **JWT** (HS256).
 - **Access token only** in this version (no refresh-token rotation server-side). `POST /auth/logout` returns **204** with empty body; client discards stored tokens.
 - Protected routes without/bad token → **401** with error envelope (see §2).
+- Every **Bearer** request reloads the user row: unknown id → **401**; **`disabled_at` set** → **403** (`forbidden`) even if the JWT is not expired.
 
 **JWT payload (claims)** — informative only; do not trust role from client; server re-validates on each request:
 
@@ -42,7 +43,7 @@ Authorization: Bearer <access_token>
 | `exp` | Expiry (Unix time) |
 | `jti` | Unique token id |
 
-Role enforcement: endpoints check `role` === `customer` or `dj` as documented per route.
+Role enforcement: each route requires the **documented** `role` (`customer`, `dj`, or **`admin`**) or responds **403** (`forbidden`).
 
 ### 1.3 Dates and IDs
 
@@ -74,11 +75,12 @@ All error responses use this JSON shape when the handler returns JSON:
 |--------|------|
 | 400 | Bad request (generic) |
 | 401 | Missing/invalid `Authorization`, invalid credentials, expired JWT |
-| 403 | Wrong role for route |
+| 403 | Wrong role for route, or **account disabled** (`disabled_at`), or **explicit** policy reject (e.g. customer **`PATCH /customer/details`** with `email`) |
 | 404 | Resource not found **or** forbidden resource hidden as not found (booking id enumeration) |
 | 409 | Conflict (e.g. email already registered) |
 | 422 | Validation (missing fields, wrong types, illegal query) |
 | 500 | Server error |
+| 503 | Service unavailable (e.g. internal API disabled — missing `PORTAL_INTERNAL_API_KEY`) |
 
 **Common `error.code` values**
 
@@ -92,6 +94,7 @@ All error responses use this JSON shape when the handler returns JSON:
 | `conflict` | 409 |
 | `validation_error` | 422 |
 | `internal_error` | 500 |
+| `service_unavailable` | 503 |
 
 ---
 
@@ -122,7 +125,20 @@ Used in list/detail responses (subset of booking; no internal-only fields unless
 
 - **`deposit_amount`:** `null` if not set.
 
-### 3.2 `MusicPlanPayload`
+### 3.2 `CrewAssignment`
+
+Returned on **DJ** booking payloads as **`assignment`** (this crew member’s row in **`booking_assignments`** for that gig).
+
+```json
+{
+  "crew_role_label": "string | null",
+  "crew_capabilities": ["string"]
+}
+```
+
+- **`crew_capabilities`:** JSON array of service/skill codes after server parse, or **`null`** if unset / invalid JSON in DB.
+
+### 3.3 `MusicPlanPayload`
 
 Default/global music plan for a customer (`booking_id` null in DB). Normalised on read/write.
 
@@ -175,6 +191,8 @@ Creates a **customer** account only. **Must not** send `role` in the body (422 i
 }
 ```
 
+The embedded **`user`** is a minimal summary. Use **`GET /auth/me`** after login for **`last_name`**, **`phone`**, etc.
+
 **Errors:** `validation_error` (422), `conflict` (409), `internal_error` (500).
 
 ---
@@ -207,7 +225,9 @@ Creates a **customer** account only. **Must not** send `role` in the body (422 i
 }
 ```
 
-**Errors:** `validation_error` (422), `invalid_credentials` (401), `internal_error` (500).
+Same minimal **`user`** shape as **`POST /auth/register`**; use **`GET /auth/me`** for full profile fields.
+
+**Errors:** `validation_error` (422), `invalid_credentials` (401), `forbidden` (**403** — account disabled), `internal_error` (500).
 
 ---
 
@@ -223,7 +243,7 @@ No auth required.
 
 **Auth:** Bearer required.
 
-**Response `200`**
+**Response `200`** — common fields:
 
 ```json
 {
@@ -231,11 +251,14 @@ No auth required.
   "email": "string",
   "role": "customer | dj | admin",
   "first_name": "string | null",
-  "last_name": "string | null"
+  "last_name": "string | null",
+  "phone": "string | null"
 }
 ```
 
-**Errors:** `unauthorized` / `invalid_token` (401), `not_found` (404).
+For **`role`** **`dj`** or **`admin`** only, **`capabilities`** is also present: **`["string"] | null`** (parsed from DB). **`customers`** do not receive **`capabilities`**.
+
+**Errors:** `unauthorized` / `invalid_token` (401), `forbidden` (**403** — disabled account), `not_found` (404).
 
 ---
 
@@ -289,7 +312,7 @@ Array items match **BookingCard** (§3.1).
 
 ### `GET /customer/bookings/:id`
 
-**Response `200`:** `BookingCard` plus customer-visible fields only:
+**Response `200`:** **BookingCard** (§3.1), including **deposit** fields, plus customer-visible fields only:
 
 ```json
 {
@@ -302,6 +325,11 @@ Array items match **BookingCard** (§3.1).
   "status": "string",
   "reference": "string",
   "contact_name": "string",
+  "deposit_paid": false,
+  "deposit_amount": null,
+  "deposit_currency": "GBP",
+  "deposit_paid_at": null,
+  "deposit_note": null,
   "notes_from_company": "string",
   "booking_customer_note": "string"
 }
@@ -369,6 +397,35 @@ Clears hide flag.
 
 ---
 
+### `GET /customer/details`
+
+Contact-form parity profile (Your details tab). **Does not** include booking-specific fields.
+
+**Response `200`**
+
+```json
+{
+  "first_name": "string | null",
+  "last_name": "string | null",
+  "email": "string",
+  "phone": "string | null"
+}
+```
+
+---
+
+### `PATCH /customer/details`
+
+Partial update of **`first_name`**, **`last_name`**, **`phone`**. At least one field required.
+
+- **`email`:** must **not** appear in the body (422) — identity changes require a separate verified flow.
+
+**Response `200`:** same shape as **`GET /customer/details`**.
+
+**Errors:** `validation_error` (422).
+
+---
+
 ### `GET /customer/profile`
 
 Returns **default** music plan (`booking_id` null) and ordered account note lines.
@@ -431,7 +488,7 @@ All require **Bearer** and **`role === dj`**. Booking access is limited to rows 
 
 **Response `200`**
 
-Each item is **BookingCard** (§3.1) plus `dj_briefing`.
+Each item is **BookingCard** (§3.1) plus **`dj_briefing`** and per-row **`assignment`** (this crew member on this gig).
 
 ```json
 {
@@ -451,7 +508,11 @@ Each item is **BookingCard** (§3.1) plus `dj_briefing`.
       "deposit_currency": "GBP",
       "deposit_paid_at": null,
       "deposit_note": null,
-      "dj_briefing": "string"
+      "dj_briefing": "string",
+      "assignment": {
+        "crew_role_label": "string | null",
+        "crew_capabilities": ["string"]
+      }
     }
   ]
 }
@@ -490,6 +551,10 @@ Booking fields match **BookingCard** (§3.1); additional fields below.
   "deposit_paid_at": null,
   "deposit_note": null,
   "dj_briefing": "string",
+  "assignment": {
+    "crew_role_label": "string | null",
+    "crew_capabilities": ["string"]
+  },
   "music_plan": {
     "must_play": ["string"],
     "dont_play": ["string"],
@@ -538,7 +603,7 @@ Sets the booking **`status`** to **`cancelled`**. Assigned DJ only. Idempotent i
 
 **Request body:** optional (ignored).
 
-**Response `200`:** **BookingCard** (§3.1) plus `dj_briefing` and `message` string.
+**Response `200`:** **BookingCard** fields, **`dj_briefing`**, **`assignment`** (§3.2), and **`message`**. Does **not** include **`music_plan`**, **`crew_notes`**, or deposit-only echoes beyond **BookingCard** — use **`GET /dj/bookings/:id`** after cancel if you need the full detail payload.
 
 Same path under **`/dj/events/:id/cancel`**.
 
@@ -573,14 +638,100 @@ Mirror path: **`PATCH /dj/events/:id`**.
 
 ---
 
+## 6.5 Admin portal API
+
+All routes require **Bearer** JWT and **`role === admin`**. Mutating actions append a row to **`admin_audit_log`** (who / what / entity id / JSON details).
+
+### `GET /admin/users`
+
+**Query (optional):** `role`, `q` (search email/name/phone), `limit`, `offset`.
+
+**Response `200`:** `{ "users": [ UserPublic … ] }` — password hashes never returned; **`capabilities`** is parsed JSON for crew/admins.
+
+---
+
+### `POST /admin/users`
+
+Creates a user (same roles as internal automation). If **`password`** is omitted, a **`temporary_password`** is returned once (plus **`_warning`**), mirroring **`POST /internal/users`**.
+
+**Response `201`:** user object (plus optional **`temporary_password`**).
+
+**Errors:** `validation_error` (422), `conflict` (409).
+
+---
+
+### `GET /admin/users/:id`
+
+**Response `200`:** one user (includes **`account_manager_user_id`** for customers when set).
+
+---
+
+### `PATCH /admin/users/:id`
+
+Partial update. Allowed inputs include **`first_name`**, **`last_name`**, **`email`**, **`phone`**, **`role`**, **`capabilities`** (JSON array or value accepted by server), **`account_manager_user_id`**, **`disabled_at`**, **`email_verified_at`**, and **`password`** (plain; min 8 characters → hashed server-side). **Cannot** disable or demote the last active admin (`409` **`conflict`**).
+
+---
+
+### `POST /admin/users/:id/reinvite`
+
+Stub — **204** empty body; audit entry recorded (email integration later).
+
+---
+
+### `GET /admin/bookings`
+
+**Query (optional):** `customer_id`, `status`, `start_from`, `start_to`, `limit`, `offset`.
+
+**Response `200`:** `{ "bookings": [ … ] }` — rows from **`bookings`**.
+
+---
+
+### `POST /admin/bookings`
+
+Creates a booking. Supply **`customer_id`** **or** **`customer_email`**; if the email is new, a **customer** user is created (**passwordless** until invite) using optional **`first_name`**, **`last_name`**, **`phone`**, **`account_manager_user_id`**.
+
+Contact-form parity fields (optional): **`guest_count_range`**, **`event_type`**, **`services_required`**, **`enquiry_message`**, **`hear_about`**, **`newsletter_opt_in`**, **`lead_metadata`**, plus deposit columns as in **BookingCard**.
+
+**Response `201`:** `{ …booking, "assignments": [] }`.
+
+---
+
+### `GET /admin/bookings/:id`
+
+**Response `200`:** booking row plus **`assignments`** (joined crew user + **`crew_role_label`** / **`crew_capabilities`**).
+
+---
+
+### `PATCH /admin/bookings/:id`
+
+Admin-scope booking patch (all booking fields + **`customer_id`** per DB whitelist). **Response `200`:** updated booking row.
+
+---
+
+### `POST /admin/bookings/:id/assignments`
+
+**Body:** `{ "dj_user_id": "uuid", "crew_role_label"?: "string", "crew_capabilities"?: ["code"] }` — upserts **`booking_assignments`**.
+
+**Response `201`:** assignment row (parsed **`crew_capabilities`**).
+
+---
+
+### `DELETE /admin/bookings/:id/assignments/:dj_user_id`
+
+Removes one assignment. **Response `204`**.
+
+---
+
 ## 7. Gaps vs full product spec
 
 | Spec idea | Status |
 |-----------|--------|
 | `POST /auth/magic-link` | Not implemented |
 | Refresh tokens / server-side session revocation | Not implemented (client drops JWT on logout) |
-| JWT customer/DJ **browser** APIs | Implemented (§4–6) |
-| **Internal automation** (n8n, CRM) | **`POST /internal/users`**, **`POST /internal/bookings`** or **`POST /internal/events`** — §9 |
+| JWT customer / DJ / **admin** **browser** APIs | Implemented (§4–6.5) |
+| **`GET/PATCH /customer/details`** | Implemented (§5) |
+| **Admin back-office API** (`/admin/*`) | Implemented (§6.5); audit log on mutating calls |
+| **Internal automation** (n8n, CRM) | **`POST /internal/users`**, **`POST /internal/bookings`** or **`POST /internal/events`** — §9 (**customer_email** may **upsert** a new customer) |
 | Per-booking music plan **writes** via customer API | Only **default** plan via `PUT /customer/profile`; per-booking rows may exist in DB for future use |
 | Rate limiting | Not implemented (recommended for login in production) |
 
@@ -604,6 +755,8 @@ Mirror path: **`PATCH /dj/events/:id`**.
 | PATCH | `/api/v1/customer/events/:id/note` | Bearer | customer |
 | POST | `/api/v1/customer/events/:id/hide` | Bearer | customer |
 | DELETE | `/api/v1/customer/events/:id/hide` | Bearer | customer |
+| GET | `/api/v1/customer/details` | Bearer | customer |
+| PATCH | `/api/v1/customer/details` | Bearer | customer |
 | GET | `/api/v1/customer/profile` | Bearer | customer |
 | PUT | `/api/v1/customer/profile` | Bearer | customer |
 | GET | `/api/v1/dj/bookings/upcoming` | Bearer | dj |
@@ -616,6 +769,17 @@ Mirror path: **`PATCH /dj/events/:id`**.
 | PATCH | `/api/v1/dj/events/:id/crew-notes` | Bearer | dj |
 | POST | `/api/v1/dj/events/:id/cancel` | Bearer | dj |
 | PATCH | `/api/v1/dj/events/:id` | Bearer | dj |
+| GET | `/api/v1/admin/users` | Bearer | admin |
+| POST | `/api/v1/admin/users` | Bearer | admin |
+| GET | `/api/v1/admin/users/:id` | Bearer | admin |
+| PATCH | `/api/v1/admin/users/:id` | Bearer | admin |
+| POST | `/api/v1/admin/users/:id/reinvite` | Bearer | admin |
+| GET | `/api/v1/admin/bookings` | Bearer | admin |
+| POST | `/api/v1/admin/bookings` | Bearer | admin |
+| GET | `/api/v1/admin/bookings/:id` | Bearer | admin |
+| PATCH | `/api/v1/admin/bookings/:id` | Bearer | admin |
+| POST | `/api/v1/admin/bookings/:id/assignments` | Bearer | admin |
+| DELETE | `/api/v1/admin/bookings/:id/assignments/:dj_user_id` | Bearer | admin |
 
 **`/customer/events`** and **`/dj/events`** mirror **`bookings`** routes; see §4.5 for response shape (**`events`** vs **`bookings`** list key).
 
@@ -698,11 +862,22 @@ Creates a **booking** and optionally assigns **DJs** already present in the port
   "deposit_amount": 250,
   "deposit_currency": "GBP",
   "deposit_paid_at": "ISO8601 (optional)",
-  "deposit_note": "string (optional)"
+  "deposit_note": "string (optional)",
+  "first_name": "string (optional, used when upserting new customer)",
+  "last_name": "string (optional)",
+  "phone": "string (optional)",
+  "account_manager_user_id": "uuid (optional)",
+  "guest_count_range": "string (optional)",
+  "event_type": "string (optional)",
+  "services_required": ["string"],
+  "enquiry_message": "string (optional)",
+  "hear_about": "string (optional)",
+  "newsletter_opt_in": false,
+  "lead_metadata": {}
 }
 ```
 
-- **`customer_email`** must resolve to an existing user with **`role === customer`**.
+- **`customer_email`:** must resolve to **`role === customer`**, **or** if no user exists a new **customer** row is created (no password until invite) using optional **`first_name`**, **`last_name`**, **`phone`**, **`account_manager_user_id`**.
 - **`dj_emails`** / **`dj_user_ids`**: only users with **`role === dj`** are assigned; unknown IDs/emails are **skipped** (no error).
 
 **Response `201`**
@@ -726,6 +901,13 @@ Creates a **booking** and optionally assigns **DJs** already present in the port
   "deposit_currency": "GBP",
   "deposit_paid_at": null,
   "deposit_note": null,
+  "guest_count_range": "string | null",
+  "event_type": "string | null",
+  "services_required": ["string"],
+  "enquiry_message": "string | null",
+  "hear_about": "string | null",
+  "newsletter_opt_in": false,
+  "lead_metadata": {},
   "assigned_dj_user_ids": ["uuid"]
 }
 ```
@@ -759,5 +941,5 @@ Alias for **`POST /internal/bookings`** (same JSON body and **`201`** response).
 
 ---
 
-*Document version: 1.3 — DJ cancel booking, deposit fields, PATCH `/dj/bookings/:id`.*
+*Document version: 1.5 — Doc sync: disabled-account behaviour, **`CrewAssignment`** type, **`GET /customer/profile`** in index, register/login minimal **`user`**, **`/auth/me`** capabilities rules, **`POST …/cancel`** response shape, customer booking detail includes **BookingCard** deposits, admin user patch fields.*
 

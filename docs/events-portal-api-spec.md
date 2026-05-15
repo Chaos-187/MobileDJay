@@ -117,6 +117,11 @@ Indexes: `(email)`, `(role)`.
 | `contact_name` | `text` | Primary on-site contact |
 | `notes_from_company` | `text` nullable | Shown to customer as “Message from EYUP” |
 | `dj_briefing` | `text` nullable | Crew-only in UI today; still enforce auth |
+| `deposit_paid` | `boolean` | SQLite `INTEGER` 0/1 — DJ/internal may update |
+| `deposit_amount` | `real` nullable | Major units (e.g. `250` for £250) |
+| `deposit_currency` | `text` | Default `GBP` |
+| `deposit_paid_at` | `text` nullable | ISO8601 when marked paid |
+| `deposit_note` | `text` nullable | Free-text (reference, method, etc.) |
 | `created_at` / `updated_at` | `timestamptz` | |
 
 Indexes: `(customer_id, start_datetime)`, `(start_datetime)` for DJ queries.
@@ -313,7 +318,8 @@ Require `role = dj` **and** assignment in `booking_assignments` (unless you inte
 
 This repo hosts the portal API **alongside** the existing song-request app without sharing tables.
 
-**HTTP contract (paths, bodies, responses):** [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md).
+**HTTP contract (paths, bodies, responses):** [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md).  
+**Song-request gigs** (QR / `/event/:slug`, postpone & cancel): [`mobilejay-events-api.md`](mobilejay-events-api.md).
 
 | Item | Detail |
 |------|--------|
@@ -324,7 +330,7 @@ This repo hosts the portal API **alongside** the existing song-request app witho
 | **Internal automation key** | `PORTAL_INTERNAL_API_KEY` — minimum **16 characters**. Enables `/api/v1/internal/*` for n8n and other trusted backends (see [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md) §9). If unset or too short, internal routes return **503**. |
 | **Self-signup** | `POST /auth/register` creates **`customer`** accounts only; DJs/admins are created out-of-band (e.g. seed script). |
 | **Demo seed** | `npm run portal-seed` — demo customer, DJ, booking `EY-1042`, default music plan (password `ChangeMeDemo123!` unless overridden via `EYUP_PORTAL_SEED_*` env vars). |
-| **Automation (n8n)** | Server-to-server routes under `/api/v1/internal/*` protected by header `X-Portal-Internal-Key` (env `PORTAL_INTERNAL_API_KEY`, min 16 chars). Use from n8n **HTTP Request** nodes to create users (any role) and bookings. Details: [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md) §9. |
+| **Automation (n8n)** | Server-to-server routes under `/api/v1/internal/*` protected by header `X-Portal-Internal-Key` (env `PORTAL_INTERNAL_API_KEY`, min 16 chars). Use from n8n **HTTP Request** nodes to create users (any role) and bookings. **`POST /internal/events`** mirrors **`POST /internal/bookings`**. JWT routes also expose **`/customer/events`** and **`/dj/events`** as aliases for **`bookings`** (list JSON uses **`events`** key). Details: [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md) §4.5, §8–§10. |
 
 Source layout: `portal/router.js` (routes), `portal/internal-router.js` (n8n/internal), `portal/auth-tokens.js`, `portal/music-plan.js`, `db/portal-database.js`.
 

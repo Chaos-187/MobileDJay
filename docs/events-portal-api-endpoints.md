@@ -2,7 +2,8 @@
 
 **Purpose:** Machine- and human-readable contract for consumers (e.g. `eyupevents.uk` static site). Aligns with the implementation in `portal/router.js`.
 
-**Related:** Product/domain notes — `events-portal-api-spec.md`.
+**Related:** Product/domain notes — [`events-portal-api-spec.md`](events-portal-api-spec.md).  
+**Separate:** MobileDJay **song-request event** routes (`/api/events/…`, cancel/postpone) — [`mobilejay-events-api.md`](mobilejay-events-api.md).
 
 ---
 
@@ -110,9 +111,16 @@ Used in list/detail responses (subset of booking; no internal-only fields unless
   "service": "string",
   "status": "confirmed",
   "reference": "EY-1042",
-  "contact_name": "string"
+  "contact_name": "string",
+  "deposit_paid": false,
+  "deposit_amount": 250,
+  "deposit_currency": "GBP",
+  "deposit_paid_at": "ISO8601 | null",
+  "deposit_note": "string | null"
 }
 ```
+
+- **`deposit_amount`:** `null` if not set.
 
 ### 3.2 `MusicPlanPayload`
 
@@ -228,6 +236,22 @@ No auth required.
 ```
 
 **Errors:** `unauthorized` / `invalid_token` (401), `not_found` (404).
+
+---
+
+## 4.5 Portal “events” (`/events` aliases)
+
+In the database, scheduled gigs are stored in the **`bookings`** table. For product copy that says **event** instead of booking, the same JWT and internal routes are mirrored under **`/events`**:
+
+| Use | Path prefix | List response key |
+|-----|-------------|---------------------|
+| Customer | `/customer/events` | `{ "events": [ … ] }` on **`GET`** (same items as **BookingCard** §3.1) |
+| Customer | `/customer/bookings` | `{ "bookings": [ … ] }` |
+| DJ / crew | `/dj/events/upcoming` | `{ "events": [ … ] }` |
+| DJ / crew | `/dj/bookings/upcoming` | `{ "bookings": [ … ] }` |
+| Internal (n8n) | `POST /internal/events` | Same as **`POST /internal/bookings`** |
+
+**Unchanged between aliases:** `GET`/`PATCH`/`POST`/`DELETE` path params and response field names (e.g. **`booking_customer_note`**, **`crew_notes`**) stay the same so one client can migrate by path only.
 
 ---
 
@@ -422,6 +446,11 @@ Each item is **BookingCard** (§3.1) plus `dj_briefing`.
       "status": "confirmed",
       "reference": "string",
       "contact_name": "string",
+      "deposit_paid": false,
+      "deposit_amount": null,
+      "deposit_currency": "GBP",
+      "deposit_paid_at": null,
+      "deposit_note": null,
       "dj_briefing": "string"
     }
   ]
@@ -455,6 +484,11 @@ Booking fields match **BookingCard** (§3.1); additional fields below.
   "status": "confirmed",
   "reference": "string",
   "contact_name": "string",
+  "deposit_paid": false,
+  "deposit_amount": null,
+  "deposit_currency": "GBP",
+  "deposit_paid_at": null,
+  "deposit_note": null,
   "dj_briefing": "string",
   "music_plan": {
     "must_play": ["string"],
@@ -498,6 +532,47 @@ Booking fields match **BookingCard** (§3.1); additional fields below.
 
 ---
 
+### `POST /dj/bookings/:id/cancel`
+
+Sets the booking **`status`** to **`cancelled`**. Assigned DJ only. Idempotent if already cancelled.
+
+**Request body:** optional (ignored).
+
+**Response `200`:** **BookingCard** (§3.1) plus `dj_briefing` and `message` string.
+
+Same path under **`/dj/events/:id/cancel`**.
+
+---
+
+### `PATCH /dj/bookings/:id`
+
+Update **deposit** fields and/or **cancel** via **`status`** (DJ may set **`status`** to **`cancelled`** only). At least one allowed field required. Assigned DJ only.
+
+**Request body** (all optional; include at least one key)
+
+```json
+{
+  "status": "cancelled",
+  "deposit_paid": true,
+  "deposit_amount": 250,
+  "deposit_currency": "GBP",
+  "deposit_paid_at": "ISO8601",
+  "deposit_note": "Received via bank transfer"
+}
+```
+
+- **`deposit_paid`:** when set to **`true`**, **`deposit_paid_at`** defaults to **now** unless you send **`deposit_paid_at`**. When **`false`**, **`deposit_paid_at`** is cleared.
+- **`deposit_amount`:** send **`null`** or omit unchanged sections via separate requests — clearing use **`null`**.
+- **`status`:** only **`cancelled`** accepted (same effect as **`POST …/cancel`**).
+
+**Response `200`:** Same shape as **`GET /dj/bookings/:id`** (full detail including music plan and crew notes).
+
+**Errors:** `not_found` (404), `validation_error` (422).
+
+Mirror path: **`PATCH /dj/events/:id`**.
+
+---
+
 ## 7. Gaps vs full product spec
 
 | Spec idea | Status |
@@ -505,7 +580,7 @@ Booking fields match **BookingCard** (§3.1); additional fields below.
 | `POST /auth/magic-link` | Not implemented |
 | Refresh tokens / server-side session revocation | Not implemented (client drops JWT on logout) |
 | JWT customer/DJ **browser** APIs | Implemented (§4–6) |
-| **Internal automation** (n8n, CRM) | **`POST /internal/users`**, **`POST /internal/bookings`** — §9 |
+| **Internal automation** (n8n, CRM) | **`POST /internal/users`**, **`POST /internal/bookings`** or **`POST /internal/events`** — §9 |
 | Per-booking music plan **writes** via customer API | Only **default** plan via `PUT /customer/profile`; per-booking rows may exist in DB for future use |
 | Rate limiting | Not implemented (recommended for login in production) |
 
@@ -524,11 +599,25 @@ Booking fields match **BookingCard** (§3.1); additional fields below.
 | PATCH | `/api/v1/customer/bookings/:id/note` | Bearer | customer |
 | POST | `/api/v1/customer/bookings/:id/hide` | Bearer | customer |
 | DELETE | `/api/v1/customer/bookings/:id/hide` | Bearer | customer |
+| GET | `/api/v1/customer/events` | Bearer | customer |
+| GET | `/api/v1/customer/events/:id` | Bearer | customer |
+| PATCH | `/api/v1/customer/events/:id/note` | Bearer | customer |
+| POST | `/api/v1/customer/events/:id/hide` | Bearer | customer |
+| DELETE | `/api/v1/customer/events/:id/hide` | Bearer | customer |
 | GET | `/api/v1/customer/profile` | Bearer | customer |
 | PUT | `/api/v1/customer/profile` | Bearer | customer |
 | GET | `/api/v1/dj/bookings/upcoming` | Bearer | dj |
 | GET | `/api/v1/dj/bookings/:id` | Bearer | dj |
 | PATCH | `/api/v1/dj/bookings/:id/crew-notes` | Bearer | dj |
+| POST | `/api/v1/dj/bookings/:id/cancel` | Bearer | dj |
+| PATCH | `/api/v1/dj/bookings/:id` | Bearer | dj |
+| GET | `/api/v1/dj/events/upcoming` | Bearer | dj |
+| GET | `/api/v1/dj/events/:id` | Bearer | dj |
+| PATCH | `/api/v1/dj/events/:id/crew-notes` | Bearer | dj |
+| POST | `/api/v1/dj/events/:id/cancel` | Bearer | dj |
+| PATCH | `/api/v1/dj/events/:id` | Bearer | dj |
+
+**`/customer/events`** and **`/dj/events`** mirror **`bookings`** routes; see §4.5 for response shape (**`events`** vs **`bookings`** list key).
 
 ---
 
@@ -604,7 +693,12 @@ Creates a **booking** and optionally assigns **DJs** already present in the port
   "notes_from_company": "string (optional)",
   "dj_briefing": "string (optional)",
   "dj_user_ids": ["uuid", "..."],
-  "dj_emails": ["string", "..."]
+  "dj_emails": ["string", "..."],
+  "deposit_paid": false,
+  "deposit_amount": 250,
+  "deposit_currency": "GBP",
+  "deposit_paid_at": "ISO8601 (optional)",
+  "deposit_note": "string (optional)"
 }
 ```
 
@@ -627,6 +721,11 @@ Creates a **booking** and optionally assigns **DJs** already present in the port
   "contact_name": "string",
   "notes_from_company": "string",
   "dj_briefing": "string",
+  "deposit_paid": false,
+  "deposit_amount": null,
+  "deposit_currency": "GBP",
+  "deposit_paid_at": null,
+  "deposit_note": null,
   "assigned_dj_user_ids": ["uuid"]
 }
 ```
@@ -635,10 +734,16 @@ Creates a **booking** and optionally assigns **DJs** already present in the port
 
 ---
 
+### `POST /api/v1/internal/events`
+
+Alias for **`POST /internal/bookings`** (same JSON body and **`201`** response). Use whichever naming fits your automation (“event” vs “booking”).
+
+---
+
 ### n8n workflow hints
 
 1. **New enquiry → customer**: `POST …/internal/users` with `role: customer`; branch on `temporary_password` to send portal invite email.
-2. **Confirmed gig → booking**: `POST …/internal/bookings` with `customer_email` from CRM and `dj_emails` from roster.
+2. **Confirmed gig**: `POST …/internal/bookings` or **`POST …/internal/events`** with `customer_email` from CRM and `dj_emails` from roster.
 3. Run workflows against **`https://requests.eyupevents.uk`** (production) or your staging host; TLS protects the shared secret in transit.
 4. **Windows local dev:** Set `PORTAL_INTERNAL_API_KEY` in the **same** shell that starts Node (for example run `$env:PORTAL_INTERNAL_API_KEY='your-long-secret'; node server.js` in PowerShell **directly**, or `cmd /c "set PORTAL_INTERNAL_API_KEY=...&& node server.js"`). Nested commands often strip `$env:…`, so the internal API stays disabled (**503**) until the variable is applied correctly.
 
@@ -650,7 +755,9 @@ Creates a **booking** and optionally assigns **DJs** already present in the port
 |--------|------|------|
 | POST | `/api/v1/internal/users` | `X-Portal-Internal-Key` |
 | POST | `/api/v1/internal/bookings` | `X-Portal-Internal-Key` |
+| POST | `/api/v1/internal/events` | `X-Portal-Internal-Key` |
 
 ---
 
-*Document version: 1.1 — includes `portal/internal-router.js` and n8n/internal automation.*
+*Document version: 1.3 — DJ cancel booking, deposit fields, PATCH `/dj/bookings/:id`.*
+

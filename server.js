@@ -444,6 +444,74 @@ app.put('/api/events/:id', (req, res) => {
     }
 });
 
+// Cancel event — closes customer-facing request pages (sets is_active = 0). Does not delete data.
+app.post('/api/events/:id/cancel', (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(eventId)) {
+        return res.status(400).json({ error: 'Invalid event id' });
+    }
+    try {
+        const existing = eventDb.getById(eventId);
+        if (!existing) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const success = eventDb.update(eventId, { is_active: 0 });
+        if (!success) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const event = eventDb.getById(eventId);
+        res.json({
+            success: true,
+            action: 'cancelled',
+            message: 'Event deactivated; customers will see an inactive notice until reactivated.',
+            event
+        });
+    } catch (error) {
+        console.error('Error cancelling event:', error);
+        res.status(500).json({ error: 'Failed to cancel event' });
+    }
+});
+
+// Postpone event — updates scheduled date (and optionally venue). Does not change is_active.
+app.post('/api/events/:id/postpone', (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(eventId)) {
+        return res.status(400).json({ error: 'Invalid event id' });
+    }
+    const body = req.body || {};
+    const rawDate = body.event_date ?? body.eventDate;
+    if (rawDate == null || typeof rawDate !== 'string' || !rawDate.trim()) {
+        return res.status(400).json({
+            error: 'event_date is required (use ISO date string or YYYY-MM-DD)'
+        });
+    }
+    const event_date = rawDate.trim();
+    try {
+        const existing = eventDb.getById(eventId);
+        if (!existing) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const updates = { event_date };
+        if (body.venue !== undefined && body.venue !== null) {
+            updates.venue = String(body.venue).trim();
+        }
+        const success = eventDb.update(eventId, updates);
+        if (!success) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+        const event = eventDb.getById(eventId);
+        res.json({
+            success: true,
+            action: 'postponed',
+            message: 'Event date updated.',
+            event
+        });
+    } catch (error) {
+        console.error('Error postponing event:', error);
+        res.status(500).json({ error: 'Failed to postpone event' });
+    }
+});
+
 // Delete an event
 app.delete('/api/events/:id', (req, res) => {
     const eventId = parseInt(req.params.id);

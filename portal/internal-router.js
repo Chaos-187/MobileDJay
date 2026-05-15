@@ -100,7 +100,7 @@ router.post('/users', async (req, res) => {
  * Create booking and optionally assign DJs by id or email.
  * POST /api/v1/internal/bookings
  */
-router.post('/bookings', (req, res) => {
+function handleInternalCreateBooking(req, res) {
     try {
         const body = req.body || {};
         const {
@@ -117,7 +117,12 @@ router.post('/bookings', (req, res) => {
             notes_from_company: notesFromCompany,
             dj_briefing: djBriefing,
             dj_user_ids: djUserIds,
-            dj_emails: djEmails
+            dj_emails: djEmails,
+            deposit_paid: depositPaidIn,
+            deposit_amount: depositAmountIn,
+            deposit_currency: depositCurrencyIn,
+            deposit_paid_at: depositPaidAtIn,
+            deposit_note: depositNoteIn
         } = body;
 
         let customerId = customerIdIn;
@@ -160,7 +165,12 @@ router.post('/bookings', (req, res) => {
             reference,
             contact_name: contactName != null ? String(contactName) : '',
             notes_from_company: notesFromCompany != null ? String(notesFromCompany) : null,
-            dj_briefing: djBriefing != null ? String(djBriefing) : null
+            dj_briefing: djBriefing != null ? String(djBriefing) : null,
+            deposit_paid: !!depositPaidIn,
+            deposit_amount: depositAmountIn,
+            deposit_currency: depositCurrencyIn,
+            deposit_paid_at: depositPaidAtIn,
+            deposit_note: depositNoteIn
         });
 
         const assignIds = new Set();
@@ -196,12 +206,26 @@ router.post('/bookings', (req, res) => {
             contact_name: booking.contact_name,
             notes_from_company: booking.notes_from_company || '',
             dj_briefing: booking.dj_briefing || '',
+            deposit_paid: booking.deposit_paid === 1,
+            deposit_amount:
+                booking.deposit_amount != null && Number.isFinite(Number(booking.deposit_amount))
+                    ? Number(booking.deposit_amount)
+                    : null,
+            deposit_currency: booking.deposit_currency || 'GBP',
+            deposit_paid_at: booking.deposit_paid_at || null,
+            deposit_note: booking.deposit_note || null,
             assigned_dj_user_ids: [...assignIds]
         });
     } catch (err) {
         console.error('[portal] internal/bookings', err);
         return jsonError(res, 'internal_error', 'Booking creation failed', 500);
     }
-});
+}
+
+/** POST /api/v1/internal/bookings — create gig / portal event */
+router.post('/bookings', handleInternalCreateBooking);
+
+/** POST /api/v1/internal/events — alias for `/internal/bookings` (same body & response). */
+router.post('/events', handleInternalCreateBooking);
 
 module.exports = router;

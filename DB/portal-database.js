@@ -98,6 +98,33 @@ try {
     /* indexes may exist */
 }
 
+// Booking deposit & extensions (SQLite ALTER IF NOT EXISTS pattern)
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN deposit_paid INTEGER NOT NULL DEFAULT 0`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN deposit_amount REAL`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN deposit_currency TEXT DEFAULT 'GBP'`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN deposit_paid_at TEXT`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN deposit_note TEXT`);
+} catch (e) {
+    /* exists */
+}
+
 function nowIso() {
     return new Date().toISOString();
 }
@@ -269,11 +296,56 @@ const portalDb = {
         }
     },
 
+    /** Partial update for bookings (DJ/internal use). Whitelisted columns only. */
+    updateBooking(bookingId, patch) {
+        const allowed = [
+            'status',
+            'deposit_paid',
+            'deposit_amount',
+            'deposit_currency',
+            'deposit_paid_at',
+            'deposit_note'
+        ];
+        const setClause = [];
+        const values = [];
+        for (const [key, value] of Object.entries(patch)) {
+            if (!allowed.includes(key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(value);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(bookingId);
+        const stmt = db.prepare(`UPDATE bookings SET ${setClause.join(', ')} WHERE id = ?`);
+        return stmt.run(...values).changes > 0;
+    },
+
     /** Admin/seed: create booking */
     insertBooking(row) {
+        const depositPaid = row.deposit_paid ? 1 : 0;
+        const depositAmount =
+            row.deposit_amount != null && row.deposit_amount !== ''
+                ? Number(row.deposit_amount)
+                : null;
+        const depositCurrency =
+            row.deposit_currency != null && String(row.deposit_currency).trim()
+                ? String(row.deposit_currency).trim().toUpperCase()
+                : 'GBP';
+        const depositPaidAt = row.deposit_paid_at != null ? String(row.deposit_paid_at) : null;
+        const depositNote =
+            row.deposit_note != null && String(row.deposit_note).trim()
+                ? String(row.deposit_note).trim()
+                : null;
+
         db.prepare(`
-            INSERT INTO bookings (id, customer_id, title, start_datetime, end_datetime, venue, service, status, reference, contact_name, notes_from_company, dj_briefing, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO bookings (
+                id, customer_id, title, start_datetime, end_datetime, venue, service, status, reference,
+                contact_name, notes_from_company, dj_briefing,
+                deposit_paid, deposit_amount, deposit_currency, deposit_paid_at, deposit_note,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             row.id,
             row.customer_id,
@@ -287,10 +359,14 @@ const portalDb = {
             row.contact_name,
             row.notes_from_company ?? null,
             row.dj_briefing ?? null,
+            depositPaid,
+            Number.isFinite(depositAmount) ? depositAmount : null,
+            depositCurrency,
+            depositPaidAt,
+            depositNote,
             nowIso()
         );
     },
-
     assignDj(bookingId, djUserId) {
         db.prepare(`
             INSERT OR IGNORE INTO booking_assignments (booking_id, dj_user_id) VALUES (?, ?)

@@ -35,6 +35,8 @@ function requireRole(role) {
 }
 
 function bookingCard(b) {
+    const depositPaid = b.deposit_paid === 1 || b.deposit_paid === true;
+    const amt = b.deposit_amount;
     return {
         id: b.id,
         title: b.title,
@@ -44,7 +46,13 @@ function bookingCard(b) {
         service: b.service,
         status: b.status,
         reference: b.reference,
-        contact_name: b.contact_name
+        contact_name: b.contact_name,
+        deposit_paid: depositPaid,
+        deposit_amount:
+            amt != null && amt !== '' && Number.isFinite(Number(amt)) ? Number(amt) : null,
+        deposit_currency: b.deposit_currency || 'GBP',
+        deposit_paid_at: b.deposit_paid_at || null,
+        deposit_note: b.deposit_note || null
     };
 }
 
@@ -143,9 +151,15 @@ router.get('/auth/me', authMiddleware, (req, res) => {
     });
 });
 
-// --- Customer ---
+// --- Customer bookings / events (same handlers; list key differs for `/events`) ---
 
-router.get('/customer/bookings', authMiddleware, requireRole('customer'), (req, res) => {
+function customerPortalCollectionKey(req) {
+    return req.portalCollectionKey === 'events' ? 'events' : 'bookings';
+}
+
+const customerBookingRouter = express.Router({ mergeParams: true });
+
+customerBookingRouter.get('/', (req, res) => {
     const scope = req.query.scope || 'upcoming_all';
     const rows = portalDb.getCustomerBookingsUpcoming(req.portalUser.id);
     let bookings = rows.map(bookingCard);
@@ -154,10 +168,11 @@ router.get('/customer/bookings', authMiddleware, requireRole('customer'), (req, 
     } else if (scope !== 'upcoming_all') {
         return jsonError(res, 'validation_error', 'scope must be next_upcoming or upcoming_all', 422);
     }
-    res.json({ bookings });
+    const key = customerPortalCollectionKey(req);
+    res.json({ [key]: bookings });
 });
 
-router.get('/customer/bookings/:id', authMiddleware, requireRole('customer'), (req, res) => {
+customerBookingRouter.get('/:id', (req, res) => {
     const booking = portalDb.getBookingById(req.params.id);
     if (!booking || booking.customer_id !== req.portalUser.id) {
         return jsonError(res, 'not_found', 'Booking not found', 404);
@@ -170,7 +185,7 @@ router.get('/customer/bookings/:id', authMiddleware, requireRole('customer'), (r
     });
 });
 
-router.patch('/customer/bookings/:id/note', authMiddleware, requireRole('customer'), (req, res) => {
+customerBookingRouter.patch('/:id/note', (req, res) => {
     const booking = portalDb.getBookingById(req.params.id);
     if (!booking || booking.customer_id !== req.portalUser.id) {
         return jsonError(res, 'not_found', 'Booking not found', 404);
@@ -184,7 +199,7 @@ router.patch('/customer/bookings/:id/note', authMiddleware, requireRole('custome
     res.json({ booking_customer_note: note.body, updated_at: note.updated_at });
 });
 
-router.post('/customer/bookings/:id/hide', authMiddleware, requireRole('customer'), (req, res) => {
+customerBookingRouter.post('/:id/hide', (req, res) => {
     const booking = portalDb.getBookingById(req.params.id);
     if (!booking || booking.customer_id !== req.portalUser.id) {
         return jsonError(res, 'not_found', 'Booking not found', 404);
@@ -193,7 +208,7 @@ router.post('/customer/bookings/:id/hide', authMiddleware, requireRole('customer
     res.json({ hidden_from_dashboard: true });
 });
 
-router.delete('/customer/bookings/:id/hide', authMiddleware, requireRole('customer'), (req, res) => {
+customerBookingRouter.delete('/:id/hide', (req, res) => {
     const booking = portalDb.getBookingById(req.params.id);
     if (!booking || booking.customer_id !== req.portalUser.id) {
         return jsonError(res, 'not_found', 'Booking not found', 404);
@@ -201,6 +216,27 @@ router.delete('/customer/bookings/:id/hide', authMiddleware, requireRole('custom
     portalDb.setBookingHidden(req.portalUser.id, booking.id, false);
     res.json({ hidden_from_dashboard: false });
 });
+
+router.use(
+    '/customer/bookings',
+    authMiddleware,
+    requireRole('customer'),
+    (req, _res, next) => {
+        req.portalCollectionKey = 'bookings';
+        next();
+    },
+    customerBookingRouter
+);
+router.use(
+    '/customer/events',
+    authMiddleware,
+    requireRole('customer'),
+    (req, _res, next) => {
+        req.portalCollectionKey = 'events';
+        next();
+    },
+    customerBookingRouter
+);
 
 router.get('/customer/profile', authMiddleware, requireRole('customer'), (req, res) => {
     const notes = portalDb.getAccountNotes(req.portalUser.id);
@@ -235,18 +271,147 @@ router.put('/customer/profile', authMiddleware, requireRole('customer'), (req, r
     });
 });
 
-// --- DJ ---
+// --- DJ bookings / events ---
 
-router.get('/dj/bookings/upcoming', authMiddleware, requireRole('dj'), (req, res) => {
+function djPortalCollectionKey(req) {
+    return req.portalCollectionKey === 'events' ? 'events' : 'bookings';
+}
+
+const djBookingRouter = express.Router({ mergeParams: true });
+
+djBookingRouter.get('/upcoming', (req, res) => {
     const rows = portalDb.getDjUpcomingBookings(req.portalUser.id);
     const bookings = rows.map((b) => ({
         ...bookingCard(b),
         dj_briefing: b.dj_briefing || ''
     }));
-    res.json({ bookings });
+    const key = djPortalCollectionKey(req);
+    res.json({ [key]: bookings });
 });
 
-router.get('/dj/bookings/:id', authMiddleware, requireRole('dj'), (req, res) => {
+djBookingRouter.post('/:id/cancel', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking || !portalDb.isDjAssigned(req.portalUser.id, booking.id)) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    portalDb.updateBooking(booking.id, { status: 'cancelled' });
+    const updated = portalDb.getBookingById(booking.id);
+    res.json({
+        ...bookingCard(updated),
+        dj_briefing: updated.dj_briefing || '',
+        message: 'Booking cancelled.'
+    });
+});
+
+djBookingRouter.patch('/:id/crew-notes', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking || !portalDb.isDjAssigned(req.portalUser.id, booking.id)) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const body = req.body?.body;
+    if (body == null || typeof body !== 'string') {
+        return jsonError(res, 'validation_error', 'body must be a string', 422);
+    }
+    portalDb.upsertCrewNote(booking.id, req.portalUser.id, body);
+    const crew = portalDb.getCrewNote(booking.id);
+    res.json({ crew_notes: crew.body, updated_at: crew.updated_at });
+});
+
+/** Deposit + DJ-cancel-only status update (assigned DJ only). */
+djBookingRouter.patch('/:id', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking || !portalDb.isDjAssigned(req.portalUser.id, booking.id)) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const body = req.body || {};
+    const patch = {};
+
+    if (Object.prototype.hasOwnProperty.call(body, 'status')) {
+        if (body.status !== 'cancelled') {
+            return jsonError(
+                res,
+                'validation_error',
+                'DJ may only set status to cancelled (use POST …/cancel or status: "cancelled")',
+                422
+            );
+        }
+        patch.status = 'cancelled';
+    }
+
+    const hasPaidAtKey = Object.prototype.hasOwnProperty.call(body, 'deposit_paid_at');
+
+    if (Object.prototype.hasOwnProperty.call(body, 'deposit_paid')) {
+        const paid = !!body.deposit_paid;
+        patch.deposit_paid = paid ? 1 : 0;
+        if (!paid) {
+            patch.deposit_paid_at = null;
+        }
+    }
+
+    if (hasPaidAtKey && patch.deposit_paid !== 0) {
+        const raw = body.deposit_paid_at;
+        patch.deposit_paid_at =
+            raw == null || String(raw).trim() === '' ? null : String(raw).trim();
+    }
+
+    if (
+        Object.prototype.hasOwnProperty.call(body, 'deposit_paid') &&
+        body.deposit_paid &&
+        !hasPaidAtKey
+    ) {
+        patch.deposit_paid_at = new Date().toISOString();
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'deposit_amount')) {
+        if (body.deposit_amount === null || body.deposit_amount === '') {
+            patch.deposit_amount = null;
+        } else if (typeof body.deposit_amount === 'number' && Number.isFinite(body.deposit_amount)) {
+            patch.deposit_amount = body.deposit_amount;
+        } else {
+            const n = Number(body.deposit_amount);
+            if (!Number.isFinite(n)) {
+                return jsonError(res, 'validation_error', 'deposit_amount must be a number', 422);
+            }
+            patch.deposit_amount = n;
+        }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'deposit_currency')) {
+        const c = body.deposit_currency != null ? String(body.deposit_currency).trim().toUpperCase() : '';
+        patch.deposit_currency = c || 'GBP';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'deposit_note')) {
+        patch.deposit_note =
+            body.deposit_note == null || String(body.deposit_note).trim() === ''
+                ? null
+                : String(body.deposit_note).trim();
+    }
+
+    if (Object.keys(patch).length === 0) {
+        return jsonError(
+            res,
+            'validation_error',
+            'Provide at least one of: status, deposit_paid, deposit_amount, deposit_currency, deposit_note, deposit_paid_at',
+            422
+        );
+    }
+
+    portalDb.updateBooking(booking.id, patch);
+    const updated = portalDb.getBookingById(booking.id);
+    const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(updated);
+    const crew = portalDb.getCrewNote(updated.id);
+    res.json({
+        ...bookingCard(updated),
+        dj_briefing: updated.dj_briefing || '',
+        music_plan,
+        music_plan_summary,
+        crew_notes: crew?.body ?? '',
+        crew_notes_updated_at: crew?.updated_at ?? null
+    });
+});
+
+djBookingRouter.get('/:id', (req, res) => {
     const booking = portalDb.getBookingById(req.params.id);
     if (!booking || !portalDb.isDjAssigned(req.portalUser.id, booking.id)) {
         return jsonError(res, 'not_found', 'Booking not found', 404);
@@ -263,19 +428,26 @@ router.get('/dj/bookings/:id', authMiddleware, requireRole('dj'), (req, res) => 
     });
 });
 
-router.patch('/dj/bookings/:id/crew-notes', authMiddleware, requireRole('dj'), (req, res) => {
-    const booking = portalDb.getBookingById(req.params.id);
-    if (!booking || !portalDb.isDjAssigned(req.portalUser.id, booking.id)) {
-        return jsonError(res, 'not_found', 'Booking not found', 404);
-    }
-    const body = req.body?.body;
-    if (body == null || typeof body !== 'string') {
-        return jsonError(res, 'validation_error', 'body must be a string', 422);
-    }
-    portalDb.upsertCrewNote(booking.id, req.portalUser.id, body);
-    const crew = portalDb.getCrewNote(booking.id);
-    res.json({ crew_notes: crew.body, updated_at: crew.updated_at });
-});
+router.use(
+    '/dj/bookings',
+    authMiddleware,
+    requireRole('dj'),
+    (req, _res, next) => {
+        req.portalCollectionKey = 'bookings';
+        next();
+    },
+    djBookingRouter
+);
+router.use(
+    '/dj/events',
+    authMiddleware,
+    requireRole('dj'),
+    (req, _res, next) => {
+        req.portalCollectionKey = 'events';
+        next();
+    },
+    djBookingRouter
+);
 
 router.use('/internal', internalRouter);
 

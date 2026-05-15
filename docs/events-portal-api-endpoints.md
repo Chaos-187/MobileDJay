@@ -51,7 +51,19 @@ Role enforcement: each route requires the **documented** `role` (`customer`, `dj
 - **Datetime fields:** ISO 8601 strings as stored (typically UTC, e.g. `2026-05-29T18:00:00.000Z`). Clients should parse as ISO dates.
 - **Booking `status`:** `confirmed` \| `pending` \| `cancelled` (cancelled bookings excluded from “upcoming” lists).
 
----
+### 1.4 Customer PII encryption at rest (SQLite)
+
+When **`PORTAL_PII_ENCRYPTION_KEY`** is set, the portal DB encrypts selected customer-linked fields with **AES-256-GCM** before writing to `db/eyup_portal.db`:
+
+- **`users`:** `email`, `first_name`, `last_name`, `phone` (login uses a stable HMAC id in the `email` column; JWTs still receive real email after decrypt).
+- **`bookings`:** `contact_name`, `enquiry_message`, `hear_about`.
+- **`booking_customer_notes`**, **`customer_account_notes`**, **`music_plans.payload`** (free-text / JSON preferences).
+
+**Key format:** 64 hex characters (32 bytes), or Base64 decoding to exactly **32 bytes**, or any string (hashed to 32 bytes — weaker; prefer random bytes). **Back up the key**; loss = irrecoverable plaintext from encrypted columns.
+
+On first start with a key, existing plaintext rows are migrated in a single transaction (`p1.`-prefixed ciphertext). If the key is **unset**, behaviour is unchanged (plaintext; production logs a warning).
+
+--- 
 
 ## 2. Error response
 
@@ -941,5 +953,5 @@ Alias for **`POST /internal/bookings`** (same JSON body and **`201`** response).
 
 ---
 
-*Document version: 1.5 — Doc sync: disabled-account behaviour, **`CrewAssignment`** type, **`GET /customer/profile`** in index, register/login minimal **`user`**, **`/auth/me`** capabilities rules, **`POST …/cancel`** response shape, customer booking detail includes **BookingCard** deposits, admin user patch fields.*
+*Document version: 1.6 — Optional **`PORTAL_PII_ENCRYPTION_KEY`** (AES-GCM at-rest PII for portal SQLite).*
 

@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "portal-seed": "node portal/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -21,12 +22,15 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.5.0",
+    "cors": "^2.8.6",
     "csv-parser": "^3.2.0",
     "dompurify": "^3.1.2",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "jsdom": "^26.1.0",
+    "jsonwebtoken": "^9.0.3",
     "path": "^0.12.7",
     "xml2js": "^0.6.2"
   }

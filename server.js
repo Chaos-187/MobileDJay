@@ -7,8 +7,17 @@ const xml2js = require('xml2js');
 const csv = require('csv-parser');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
+const cors = require('cors');
 const { eventDb, requestDb, messageDb, replyDb, ensureDefaultEvent } = require('./db/database');
+const portalRouter = require('./portal/router');
 const app = express();
+
+const portalCorsOrigins = (process.env.PORTAL_CORS_ORIGINS ||
+    'https://eyupevents.uk,https://www.eyupevents.uk,https://requests.eyupevents.uk'
+)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 const PORT = process.env.PORT || 3000;
 
 // Initialize DOMPurify
@@ -25,6 +34,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// EYUP events portal JSON API (separate SQLite DB — does not touch song-request tables)
+app.use(
+    '/api/v1',
+    cors({
+        origin(origin, cb) {
+            if (!origin) return cb(null, true);
+            if (portalCorsOrigins.includes(origin)) return cb(null, true);
+            cb(null, false);
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Authorization', 'Content-Type', 'X-Portal-Internal-Key']
+    }),
+    portalRouter
+);
 
 // Global variables to store catalogues
 let songCatalogue = [];

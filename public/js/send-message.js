@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatMessages = document.getElementById('chatMessages');
     const repliesCustomerName = document.getElementById('repliesCustomerName');
     const mainContainer = document.querySelector('main.container');
-    const navbar = document.querySelector('nav.navbar');
     const backToMessageBtn = document.getElementById('backToMessageBtn');
     // Declared early to avoid TDZ when initializeReplies() runs.
     let replyCheckInterval;

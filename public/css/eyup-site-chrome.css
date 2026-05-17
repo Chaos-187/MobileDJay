@@ -134,6 +134,68 @@ body.mdj-eyup-brand .mdj-site-navbar .nav-msg-btn:hover {
     background: rgba(255, 102, 0, 0.22);
 }
 
+/* Minimal bar: EYUP EVENTS + messages only (request app) */
+body.mdj-eyup-brand .mdj-site-navbar--minimal .nav-menu,
+body.mdj-eyup-brand .mdj-site-navbar--minimal .nav-toggle {
+    display: none !important;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar--minimal .nav-container {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar--minimal .logo {
+    flex: 1;
+    min-width: 0;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar--minimal .logo-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(100%, 12rem);
+}
+
+@media (min-width: 480px) {
+    body.mdj-eyup-brand .mdj-site-navbar--minimal .logo-subtitle {
+        max-width: min(100%, 24rem);
+    }
+}
+
+body.mdj-eyup-brand .mdj-site-navbar--minimal .mdj-nav-controls {
+    margin-left: 12px;
+}
+
+/* Secondary row / back control in minimal bar */
+body.mdj-eyup-brand a.mdj-nav-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    color: var(--eyup-off-white) !important;
+    background: transparent;
+    border: 1px solid rgba(255, 102, 0, 0.45);
+    border-radius: 2px;
+    text-decoration: none;
+    transition:
+        background var(--eyup-transition-fast),
+        border-color var(--eyup-transition-fast),
+        color var(--eyup-transition-fast);
+    white-space: nowrap;
+}
+
+body.mdj-eyup-brand a.mdj-nav-back:hover,
+body.mdj-eyup-brand a.mdj-nav-back:focus-visible {
+    color: var(--eyup-primary-black) !important;
+    background: var(--eyup-primary-orange);
+    border-color: var(--eyup-primary-orange);
+    outline: none;
+}
+
 body.mdj-eyup-brand .mdj-site-navbar .nav-toggle {
     display: none;
     background: none;
@@ -508,10 +570,10 @@ body.mdj-eyup-brand .mdj-site-navbar .badge-soon {
     }
 }
 
-/* ——— Compact footer (company details only — saves space on mobile) ——— */
+/* ——— Footer: statutory line only ——— */
 body.mdj-eyup-brand .mdj-eyup-footer--compact {
     background: var(--eyup-primary-black);
-    padding: 14px 0 16px;
+    padding: 12px 0 14px;
     margin-top: 1.25rem;
     border-top: 1px solid var(--eyup-dark-gray);
 }
@@ -526,50 +588,13 @@ body.mdj-eyup-brand .mdj-company-foot {
     text-align: center;
 }
 
-body.mdj-eyup-brand .mdj-company-foot__brand {
-    margin: 0 0 0.35rem;
-    line-height: 1.2;
-}
-
-body.mdj-eyup-brand .mdj-company-foot__brand .logo-text {
-    font-family: var(--font-retro);
-    font-size: clamp(0.62rem, 2.5vw, 0.78rem);
-    color: var(--eyup-white);
-    text-shadow: 0 0 8px var(--eyup-primary-orange);
-}
-
-body.mdj-eyup-brand .mdj-company-foot__brand .logo-accent {
-    font-family: var(--font-futuristic);
-    font-size: clamp(0.72rem, 2.8vw, 0.88rem);
-    color: var(--eyup-primary-orange);
-    font-weight: 700;
-    margin-left: 6px;
-}
-
 body.mdj-eyup-brand .mdj-company-foot__legal {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: clamp(0.65rem, 2.8vw, 0.75rem);
+    font-size: clamp(0.62rem, 2.8vw, 0.72rem);
     color: var(--eyup-gray);
-    line-height: 1.45;
-    max-width: 28rem;
+    line-height: 1.4;
+    max-width: 22rem;
     margin-inline: auto;
-}
-
-body.mdj-eyup-brand .mdj-company-foot__contact {
-    margin: 0.4rem 0 0;
-    font-family: var(--font-mono);
-    font-size: clamp(0.72rem, 3vw, 0.82rem);
-}
-
-body.mdj-eyup-brand .mdj-company-foot__contact a {
-    color: var(--eyup-gray);
-    text-decoration: none;
-    transition: color var(--eyup-transition-fast);
-}
-
-body.mdj-eyup-brand .mdj-company-foot__contact a:hover,
-body.mdj-eyup-brand .mdj-company-foot__contact a:focus-visible {
-    color: var(--eyup-primary-orange);
 }
 

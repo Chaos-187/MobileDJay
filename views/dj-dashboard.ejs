@@ -86,12 +86,6 @@
             border-bottom-color: var(--eyup-primary-orange);
         }
 
-        body.mdj-eyup-brand main.container.mdj-dash-main {
-            margin-top: 0;
-            padding-top: clamp(1rem, 2.5vw, 1.75rem);
-            padding-bottom: 1rem;
-        }
-
         body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .nav-container {
             flex-wrap: wrap;
             row-gap: 10px;
@@ -220,7 +214,7 @@
         }
     </style>
 </head>
-<body class="mdj-eyup-brand">
+<body class="mdj-eyup-brand mdj-dash-tools">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">DJ Dashboard</h1>
 
@@ -263,6 +257,7 @@
     </nav>
 
     <main class="container mdj-dash-main">
+        <div class="mdj-dash-scroll">
         <!-- Navigation Tabs -->
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -409,6 +404,7 @@
                     <% } %>
                 </div>
             </div>
+        </div>
         </div>
 
         <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">

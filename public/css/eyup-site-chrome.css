@@ -31,6 +31,238 @@ body.mdj-eyup-brand main.container {
     max-height: calc(100vh - var(--mdj-eyup-nav-h));
 }
 
+/* DJ dashboard / event management: statutory footer pinned to viewport bottom */
+body.mdj-eyup-brand main.container.mdj-dash-main {
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - var(--mdj-eyup-nav-h));
+    max-height: calc(100vh - var(--mdj-eyup-nav-h));
+    overflow: hidden;
+    padding-bottom: 0;
+}
+
+body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-top: clamp(1rem, 2.5vw, 1.75rem);
+    padding-bottom: 1rem;
+    scroll-behavior: smooth;
+}
+
+body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+}
+body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-eyup-footer.mdj-eyup-footer--compact {
+    flex-shrink: 0;
+    margin-top: 0;
+}
+
+/* ─── DJ tooling (dashboard + event mgmt): EYUP-styled Bootstrap buttons ─── */
+body.mdj-eyup-brand.mdj-dash-tools {
+    --mdj-tool-btn-focus: rgba(255, 102, 0, 0.45);
+    --mdj-tool-btn-font: var(--font-mono);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn {
+    border-radius: 2px;
+    font-family: var(--mdj-tool-btn-font);
+    letter-spacing: 0.04em;
+    font-weight: 600;
+    transition:
+        background var(--eyup-transition-fast),
+        border-color var(--eyup-transition-fast),
+        color var(--eyup-transition-fast),
+        box-shadow var(--eyup-transition-fast),
+        filter var(--eyup-transition-fast);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn:focus-visible {
+    box-shadow:
+        0 0 0 2px var(--eyup-primary-black),
+        0 0 0 4px var(--mdj-tool-btn-focus);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-primary {
+    color: #0c0c0c !important;
+    background:
+        linear-gradient(
+            135deg,
+            var(--eyup-secondary-orange) 0%,
+            var(--eyup-primary-orange) 52%,
+            #e65a00 100%
+        )
+        border-box !important;
+    border-color: var(--eyup-primary-orange) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-primary:hover {
+    color: #0a0a0a !important;
+    filter: brightness(1.08);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-secondary {
+    color: var(--eyup-off-white) !important;
+    background: rgba(44, 44, 44, 0.95) !important;
+    border-color: var(--eyup-dark-gray) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-secondary:hover {
+    background: rgba(58, 58, 58, 0.98) !important;
+    border-color: rgba(255, 102, 0, 0.35) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-success {
+    color: #f4fff8 !important;
+    background: linear-gradient(135deg, #1e6f40 0%, #2faf64 48%, #1a5c36 100%) !important;
+    border-color: rgba(58, 200, 120, 0.45) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-success:hover {
+    filter: brightness(1.06);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-info {
+    color: #fffefb !important;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 102, 0, 0.18) 0%,
+            rgba(26, 26, 26, 0.95) 100%
+        ) !important;
+    border: 2px solid rgba(255, 132, 51, 0.75) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-info:hover {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255, 132, 51, 0.28) 0%,
+            rgba(38, 38, 38, 0.98) 100%
+        ) !important;
+    border-color: var(--eyup-secondary-orange) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-warning {
+    color: var(--eyup-primary-black) !important;
+    background:
+        linear-gradient(
+            135deg,
+            #ffd45c 0%,
+            var(--eyup-secondary-orange) 55%,
+            var(--eyup-primary-orange) 100%
+        ) !important;
+    border-color: rgba(255, 174, 64, 0.75) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-warning:hover {
+    filter: brightness(1.06);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-primary {
+    color: var(--eyup-secondary-orange) !important;
+    border-width: 2px;
+    border-color: rgba(255, 102, 0, 0.55) !important;
+    background: rgba(255, 102, 0, 0.06);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-primary:hover {
+    color: var(--eyup-primary-black) !important;
+    background: var(--eyup-primary-orange) !important;
+    border-color: var(--eyup-primary-orange) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-secondary {
+    color: rgba(236, 240, 247, 0.85) !important;
+    border-width: 2px;
+    border-color: rgba(255, 102, 0, 0.22) !important;
+    background: rgba(0, 0, 0, 0.12);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-secondary:hover {
+    color: var(--eyup-white) !important;
+    border-color: rgba(255, 136, 64, 0.55) !important;
+    background: rgba(255, 102, 0, 0.08);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-success {
+    color: #6ee7b7 !important;
+    border-width: 2px;
+    border-color: rgba(46, 204, 113, 0.45) !important;
+    background: rgba(46, 204, 113, 0.06);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-success:hover {
+    color: #0f2018 !important;
+    border-color: #2ecc71 !important;
+    background: linear-gradient(
+        135deg,
+        rgba(46, 204, 113, 0.88) 0%,
+        rgba(52, 180, 120, 0.95) 100%
+    ) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-warning {
+    color: var(--eyup-light-orange) !important;
+    border-width: 2px;
+    border-color: rgba(255, 190, 80, 0.55) !important;
+    background: rgba(255, 148, 50, 0.07);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-warning:hover {
+    color: var(--eyup-primary-black) !important;
+    border-color: var(--eyup-secondary-orange) !important;
+    background: rgba(255, 132, 51, 0.88) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-danger {
+    color: #ffb3b8 !important;
+    border-width: 2px;
+    border-color: rgba(239, 68, 68, 0.5) !important;
+    background: rgba(239, 68, 68, 0.07);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-danger:hover {
+    color: #fff !important;
+    border-color: #e04848 !important;
+    background: linear-gradient(135deg, #c93232 0%, #e85454 100%) !important;
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-light {
+    color: var(--eyup-off-white) !important;
+    border-width: 2px;
+    border-color: rgba(255, 102, 0, 0.45) !important;
+    background: rgba(255, 102, 0, 0.1);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools .btn-outline-light:hover {
+    color: var(--eyup-primary-black) !important;
+    background: rgba(240, 240, 240, 0.98) !important;
+    border-color: var(--eyup-light-orange) !important;
+}
+
+/* Light modals keep dark-readable labels; soften outline buttons sitting on white */
+body.dark-mode.mdj-dash-tools.mdj-eyup-brand .btn-outline-primary,
+body.dark-mode.mdj-dash-tools.mdj-eyup-brand .btn-outline-secondary {
+    background: rgba(0, 0, 0, 0.15);
+}
+
 /* Scanlines (non-interactive, below modals) */
 body.mdj-eyup-brand .mdj-scanlines {
     position: fixed;

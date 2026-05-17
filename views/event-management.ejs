@@ -41,12 +41,6 @@
         }
 
         /* DJ / EYUP chrome alignment */
-        body.mdj-eyup-brand main.container.mdj-dash-main {
-            margin-top: 0;
-            padding-top: clamp(1rem, 2.5vw, 1.75rem);
-            padding-bottom: 1rem;
-        }
-
         body.dark-mode.mdj-eyup-brand .mdj-events-mgmt-navbar.mdj-site-navbar {
             background: rgba(6, 10, 16, 0.98);
             border-bottom-color: var(--eyup-primary-orange);
@@ -211,7 +205,7 @@
         }
     </style>
 </head>
-<body class="mdj-eyup-brand">
+<body class="mdj-eyup-brand mdj-dash-tools">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">Event Management</h1>
 
@@ -237,6 +231,7 @@
     </nav>
 
     <main class="container mdj-dash-main">
+        <div class="mdj-dash-scroll">
         <div id="eventsList" class="row g-3">
             <% if (events && events.length === 0) { %>
                 <div class="col-12">
@@ -334,6 +329,7 @@
                     </div>
                 <% }); %>
             <% } %>
+        </div>
         </div>
 
         <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">

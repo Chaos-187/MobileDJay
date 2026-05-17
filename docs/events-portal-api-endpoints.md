@@ -381,13 +381,14 @@ All require **Bearer** and **`role === customer`**.
 
 | Parameter | Values | Default |
 |-----------|--------|---------|
-| `scope` | `next_upcoming` \| `upcoming_all` | `upcoming_all` |
+| `scope` | `next_upcoming` \| `upcoming_all` \| `past_all` | `upcoming_all` |
 
 Semantics:
 
-- Returns bookings where `end_datetime >= now`, `status != cancelled`, and not **hidden** from dashboard.
-- `next_upcoming`: same ordering by `start_datetime` ascending, then **first only** (0 or 1 item).
+- `next_upcoming` and `upcoming_all`: bookings where `end_datetime >= now`, `status != cancelled`, and not **hidden** from dashboard (ordered by `start_datetime` ascending).
+- `next_upcoming`: **first only** (0 or 1 item).
 - `upcoming_all`: all matching rows.
+- `past_all`: bookings that have **ended** (`end_datetime < now`) for this customer, newest first (any status). Does not apply the dashboard hide filter.
 
 **Response `200`**
 
@@ -399,7 +400,7 @@ Array items match **BookingCard** (§3.1).
 }
 ```
 
-**Errors:** `validation_error` (422) if `scope` invalid.
+**Errors:** `validation_error` (422) if `scope` invalid (allowed: `next_upcoming`, `upcoming_all`, `past_all`).
 
 ---
 

@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { portalDb, uuid, normalizeEmail } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
+const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist } = require('./music-plan');
 
 const router = express.Router();
 
@@ -26,6 +27,19 @@ function publicUser(row) {
         u.capabilities = parseJsonField(u.capabilities) ?? u.capabilities;
     }
     return u;
+}
+
+function resolveMusicPlanForBooking(booking) {
+    const specific = portalDb.getMusicPlanRow(booking.customer_id, booking.id);
+    const fallback = portalDb.getMusicPlanRow(booking.customer_id, null);
+    let payload;
+    if (specific) payload = parsePayloadRow(specific);
+    else if (fallback) payload = parsePayloadRow(fallback);
+    else payload = emptyPlaylist();
+    return {
+        music_plan: payload,
+        music_plan_summary: formatMusicPlanSummary(payload)
+    };
 }
 
 function generateUniqueReference() {
@@ -299,7 +313,8 @@ router.get('/bookings/:id', (req, res) => {
         user_last_name: a.user_last_name,
         user_phone: a.user_phone
     }));
-    res.json({ ...booking, assignments: normalized });
+    const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
+    res.json({ ...booking, assignments: normalized, music_plan, music_plan_summary });
 });
 
 router.patch('/bookings/:id', (req, res) => {

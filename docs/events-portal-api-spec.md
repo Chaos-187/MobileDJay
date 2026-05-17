@@ -251,7 +251,7 @@ All require `role = customer`. Authorise every booking by `booking.customer_id =
 
 | Method | Path | Body / query | Response sketch |
 |--------|------|----------------|-----------------|
-| `GET` | `/customer/bookings` | `?scope=next_upcoming \| upcoming_all` | `{ "bookings": [ BookingCard ] }` |
+| `GET` | `/customer/bookings` | `?scope=next_upcoming \| upcoming_all \| past_all` | `{ "bookings": [ BookingCard ] }` |
 | `GET` | `/customer/bookings/:id` | — | Full booking + `notes_from_company` + customer’s `booking_customer_note` |
 | `PATCH` | `/customer/bookings/:id/note` | `{ "body": "..." }` | Updated note |
 | `POST` | `/customer/bookings/:id/hide` | — | Sets `hidden_from_dashboard=true` |

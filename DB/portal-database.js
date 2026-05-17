@@ -665,6 +665,20 @@ const portalDb = {
             .map((b) => materializeBooking(b));
     },
 
+    /** Past bookings for customer portal history (ended by time, any status). */
+    getCustomerBookingsPast(customerId) {
+        const now = nowIso();
+        return db
+            .prepare(`
+            SELECT b.* FROM bookings b
+            WHERE b.customer_id = ?
+              AND b.end_datetime < ?
+            ORDER BY b.start_datetime DESC
+        `)
+            .all(customerId, now)
+            .map((b) => materializeBooking(b));
+    },
+
     getBookingById(id) {
         return materializeBooking(db.prepare('SELECT * FROM bookings WHERE id = ?').get(id));
     },

@@ -399,12 +399,22 @@ const customerBookingRouter = express.Router({ mergeParams: true });
 
 customerBookingRouter.get('/', (req, res) => {
     const scope = req.query.scope || 'upcoming_all';
-    const rows = portalDb.getCustomerBookingsUpcoming(req.portalUser.id);
-    let bookings = rows.map(bookingCard);
-    if (scope === 'next_upcoming') {
-        bookings = bookings.slice(0, 1);
-    } else if (scope !== 'upcoming_all') {
-        return jsonError(res, 'validation_error', 'scope must be next_upcoming or upcoming_all', 422);
+    let bookings;
+    if (scope === 'past_all') {
+        bookings = portalDb.getCustomerBookingsPast(req.portalUser.id).map(bookingCard);
+    } else if (scope === 'next_upcoming' || scope === 'upcoming_all') {
+        const rows = portalDb.getCustomerBookingsUpcoming(req.portalUser.id);
+        bookings = rows.map(bookingCard);
+        if (scope === 'next_upcoming') {
+            bookings = bookings.slice(0, 1);
+        }
+    } else {
+        return jsonError(
+            res,
+            'validation_error',
+            'scope must be next_upcoming, upcoming_all, or past_all',
+            422
+        );
     }
     const key = customerPortalCollectionKey(req);
     res.json({ [key]: bookings });

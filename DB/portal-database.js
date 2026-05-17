@@ -826,6 +826,9 @@ const portalDb = {
         if (normalized.newsletter_opt_in !== undefined) {
             normalized.newsletter_opt_in = normalized.newsletter_opt_in ? 1 : 0;
         }
+        if (normalized.deposit_paid !== undefined) {
+            normalized.deposit_paid = normalized.deposit_paid ? 1 : 0;
+        }
 
         if (admin && pii.isEnabled()) {
             const piiKeys = ['contact_name', 'enquiry_message', 'hear_about'];

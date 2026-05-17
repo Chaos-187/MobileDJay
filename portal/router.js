@@ -5,6 +5,7 @@ const { normalizePlaylist, formatMusicPlanSummary, parsePayloadRow, emptyPlaylis
 const internalRouter = require('./internal-router');
 const adminRouter = require('./admin-router');
 const { verifyTurnstile } = require('./turnstile');
+const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
 
 const router = express.Router();
 
@@ -204,6 +205,80 @@ router.post('/auth/login', async (req, res) => {
     } catch (err) {
         console.error('[portal] login', err);
         return jsonError(res, 'internal_error', 'Login failed', 500);
+    }
+});
+
+router.post('/auth/login/google', async (req, res) => {
+    try {
+        const { id_token: idTokenRaw, cf_turnstile_response: cfTurnstile } = req.body || {};
+        if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'role')) {
+            return jsonError(res, 'validation_error', 'role must not be supplied by the client', 422);
+        }
+        const ts = await verifyTurnstile(req, cfTurnstile);
+        if (!ts.skipped && !ts.ok) {
+            return jsonError(res, 'turnstile_failed', 'Turnstile verification failed', 400, {
+                error_codes: ts.errorCodes || []
+            });
+        }
+        if (!isGoogleSignInConfigured()) {
+            return jsonError(res, 'service_unavailable', 'Google sign-in is not configured on this server', 503);
+        }
+        if (idTokenRaw == null || String(idTokenRaw).trim() === '') {
+            return jsonError(res, 'validation_error', 'id_token is required', 422);
+        }
+
+        let googleUser;
+        try {
+            googleUser = await verifyGoogleIdToken(String(idTokenRaw).trim());
+        } catch (e) {
+            if (e && e.code === 'INVALID_GOOGLE_TOKEN') {
+                return jsonError(res, 'invalid_credentials', 'Invalid Google token', 401);
+            }
+            throw e;
+        }
+
+        if (!googleUser.emailVerified) {
+            return jsonError(
+                res,
+                'forbidden',
+                'Google account email must be verified before using it to sign in',
+                403
+            );
+        }
+        if (!googleUser.email) {
+            return jsonError(res, 'invalid_credentials', 'Google token did not include an email claim', 401);
+        }
+
+        const user = portalDb.getUserByEmail(googleUser.email);
+        if (!user) {
+            return jsonError(
+                res,
+                'invalid_credentials',
+                'No portal account matches this Google email — use the email we have on file',
+                401
+            );
+        }
+        if (user.role !== 'customer') {
+            return jsonError(
+                res,
+                'forbidden',
+                'Google sign-in is only available for customer portal accounts',
+                403
+            );
+        }
+        if (user.disabled_at != null && String(user.disabled_at).trim() !== '') {
+            return jsonError(res, 'forbidden', 'Account disabled', 403);
+        }
+
+        const access_token = signAccessToken(user);
+        res.json({
+            access_token,
+            token_type: 'Bearer',
+            user: { id: user.id, email: user.email, role: user.role, first_name: user.first_name }
+        });
+    } catch (err) {
+        console.error('[portal] login/google', err);
+        return jsonError(res, 'internal_error', 'Google login failed', 500);
     }
 });
 

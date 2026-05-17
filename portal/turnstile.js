@@ -3,8 +3,8 @@
  * https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
  *
  * Set CLOUDFLARE_TURNSTILE_SECRET_KEY (or TURNSTILE_SECRET_KEY) on the API host.
- * When unset, verification is skipped (local dev). When set, POST /auth/login and /auth/register
- * require a valid cf_turnstile_response token from the client.
+ * When unset, verification is skipped (local dev). When set, POST /auth/login, POST /auth/login/google,
+ * and /auth/register require a valid cf_turnstile_response token from the client.
  */
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';

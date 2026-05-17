@@ -46,7 +46,9 @@ Authorization: Bearer <access_token>
 
 Role enforcement: each route requires the **documented** `role` (`customer`, `dj`, or **`admin`**) or responds **403** (`forbidden`).
 
-**Login / register — Cloudflare Turnstile (optional):** Set **`CLOUDFLARE_TURNSTILE_SECRET_KEY`** (alias **`TURNSTILE_SECRET_KEY`**) on **`requests.eyupevents.uk`**. When set, **`POST /auth/login`** and **`POST /auth/register`** require **`cf_turnstile_response`** in the JSON body; the server verifies against **`https://challenges.cloudflare.com/turnstile/v0/siteverify`** before issuing JWTs. When unset, verification is skipped (backward compatible).
+**Login / register — Cloudflare Turnstile (optional):** Set **`CLOUDFLARE_TURNSTILE_SECRET_KEY`** (alias **`TURNSTILE_SECRET_KEY`**) on **`requests.eyupevents.uk`**. When set, **`POST /auth/login`**, **`POST /auth/login/google`**, and **`POST /auth/register`** require **`cf_turnstile_response`** in the JSON body; the server verifies against **`https://challenges.cloudflare.com/turnstile/v0/siteverify`** before issuing JWTs. When unset, verification is skipped (backward compatible).
+
+**Customer Google Sign-In (optional):** Set **`PORTAL_GOOGLE_CLIENT_ID`** (or **`PORTAL_GOOGLE_CLIENT_IDS`** for multiple OAuth Web clients). When unset, **`POST /auth/login/google`** returns **`503`** `service_unavailable`. Frontend GIS must use an **Authorized JavaScript origin** matching the site where **`window.__EYUP_GOOGLE_CLIENT_ID__`** is set (e.g. **`/events/login`**, **`/events/customer`** gate).
 
 ### 1.3 Dates and IDs
 
@@ -250,6 +252,31 @@ Same Turnstile rule as **register**: if the Turnstile secret env var is set, **`
 Same minimal **`user`** shape as **`POST /auth/register`**; use **`GET /auth/me`** for full profile fields.
 
 **Errors:** `validation_error` (422), `invalid_credentials` (401), `forbidden` (**403** — account disabled), **`turnstile_failed`** (400, see `details.error_codes`), `internal_error` (500).
+
+---
+
+### `POST /auth/login/google`
+
+**Customer portal — Google Sign-In.** Same **`access_token` + `user`** response as **`POST /auth/login`**, but only when a portal user exists with **`role === customer`** whose **`email`** matches **`email`** in a verified Google **ID token** (payload **`email_verified`** true).
+
+**Must not** send `role` in the body (**422** if present).
+
+**Server responsibilities:** **`google-auth-library`** verifies JWT signature, **`iss`** (accounts.google.com / https://accounts.google.com), **`aud`** (must match **`PORTAL_GOOGLE_CLIENT_ID`** values), **`exp`**, and checks **`email_verified`**.
+
+Turnstile: same rule as **`POST /auth/login`** (**§1.2**) when **`CLOUDFLARE_TURNSTILE_SECRET_KEY`** is set.
+
+**Request body**
+
+```json
+{
+  "id_token": "string (required — GIS credential JWT)",
+  "cf_turnstile_response": "string (required when Turnstile secret env is set)"
+}
+```
+
+**Response `200`:** Same shape as **`POST /auth/login`** (**`role`** `"customer"` for Google path).
+
+**Errors:** `validation_error` (422), `invalid_credentials` (**401** — bad token / no portal customer email), **`forbidden`** (**403** — disabled, **`email_verified` false**, or matching user **`role`** is not **`customer`**), **`turnstile_failed`** (400), **`service_unavailable`** (**503** — Google client ID env not configured), `internal_error` (500).
 
 ---
 
@@ -800,7 +827,7 @@ Removes one assignment. **Response `204`**.
 | **Internal automation** (n8n, CRM) | **`POST /internal/users`**, **`POST /internal/bookings`** or **`POST /internal/events`** — §9 (**customer_email** may **upsert** a new customer) |
 | Per-booking music plan **writes** via customer API | Only **default** plan via `PUT /customer/profile`; per-booking rows may exist in DB for future use |
 | Rate limiting | Not implemented (recommended for login in production) |
-| **Cloudflare Turnstile** on login/register | Optional — when env secret is set (§1.2 / §4) |
+| **Cloudflare Turnstile** on login / login-google / register | Optional — when env secret is set (§1.2 / §4) |
 
 ---
 
@@ -810,6 +837,7 @@ Removes one assignment. **Response `204`**.
 |--------|------|------|------|
 | POST | `/api/v1/auth/register` | No | — |
 | POST | `/api/v1/auth/login` | No | — |
+| POST | `/api/v1/auth/login/google` | No | — |
 | POST | `/api/v1/auth/logout` | No | — |
 | POST | `/api/v1/auth/change-password` | Bearer | any (password-login accounts) |
 | POST | `/api/v1/auth/delete-account` | Bearer | any |
@@ -1010,7 +1038,7 @@ Alias for **`POST /internal/bookings`** (same JSON body and **`201`** response).
 
 ---
 
-*Document version: 1.8 — **`POST /auth/change-password`**, **`POST /auth/delete-account`** (self-service); **`POST /auth/register`** enforces **`password`** min length **8** (aligned with admin/internal).*
+*Document version: 1.9 — **`POST /auth/login/google`** (customer Google ID token → JWT; **`PORTAL_GOOGLE_CLIENT_ID`**); Turnstile on **`login` / login/google / `register`**; **`POST /auth/change-password`**, **`POST /auth/delete-account`**.*
 
-*Prior: v1.7 Cloudflare Turnstile on **`POST /auth/login`** & **`POST /auth/register`** (`cf_turnstile_response`; env `CLOUDFLARE_TURNSTILE_SECRET_KEY`).*
+*Prior: v1.8 self-service **`change-password`** & **`delete-account`**; **`register`** min **`password`** **8**. v1.7 Turnstile on **`login` & `register`**.*
 

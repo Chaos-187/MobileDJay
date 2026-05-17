@@ -236,6 +236,7 @@ Either single row per booking or append-only history — v1 single row is enough
 |--------|------|-------------|
 | `POST` | `/auth/register` | Optional; may be invite-only. |
 | `POST` | `/auth/login` | Email + password → tokens. **Reject** arbitrary role from client; set role from `users.role`. |
+| `POST` | `/auth/login/google` | Google **ID token** → tokens **only** for existing **`customer`** matched by verified **`email`**. Requires **`PORTAL_GOOGLE_CLIENT_ID`** on server (see **`portal/router.js`**). |
 | `POST` | `/auth/logout` | Invalidate refresh token. |
 | `POST` | `/auth/change-password` | Bearer; `current_password` + `new_password` (JWTs unchanged until expiry). |
 | `POST` | `/auth/delete-account` | Bearer; confirms with `password` or passwordless flag; constraints on bookings / DJs / last admin. |

@@ -498,7 +498,7 @@ const portalDb = {
         if (qTrim && !pii.isEnabled()) {
             const like = `%${qTrim.toLowerCase()}%`;
             sql +=
-                ' AND (LOWER(email) LIKE ? OR IFNULL(LOWER(first_name), "") LIKE ? OR IFNULL(LOWER(last_name), "") LIKE ? OR IFNULL(LOWER(phone), "") LIKE ?)';
+                " AND (LOWER(email) LIKE ? OR IFNULL(LOWER(first_name), '') LIKE ? OR IFNULL(LOWER(last_name), '') LIKE ? OR IFNULL(LOWER(phone), '') LIKE ?)";
             params.push(like, like, like, like);
         }
         sql += ' ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?';

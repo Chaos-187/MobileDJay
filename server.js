@@ -785,7 +785,11 @@ app.post('/api/karaoke/clear-spin', (req, res) => {
 
 // Customer Routes
 app.get('/', (req, res) => {
-    res.render('index', { eventSlug: null, event: null });
+    res.render('index', {
+        marketingSiteOrigin: process.env.EYUP_MARKETING_SITE_ORIGIN,
+        eventSlug: null,
+        event: null
+    });
 });
 
 app.get('/song-request', (req, res) => {
@@ -808,7 +812,11 @@ app.get('/send-message', (req, res) => {
 // ==================== Event-specific Customer Routes ====================
 // Event landing page
 app.get('/event/:eventSlug', getEventFromSlug, (req, res) => {
-    res.render('index', { eventSlug: req.event.slug, event: req.event });
+    res.render('index', {
+        marketingSiteOrigin: process.env.EYUP_MARKETING_SITE_ORIGIN,
+        eventSlug: req.event.slug,
+        event: req.event
+    });
 });
 
 // Event-specific song request

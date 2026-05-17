@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+<%
+    const mb = typeof marketingSiteOrigin === 'string' && marketingSiteOrigin ? marketingSiteOrigin.replace(/\/$/, '') : 'https://eyupevents.uk';
+%>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +13,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
+    <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <style>
         .profile-name-btn {
             display: inline-flex;
@@ -73,7 +80,7 @@ body, .card-text, p, .lead { color: <%= event.text_color %>; }
 h1, h2, h3, h4, h5, h6, .card-title, .display-4 { color: <%= event.heading_color %> !important; }
 <% } %>
 <% if (event.accent_color) { %>
-.navbar, .bg-primary { background-color: <%= event.accent_color %> !important; }
+body.mdj-eyup-brand .mdj-site-navbar { background-color: <%= event.accent_color %> !important; border-bottom-color: <%= event.accent_color %> !important; }
 .btn-primary { background-color: <%= event.accent_color %>; border-color: <%= event.accent_color %>; }
 .btn-primary:hover { background-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); border-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); }
 .text-primary { color: <%= event.accent_color %> !important; }
@@ -95,22 +102,69 @@ a { color: <%= event.accent_color %>; }
     
 
 </head>
-<body>
-    <nav class="navbar navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="<%= eventSlug ? '/event/' + eventSlug : '/' %>">
-                <i class="fas fa-music me-2"></i>MobileDJay<% if (event && event.name) { %> - <%= event.name %><% } else { %> - DJ Chaos<% } %>
-            </a>
+<body class="mdj-eyup-brand">
+    <div class="mdj-scanlines" aria-hidden="true"></div>
 
-            <!-- Move message icon to navbar right so it's consistent across pages -->
-            <div class="ms-auto d-flex align-items-center gap-2">
-                <button type="button" id="editNameBtn" class="btn btn-sm profile-name-btn" style="display: none;" aria-label="Edit your name">
-                    <i class="fas fa-user-circle"></i>
-                    <span id="welcomeName" class="profile-name-text"></span>
-                </button>
-                <button id="repliesBellBtn" class="nav-msg-btn position-relative" title="Messages" aria-pressed="false" role="button" type="button" aria-label="Messages">
-                    <i class="fas fa-comment-dots"></i>
-                    <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
+    <nav class="mdj-site-navbar" aria-label="Site and app">
+        <div class="nav-container">
+            <a class="logo" href="<%= mb %>/" target="_blank" rel="noopener noreferrer">
+                <span class="logo-text">EYUP</span>
+                <span class="logo-accent">EVENTS</span>
+                <span class="logo-subtitle"><i class="fas fa-headphones-simple" aria-hidden="true"></i> MobileDJay<% if (event && event.name) { %> · <%= event.name %><% } else if (typeof eventSlug === 'string' && eventSlug) { %> · live requests<% } else { %> · DJ request system<% } %></span>
+            </a>
+            <ul id="mdj-primary-nav" class="nav-menu" role="list">
+                <li><a href="<%= mb %>/" class="nav-link" target="_blank" rel="noopener noreferrer">Home</a></li>
+                <li class="nav-item-has-dropdown">
+                    <a href="<%= mb %>/#services" class="nav-link" target="_blank" rel="noopener noreferrer">Services<span class="nav-dropdown-arrow" aria-hidden="true"></span></a>
+                    <ul class="nav-dropdown" role="list">
+                        <li><a href="<%= mb %>/mobile-dj" class="nav-dropdown-link" target="_blank" rel="noopener noreferrer">Mobile DJ</a></li>
+                        <li><a href="<%= mb %>/pa-rental" class="nav-dropdown-link" target="_blank" rel="noopener noreferrer">PA Rental</a></li>
+                        <li><a href="<%= mb %>/karaoke" class="nav-dropdown-link" target="_blank" rel="noopener noreferrer">Karaoke</a></li>
+                        <li>
+                            <a href="<%= mb %>/photo-booth" class="nav-dropdown-link nav-dropdown-link-coming" target="_blank" rel="noopener noreferrer">
+                                <span class="nav-dropdown-coming-label">Photo Booth</span>
+                                <span class="badge-soon">Coming soon</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<%= mb %>/audio-guestbook" class="nav-dropdown-link nav-dropdown-link-coming" target="_blank" rel="noopener noreferrer">
+                                <span class="nav-dropdown-coming-label">Audio Guestbook</span>
+                                <span class="badge-soon">Coming soon</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<%= mb %>/inflatables" class="nav-dropdown-link nav-dropdown-link-coming" target="_blank" rel="noopener noreferrer">
+                                <span class="nav-dropdown-coming-label">Inflatable hire</span>
+                                <span class="badge-soon">Coming soon</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="<%= mb %>/outdoor-games" class="nav-dropdown-link nav-dropdown-link-coming" target="_blank" rel="noopener noreferrer">
+                                <span class="nav-dropdown-coming-label">Outdoor games</span>
+                                <span class="badge-soon">Coming soon</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li><a href="<%= mb %>/gallery" class="nav-link" target="_blank" rel="noopener noreferrer">Gallery</a></li>
+                <li><a href="<%= mb %>/about" class="nav-link" target="_blank" rel="noopener noreferrer">About</a></li>
+                <li><a href="<%= mb %>/events" class="nav-link" target="_blank" rel="noopener noreferrer">Your portal</a></li>
+                <li><a href="<%= eventSlug ? '/event/' + eventSlug : '/' %>" class="nav-link active">Requests</a></li>
+                <li><a href="<%= mb %>/contact" class="nav-link" target="_blank" rel="noopener noreferrer">Contact</a></li>
+            </ul>
+            <div class="mdj-nav-controls">
+                <div class="nav-actions">
+                    <button type="button" id="editNameBtn" class="btn btn-sm profile-name-btn" style="display: none;" aria-label="Edit your name">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="welcomeName" class="profile-name-text"></span>
+                    </button>
+                    <button id="repliesBellBtn" class="nav-msg-btn position-relative" title="Messages" aria-pressed="false" role="button" type="button" aria-label="Messages">
+                        <i class="fas fa-comment-dots"></i>
+                        <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
+                    </button>
+                </div>
+                <button type="button" class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="mdj-primary-nav">
+                    <span class="hamburger"></span>
                 </button>
             </div>
         </div>
@@ -238,6 +292,16 @@ a { color: <%= event.accent_color %>; }
             </div>
 
         </div>
+
+        <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">
+            <div class="mdj-footer-container">
+                <div class="mdj-company-foot">
+                    <p class="mdj-company-foot__brand"><span class="logo-text">EYUP</span><span class="logo-accent">EVENTS</span></p>
+                    <p class="mdj-company-foot__legal">&copy; 2026 EYUP EVENTS UK LTD · Co. no. 17186451 · All rights reserved</p>
+                    <p class="mdj-company-foot__contact"><a href="mailto:info@eyupevents.uk">info@eyupevents.uk</a></p>
+                </div>
+            </div>
+        </footer>
     </main>
 
     <!-- Replies Screen (same layout as send-message page) -->
@@ -355,6 +419,7 @@ a { color: <%= event.accent_color %>; }
     })();
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/eyup-nav.js"></script>
     <script src="/js/app.js"></script>
 </body>
 </html>

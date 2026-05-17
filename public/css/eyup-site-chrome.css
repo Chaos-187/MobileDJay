@@ -1,0 +1,575 @@
+/**
+ * EYUP EVENTS marketing chrome for MobileDJay request pages.
+ * Scoped to body.mdj-eyup-brand — does not alter other app screens.
+ */
+body.mdj-eyup-brand {
+    --eyup-primary-black: #0a0a0a;
+    --eyup-secondary-black: #1a1a1a;
+    --eyup-tertiary-black: #2a2a2a;
+    --eyup-primary-orange: #ff6600;
+    --eyup-secondary-orange: #ff8533;
+    --eyup-light-orange: #ffaa66;
+    --eyup-white: #ffffff;
+    --eyup-off-white: #f0f0f0;
+    --eyup-gray: #888888;
+    --eyup-dark-gray: #444444;
+    --font-retro: 'Press Start 2P', cursive;
+    --font-futuristic: 'Orbitron', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --eyup-container-width: 1200px;
+    --eyup-transition-fast: 0.2s ease;
+    --eyup-transition-medium: 0.4s ease;
+    --mdj-eyup-nav-h: 74px;
+}
+
+/* Fixed header offset (navbar is position:fixed) */
+body.mdj-eyup-brand {
+    padding-top: var(--mdj-eyup-nav-h);
+}
+
+body.mdj-eyup-brand main.container {
+    max-height: calc(100vh - var(--mdj-eyup-nav-h));
+}
+
+/* Scanlines (non-interactive, below modals) */
+body.mdj-eyup-brand .mdj-scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 40;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    opacity: 0.28;
+}
+
+/* ——— Site navbar (matches eyupevents.uk) ——— */
+body.mdj-eyup-brand .mdj-site-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 5000;
+    overflow: visible;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 2px solid var(--eyup-primary-orange);
+    transition: var(--eyup-transition-medium);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-container {
+    max-width: var(--eyup-container-width);
+    margin: 0 auto;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    overflow: visible;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .logo {
+    text-decoration: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    flex-shrink: 0;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .logo-text {
+    font-family: var(--font-retro);
+    font-size: clamp(0.75rem, 2.8vw, 1.35rem);
+    color: var(--eyup-white);
+    text-shadow: 0 0 10px var(--eyup-primary-orange);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .logo-accent {
+    font-family: var(--font-futuristic);
+    font-size: clamp(0.72rem, 2.5vw, 1.05rem);
+    color: var(--eyup-primary-orange);
+    font-weight: 700;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .logo-subtitle {
+    width: 100%;
+    flex-basis: 100%;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    color: rgba(240, 240, 245, 0.55);
+    margin: 4px 0 0;
+    line-height: 1.3;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .mdj-nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-msg-btn {
+    color: var(--eyup-off-white);
+    background: rgba(255, 102, 0, 0.12);
+    border: 1px solid rgba(255, 102, 0, 0.35);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-msg-btn:hover {
+    background: rgba(255, 102, 0, 0.22);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-toggle {
+    display: none;
+    background: none;
+    border: 2px solid var(--eyup-primary-orange);
+    padding: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .hamburger {
+    display: block;
+    width: 25px;
+    height: 2px;
+    background: var(--eyup-primary-orange);
+    position: relative;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .hamburger::before,
+body.mdj-eyup-brand .mdj-site-navbar .hamburger::after {
+    content: '';
+    position: absolute;
+    width: 25px;
+    height: 2px;
+    background: var(--eyup-primary-orange);
+    left: 0;
+    transition: var(--eyup-transition-fast);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .hamburger::before {
+    top: -8px;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .hamburger::after {
+    top: 8px;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-menu {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    gap: clamp(12px, 2.5vw, 36px);
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-menu > li {
+    display: flex;
+    align-items: center;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-menu > li > .nav-link {
+    display: flex;
+    align-items: center;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-link {
+    text-decoration: none;
+    color: var(--eyup-off-white);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    position: relative;
+    padding: 5px 0;
+    transition: var(--eyup-transition-fast);
+    white-space: nowrap;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-link::before {
+    content: '>';
+    position: absolute;
+    left: -15px;
+    opacity: 0;
+    color: var(--eyup-primary-orange);
+    transition: opacity var(--eyup-transition-fast);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-link:hover,
+body.mdj-eyup-brand .mdj-site-navbar .nav-link.active {
+    color: var(--eyup-primary-orange);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-link:hover::before,
+body.mdj-eyup-brand .mdj-site-navbar .nav-link.active::before {
+    opacity: 1;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown {
+    position: relative;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown > .nav-link {
+    gap: 0.35rem;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown-arrow::after {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 2px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid currentColor;
+    opacity: 0.75;
+    vertical-align: middle;
+    transition: transform var(--eyup-transition-fast);
+}
+
+@media (hover: hover) {
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown:hover > .nav-link .nav-dropdown-arrow::after,
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown:focus-within > .nav-link .nav-dropdown-arrow::after {
+        transform: rotate(180deg);
+    }
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown {
+    position: absolute;
+    top: calc(100% - 12px);
+    left: 50%;
+    transform: translate(-50%, 10px);
+    min-width: 240px;
+    margin: 0;
+    padding: 14px 0 10px;
+    list-style: none;
+    background: rgba(16, 16, 16, 0.98);
+    border: 2px solid var(--eyup-dark-gray);
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 102, 0, 0.15);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity var(--eyup-transition-fast),
+        visibility var(--eyup-transition-fast),
+        transform var(--eyup-transition-fast);
+    z-index: 5050;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown li {
+    list-style: none;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown:hover .nav-dropdown,
+body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown:focus-within .nav-dropdown {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translate(-50%, 6px);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown-link {
+    display: block;
+    padding: 12px 20px;
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    color: var(--eyup-off-white);
+    transition: background var(--eyup-transition-fast), color var(--eyup-transition-fast);
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown-link:hover,
+body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown-link:focus-visible {
+    background: rgba(255, 102, 0, 0.12);
+    color: var(--eyup-primary-orange);
+    outline: none;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown-link-coming {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+body.mdj-eyup-brand .mdj-site-navbar .badge-soon {
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid var(--eyup-dark-gray);
+    border-radius: 2px;
+    color: var(--eyup-primary-orange);
+    opacity: 0.85;
+}
+
+@media (min-width: 768px) {
+    body.mdj-eyup-brand .mdj-site-navbar .nav-container {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu {
+        flex: 1 1 auto;
+        justify-content: flex-end;
+        min-width: 0;
+        gap: clamp(14px, 2.2vw, 32px);
+        margin-inline-end: 10px;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .mdj-nav-controls {
+        margin-left: 0;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu > li {
+        align-items: stretch;
+        min-height: 2.75rem;
+        height: 2.75rem;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu > li > .nav-link {
+        align-self: stretch;
+        flex: 0 1 auto;
+        line-height: 1;
+        min-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-link::before {
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown-arrow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        line-height: 0;
+        align-self: center;
+        height: 1em;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown-arrow::after {
+        margin-top: 0;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown.submenu-open .nav-dropdown {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translate(-50%, 6px);
+    }
+}
+
+@media (max-width: 767px) {
+    body.mdj-eyup-brand .mdj-site-navbar .logo-subtitle {
+        display: none;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-toggle {
+        display: block;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-container {
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .mdj-nav-controls {
+        margin-left: auto;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu {
+        flex-basis: 100%;
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        position: fixed;
+        top: var(--mdj-eyup-nav-h);
+        left: 0;
+        z-index: 4990;
+        width: 100%;
+        max-height: calc(100vh - var(--mdj-eyup-nav-h));
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        background: var(--eyup-primary-black);
+        gap: 0;
+        padding: 20px 20px 28px;
+        border-bottom: 2px solid var(--eyup-primary-orange);
+        transform: translateY(-150%);
+        opacity: 0;
+        transition: var(--eyup-transition-medium);
+        pointer-events: none;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu.active {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu > li {
+        width: 100%;
+        height: auto;
+        min-height: 0;
+        border-bottom: 1px solid rgba(255, 102, 0, 0.12);
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu > li:last-child {
+        border-bottom: none;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-menu > li > .nav-link {
+        width: 100%;
+        padding: 16px 6px 16px 10px;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+        justify-content: space-between;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-link::before {
+        display: none;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown:hover .nav-dropdown,
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown:focus-within .nav-dropdown {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: none;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-dropdown {
+        position: static;
+        transform: none;
+        width: 100%;
+        max-width: none;
+        min-width: unset;
+        max-height: 0;
+        opacity: 0;
+        visibility: hidden;
+        overflow: hidden;
+        padding: 0;
+        margin: 0;
+        border: none;
+        box-shadow: none;
+        background: rgba(8, 8, 8, 0.85);
+        border-radius: 4px;
+        transition:
+            max-height 0.35s ease,
+            opacity 0.25s ease,
+            padding 0.25s ease,
+            visibility 0.25s;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown.submenu-open .nav-dropdown {
+        max-height: min(70vh, 520px);
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        padding: 8px 0;
+        margin-bottom: 12px;
+        border: 1px solid rgba(255, 102, 0, 0.22);
+        border-left: 3px solid var(--eyup-primary-orange);
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+
+    body.mdj-eyup-brand .mdj-site-navbar .nav-item-has-dropdown.submenu-open > .nav-link .nav-dropdown-arrow::after {
+        transform: rotate(180deg);
+    }
+}
+
+/* ——— Compact footer (company details only — saves space on mobile) ——— */
+body.mdj-eyup-brand .mdj-eyup-footer--compact {
+    background: var(--eyup-primary-black);
+    padding: 14px 0 16px;
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--eyup-dark-gray);
+}
+
+body.mdj-eyup-brand .mdj-eyup-footer--compact .mdj-footer-container {
+    max-width: var(--eyup-container-width);
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+body.mdj-eyup-brand .mdj-company-foot {
+    text-align: center;
+}
+
+body.mdj-eyup-brand .mdj-company-foot__brand {
+    margin: 0 0 0.35rem;
+    line-height: 1.2;
+}
+
+body.mdj-eyup-brand .mdj-company-foot__brand .logo-text {
+    font-family: var(--font-retro);
+    font-size: clamp(0.62rem, 2.5vw, 0.78rem);
+    color: var(--eyup-white);
+    text-shadow: 0 0 8px var(--eyup-primary-orange);
+}
+
+body.mdj-eyup-brand .mdj-company-foot__brand .logo-accent {
+    font-family: var(--font-futuristic);
+    font-size: clamp(0.72rem, 2.8vw, 0.88rem);
+    color: var(--eyup-primary-orange);
+    font-weight: 700;
+    margin-left: 6px;
+}
+
+body.mdj-eyup-brand .mdj-company-foot__legal {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: clamp(0.65rem, 2.8vw, 0.75rem);
+    color: var(--eyup-gray);
+    line-height: 1.45;
+    max-width: 28rem;
+    margin-inline: auto;
+}
+
+body.mdj-eyup-brand .mdj-company-foot__contact {
+    margin: 0.4rem 0 0;
+    font-family: var(--font-mono);
+    font-size: clamp(0.72rem, 3vw, 0.82rem);
+}
+
+body.mdj-eyup-brand .mdj-company-foot__contact a {
+    color: var(--eyup-gray);
+    text-decoration: none;
+    transition: color var(--eyup-transition-fast);
+}
+
+body.mdj-eyup-brand .mdj-company-foot__contact a:hover,
+body.mdj-eyup-brand .mdj-company-foot__contact a:focus-visible {
+    color: var(--eyup-primary-orange);
+}
+

@@ -86,6 +86,12 @@
             border-bottom-color: var(--eyup-primary-orange);
         }
 
+        body.mdj-eyup-brand main.container.mdj-dash-main {
+            margin-top: 0;
+            padding-top: clamp(1rem, 2.5vw, 1.75rem);
+            padding-bottom: 1rem;
+        }
+
         body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .nav-container {
             flex-wrap: wrap;
             row-gap: 10px;
@@ -118,6 +124,18 @@
         body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event .form-select.form-select-sm:focus {
             border-color: var(--eyup-primary-orange);
             box-shadow: 0 0 0 0.18rem rgba(255, 102, 0, 0.22);
+        }
+
+        /*
+         Native <option> menus use system/light surfaces; global .text-muted and body colors were
+         making list text unreadable. Force readable defaults for opened dropdown list entries.
+        */
+        body.mdj-eyup-brand #activeEventSelect option {
+            color: #1a1a1a !important;
+            background-color: #ffffff !important;
+        }
+        body.mdj-eyup-brand #activeEventSelect option.mdj-dash-event-opt--inactive {
+            color: #5c6570 !important;
         }
 
         body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .mdj-nav-controls {
@@ -218,7 +236,7 @@
                 <select id="activeEventSelect" class="form-select form-select-sm" style="min-width: 180px; max-width: 250px;">
                     <option value="all">All Events</option>
                     <% events.forEach(function(event) { %>
-                        <option value="<%= event.id %>" <%= event.is_active ? '' : 'class="text-muted"' %>>
+                        <option value="<%= event.id %>"<%= event.is_active ? '' : ' class="mdj-dash-event-opt--inactive"' %>>
                             <%= event.name %><%= event.is_active ? '' : ' (inactive)' %>
                         </option>
                     <% }); %>
@@ -244,7 +262,7 @@
         </div>
     </nav>
 
-    <main class="container mt-4">
+    <main class="container mdj-dash-main">
         <!-- Navigation Tabs -->
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -392,6 +410,14 @@
                 </div>
             </div>
         </div>
+
+        <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">
+            <div class="mdj-footer-container">
+                <div class="mdj-company-foot">
+                    <p class="mdj-company-foot__legal">&copy; 2026 EYUP EVENTS UK LTD · Co. no. 17186451 · All rights reserved</p>
+                </div>
+            </div>
+        </footer>
     </main>
 
     <!-- Reply Modal -->

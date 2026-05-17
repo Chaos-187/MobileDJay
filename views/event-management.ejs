@@ -79,6 +79,85 @@
         body.dark-mode .text-muted {
             color: #8fa3b8 !important;
         }
+
+        /*
+         Global style.css is a dark theme (light text). Bootstrap modals stay light unless
+         body.dark-mode touches them, so headings/labels become low-contrast on white.
+        */
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .modal-content {
+            background-color: #fff;
+            color: #212529;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .modal-title,
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .modal-body :where(h1, h2, h3, h4, h5, h6),
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .modal-footer {
+            color: #212529;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .modal-body :where(p, .lead, #qrEventName) {
+            color: #212529 !important;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .text-muted {
+            color: #6c757d !important;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) label {
+            color: #212529;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-label {
+            color: #495057;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-text {
+            color: #6c757d !important;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .form-check-label {
+            color: #212529 !important;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-control,
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-select {
+            background-color: #fff;
+            color: #212529;
+            border-color: #ced4da;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .form-control::placeholder {
+            color: #6c757d;
+            opacity: 1;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .form-control:focus,
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .form-select:focus {
+            background-color: #fff;
+            color: #212529;
+            border-color: #86b7fe;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .form-control[readonly] {
+            background-color: #e9ecef;
+            color: #212529;
+            border-color: #ced4da;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .form-control[readonly]:focus {
+            background-color: #e9ecef;
+            color: #212529;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .form-check-input {
+            background-color: #fff;
+            border-color: #adb5bd;
+        }
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .modal-header,
+        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
+            .modal-footer {
+            border-color: rgba(0, 0, 0, 0.175);
+        }
     </style>
 </head>
 <body>

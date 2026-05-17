@@ -6,13 +6,13 @@
     <title>DJ Dashboard - MobileDJay</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
+    <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <style>
-        .dj-header {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
-            padding: 0.75rem 0;
-        }
         .request-card {
             transition: all 0.3s ease;
             border-left: 4px solid transparent;
@@ -81,10 +81,68 @@
             background: #0f1720;
             color: #e6eef8;
         }
-        body.dark-mode .dj-header {
-            background: linear-gradient(135deg, #061322 0%, #0b2540 100%);
-            color: #e6eef8;
+        body.dark-mode.mdj-eyup-brand .mdj-dashboard-navbar.mdj-site-navbar {
+            background: rgba(6, 10, 16, 0.98);
+            border-bottom-color: var(--eyup-primary-orange);
         }
+
+        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .nav-container {
+            flex-wrap: wrap;
+            row-gap: 10px;
+        }
+        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .logo {
+            flex: 0 1 auto;
+            min-width: 0;
+        }
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1 1 200px;
+            min-width: 0;
+        }
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event-label {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.05em;
+            color: rgba(240, 240, 245, 0.55);
+            white-space: nowrap;
+        }
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event .form-select.form-select-sm {
+            background: rgba(255, 255, 255, 0.07);
+            color: var(--eyup-off-white);
+            border: 1px solid rgba(255, 102, 0, 0.35);
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event .form-select.form-select-sm:focus {
+            border-color: var(--eyup-primary-orange);
+            box-shadow: 0 0 0 0.18rem rgba(255, 102, 0, 0.22);
+        }
+
+        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .mdj-nav-controls {
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn {
+            min-width: 48px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+        }
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn.btn-lg {
+            padding: .45rem .9rem;
+            font-size: 0.95rem;
+        }
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn i { margin-right: .4rem; }
+
+        @media (max-width: 768px) {
+            body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn { min-width: 40px; }
+            body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn.btn-lg { padding: .35rem .6rem; }
+        }
+
         body.dark-mode .card {
             background: #101419;
             color: #d7e6f5;
@@ -127,24 +185,6 @@
         body.dark-mode .btn-outline-primary { color: #cfe8ff; border-color: rgba(79,174,255,0.18); }
         body.dark-mode .btn-outline-secondary { color: #c7d5e6; border-color: rgba(255,255,255,0.06); }
 
-        .dj-header .btn {
-            min-width: 48px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: .5rem;
-        }
-        .dj-header .btn.btn-lg {
-            padding: .45rem .9rem;
-            font-size: 0.95rem;
-        }
-        .dj-header .btn i { margin-right: .4rem; }
-
-        @media (max-width: 768px) {
-            .dj-header .btn { min-width: 40px; }
-            .dj-header .btn.btn-lg { padding: .35rem .6rem; }
-        }
-
         /* Nav tabs styling */
         .nav-tabs .nav-link {
             color: #6c757d;
@@ -162,46 +202,47 @@
         }
     </style>
 </head>
-<body>
-    <div class="dj-header">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div class="d-flex align-items-center gap-3 flex-wrap">
-                    <h1 class="h3 mb-0">
-                        <i class="fas fa-headphones me-2"></i>DJ Dashboard
-                    </h1>
-                    <div class="d-flex align-items-center gap-2">
-                        <label for="activeEventSelect" class="text-white-50 small mb-0 d-none d-sm-inline">Event:</label>
-                        <select id="activeEventSelect" class="form-select form-select-sm" style="min-width: 180px; max-width: 250px;">
-                            <option value="all">All Events</option>
-                            <% events.forEach(function(event) { %>
-                                <option value="<%= event.id %>" <%= event.is_active ? '' : 'class="text-muted"' %>>
-                                    <%= event.name %><%= event.is_active ? '' : ' (inactive)' %>
-                                </option>
-                            <% }); %>
-                        </select>
-                    </div>
-                </div>
-                <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <a href="/dj/events" class="btn btn-info btn-sm" title="Event Management">
-                        <i class="fas fa-calendar-alt me-1"></i><span class="d-none d-md-inline">Events</span>
-                    </a>
-                    <button id="triggerSpinBtn" class="btn btn-warning btn-sm" title="Trigger Karaoke Spin">
-                        <i class="fas fa-dice me-1"></i><span class="d-none d-md-inline">Spin!</span>
-                    </button>
-                    <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" target="_blank" title="Open Spinner Display">
-                        <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">Spinner</span>
-                    </a>
-                    <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                    <button id="refreshBtn" class="btn btn-outline-light btn-sm" title="Refresh">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
+<body class="mdj-eyup-brand">
+    <div class="mdj-scanlines" aria-hidden="true"></div>
+    <h1 class="visually-hidden">DJ Dashboard</h1>
+
+    <nav class="mdj-site-navbar mdj-site-navbar--minimal mdj-dashboard-navbar" aria-label="DJ dashboard">
+        <div class="nav-container">
+            <div class="logo" role="img" aria-label="EYUP EVENTS">
+                <span class="logo-text">EYUP</span>
+                <span class="logo-accent">EVENTS</span>
+                <span class="logo-subtitle"><i class="fas fa-headphones" aria-hidden="true"></i> DJ Dashboard</span>
+            </div>
+            <div class="mdj-dashboard-nav-event">
+                <label for="activeEventSelect" class="mdj-dashboard-nav-event-label mb-0 d-none d-sm-inline">Event:</label>
+                <select id="activeEventSelect" class="form-select form-select-sm" style="min-width: 180px; max-width: 250px;">
+                    <option value="all">All Events</option>
+                    <% events.forEach(function(event) { %>
+                        <option value="<%= event.id %>" <%= event.is_active ? '' : 'class="text-muted"' %>>
+                            <%= event.name %><%= event.is_active ? '' : ' (inactive)' %>
+                        </option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="mdj-nav-controls">
+                <a href="/dj/events" class="btn btn-info btn-sm" title="Event Management">
+                    <i class="fas fa-calendar-alt me-1"></i><span class="d-none d-md-inline">Events</span>
+                </a>
+                <button id="triggerSpinBtn" class="btn btn-warning btn-sm" title="Trigger Karaoke Spin">
+                    <i class="fas fa-dice me-1"></i><span class="d-none d-md-inline">Spin!</span>
+                </button>
+                <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" target="_blank" title="Open Spinner Display">
+                    <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">Spinner</span>
+                </a>
+                <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="refreshBtn" class="btn btn-outline-light btn-sm" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
             </div>
         </div>
-    </div>
+    </nav>
 
     <main class="container mt-4">
         <!-- Navigation Tabs -->

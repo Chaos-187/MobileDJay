@@ -1,9 +1,10 @@
 const express = require('express');
 const { portalDb } = require('../db/portal-database');
-const { hashPassword, verifyPassword, signAccessToken, verifyAccessToken } = require('./auth-tokens');
+const { hashPassword, verifyPassword, signAccessToken, verifyAccessToken, validatePortalPasswordPlain } = require('./auth-tokens');
 const { normalizePlaylist, formatMusicPlanSummary, parsePayloadRow, emptyPlaylist } = require('./music-plan');
 const internalRouter = require('./internal-router');
 const adminRouter = require('./admin-router');
+const { verifyTurnstile } = require('./turnstile');
 
 const router = express.Router();
 
@@ -121,12 +122,28 @@ function resolveMusicPlanForBooking(booking) {
 
 router.post('/auth/register', async (req, res) => {
     try {
-        const { email, password, first_name: firstName, last_name: lastName } = req.body || {};
+        const {
+            email,
+            password,
+            first_name: firstName,
+            last_name: lastName,
+            cf_turnstile_response: cfTurnstile
+        } = req.body || {};
         if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'role')) {
             return jsonError(res, 'validation_error', 'role must not be supplied by the client', 422);
         }
+        const ts = await verifyTurnstile(req, cfTurnstile);
+        if (!ts.skipped && !ts.ok) {
+            return jsonError(res, 'turnstile_failed', 'Turnstile verification failed', 400, {
+                error_codes: ts.errorCodes || []
+            });
+        }
         if (!email || !password) {
             return jsonError(res, 'validation_error', 'email and password are required', 422);
+        }
+        const pwdVal = validatePortalPasswordPlain(password);
+        if (!pwdVal.ok) {
+            return jsonError(res, 'validation_error', pwdVal.message, 422);
         }
         if (portalDb.getUserByEmail(email)) {
             return jsonError(res, 'conflict', 'An account with this email already exists', 409);
@@ -154,9 +171,15 @@ router.post('/auth/register', async (req, res) => {
 
 router.post('/auth/login', async (req, res) => {
     try {
-        const { email, password } = req.body || {};
+        const { email, password, cf_turnstile_response: cfTurnstile } = req.body || {};
         if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'role')) {
             return jsonError(res, 'validation_error', 'role must not be supplied by the client', 422);
+        }
+        const ts = await verifyTurnstile(req, cfTurnstile);
+        if (!ts.skipped && !ts.ok) {
+            return jsonError(res, 'turnstile_failed', 'Turnstile verification failed', 400, {
+                error_codes: ts.errorCodes || []
+            });
         }
         if (!email || !password) {
             return jsonError(res, 'validation_error', 'email and password are required', 422);
@@ -186,6 +209,90 @@ router.post('/auth/login', async (req, res) => {
 
 router.post('/auth/logout', (_req, res) => {
     res.status(204).send();
+});
+
+router.post('/auth/change-password', authMiddleware, async (req, res) => {
+    try {
+        const { current_password: cur, new_password: next } = req.body || {};
+        const user = portalDb.getUserById(req.portalUser.id);
+        if (!user) {
+            return jsonError(res, 'not_found', 'User not found', 404);
+        }
+        if (!user.password_hash) {
+            return jsonError(res, 'validation_error', 'Password login is not set for this account', 422);
+        }
+        if (cur == null || next == null) {
+            return jsonError(res, 'validation_error', 'current_password and new_password are required', 422);
+        }
+        const curOk = await verifyPassword(String(cur), user.password_hash);
+        if (!curOk) {
+            return jsonError(res, 'invalid_credentials', 'Current password is incorrect', 401);
+        }
+        const nextVal = validatePortalPasswordPlain(next);
+        if (!nextVal.ok) {
+            return jsonError(res, 'validation_error', nextVal.message, 422);
+        }
+        if (String(cur) === String(next)) {
+            return jsonError(res, 'validation_error', 'new_password must differ from current password', 422);
+        }
+        const passwordHash = await hashPassword(String(next));
+        portalDb.updateUserPatch(user.id, { password_hash: passwordHash });
+        res.status(204).send();
+    } catch (err) {
+        console.error('[portal] change-password', err);
+        return jsonError(res, 'internal_error', 'Password update failed', 500);
+    }
+});
+
+router.post('/auth/delete-account', authMiddleware, async (req, res) => {
+    try {
+        const user = portalDb.getUserById(req.portalUser.id);
+        if (!user) {
+            return jsonError(res, 'not_found', 'User not found', 404);
+        }
+        const body = req.body || {};
+        if (user.password_hash) {
+            const { password } = body;
+            if (password == null || String(password) === '') {
+                return jsonError(res, 'validation_error', 'password is required to confirm deletion', 422);
+            }
+            const pwdOk = await verifyPassword(String(password), user.password_hash);
+            if (!pwdOk) {
+                return jsonError(res, 'invalid_credentials', 'Password is incorrect', 401);
+            }
+        } else {
+            if (body.confirm_passwordless_delete !== true) {
+                return jsonError(
+                    res,
+                    'validation_error',
+                    'This account has no password; set confirm_passwordless_delete to true to confirm deletion',
+                    422,
+                    {
+                        hint: 'Passwordless invites use this acknowledgement instead of verifying a password.'
+                    }
+                );
+            }
+        }
+
+        const result = portalDb.deleteSelfServiceUser(req.portalUser.id);
+        if (result.ok) {
+            return res.status(204).send();
+        }
+        if (result.error === 'not_found') {
+            return jsonError(res, 'not_found', result.message, 404);
+        }
+        if (
+            result.error === 'last_admin' ||
+            result.error === 'customer_has_bookings' ||
+            result.error === 'dj_has_upcoming'
+        ) {
+            return jsonError(res, 'conflict', result.message, 409, { reason: result.error });
+        }
+        return jsonError(res, 'internal_error', 'Account deletion failed', 500);
+    } catch (err) {
+        console.error('[portal] delete-account', err);
+        return jsonError(res, 'internal_error', 'Account deletion failed', 500);
+    }
 });
 
 router.get('/auth/me', authMiddleware, (req, res) => {

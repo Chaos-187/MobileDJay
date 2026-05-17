@@ -4,6 +4,23 @@ const jwt = require('jsonwebtoken');
 
 const BCRYPT_ROUNDS = 10;
 
+const MIN_PORTAL_PASSWORD_LENGTH = 8;
+
+/** Validates a new password plain string (registration, change-password, admin set). */
+function validatePortalPasswordPlain(plain) {
+    const s = String(plain ?? '');
+    if (!s) {
+        return { ok: false, message: 'password is required' };
+    }
+    if (s.length < MIN_PORTAL_PASSWORD_LENGTH) {
+        return {
+            ok: false,
+            message: `password must be at least ${MIN_PORTAL_PASSWORD_LENGTH} characters`
+        };
+    }
+    return { ok: true };
+}
+
 function getJwtSecret() {
     const s = process.env.PORTAL_JWT_SECRET || process.env.JWT_SECRET;
     if (s) return s;
@@ -38,6 +55,8 @@ function verifyAccessToken(token) {
 }
 
 module.exports = {
+    MIN_PORTAL_PASSWORD_LENGTH,
+    validatePortalPasswordPlain,
     hashPassword,
     verifyPassword,
     signAccessToken,

@@ -400,6 +400,63 @@ const portalDb = {
         `).get().c;
     },
 
+    /**
+     * Self-service portal account deletion after router-level password / confirmation checks.
+     * — Customers with any booking row are rejected (preserve business records; contact support).
+     * — DJs with a non-cancelled assignment on a booking ending in the future (or ongoing) are rejected.
+     * — Last active admin cannot be removed.
+     * — Clears `admin_audit_log` and `users.account_manager_user_id` references before DELETE.
+     */
+    deleteSelfServiceUser(userId) {
+        const raw = getUserRawById(userId);
+        if (!raw) return { error: 'not_found', message: 'User not found' };
+        const user = materializeUser(raw);
+
+        const isActiveAdmin =
+            user.role === 'admin' && (user.disabled_at == null || String(user.disabled_at).trim() === '');
+        if (isActiveAdmin && this.countActiveAdmins() <= 1) {
+            return {
+                error: 'last_admin',
+                message: 'Cannot delete the last active admin account'
+            };
+        }
+
+        if (user.role === 'customer') {
+            const { c } = db.prepare(`SELECT COUNT(1) AS c FROM bookings WHERE customer_id = ?`).get(userId);
+            if (c > 0) {
+                return {
+                    error: 'customer_has_bookings',
+                    message:
+                        'This account has booking history and cannot be deleted automatically. Contact support to close your account.'
+                };
+            }
+        }
+
+        if (user.role === 'dj') {
+            const { c } = db.prepare(
+                `SELECT COUNT(1) AS c FROM booking_assignments ba
+                 JOIN bookings b ON b.id = ba.booking_id
+                 WHERE ba.dj_user_id = ? AND b.end_datetime >= ? AND b.status != 'cancelled'`
+            ).get(userId, nowIso());
+            if (c > 0) {
+                return {
+                    error: 'dj_has_upcoming',
+                    message:
+                        'You have upcoming event assignments; contact your coordinator before deleting your account.'
+                };
+            }
+        }
+
+        const run = () => {
+            db.prepare(`DELETE FROM admin_audit_log WHERE admin_user_id = ?`).run(userId);
+            db.prepare(`UPDATE users SET account_manager_user_id = NULL WHERE account_manager_user_id = ?`).run(userId);
+            db.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
+        };
+        db.transaction(run)();
+
+        return { ok: true };
+    },
+
     listUsers({ role, q, limit = 50, offset = 0 }) {
         const lim = Math.min(Number(limit) || 50, 200);
         const off = Number(offset) || 0;

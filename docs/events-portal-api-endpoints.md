@@ -30,6 +30,7 @@ Authorization: Bearer <access_token>
 
 - Token type: **JWT** (HS256).
 - **Access token only** in this version (no refresh-token rotation server-side). `POST /auth/logout` returns **204** with empty body; client discards stored tokens.
+- Updating the password (**`POST /auth/change-password`**) does **not** revoke already-issued JWTs; old tokens remain valid until **exp**.
 - Protected routes without/bad token → **401** with error envelope (see §2).
 - Every **Bearer** request reloads the user row: unknown id → **401**; **`disabled_at` set** → **403** (`forbidden`) even if the JWT is not expired.
 
@@ -44,6 +45,8 @@ Authorization: Bearer <access_token>
 | `jti` | Unique token id |
 
 Role enforcement: each route requires the **documented** `role` (`customer`, `dj`, or **`admin`**) or responds **403** (`forbidden`).
+
+**Login / register — Cloudflare Turnstile (optional):** Set **`CLOUDFLARE_TURNSTILE_SECRET_KEY`** (alias **`TURNSTILE_SECRET_KEY`**) on **`requests.eyupevents.uk`**. When set, **`POST /auth/login`** and **`POST /auth/register`** require **`cf_turnstile_response`** in the JSON body; the server verifies against **`https://challenges.cloudflare.com/turnstile/v0/siteverify`** before issuing JWTs. When unset, verification is skipped (backward compatible).
 
 ### 1.3 Dates and IDs
 
@@ -105,6 +108,7 @@ All error responses use this JSON shape when the handler returns JSON:
 | `not_found` | 404 |
 | `conflict` | 409 |
 | `validation_error` | 422 |
+| `turnstile_failed` | 400 |
 | `internal_error` | 500 |
 | `service_unavailable` | 503 |
 
@@ -177,14 +181,17 @@ Default/global music plan for a customer (`booking_id` null in DB). Normalised o
 
 Creates a **customer** account only. **Must not** send `role` in the body (422 if present).
 
+When **`CLOUDFLARE_TURNSTILE_SECRET_KEY`** (or **`TURNSTILE_SECRET_KEY`**) is set on the server, the body **must** include **`cf_turnstile_response`** (widget token). The server POSTs to **`https://challenges.cloudflare.com/turnstile/v0/siteverify`** before creating the user. If the secret is **unset**, Turnstile is skipped (local/dev).
+
 **Request body**
 
 ```json
 {
   "email": "string (required)",
-  "password": "string (required)",
+  "password": "string (required, min 8 characters)",
   "first_name": "string (optional)",
-  "last_name": "string (optional)"
+  "last_name": "string (optional)",
+  "cf_turnstile_response": "string (required when Turnstile secret env is set)"
 }
 ```
 
@@ -205,7 +212,7 @@ Creates a **customer** account only. **Must not** send `role` in the body (422 i
 
 The embedded **`user`** is a minimal summary. Use **`GET /auth/me`** after login for **`last_name`**, **`phone`**, etc.
 
-**Errors:** `validation_error` (422), `conflict` (409), `internal_error` (500).
+**Errors:** `validation_error` (422; includes **`password`** under **min 8 characters**), `conflict` (409), **`turnstile_failed`** (400, see `details.error_codes`), `internal_error` (500).
 
 ---
 
@@ -213,12 +220,15 @@ The embedded **`user`** is a minimal summary. Use **`GET /auth/me`** after login
 
 **Must not** send `role` in the body (422 if present).
 
+Same Turnstile rule as **register**: if the Turnstile secret env var is set, **`cf_turnstile_response`** is required and verified before tokens are issued.
+
 **Request body**
 
 ```json
 {
   "email": "string (required)",
-  "password": "string (required)"
+  "password": "string (required)",
+  "cf_turnstile_response": "string (required when Turnstile secret env is set)"
 }
 ```
 
@@ -239,7 +249,7 @@ The embedded **`user`** is a minimal summary. Use **`GET /auth/me`** after login
 
 Same minimal **`user`** shape as **`POST /auth/register`**; use **`GET /auth/me`** for full profile fields.
 
-**Errors:** `validation_error` (422), `invalid_credentials` (401), `forbidden` (**403** — account disabled), `internal_error` (500).
+**Errors:** `validation_error` (422), `invalid_credentials` (401), `forbidden` (**403** — account disabled), **`turnstile_failed`** (400, see `details.error_codes`), `internal_error` (500).
 
 ---
 
@@ -248,6 +258,50 @@ Same minimal **`user`** shape as **`POST /auth/register`**; use **`GET /auth/me`
 No auth required.
 
 **Response `204`:** empty body.
+
+---
+
+### `POST /auth/change-password`
+
+**Auth:** Bearer required. Any role (**customer**, **dj**, **admin**) with a **`password_hash`** (password login enabled).
+
+**Request body**
+
+```json
+{
+  "current_password": "string (required)",
+  "new_password": "string (required, min 8 characters)"
+}
+```
+
+**Response `204`:** empty body.
+
+**Errors:** `validation_error` (422; missing fields, same as current password, no password login on account), `invalid_credentials` (401 — wrong current password), `internal_error` (500).
+
+Issued JWTs are **unchanged**: clients may keep using existing tokens until they expire (**§1.2**).
+
+---
+
+### `POST /auth/delete-account`
+
+**Auth:** Bearer required — user deletes **their own** row only.
+
+**Request body**
+
+- If **`password_hash` is set** (normal login account): **`password`** — required plain password for confirmation (**401** if wrong).
+- If **passwordless** (e.g. customer created via internal/admin without password): **`confirm_passwordless_delete`:** **`true`** (boolean) — required so deletion is deliberate (**422** if missing/false).
+
+**Response `204`:** empty body on success.
+
+**Conflicts (**`409`** `conflict`):**
+
+| `details.reason` | Meaning |
+|------------------|--------|
+| `customer_has_bookings` | Customer accounts with **any** booking row (any status) cannot self-delete here (preserve records; contact support). |
+| `dj_has_upcoming` | DJs with an assignment on a **non-cancelled** booking whose **`end_datetime` ≥ now** cannot self-delete yet. |
+| `last_admin` | The **last active** admin cannot delete their account. |
+
+**Errors:** `validation_error` (422), `invalid_credentials` (401 — wrong **`password`**), `not_found` (404), `conflict` (409), `internal_error` (500).
 
 ---
 
@@ -740,12 +794,13 @@ Removes one assignment. **Response `204`**.
 |-----------|--------|
 | `POST /auth/magic-link` | Not implemented |
 | Refresh tokens / server-side session revocation | Not implemented (client drops JWT on logout) |
-| JWT customer / DJ / **admin** **browser** APIs | Implemented (§4–6.5) |
+| JWT customer / DJ / **admin** **browser** APIs | Implemented (§4–6.5); **`POST /auth/change-password`**, **`POST /auth/delete-account`** §4 |
 | **`GET/PATCH /customer/details`** | Implemented (§5) |
 | **Admin back-office API** (`/admin/*`) | Implemented (§6.5); audit log on mutating calls |
 | **Internal automation** (n8n, CRM) | **`POST /internal/users`**, **`POST /internal/bookings`** or **`POST /internal/events`** — §9 (**customer_email** may **upsert** a new customer) |
 | Per-booking music plan **writes** via customer API | Only **default** plan via `PUT /customer/profile`; per-booking rows may exist in DB for future use |
 | Rate limiting | Not implemented (recommended for login in production) |
+| **Cloudflare Turnstile** on login/register | Optional — when env secret is set (§1.2 / §4) |
 
 ---
 
@@ -756,6 +811,8 @@ Removes one assignment. **Response `204`**.
 | POST | `/api/v1/auth/register` | No | — |
 | POST | `/api/v1/auth/login` | No | — |
 | POST | `/api/v1/auth/logout` | No | — |
+| POST | `/api/v1/auth/change-password` | Bearer | any (password-login accounts) |
+| POST | `/api/v1/auth/delete-account` | Bearer | any |
 | GET | `/api/v1/auth/me` | Bearer | any |
 | GET | `/api/v1/customer/bookings` | Bearer | customer |
 | GET | `/api/v1/customer/bookings/:id` | Bearer | customer |
@@ -953,5 +1010,7 @@ Alias for **`POST /internal/bookings`** (same JSON body and **`201`** response).
 
 ---
 
-*Document version: 1.6 — Optional **`PORTAL_PII_ENCRYPTION_KEY`** (AES-GCM at-rest PII for portal SQLite).*
+*Document version: 1.8 — **`POST /auth/change-password`**, **`POST /auth/delete-account`** (self-service); **`POST /auth/register`** enforces **`password`** min length **8** (aligned with admin/internal).*
+
+*Prior: v1.7 Cloudflare Turnstile on **`POST /auth/login`** & **`POST /auth/register`** (`cf_turnstile_response`; env `CLOUDFLARE_TURNSTILE_SECRET_KEY`).*
 

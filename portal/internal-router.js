@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { portalDb, uuid } = require('../db/portal-database');
-const { hashPassword } = require('./auth-tokens');
+const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
 
 const router = express.Router();
 
@@ -75,8 +75,9 @@ router.post('/users', async (req, res) => {
         }
         const plain = password != null && String(password).length > 0 ? String(password) : randomPassword();
         const passwordGenerated = password == null || String(password).length === 0;
-        if (String(plain).length < 8) {
-            return jsonError(res, 'validation_error', 'password must be at least 8 characters when provided', 422);
+        const pv = validatePortalPasswordPlain(plain);
+        if (!pv.ok) {
+            return jsonError(res, 'validation_error', pv.message, 422);
         }
         const passwordHash = await hashPassword(plain);
         const id = portalDb.createUser({

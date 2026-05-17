@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { portalDb, uuid, normalizeEmail } = require('../db/portal-database');
-const { hashPassword } = require('./auth-tokens');
+const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
 
 const router = express.Router();
 
@@ -97,8 +97,9 @@ router.post('/users', async (req, res) => {
             return jsonError(res, 'conflict', 'An account with this email already exists', 409);
         }
         const plain = password != null && String(password).length > 0 ? String(password) : randomPassword();
-        if (String(plain).length < 8) {
-            return jsonError(res, 'validation_error', 'password must be at least 8 characters when provided', 422);
+        const pv = validatePortalPasswordPlain(plain);
+        if (!pv.ok) {
+            return jsonError(res, 'validation_error', pv.message, 422);
         }
         const passwordHash = await hashPassword(plain);
         const id = portalDb.createUser({
@@ -145,8 +146,9 @@ router.patch('/users/:id', async (req, res) => {
         const p = patch.password;
         delete patch.password;
         if (p != null && String(p).length > 0) {
-            if (String(p).length < 8) {
-                return jsonError(res, 'validation_error', 'password must be at least 8 characters', 422);
+            const pv = validatePortalPasswordPlain(p);
+            if (!pv.ok) {
+                return jsonError(res, 'validation_error', pv.message, 422);
             }
             patch.password_hash = await hashPassword(String(p));
         }

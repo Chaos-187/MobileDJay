@@ -2,6 +2,8 @@
  * Dev/demo seed for EYUP portal DB (db/eyup_portal.db).
  * Usage: node portal/seed.js
  */
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
+
 const { portalDb, uuid } = require('../db/portal-database');
 const { hashPassword } = require('./auth-tokens');
 

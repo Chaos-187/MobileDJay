@@ -237,6 +237,8 @@ Either single row per booking or append-only history — v1 single row is enough
 | `POST` | `/auth/register` | Optional; may be invite-only. |
 | `POST` | `/auth/login` | Email + password → tokens. **Reject** arbitrary role from client; set role from `users.role`. |
 | `POST` | `/auth/logout` | Invalidate refresh token. |
+| `POST` | `/auth/change-password` | Bearer; `current_password` + `new_password` (JWTs unchanged until expiry). |
+| `POST` | `/auth/delete-account` | Bearer; confirms with `password` or passwordless flag; constraints on bookings / DJs / last admin. |
 | `POST` | `/auth/magic-link` | Optional: align with Brevo “account created” / portal login flows. |
 | `GET` | `/auth/me` | Current user `{ id, email, role, first_name }`. |
 

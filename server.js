@@ -1,10 +1,30 @@
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const path = require('path');
+const fs = require('fs');
+
+/** Always next to server.js — not relative to cwd (important under systemd/npm on Ubuntu). */
+const portalEnvPath = path.resolve(__dirname, '.env');
+const envOutcome = require('dotenv').config({ path: portalEnvPath });
+
+if (!process.env.PORTAL_SILENCE_ENV_LOG) {
+    const exists = fs.existsSync(portalEnvPath);
+    const cwd = process.cwd();
+    if (!exists) {
+        console.warn(
+            `[env] No .env at ${portalEnvPath} (cwd=${cwd}). Export vars in the shell, systemd EnvironmentFile=, etc. Silence: PORTAL_SILENCE_ENV_LOG=1`
+        );
+    } else if (envOutcome.error) {
+        console.warn(`[env] Could not parse ${portalEnvPath}: ${envOutcome.error.message}`);
+    } else {
+        const count = envOutcome.parsed ? Object.keys(envOutcome.parsed).length : 0;
+        console.log(
+            `[env] Loaded dotenv file: ${portalEnvPath} (${count} lines parsed). cwd=${cwd}. Silence this line: PORTAL_SILENCE_ENV_LOG=1`
+        );
+    }
+}
 
 const express = require('express');
-const path = require('path');
 const https = require('https');
 const querystring = require('querystring');
-const fs = require('fs');
 const xml2js = require('xml2js');
 const csv = require('csv-parser');
 const { JSDOM } = require('jsdom');

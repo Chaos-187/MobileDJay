@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const { portalDb, uuid, normalizeEmail } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
 const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist } = require('./music-plan');
+const { getSiteSettings, putSiteSettings } = require('./site-settings-service');
 
 const router = express.Router();
 
@@ -76,6 +77,38 @@ function blocksLastAdminRemoval(userId, patch) {
 function audit(adminId, action, entityType, entityId, details) {
     portalDb.appendAudit(adminId, action, entityType, entityId, details);
 }
+
+// --- Site settings ---
+
+router.get('/site-settings', (req, res, next) => {
+    try {
+        const settings = getSiteSettings();
+        res.set('Cache-Control', 'no-store');
+        res.json(settings);
+    } catch (e) {
+        next(e);
+    }
+});
+
+router.put('/site-settings', (req, res, next) => {
+    try {
+        const merged = putSiteSettings(req.body, req.portalUser.id);
+        const navDisabled = Object.entries(merged.nav)
+            .filter(([, enabled]) => !enabled)
+            .map(([key]) => key);
+        audit(req.portalUser.id, 'site_settings.update', 'site_settings', 'default', {
+            contact_form_enabled: merged.contact_form_enabled,
+            nav_disabled: navDisabled
+        });
+        res.set('Cache-Control', 'no-store');
+        res.json(merged);
+    } catch (e) {
+        if (e.code === 'validation_error') {
+            return jsonError(res, 'validation_error', e.message || 'Invalid site settings', 422, e.details || {});
+        }
+        next(e);
+    }
+});
 
 // --- Users ---
 

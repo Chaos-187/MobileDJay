@@ -194,7 +194,19 @@ db.exec(`
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log(created_at);
+
+    CREATE TABLE IF NOT EXISTS portal_site_settings (
+        id TEXT PRIMARY KEY DEFAULT 'default' CHECK (id = 'default'),
+        payload_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_by_user_id TEXT REFERENCES users(id)
+    );
 `);
+
+db.prepare(`
+    INSERT OR IGNORE INTO portal_site_settings (id, payload_json, updated_at)
+    VALUES ('default', '{}', datetime('now'))
+`).run();
 
 function nowIso() {
     return new Date().toISOString();
@@ -391,6 +403,22 @@ const portalDb = {
             JSON.stringify(detailsObj || {}),
             nowIso()
         );
+    },
+
+    getSiteSettingsRow() {
+        return db
+            .prepare(
+                `SELECT payload_json, updated_at, updated_by_user_id FROM portal_site_settings WHERE id = 'default'`
+            )
+            .get();
+    },
+
+    saveSiteSettings(payloadJson, adminUserId) {
+        db.prepare(`
+            UPDATE portal_site_settings
+            SET payload_json = ?, updated_at = datetime('now'), updated_by_user_id = ?
+            WHERE id = 'default'
+        `).run(payloadJson, adminUserId || null);
     },
 
     countActiveAdmins() {

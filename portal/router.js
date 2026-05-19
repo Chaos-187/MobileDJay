@@ -4,6 +4,7 @@ const { hashPassword, verifyPassword, signAccessToken, verifyAccessToken, valida
 const { normalizePlaylist, formatMusicPlanSummary, parsePayloadRow, emptyPlaylist } = require('./music-plan');
 const internalRouter = require('./internal-router');
 const adminRouter = require('./admin-router');
+const publicRouter = require('./public-router');
 const { verifyTurnstile } = require('./turnstile');
 const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
 
@@ -725,6 +726,8 @@ router.use(
     },
     djBookingRouter
 );
+
+router.use('/public', publicRouter);
 
 router.use('/admin', authMiddleware, requireRole('admin'), adminRouter);
 

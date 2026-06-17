@@ -1,6 +1,6 @@
 const { portalDb } = require('../db/portal-database');
 
-/** Must match marketing `js/site-settings.js` (EyupSiteSettings.DEFAULTS). */
+/** Baseline defaults — unknown nav keys from the DB/admin UI are still persisted. */
 const DEFAULTS = {
     nav: {
         home: true,
@@ -11,6 +11,7 @@ const DEFAULTS = {
         photo_booth: true,
         audio_guestbook: true,
         inflatables: true,
+        surf_simulator: true,
         outdoor_games: true,
         for_djs: true,
         mobile_requests_app: true,
@@ -27,7 +28,27 @@ const DEFAULTS = {
 };
 
 const NAV_KEYS = Object.keys(DEFAULTS.nav);
-const ALLOWED_TOP_KEYS = new Set(['nav', 'contact_form_enabled', 'contact_form_disabled_message']);
+const KNOWN_TOP_KEYS = new Set(['nav', 'contact_form_enabled', 'contact_form_disabled_message']);
+const NAV_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
+const MAX_NAV_KEY_LEN = 64;
+
+function isValidNavKey(key) {
+    return (
+        typeof key === 'string' &&
+        key.length > 0 &&
+        key.length <= MAX_NAV_KEY_LEN &&
+        NAV_KEY_PATTERN.test(key)
+    );
+}
+
+function isPrimitiveSettingValue(value) {
+    return (
+        value === null ||
+        typeof value === 'boolean' ||
+        typeof value === 'string' ||
+        typeof value === 'number'
+    );
+}
 
 function mergeSiteSettings(raw) {
     const out = {
@@ -35,13 +56,15 @@ function mergeSiteSettings(raw) {
         contact_form_enabled: DEFAULTS.contact_form_enabled,
         contact_form_disabled_message: DEFAULTS.contact_form_disabled_message
     };
+
     if (raw && typeof raw === 'object' && raw.nav && typeof raw.nav === 'object') {
-        for (const k of NAV_KEYS) {
+        for (const k of Object.keys(raw.nav)) {
             if (typeof raw.nav[k] === 'boolean') {
                 out.nav[k] = raw.nav[k];
             }
         }
     }
+
     if (raw && typeof raw === 'object' && typeof raw.contact_form_enabled === 'boolean') {
         out.contact_form_enabled = raw.contact_form_enabled;
     }
@@ -54,6 +77,18 @@ function mergeSiteSettings(raw) {
     if (out.contact_form_enabled === false && !String(out.contact_form_disabled_message).trim()) {
         out.contact_form_disabled_message = DEFAULTS.contact_form_disabled_message;
     }
+
+    // Preserve additional top-level primitive settings for forward compatibility.
+    if (raw && typeof raw === 'object') {
+        for (const k of Object.keys(raw)) {
+            if (KNOWN_TOP_KEYS.has(k)) continue;
+            const v = raw[k];
+            if (isPrimitiveSettingValue(v)) {
+                out[k] = v;
+            }
+        }
+    }
+
     return out;
 }
 
@@ -63,23 +98,14 @@ function validateSiteSettingsBody(body) {
         return { ok: false, details: { body: 'must be a JSON object' } };
     }
 
-    const unknownFields = Object.keys(body).filter((k) => !ALLOWED_TOP_KEYS.has(k));
-    if (unknownFields.length) {
-        return { ok: false, details: { unknown_fields: unknownFields } };
-    }
-
     if (!('nav' in body)) {
         details.nav = 'is required';
     } else if (body.nav == null || typeof body.nav !== 'object' || Array.isArray(body.nav)) {
         details.nav = 'must be an object';
     } else {
-        const navUnknown = Object.keys(body.nav).filter((k) => !NAV_KEYS.includes(k));
-        for (const k of navUnknown) {
-            details[`nav.${k}`] = 'is not allowed';
-        }
-        for (const k of NAV_KEYS) {
-            if (!(k in body.nav)) {
-                details[`nav.${k}`] = 'is required';
+        for (const k of Object.keys(body.nav)) {
+            if (!isValidNavKey(k)) {
+                details[`nav.${k}`] = 'must be a lowercase snake_case key (letters, numbers, underscores)';
             } else if (typeof body.nav[k] !== 'boolean') {
                 details[`nav.${k}`] = 'must be a boolean';
             }
@@ -106,6 +132,13 @@ function validateSiteSettingsBody(body) {
             /* substitute server default on save */
         } else if (msg.length === 0) {
             details.contact_form_disabled_message = 'must be a non-empty string';
+        }
+    }
+
+    for (const k of Object.keys(body)) {
+        if (KNOWN_TOP_KEYS.has(k)) continue;
+        if (!isPrimitiveSettingValue(body[k])) {
+            details[k] = 'must be a boolean, string, number, or null';
         }
     }
 

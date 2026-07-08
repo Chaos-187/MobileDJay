@@ -117,6 +117,40 @@
             padding-bottom: 0.5rem;
             margin-bottom: 1rem;
         }
+        .slideshow-panel {
+            border: 1px solid #0f3460;
+            border-radius: 0.6rem;
+            padding: 1rem;
+            background: rgba(0,0,0,0.2);
+            margin-bottom: 1rem;
+        }
+        .slideshow-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .slideshow-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.5rem;
+            border-radius: 0.45rem;
+            border: 1px solid #0f3460;
+            background: #1a1a2e;
+        }
+        .slideshow-item img {
+            width: 72px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 0.35rem;
+        }
+        .slideshow-drag { cursor: grab; color: #8899aa; }
+        .slideshow-actions { display: flex; gap: 0.25rem; margin-left: auto; }
         .event-badge {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 0.5rem 1rem;
@@ -228,7 +262,32 @@
                             <div class="mb-3">
                                 <label for="bgImage" class="form-label">Background Image URL</label>
                                 <input type="url" class="form-control" id="bgImage" value="<%= event.display_bg_image || '' %>" placeholder="https://example.com/image.jpg">
-                                <small class="text-muted">Leave empty to use gradient only</small>
+                                <small class="text-muted">Leave empty to use gradient only (unless slideshow is enabled below)</small>
+                            </div>
+
+                            <div class="slideshow-panel">
+                                <h6 class="mb-2"><i class="fas fa-images me-2"></i>Background Slideshow</h6>
+                                <p class="small text-muted mb-3">Upload images that rotate on the display background. Drag to reorder or use the arrows.</p>
+                                <div class="row g-3 align-items-end mb-3">
+                                    <div class="col-6">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="slideshowEnabled" <%= event.display_bg_slideshow_enabled === 1 ? 'checked' : '' %>>
+                                            <label class="form-check-label" for="slideshowEnabled">Enable slideshow</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="slideshowSeconds" class="form-label">Seconds per image</label>
+                                        <input type="number" class="form-control" id="slideshowSeconds" min="5" max="300" value="<%= event.display_bg_slideshow_seconds || 15 %>">
+                                    </div>
+                                </div>
+                                <ul class="slideshow-list mb-3" id="displaySlideshowList"></ul>
+                                <input type="file" id="displaySlideshowFile" accept="image/*" class="d-none">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-light" id="displaySlideshowUpload">
+                                        <i class="fas fa-upload me-1"></i>Upload image
+                                    </button>
+                                    <span id="displaySlideshowStatus" class="small text-muted" aria-live="polite"></span>
+                                </div>
                             </div>
                         </div>
 
@@ -314,11 +373,20 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="/js/display-slideshow-admin.js"></script>
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const eventId = <%= event.id %>;
         const eventSlug = '<%= event.slug %>';
+        const displaySlideshowAdmin = new DisplaySlideshowAdmin({
+            eventId: eventId,
+            listEl: document.getElementById('displaySlideshowList'),
+            uploadBtn: document.getElementById('displaySlideshowUpload'),
+            fileInput: document.getElementById('displaySlideshowFile'),
+            statusEl: document.getElementById('displaySlideshowStatus')
+        });
+        displaySlideshowAdmin.load();
         const previewContainer = document.getElementById('previewContainer');
         const previewQr = document.getElementById('previewQr');
         const previewQrCanvas = document.getElementById('previewQrCanvas');
@@ -432,6 +500,8 @@
                 display_bg_color1: document.getElementById('bgColor1').value,
                 display_bg_color2: document.getElementById('bgColor2').value,
                 display_bg_image: document.getElementById('bgImage').value || null,
+                display_bg_slideshow_enabled: document.getElementById('slideshowEnabled').checked,
+                display_bg_slideshow_seconds: parseInt(document.getElementById('slideshowSeconds').value, 10) || 15,
                 display_card_color: document.getElementById('cardBgColor').value,
                 display_card_opacity: document.getElementById('cardOpacity').value
             };
@@ -483,6 +553,8 @@
                 document.getElementById('bgColor2').value = '#004e92';
                 document.getElementById('bgColor2Text').value = '#004e92';
                 document.getElementById('bgImage').value = '';
+                document.getElementById('slideshowEnabled').checked = false;
+                document.getElementById('slideshowSeconds').value = 15;
                 document.getElementById('cardBgColor').value = '#ffffff';
                 document.getElementById('cardBgColorText').value = '#ffffff';
                 document.getElementById('cardOpacity').value = 85;

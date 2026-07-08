@@ -81,7 +81,7 @@ Only **active** events with **show public** enabled appear. `/events` redirects 
 | [`docs/mobilejay-features.md`](docs/mobilejay-features.md) | Feature guide for DJs and operators |
 | [`docs/mobilejay-events-api.md`](docs/mobilejay-events-api.md) | HTTP API for events, guests, tracks, public listing |
 | [`docs/NOW-PLAYING-API.md`](docs/NOW-PLAYING-API.md) | Now playing endpoint for VirtualDJ / integrations |
-| [`docs/events-portal-api-endpoints.md`](docs/events-portal-api-endpoints.md) | Separate EYUP portal API (`/api/v1/…`) |
+| [`docs/deploy-self-hosted.md`](docs/deploy-self-hosted.md) | GitHub Actions + PM2 deployment |
 
 ## Technology stack
 
@@ -120,6 +120,14 @@ Environment variables are optional; see `.env` support in `server.js`. Key paths
 - **Karaoke:** `DB/VirtualDJ_Karaoke_Catalog_*.csv`
 
 Catalogues can also be uploaded from **DJ Settings**.
+
+## Deployment
+
+Production deploys via **GitHub Actions** on a **self-hosted runner** to `/home/kyle/Documents/MobileDJay-main/`, then **`pm2 reload`**.
+
+See **[`docs/deploy-self-hosted.md`](docs/deploy-self-hosted.md)** for runner setup, PM2, and troubleshooting.
+
+Push to **`main`** to deploy automatically (or run the **Deploy** workflow manually).
 
 ## License
 

@@ -1,0 +1,98 @@
+# Deploy MobileDJay to the self-hosted server via a local GitHub Actions runner.
+#
+# Prerequisites on the server:
+#   1. GitHub Actions self-hosted runner registered for this repo (label: self-hosted)
+#   2. Node.js 20+ and npm
+#   3. pm2 installed globally (`npm install -g pm2`)
+#   4. App directory exists with .env and live data:
+#        /home/kyle/Documents/MobileDJay-main/
+#
+# Optional repo Variables (Settings → Secrets and variables → Actions → Variables):
+#   DEPLOY_PATH   — override deploy directory (default below)
+#   PM2_APP_NAME  — pm2 process name if not "mobiledjay"
+
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-mobiledjay
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to production
+    runs-on: self-hosted
+
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/kyle/Documents/MobileDJay-main' }}
+      PM2_APP_NAME: ${{ vars.PM2_APP_NAME || 'mobiledjay' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync application files
+        run: |
+          set -euo pipefail
+          mkdir -p "$DEPLOY_PATH"
+
+          rsync -av --delete \
+            --exclude 'node_modules/' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            --exclude '.git/' \
+            --exclude 'uploads/' \
+            --exclude 'db/*.db' \
+            --exclude 'db/*.sqlite' \
+            --exclude 'db/*.sqlite3' \
+            --exclude 'logs/' \
+            --exclude '*.log' \
+            "$GITHUB_WORKSPACE/" "$DEPLOY_PATH/"
+
+      - name: Install production dependencies
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: npm ci --omit=dev
+
+      - name: Reload PM2
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          export PM2_APP_NAME="$PM2_APP_NAME"
+
+          if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
+            pm2 reload ecosystem.config.cjs --update-env
+          else
+            pm2 start ecosystem.config.cjs
+          fi
+
+          pm2 save
+
+      - name: Health check
+        working-directory: ${{ env.DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          PORT="${PORT:-3000}"
+          if [ -f .env ]; then
+            ENV_PORT="$(grep -E '^PORT=' .env | tail -1 | cut -d= -f2- | tr -d '\r' || true)"
+            if [ -n "$ENV_PORT" ]; then
+              PORT="$ENV_PORT"
+            fi
+          fi
+
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS "http://127.0.0.1:${PORT}/" -o /dev/null; then
+              echo "Health check passed on port ${PORT}"
+              exit 0
+            fi
+            echo "Waiting for app on port ${PORT} (attempt ${i}/10)…"
+            sleep 2
+          done
+
+          echo "Health check failed — recent PM2 logs:"
+          pm2 logs "$PM2_APP_NAME" --lines 40 --nostream || true
+          exit 1

@@ -201,6 +201,25 @@ try {
 try {
     db.exec(`ALTER TABLE events ADD COLUMN show_public INTEGER DEFAULT 0`);
 } catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN display_bg_slideshow_enabled INTEGER DEFAULT 0`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN display_bg_slideshow_seconds INTEGER DEFAULT 15`);
+} catch (e) { /* Column already exists */ }
+
+// Display screen background slideshow images (ordered per event)
+db.exec(`
+    CREATE TABLE IF NOT EXISTS event_display_slides (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        image_url TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_display_slides_event ON event_display_slides(event_id, sort_order);
+`);
 
 // Tracks played per event (DJ log + optional guest-facing list)
 db.exec(`
@@ -427,6 +446,7 @@ const eventDb = {
                                'enable_tips', 'enable_photos', 'tip_provider', 'tip_payment_link', 'tip_links',
                                'display_show_qr', 'display_qr_position', 'display_qr_size', 'display_qr_label',
                                'display_bg_color1', 'display_bg_color2', 'display_bg_image',
+                               'display_bg_slideshow_enabled', 'display_bg_slideshow_seconds',
                                'display_card_color', 'display_card_opacity', 'photo_banner_style',
                                'show_tracks_played_guest', 'show_public'];
         const setClause = [];
@@ -1104,6 +1124,67 @@ const guestDb = {
     }
 };
 
+// Display screen background slideshow slides
+const slideshowDb = {
+    _toJson: function(row) {
+        return {
+            id: row.id,
+            eventId: row.event_id,
+            imageUrl: row.image_url,
+            sortOrder: row.sort_order,
+            createdAt: row.created_at
+        };
+    },
+
+    getById: function(id) {
+        const row = db.prepare('SELECT * FROM event_display_slides WHERE id = ?').get(id);
+        return row ? this._toJson(row) : null;
+    },
+
+    getByEvent: function(eventId) {
+        const rows = db.prepare(`
+            SELECT * FROM event_display_slides
+            WHERE event_id = ?
+            ORDER BY sort_order ASC, id ASC
+        `).all(eventId);
+        return rows.map((row) => this._toJson(row));
+    },
+
+    add: function(eventId, imageUrl) {
+        const maxRow = db.prepare(`
+            SELECT COALESCE(MAX(sort_order), -1) AS max_order
+            FROM event_display_slides WHERE event_id = ?
+        `).get(eventId);
+        const sortOrder = (maxRow?.max_order ?? -1) + 1;
+        const result = db.prepare(`
+            INSERT INTO event_display_slides (event_id, image_url, sort_order)
+            VALUES (?, ?, ?)
+        `).run(eventId, imageUrl, sortOrder);
+        return this.getById(result.lastInsertRowid);
+    },
+
+    reorder: function(eventId, orderedIds) {
+        const ids = Array.isArray(orderedIds) ? orderedIds.map((id) => parseInt(id, 10)).filter(Number.isFinite) : [];
+        const reorderTxn = db.transaction((slideIds) => {
+            slideIds.forEach((id, index) => {
+                db.prepare(`
+                    UPDATE event_display_slides SET sort_order = ?
+                    WHERE id = ? AND event_id = ?
+                `).run(index, id, eventId);
+            });
+        });
+        reorderTxn(ids);
+        return this.getByEvent(eventId);
+    },
+
+    delete: function(id, eventId) {
+        const row = db.prepare('SELECT image_url FROM event_display_slides WHERE id = ? AND event_id = ?').get(id, eventId);
+        if (!row) return null;
+        const changes = db.prepare('DELETE FROM event_display_slides WHERE id = ? AND event_id = ?').run(id, eventId).changes;
+        return changes > 0 ? row.image_url : null;
+    }
+};
+
 // Global settings (key/value store with JSON values)
 const settingsDb = {
     get: function(key, fallback = null) {
@@ -1158,6 +1239,7 @@ module.exports = {
     photoDb,
     trackDb,
     guestDb,
+    slideshowDb,
     settingsDb,
     ensureDefaultEvent,
     generateSlug

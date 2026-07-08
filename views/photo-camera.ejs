@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Take a Pic - MobileDJay</title>
+    <title>Event Cam - MobileDJay</title>
     <meta name="theme-color" content="#000000">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <style>
@@ -23,6 +23,12 @@
             position: fixed;
             inset: 0;
             background: #000;
+            touch-action: none;
+        }
+        .camera-viewport {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
         }
         .stage video,
         .stage img {
@@ -30,6 +36,8 @@
             height: 100%;
             object-fit: cover;
             display: block;
+            transform-origin: center center;
+            will-change: transform;
         }
         .stage video.mirrored { transform: scaleX(-1); }
         .stage img { object-fit: contain; }
@@ -108,6 +116,41 @@
             background: rgba(255, 255, 255, 0.2);
             color: #fff;
             font-size: 1.2rem;
+        }
+
+        .side-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .zoom-cluster {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 48px;
+        }
+        .zoom-cluster .zoom-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1;
+            opacity: 0.9;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+            font-variant-numeric: tabular-nums;
+        }
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            font-size: 1.35rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .zoom-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
         }
 
         /* Filter strip (above the shutter bar) */
@@ -236,14 +279,16 @@
     </style>
 </head>
 <body>
-    <div class="stage">
-        <video id="cameraVideo" autoplay playsinline muted></video>
-        <img id="reviewImg" alt="Captured photo" style="display: none;">
+    <div class="stage" id="cameraStage">
+        <div class="camera-viewport" id="cameraViewport">
+            <video id="cameraVideo" autoplay playsinline muted></video>
+            <img id="reviewImg" alt="Captured photo" style="display: none;">
+        </div>
         <div class="camera-flash" id="cameraFlash"></div>
     </div>
 
     <div class="top-bar">
-        <span class="event-label"><i class="fas fa-camera me-1"></i> <%= event.name %></span>
+        <span class="event-label"><i class="fas fa-camera me-1"></i> Event Cam · <%= event.name %></span>
         <button type="button" id="closeBtn" class="round-btn" aria-label="Close camera">
             <i class="fas fa-xmark"></i>
         </button>
@@ -256,7 +301,11 @@
             <i class="fas fa-camera-rotate"></i>
         </button>
         <button type="button" id="shutterBtn" class="shutter-btn" aria-label="Take photo"></button>
-        <span style="width: 48px;"></span>
+        <div class="zoom-cluster" id="zoomCluster">
+            <button type="button" id="zoomInBtn" class="zoom-btn" aria-label="Zoom in">+</button>
+            <span class="zoom-label" id="zoomLabel">1.0×</span>
+            <button type="button" id="zoomOutBtn" class="zoom-btn" aria-label="Zoom out">−</button>
+        </div>
     </div>
 
     <div class="review-bar" id="reviewBar">

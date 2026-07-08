@@ -2,44 +2,47 @@
 
 # MobileDJay Project Instructions
 
-This is a Node.js Express web application for mobile customers to request songs and karaoke from a DJ.
+Node.js Express app for EYUP EVENTS — guests request songs, karaoke, and messages; DJs run a live dashboard, events, display screens, and moderation.
 
-## Project Structure
-- `server.js` - Main Express server with routes and API endpoints
-- `views/` - EJS templates for all pages
-- `public/css/` - Custom CSS styling with mobile-first responsive design
-- `public/js/` - Client-side JavaScript for interactive features
+## Project structure
 
-## Key Features
-- Mobile-responsive design using Bootstrap 5
-- Three main options: Song Request, Karaoke Request, Send Message
-- Customer name input with session storage
-- Searchable catalogues for songs and karaoke
-- Real-time search with debouncing
-- Form validation and error handling
-- Loading states and success feedback
+- `server.js` — Express routes, guest/DJ logic, VirtualDJ integration
+- `db/database.js` — SQLite schema, migrations, `eventDb`, `guestDb`, `trackDb`, etc.
+- `views/` — EJS templates (`index.ejs`, `dj-dashboard.ejs`, `events-list.ejs`, …)
+- `public/css/` — `style.css`, `eyup-site-chrome.css`
+- `public/js/` — `app.js`, `dj-dashboard.js`, request page scripts
+- `portal/` — separate EYUP portal API (`/api/v1`)
+- `docs/` — feature guide and API docs
 
-## Code Style Guidelines
-- Use ES6+ features where appropriate
-- Follow semantic HTML structure
-- Implement accessibility best practices
-- Use Bootstrap classes for consistent styling
-- Add Font Awesome icons for visual enhancement
-- Include proper error handling and user feedback
-- Implement mobile-first responsive design
-- Use session storage for user data persistence
+## Key features
 
-## API Endpoints
-- `GET /` - Main page
-- `GET /song-request` - Song request page
-- `GET /karaoke-request` - Karaoke request page  
-- `GET /send-message` - Message page
-- `GET /api/search/songs` - Search songs API
-- `GET /api/search/karaoke` - Search karaoke API
-- `POST /submit-*` - Form submission endpoints
+- **Multi-event** — `/event/:slug` per gig; optional public picker at `/` (`enable_public_events_page` + `show_public`)
+- **DJ dashboard** (`/dj`) — requests panel + messages sidebar; Guests tab; tracks played; display prompts
+- **Guest moderation** — stealth silence/ban via `event_guests` table and `PUT /api/events/:id/guests/moderate`
+- **Messages inbox** — `filterDjInboxMessages()`, `needsReply` enrichment, guest conversation API
+- **Persistence** — requests, messages, replies in SQLite (not memory-only)
+- **Tracks played** — `tracks_played` table; guest list when `show_tracks_played_guest` enabled
 
-## Dependencies
-- Express.js for server framework
-- EJS for templating
-- Bootstrap 5 for responsive UI
-- Font Awesome for icons
+## Code style
+
+- ES6+ where appropriate; match existing patterns in surrounding files
+- Bootstrap 5 + Font Awesome; mobile-first
+- Minimal scope on changes; reuse `eventDb`, `guestDb`, existing EJS/JS patterns
+
+## Documentation
+
+- `README.md` — overview and quick start
+- `docs/mobilejay-features.md` — operator feature guide
+- `docs/mobilejay-events-api.md` — HTTP API reference
+
+## Main routes
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Public event picker (if enabled) or legacy landing |
+| `/event/:slug` | Guest landing |
+| `/dj` | DJ dashboard |
+| `/dj/events` | Event management |
+| `/dj/settings` | Global settings |
+| `/api/events` | Event CRUD |
+| `/api/public/events` | Public listing JSON |

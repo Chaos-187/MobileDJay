@@ -1,6 +1,4 @@
-// MobileDJay — guest photo capture page
-// Lets a guest take/choose a photo, compresses it client-side, and uploads it
-// to the event album (POST /api/event/:slug/photos).
+// MobileDJay — guest gallery upload page ("Upload from Gallery").
 
 document.addEventListener('DOMContentLoaded', function () {
     const photoInput = document.getElementById('photoInput');
@@ -55,135 +53,9 @@ document.addEventListener('DOMContentLoaded', function () {
         photoInput.value = '';
         previewWrap.style.display = 'none';
         dropZone.style.display = '';
-        if (liveCameraSupported) liveCameraBtnWrap.style.setProperty('display', 'grid', 'important');
         uploadBtn.disabled = true;
         setStatus('');
     });
-
-    // ── Live in-page camera (getUserMedia) ───────────────────────────
-    const liveCameraBtnWrap = document.getElementById('liveCameraBtnWrap');
-    const openCameraBtn = document.getElementById('openCameraBtn');
-    const cameraWrap = document.getElementById('cameraWrap');
-    const cameraVideo = document.getElementById('cameraVideo');
-    const cameraFlash = document.getElementById('cameraFlash');
-    const shutterBtn = document.getElementById('shutterBtn');
-    const flipCameraBtn = document.getElementById('flipCameraBtn');
-    const closeCameraBtn = document.getElementById('closeCameraBtn');
-
-    const liveCameraSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-    let cameraStream = null;
-    let facingMode = 'environment';
-
-    if (liveCameraSupported) {
-        // The wrap is hidden with !important in the EJS so it never flashes
-        // on browsers without camera support; override it here.
-        liveCameraBtnWrap.style.setProperty('display', 'grid', 'important');
-    }
-
-    async function startCamera() {
-        stopCamera();
-        try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: facingMode },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                },
-                audio: false
-            });
-        } catch (err) {
-            console.warn('Camera constraints rejected, retrying with defaults:', err);
-            try {
-                // Some devices/webcams reject facingMode or resolution hints.
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            } catch (err2) {
-                console.error('Camera error:', err2);
-                setStatus(
-                    err2 && err2.name === 'NotAllowedError'
-                        ? 'Camera access was blocked. Allow camera permission and try again.'
-                        : 'Could not start the camera on this device.',
-                    'error'
-                );
-                return;
-            }
-        }
-        cameraVideo.srcObject = cameraStream;
-        try {
-            await cameraVideo.play();
-        } catch (err) {
-            // Autoplay policies can reject play(); the muted+playsinline video
-            // will still start once frames arrive, so don't treat it as fatal.
-            console.warn('Video play() rejected:', err);
-        }
-        // Mirror the preview (and capture) for the selfie camera so it
-        // behaves like a native camera app.
-        cameraVideo.classList.toggle('mirrored', facingMode === 'user');
-        cameraWrap.style.display = '';
-        document.body.classList.add('camera-open');
-        dropZone.style.display = 'none';
-        liveCameraBtnWrap.style.setProperty('display', 'none', 'important');
-        previewWrap.style.display = 'none';
-        setStatus('');
-    }
-
-    function stopCamera() {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach((t) => t.stop());
-            cameraStream = null;
-        }
-        cameraVideo.srcObject = null;
-    }
-
-    function closeCamera() {
-        stopCamera();
-        cameraWrap.style.display = 'none';
-        document.body.classList.remove('camera-open');
-        if (!pendingBlob) {
-            dropZone.style.display = '';
-            liveCameraBtnWrap.style.setProperty('display', 'grid', 'important');
-        }
-    }
-
-    openCameraBtn.addEventListener('click', startCamera);
-    closeCameraBtn.addEventListener('click', closeCamera);
-
-    flipCameraBtn.addEventListener('click', () => {
-        facingMode = facingMode === 'environment' ? 'user' : 'environment';
-        startCamera();
-    });
-
-    shutterBtn.addEventListener('click', () => {
-        if (!cameraStream || !cameraVideo.videoWidth) return;
-
-        cameraFlash.classList.remove('flashing');
-        void cameraFlash.offsetWidth; // restart the flash animation
-        cameraFlash.classList.add('flashing');
-
-        const canvas = document.createElement('canvas');
-        canvas.width = cameraVideo.videoWidth;
-        canvas.height = cameraVideo.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (facingMode === 'user') {
-            ctx.translate(canvas.width, 0);
-            ctx.scale(-1, 1);
-        }
-        ctx.drawImage(cameraVideo, 0, 0);
-        canvas.toBlob((blob) => {
-            if (!blob) {
-                setStatus('Could not capture the photo. Please try again.', 'error');
-                return;
-            }
-            closeCamera();
-            handleFile(blob);
-        }, 'image/jpeg', 0.92);
-    });
-
-    // Free the camera if the guest navigates away or backgrounds the tab.
-    window.addEventListener('pagehide', stopCamera);
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden && cameraStream) closeCamera();
-    });
-
 
     async function handleFile(file) {
         if (!file.type.startsWith('image/')) {
@@ -201,7 +73,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         previewWrap.style.display = '';
         dropZone.style.display = 'none';
-        liveCameraBtnWrap.style.setProperty('display', 'none', 'important');
         uploadBtn.disabled = false;
         setStatus('');
     }

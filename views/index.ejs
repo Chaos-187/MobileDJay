@@ -124,17 +124,7 @@ a { color: <%= event.accent_color %>; }
                 </div>
             </div>
 
-            <% if (event && event.show_tracks_played_guest) { %>
-            <!-- Recently Played Tracks (when enabled in event settings) -->
-            <section class="tracks-played-section" id="tracksPlayedSection" aria-label="Recently played tracks">
-                <div class="tracks-played-header">
-                    <h2 class="tracks-played-title"><i class="fas fa-list-ul me-2"></i>Recently Played</h2>
-                </div>
-                <ul class="tracks-played-list" id="tracksPlayedList">
-                    <li class="tracks-played-empty text-muted">Loading…</li>
-                </ul>
-            </section>
-            <% } %>
+            </div>
 
             <!-- Customer Name Input -->
             <div class="name-card" id="nameInputCard">
@@ -201,25 +191,25 @@ a { color: <%= event.accent_color %>; }
                     </div>
                     <% } %>
                     <% if (event && event.enable_photos) { %>
-                    <div class="option-card" data-target="<%= 'event/' + eventSlug + '/photo' %>">
+                    <div class="option-card" data-target="<%= 'event/' + eventSlug + '/camera' %>">
                         <div class="option-card-icon option-card-icon--photo">
                             <i class="fas fa-camera"></i>
                         </div>
                         <div class="option-card-content">
-                            <h3 class="option-card-title">Share a Photo</h3>
-                            <p class="option-card-desc">Snap a picture and add it to the event album</p>
+                            <h3 class="option-card-title">Event Cam</h3>
+                            <p class="option-card-desc">Open the camera and snap a photo for the event album</p>
                         </div>
                         <div class="option-card-arrow">
                             <i class="fas fa-chevron-right"></i>
                         </div>
                     </div>
-                    <div class="option-card" data-target="<%= 'event/' + eventSlug + '/camera' %>">
+                    <div class="option-card" data-target="<%= 'event/' + eventSlug + '/photo' %>">
                         <div class="option-card-icon option-card-icon--photo">
-                            <i class="fas fa-video"></i>
+                            <i class="fas fa-images"></i>
                         </div>
                         <div class="option-card-content">
-                            <h3 class="option-card-title">Just Take a Pic</h3>
-                            <p class="option-card-desc">Open the camera and snap one right now</p>
+                            <h3 class="option-card-title">Upload from Gallery</h3>
+                            <p class="option-card-desc">Choose a photo you already have on your phone</p>
                         </div>
                         <div class="option-card-arrow">
                             <i class="fas fa-chevron-right"></i>
@@ -379,54 +369,6 @@ a { color: <%= event.accent_color %>; }
         setInterval(fetchNowPlaying, 3000);
     })();
     </script>
-    <% if (event && event.show_tracks_played_guest) { %>
-    <script>
-    (function() {
-        const listEl = document.getElementById('tracksPlayedList');
-        if (!listEl || !window.eventSlug) return;
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text || '';
-            return div.innerHTML;
-        }
-
-        function formatTime(iso) {
-            try {
-                return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            } catch {
-                return '';
-            }
-        }
-
-        async function loadTracksPlayed() {
-            try {
-                const res = await fetch('/api/event/' + encodeURIComponent(window.eventSlug) + '/tracks-played?limit=15');
-                const tracks = await res.json();
-                if (!Array.isArray(tracks) || tracks.length === 0) {
-                    listEl.innerHTML = '<li class="tracks-played-empty text-muted">No tracks logged yet — check back soon!</li>';
-                    return;
-                }
-                listEl.innerHTML = tracks.map(function(track, i) {
-                    const isLatest = i === 0;
-                    return '<li class="tracks-played-item' + (isLatest ? ' tracks-played-item--latest' : '') + '">' +
-                        '<span class="tracks-played-time">' + escapeHtml(formatTime(track.playedAt)) + '</span>' +
-                        '<span class="tracks-played-track">' +
-                            '<strong>' + escapeHtml(track.title) + '</strong>' +
-                            (track.artist ? '<span class="tracks-played-artist">' + escapeHtml(track.artist) + '</span>' : '') +
-                        '</span>' +
-                    '</li>';
-                }).join('');
-            } catch (err) {
-                console.error('Error loading tracks played:', err);
-            }
-        }
-
-        loadTracksPlayed();
-        setInterval(loadTracksPlayed, 15000);
-    })();
-    </script>
-    <% } %>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/app.js"></script>
 </body>

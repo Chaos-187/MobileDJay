@@ -6,7 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="/manifest.json">
-    <title>Share a Photo - MobileDJay</title>
+    <title>Upload from Gallery - MobileDJay</title>
     <meta name="theme-color" content="<%= typeof event !== 'undefined' && event && event.accent_color ? event.accent_color : '#0a0a0a' %>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
@@ -148,7 +148,7 @@
 <body class="mdj-eyup-brand">
     <div class="mdj-scanlines" aria-hidden="true"></div>
 
-    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Share a photo">
+    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Upload from gallery">
         <div class="nav-container">
             <div class="logo" role="img" aria-label="EYUP EVENTS">
                 <span class="logo-text">EYUP</span>
@@ -168,21 +168,15 @@
             <div class="col-md-8 col-lg-6">
                 <div class="card mb-4">
                     <div class="card-body">
-                        <h5 class="card-title"><i class="fas fa-camera me-2"></i>Share a Photo</h5>
-                        <p class="text-muted small mb-3">Snap a picture of the party — it gets saved to the event album for everyone to enjoy afterwards.</p>
+                        <h5 class="card-title"><i class="fas fa-images me-2"></i>Upload from Gallery</h5>
+                        <p class="text-muted small mb-3">Pick a photo from your phone and add it to the event album for everyone to enjoy afterwards.</p>
 
-                        <input type="file" id="photoInput" accept="image/*" capture="environment" class="d-none">
+                        <input type="file" id="photoInput" accept="image/*" class="d-none">
 
-                        <div class="d-grid mb-2" id="liveCameraBtnWrap" style="display: none !important;">
-                            <button type="button" id="openCameraBtn" class="btn btn-outline-info">
-                                <i class="fas fa-video me-2"></i>Take a Picture Live
-                            </button>
-                        </div>
-
-                        <div id="dropZone" class="photo-drop-zone" role="button" tabindex="0" aria-label="Take or choose a photo">
-                            <i class="fas fa-camera-retro d-block"></i>
-                            <div class="fw-bold">Tap to take a photo</div>
-                            <div class="small text-muted">or choose one from your gallery</div>
+                        <div id="dropZone" class="photo-drop-zone" role="button" tabindex="0" aria-label="Choose a photo from your gallery">
+                            <i class="fas fa-images d-block"></i>
+                            <div class="fw-bold">Tap to upload from gallery</div>
+                            <div class="small text-muted">JPEG or PNG from your camera roll</div>
                         </div>
 
                         <div id="previewWrap" class="photo-preview-wrap mt-3" style="display: none;">
@@ -225,23 +219,6 @@
             </div>
         </footer>
     </main>
-
-    <!-- Full-screen live camera overlay (direct child of body so position:fixed
-         is not trapped by the card's transform/backdrop-filter/overflow) -->
-    <div id="cameraWrap" class="live-camera-wrap" style="display: none;">
-        <video id="cameraVideo" autoplay playsinline muted></video>
-        <div class="camera-flash" id="cameraFlash"></div>
-        <button type="button" id="closeCameraBtn" class="btn btn-sm btn-dark camera-close-btn" aria-label="Close camera">
-            <i class="fas fa-xmark"></i>
-        </button>
-        <div class="live-camera-controls">
-            <button type="button" id="flipCameraBtn" class="camera-side-btn" aria-label="Switch camera">
-                <i class="fas fa-camera-rotate"></i>
-            </button>
-            <button type="button" id="shutterBtn" class="shutter-btn" aria-label="Take photo"></button>
-            <span style="width: 44px;"></span>
-        </div>
-    </div>
 
     <script>
         window.eventSlug = '<%= eventSlug %>';

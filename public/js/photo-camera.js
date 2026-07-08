@@ -1,8 +1,9 @@
-// MobileDJay — dedicated full-screen live camera page ("Just Take a Pic").
+// MobileDJay — dedicated full-screen live camera page ("Event Cam").
 // Opens the camera immediately, captures a frame, and uploads it to the
 // event album (POST /api/event/:slug/photos).
 
 (function () {
+    const cameraStage = document.getElementById('cameraStage');
     const cameraVideo = document.getElementById('cameraVideo');
     const reviewImg = document.getElementById('reviewImg');
     const cameraFlash = document.getElementById('cameraFlash');
@@ -10,6 +11,9 @@
     const reviewBar = document.getElementById('reviewBar');
     const shutterBtn = document.getElementById('shutterBtn');
     const flipBtn = document.getElementById('flipBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomLabel = document.getElementById('zoomLabel');
     const closeBtn = document.getElementById('closeBtn');
     const retakeBtn = document.getElementById('retakeBtn');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -24,6 +28,15 @@
     let cameraStream = null;
     let facingMode = 'environment';
     let capturedBlob = null;
+
+    // Zoom: hardware (camera lens) when supported, otherwise CSS crop zoom.
+    let hardwareZoomSupported = false;
+    let currentZoom = 1;
+    let zoomMin = 1;
+    let zoomMax = 4;
+    let zoomStep = 0.25;
+    let pinchStartDistance = 0;
+    let pinchStartZoom = 1;
 
     // ── Filters ──────────────────────────────────────────────────────
     // CSS filter strings: previewed live on the video, then baked into the
@@ -84,6 +97,103 @@
         statusMsg.classList.remove('active');
     }
 
+    function getVideoTrack() {
+        return cameraStream && cameraStream.getVideoTracks
+            ? cameraStream.getVideoTracks()[0]
+            : null;
+    }
+
+    function touchDistance(touches) {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy);
+    }
+
+    async function refreshZoomCapabilities() {
+        const track = getVideoTrack();
+        const caps = track && track.getCapabilities ? track.getCapabilities() : null;
+
+        if (caps && caps.zoom) {
+            hardwareZoomSupported = true;
+            zoomMin = typeof caps.zoom.min === 'number' ? caps.zoom.min : 1;
+            zoomMax = typeof caps.zoom.max === 'number' ? caps.zoom.max : zoomMin;
+            zoomStep = typeof caps.zoom.step === 'number' && caps.zoom.step > 0 ? caps.zoom.step : 0.1;
+        } else {
+            hardwareZoomSupported = false;
+            zoomMin = 1;
+            zoomMax = 4;
+            zoomStep = 0.25;
+        }
+
+        currentZoom = zoomMin;
+        if (hardwareZoomSupported) {
+            await applyHardwareZoom(currentZoom);
+            const settings = track && track.getSettings ? track.getSettings() : null;
+            if (settings && typeof settings.zoom === 'number') {
+                currentZoom = settings.zoom;
+            }
+        }
+        applyVideoPreviewTransform();
+        updateZoomUI();
+    }
+
+    async function applyHardwareZoom(level) {
+        const track = getVideoTrack();
+        if (!track || !hardwareZoomSupported) return false;
+
+        const clamped = Math.min(zoomMax, Math.max(zoomMin, level));
+        try {
+            await track.applyConstraints({ advanced: [{ zoom: clamped }] });
+            return true;
+        } catch (err) {
+            try {
+                await track.applyConstraints({ zoom: clamped });
+                return true;
+            } catch (err2) {
+                console.warn('Hardware zoom not applied:', err2);
+                return false;
+            }
+        }
+    }
+
+    function applyVideoPreviewTransform() {
+        if (hardwareZoomSupported) {
+            cameraVideo.classList.toggle('mirrored', facingMode === 'user');
+            cameraVideo.style.transform = '';
+            return;
+        }
+
+        const parts = [];
+        if (facingMode === 'user') parts.push('scaleX(-1)');
+        if (currentZoom > 1) parts.push('scale(' + currentZoom + ')');
+        cameraVideo.classList.remove('mirrored');
+        cameraVideo.style.transform = parts.join(' ') || '';
+    }
+
+    function updateZoomUI() {
+        zoomLabel.textContent = currentZoom.toFixed(1) + '×';
+        zoomOutBtn.disabled = currentZoom <= zoomMin + 0.01;
+        zoomInBtn.disabled = currentZoom >= zoomMax - 0.01;
+    }
+
+    async function setZoom(level) {
+        const clamped = Math.min(zoomMax, Math.max(zoomMin, level));
+        currentZoom = clamped;
+
+        if (hardwareZoomSupported) {
+            await applyHardwareZoom(clamped);
+            const settings = getVideoTrack() && getVideoTrack().getSettings
+                ? getVideoTrack().getSettings()
+                : null;
+            if (settings && typeof settings.zoom === 'number') {
+                currentZoom = settings.zoom;
+            }
+        }
+
+        applyVideoPreviewTransform();
+        updateZoomUI();
+    }
+
     function stopCamera() {
         if (cameraStream) {
             cameraStream.getTracks().forEach((t) => t.stop());
@@ -126,7 +236,7 @@
         } catch (err) {
             console.warn('Video play() rejected:', err);
         }
-        cameraVideo.classList.toggle('mirrored', facingMode === 'user');
+        await refreshZoomCapabilities();
     }
 
     function showReview() {
@@ -158,8 +268,22 @@
         cameraFlash.classList.add('flashing');
 
         const canvas = document.createElement('canvas');
-        canvas.width = cameraVideo.videoWidth;
-        canvas.height = cameraVideo.videoHeight;
+        const vw = cameraVideo.videoWidth;
+        const vh = cameraVideo.videoHeight;
+        let sx = 0;
+        let sy = 0;
+        let sw = vw;
+        let sh = vh;
+
+        if (!hardwareZoomSupported && currentZoom > 1) {
+            sw = vw / currentZoom;
+            sh = vh / currentZoom;
+            sx = (vw - sw) / 2;
+            sy = (vh - sh) / 2;
+        }
+
+        canvas.width = Math.round(sw);
+        canvas.height = Math.round(sh);
         const ctx = canvas.getContext('2d');
         if (filtersSupported && currentFilter.css) {
             ctx.filter = currentFilter.css;
@@ -168,7 +292,7 @@
             ctx.translate(canvas.width, 0);
             ctx.scale(-1, 1);
         }
-        ctx.drawImage(cameraVideo, 0, 0);
+        ctx.drawImage(cameraVideo, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
         canvas.toBlob((blob) => {
             if (!blob) return;
             capturedBlob = blob;
@@ -180,7 +304,33 @@
 
     flipBtn.addEventListener('click', () => {
         facingMode = facingMode === 'environment' ? 'user' : 'environment';
+        currentZoom = 1;
         startCamera();
+    });
+
+    zoomInBtn.addEventListener('click', () => {
+        setZoom(currentZoom + zoomStep);
+    });
+
+    zoomOutBtn.addEventListener('click', () => {
+        setZoom(currentZoom - zoomStep);
+    });
+
+    cameraStage.addEventListener('touchstart', (e) => {
+        if (capturedBlob || e.touches.length !== 2) return;
+        pinchStartDistance = touchDistance(e.touches);
+        pinchStartZoom = currentZoom;
+    }, { passive: true });
+
+    cameraStage.addEventListener('touchmove', (e) => {
+        if (capturedBlob || e.touches.length !== 2 || !pinchStartDistance) return;
+        e.preventDefault();
+        const dist = touchDistance(e.touches);
+        setZoom(pinchStartZoom * (dist / pinchStartDistance));
+    }, { passive: false });
+
+    cameraStage.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) pinchStartDistance = 0;
     });
 
     closeBtn.addEventListener('click', () => {

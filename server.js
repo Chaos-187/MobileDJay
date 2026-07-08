@@ -33,7 +33,7 @@ const archiver = require('archiver');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
 const cors = require('cors');
-const { eventDb, requestDb, messageDb, replyDb, photoDb, trackDb, guestDb, settingsDb, ensureDefaultEvent } = require('./db/database');
+const { eventDb, requestDb, messageDb, replyDb, photoDb, trackDb, guestDb, slideshowDb, settingsDb, ensureDefaultEvent } = require('./db/database');
 const portalRouter = require('./portal/router');
 const app = express();
 
@@ -86,6 +86,31 @@ const photoUpload = multer({
 const themesRoot = path.join(uploadsRoot, 'themes');
 fs.mkdirSync(themesRoot, { recursive: true });
 app.use('/uploads/themes', express.static(themesRoot, { maxAge: '7d' }));
+
+// Display background slideshow images — uploads/slideshow/<eventId>/
+const slideshowRoot = path.join(uploadsRoot, 'slideshow');
+fs.mkdirSync(slideshowRoot, { recursive: true });
+app.use('/uploads/slideshow', express.static(slideshowRoot, { maxAge: '7d' }));
+
+const slideshowStorage = multer.diskStorage({
+    destination(req, file, cb) {
+        const eventDir = path.join(slideshowRoot, String(req.params.id));
+        fs.mkdirSync(eventDir, { recursive: true });
+        cb(null, eventDir);
+    },
+    filename(req, file, cb) {
+        const ext = ({ 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' })[file.mimetype] || '.jpg';
+        cb(null, `slide-${Date.now()}${ext}`);
+    }
+});
+const slideshowUpload = multer({
+    storage: slideshowStorage,
+    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    fileFilter(req, file, cb) {
+        const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
+        cb(ok ? null : new Error('Only JPEG, PNG, WebP, or GIF images are allowed'), ok);
+    }
+});
 
 const themeStorage = multer.diskStorage({
     destination(req, file, cb) {
@@ -1447,7 +1472,10 @@ app.get('/dj/display-config/:eventSlug', (req, res) => {
     if (!event) {
         return res.status(404).render('error', { error: 'Event not found', customerName: '', eventSlug: null });
     }
-    res.render('display-config', { event });
+    res.render('display-config', {
+        event,
+        displaySlides: slideshowDb.getByEvent(event.id)
+    });
 });
 
 // Event-specific display
@@ -1456,9 +1484,12 @@ app.get('/dj/display/:eventSlug', (req, res) => {
     if (!event) {
         return res.status(404).render('error', { error: 'Event not found', customerName: '', eventSlug: null });
     }
-    // Get messages for this event
     const publicMessages = djMessages.filter(msg => !msg.private && msg.eventSlug === event.slug);
-    res.render('dj-display', { event, messages: publicMessages });
+    res.render('dj-display', {
+        event,
+        messages: publicMessages,
+        displaySlides: slideshowDb.getByEvent(event.id)
+    });
 });
 
 // Legacy global display (redirect or show all)
@@ -1479,6 +1510,8 @@ app.put('/api/events/:id/display-config', (req, res) => {
         display_bg_color1: req.body.display_bg_color1 || '#000428',
         display_bg_color2: req.body.display_bg_color2 || '#004e92',
         display_bg_image: req.body.display_bg_image || null,
+        display_bg_slideshow_enabled: req.body.display_bg_slideshow_enabled ? 1 : 0,
+        display_bg_slideshow_seconds: Math.min(Math.max(parseInt(req.body.display_bg_slideshow_seconds, 10) || 15, 5), 300),
         display_card_color: req.body.display_card_color || '#ffffff',
         display_card_opacity: parseInt(req.body.display_card_opacity) || 85
     };
@@ -1489,6 +1522,68 @@ app.put('/api/events/:id/display-config', (req, res) => {
     } else {
         res.status(400).json({ success: false, error: 'Failed to update display config' });
     }
+});
+
+// Display background slideshow images
+app.get('/api/events/:id/display-slideshow', (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    const event = eventDb.getById(eventId);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    res.json(slideshowDb.getByEvent(eventId));
+});
+
+app.post('/api/events/:id/display-slideshow', (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    const event = eventDb.getById(eventId);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    slideshowUpload.single('image')(req, res, (err) => {
+        if (err) {
+            const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Image is too large (max 10 MB)' : (err.message || 'Upload failed');
+            return res.status(400).json({ error: msg });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image attached' });
+        }
+        const imageUrl = `/uploads/slideshow/${eventId}/${req.file.filename}`;
+        const slide = slideshowDb.add(eventId, imageUrl);
+        res.json({ success: true, slide, slides: slideshowDb.getByEvent(eventId) });
+    });
+});
+
+app.put('/api/events/:id/display-slideshow/reorder', (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    const event = eventDb.getById(eventId);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const order = req.body.order || req.body.orderedIds;
+    if (!Array.isArray(order) || order.length === 0) {
+        return res.status(400).json({ error: 'order array is required' });
+    }
+    const slides = slideshowDb.reorder(eventId, order);
+    res.json({ success: true, slides });
+});
+
+app.delete('/api/events/:id/display-slideshow/:slideId', (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    const slideId = parseInt(req.params.slideId, 10);
+    const event = eventDb.getById(eventId);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const imageUrl = slideshowDb.delete(slideId, eventId);
+    if (!imageUrl) {
+        return res.status(404).json({ error: 'Slide not found' });
+    }
+    if (imageUrl.startsWith('/uploads/slideshow/')) {
+        const diskPath = path.join(__dirname, imageUrl.replace(/^\//, '').split('/').join(path.sep));
+        fs.unlink(diskPath, () => {});
+    }
+    res.json({ success: true, slides: slideshowDb.getByEvent(eventId) });
 });
 
 app.get('/karaoke-spinner', (req, res) => {
@@ -1773,7 +1868,7 @@ app.get('/event/:eventSlug/photo', getEventFromSlug, (req, res) => {
     });
 });
 
-// Dedicated full-screen live camera page ("Just Take a Pic")
+// Dedicated full-screen live camera page ("Event Cam")
 app.get('/event/:eventSlug/camera', getEventFromSlug, (req, res) => {
     if (!req.event.enable_photos) {
         return res.status(403).render('error', {

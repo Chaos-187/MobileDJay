@@ -17,17 +17,38 @@
         }
 
         body {
-            /* lighter gradient overlay so the photo is more visible while keeping readable tint */
-            background: linear-gradient(180deg, rgba(0,4,40,0.25), rgba(0,78,146,0.12)), var(--bg-image);
-            background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
             margin: 0;
             overflow: hidden;
             font-family: 'Arial', sans-serif;
             cursor: none;
+            background: #000;
         }
+
+        .display-bg-stack {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .display-bg-gradient {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, var(--bg1), var(--bg2));
+        }
+        .display-bg-slide {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            opacity: 0;
+            transition: opacity 1.4s ease-in-out;
+        }
+        .display-bg-slide.is-visible {
+            opacity: 1;
+        }
+
+        /* Original body content paints above the fixed background stack (DOM order). */
 
         .message-container {
             position: fixed;
@@ -1100,6 +1121,11 @@
     </style>
 </head>
 <body>
+    <div class="display-bg-stack" aria-hidden="true">
+        <div id="displayBgGradient" class="display-bg-gradient"></div>
+        <div id="displayBgSlideA" class="display-bg-slide"></div>
+        <div id="displayBgSlideB" class="display-bg-slide"></div>
+    </div>
     <!-- Floating Background Icons -->
     <div class="floating-icons">
         <i class="fas fa-music floating-icon" style="top: 10%; left: 10%; animation-delay: 0s;"></i>
@@ -1217,6 +1243,9 @@
             bgColor1: '<%= event.display_bg_color1 || '#000428' %>',
             bgColor2: '<%= event.display_bg_color2 || '#004e92' %>',
             bgImage: '<%= event.display_bg_image || '' %>',
+            bgSlideshowEnabled: <%= event.display_bg_slideshow_enabled ? 'true' : 'false' %>,
+            bgSlideshowSeconds: <%= event.display_bg_slideshow_seconds || 15 %>,
+            bgSlideshowImages: <%- JSON.stringify((typeof displaySlides !== 'undefined' ? displaySlides : []).map(function(s) { return s.imageUrl; })) %>,
             cardColor: '<%= event.display_card_color || '#ffffff' %>',
             cardOpacity: <%= event.display_card_opacity || 85 %>,
             eventSlug: '<%= event.slug %>'
@@ -1231,6 +1260,9 @@
             bgColor1: '#000428',
             bgColor2: '#004e92',
             bgImage: '',
+            bgSlideshowEnabled: false,
+            bgSlideshowSeconds: 15,
+            bgSlideshowImages: [],
             cardColor: '#ffffff',
             cardOpacity: 85,
             eventSlug: null
@@ -1240,19 +1272,45 @@
         const qrOverlay = document.getElementById('qrOverlay');
         const qrCanvas = document.getElementById('qrCanvas');
         const qrLabel = document.getElementById('qrLabel');
-        
-        // Apply background colors
+
         const bg1 = config.bgColor1;
         const bg2 = config.bgColor2;
-        
-        if (config.bgImage) {
-            document.body.style.background = `linear-gradient(180deg, ${bg1}aa, ${bg2}aa), url('${config.bgImage}')`;
-        } else {
-            document.body.style.background = `linear-gradient(180deg, ${bg1}, ${bg2})`;
+        document.documentElement.style.setProperty('--bg1', bg1);
+        document.documentElement.style.setProperty('--bg2', bg2);
+
+        const slideA = document.getElementById('displayBgSlideA');
+        const slideB = document.getElementById('displayBgSlideB');
+        const gradientOverlay = 'linear-gradient(180deg, ' + bg1 + 'aa, ' + bg2 + 'aa)';
+
+        function setSlideLayer(layer, imageUrl) {
+            layer.style.backgroundImage = gradientOverlay + (imageUrl ? ", url('" + imageUrl + "')" : '');
+            layer.classList.add('is-visible');
         }
-        document.body.style.backgroundSize = 'cover';
-        document.body.style.backgroundPosition = 'center';
-        document.body.style.backgroundAttachment = 'fixed';
+
+        function clearSlideLayer(layer) {
+            layer.classList.remove('is-visible');
+        }
+
+        const slideshowImages = (config.bgSlideshowEnabled && config.bgSlideshowImages.length)
+            ? config.bgSlideshowImages
+            : (config.bgImage ? [config.bgImage] : []);
+
+        if (slideshowImages.length > 0) {
+            let slideIndex = 0;
+            let useA = true;
+            setSlideLayer(slideA, slideshowImages[0]);
+            if (slideshowImages.length > 1) {
+                const intervalMs = Math.max(5, config.bgSlideshowSeconds) * 1000;
+                setInterval(function() {
+                    slideIndex = (slideIndex + 1) % slideshowImages.length;
+                    const nextLayer = useA ? slideB : slideA;
+                    const prevLayer = useA ? slideA : slideB;
+                    setSlideLayer(nextLayer, slideshowImages[slideIndex]);
+                    setTimeout(function() { clearSlideLayer(prevLayer); }, 1400);
+                    useA = !useA;
+                }, intervalMs);
+            }
+        }
         
         // Apply card styling via CSS custom property
         const color = config.cardColor;

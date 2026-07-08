@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= event.name %> - Photo Album</title>
+    <meta name="theme-color" content="#0a0a0a">
+    <meta property="og:title" content="<%= event.name %> - Photo Album">
+    <meta property="og:type" content="website">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+    <link href="/css/eyup-site-chrome.css" rel="stylesheet">
+    <style>
+        .gallery-hero {
+            text-align: center;
+            padding: 2rem 1rem 1rem;
+        }
+        .gallery-hero h1 {
+            font-size: clamp(1.5rem, 5vw, 2.4rem);
+            font-weight: 800;
+        }
+        .gallery-hero .meta {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+        }
+        .gallery-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1.25rem;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 0.75rem;
+            padding-bottom: 3rem;
+        }
+        .gallery-item-wrap {
+            position: relative;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        .gallery-item {
+            position: relative;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            cursor: pointer;
+            background: #000;
+            border: 0;
+            padding: 0;
+            display: block;
+            width: 100%;
+        }
+        .gallery-item img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.25s ease;
+        }
+        .gallery-item:hover img {
+            transform: scale(1.04);
+        }
+        .gallery-item .who {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.75rem;
+            color: #fff;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+            text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .gallery-item-actions {
+            position: absolute;
+            top: 0.4rem;
+            right: 0.4rem;
+            display: flex;
+            gap: 0.3rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 2;
+        }
+        .gallery-item-wrap:hover .gallery-item-actions,
+        .gallery-item-wrap:focus-within .gallery-item-actions {
+            opacity: 1;
+        }
+        .gallery-item-actions .btn {
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        }
+        .gallery-empty {
+            text-align: center;
+            padding: 4rem 1rem;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 1050;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.92);
+            padding: 1rem;
+        }
+        .lightbox.open { display: flex; }
+        .lightbox img {
+            max-width: 100%;
+            max-height: 72vh;
+            border-radius: 0.5rem;
+        }
+        .lightbox .lb-caption {
+            color: #fff;
+            margin-top: 0.75rem;
+            text-align: center;
+            max-width: 640px;
+        }
+        .lightbox .lb-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+        }
+        .lightbox .lb-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .lightbox .lb-prev { left: 0.75rem; }
+        .lightbox .lb-next { right: 0.75rem; }
+        .lb-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 1rem;
+            max-width: 640px;
+        }
+        .lb-share-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .lb-share-label {
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.85rem;
+            margin-right: 0.25rem;
+        }
+        .share-btn {
+            width: 2.5rem;
+            height: 2.5rem;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            border: none;
+            color: #fff;
+            transition: transform 0.15s ease;
+        }
+        .share-btn:hover { transform: scale(1.08); color: #fff; }
+        .share-btn.share-fb { background: #1877f2; }
+        .share-btn.share-x { background: #000; border: 1px solid #444; }
+        .share-btn.share-wa { background: #25d366; }
+        .share-btn.share-pin { background: #e60023; }
+        .share-btn.share-copy { background: #555; }
+        .share-btn.share-native { background: #ff6600; }
+        .gallery-toast {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 0.6rem 1.2rem;
+            border-radius: 2rem;
+            font-size: 0.9rem;
+            z-index: 1100;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+            pointer-events: none;
+        }
+        .gallery-toast.show { opacity: 1; }
+        @media (max-width: 576px) {
+            .gallery-item-actions { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="mdj-eyup-brand">
+    <div class="mdj-scanlines" aria-hidden="true"></div>
+
+    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Photo album">
+        <div class="nav-container">
+            <div class="logo" role="img" aria-label="EYUP EVENTS">
+                <span class="logo-text">EYUP</span>
+                <span class="logo-accent">EVENTS</span>
+                <span class="logo-subtitle">Photo Album</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-2">
+        <header class="gallery-hero">
+            <h1><%= event.name %></h1>
+            <p class="meta">
+                <% if (event.venue) { %><i class="fas fa-map-marker-alt me-1"></i><%= event.venue %><% } %>
+                <% if (event.event_date) { %>
+                    <% if (event.venue) { %> · <% } %>
+                    <i class="fas fa-calendar me-1"></i><%= new Date(event.event_date).toLocaleDateString() %>
+                <% } %>
+            </p>
+            <p class="meta"><i class="fas fa-images me-1"></i><%= photos.length %> photo<%= photos.length === 1 ? '' : 's' %> from your guests</p>
+
+            <% if (photos.length > 0) { %>
+            <div class="gallery-actions">
+                <a href="/gallery/<%= event.slug %>/<%= galleryToken %>/download-all"
+                   class="btn btn-primary" id="downloadAllBtn">
+                    <i class="fas fa-download me-2"></i>Download all photos
+                </a>
+                <button type="button" class="btn btn-outline-light" id="shareAlbumBtn">
+                    <i class="fas fa-share-nodes me-2"></i>Share album
+                </button>
+            </div>
+            <% } %>
+        </header>
+
+        <% if (photos.length === 0) { %>
+            <div class="gallery-empty">
+                <i class="fas fa-camera fa-3x mb-3 d-block"></i>
+                <h5>No photos yet</h5>
+                <p>Photos your guests share during the event will appear here.</p>
+            </div>
+        <% } else { %>
+            <div class="gallery-grid" id="galleryGrid">
+                <% photos.forEach(function(photo, i) { %>
+                    <div class="gallery-item-wrap">
+                        <button type="button" class="gallery-item" data-index="<%= i %>"
+                                data-photo-id="<%= photo.id %>"
+                                data-url="/uploads/photos/<%= photo.event_id %>/<%= photo.filename %>"
+                                data-download="/gallery/<%= event.slug %>/<%= galleryToken %>/photo/<%= photo.id %>/download"
+                                data-caption="<%= (photo.caption || '').replace(/"/g, '&quot;') %>"
+                                data-who="<%= (photo.customer_name || '').replace(/"/g, '&quot;') %>">
+                            <img src="/uploads/photos/<%= photo.event_id %>/<%= photo.filename %>"
+                                 alt="<%= photo.caption || 'Event photo' %>" loading="lazy">
+                            <% if (photo.customer_name) { %>
+                                <span class="who"><i class="fas fa-user me-1"></i><%= photo.customer_name %></span>
+                            <% } %>
+                        </button>
+                        <div class="gallery-item-actions">
+                            <a href="/gallery/<%= event.slug %>/<%= galleryToken %>/photo/<%= photo.id %>/download"
+                               class="btn btn-light btn-sm gallery-dl-single" title="Download photo"
+                               download aria-label="Download photo">
+                                <i class="fas fa-download"></i>
+                            </a>
+                            <button type="button" class="btn btn-light btn-sm gallery-share-single"
+                                    data-index="<%= i %>" title="Share photo" aria-label="Share photo">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } %>
+
+        <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">
+            <div class="mdj-footer-container">
+                <div class="mdj-company-foot">
+                    <p class="mdj-company-foot__legal">&copy; 2026 EYUP EVENTS UK LTD · Co. no. 17186451 · All rights reserved</p>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer">
+        <button type="button" class="btn btn-light lb-close" id="lbClose" aria-label="Close">
+            <i class="fas fa-times"></i>
+        </button>
+        <button type="button" class="btn btn-dark lb-nav lb-prev" id="lbPrev" aria-label="Previous photo">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <img id="lbImg" src="" alt="">
+        <div class="lb-caption" id="lbCaption"></div>
+        <div class="lb-toolbar">
+            <a href="#" class="btn btn-primary btn-sm" id="lbDownload" download>
+                <i class="fas fa-download me-1"></i>Download
+            </a>
+            <div class="lb-share-group">
+                <span class="lb-share-label">Share:</span>
+                <button type="button" class="share-btn share-fb" id="shareFb" title="Share on Facebook" aria-label="Share on Facebook">
+                    <i class="fab fa-facebook-f"></i>
+                </button>
+                <button type="button" class="share-btn share-x" id="shareX" title="Share on X" aria-label="Share on X">
+                    <i class="fab fa-x-twitter"></i>
+                </button>
+                <button type="button" class="share-btn share-wa" id="shareWa" title="Share on WhatsApp" aria-label="Share on WhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                </button>
+                <button type="button" class="share-btn share-pin" id="sharePin" title="Pin on Pinterest" aria-label="Pin on Pinterest">
+                    <i class="fab fa-pinterest-p"></i>
+                </button>
+                <button type="button" class="share-btn share-copy" id="shareCopy" title="Copy link" aria-label="Copy link">
+                    <i class="fas fa-link"></i>
+                </button>
+                <button type="button" class="share-btn share-native d-none" id="shareNative" title="Share" aria-label="Share">
+                    <i class="fas fa-share-nodes"></i>
+                </button>
+            </div>
+        </div>
+        <button type="button" class="btn btn-dark lb-nav lb-next" id="lbNext" aria-label="Next photo">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
+    <div class="gallery-toast" id="galleryToast" role="status" aria-live="polite"></div>
+
+    <script>
+    (function () {
+        const EVENT_NAME = <%- JSON.stringify(event.name) %>;
+        const GALLERY_URL = window.location.href.split('#')[0];
+        const items = Array.from(document.querySelectorAll('.gallery-item'));
+        const toast = document.getElementById('galleryToast');
+        let toastTimer;
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+        }
+
+        function absUrl(path) {
+            return new URL(path, window.location.origin).href;
+        }
+
+        function photoShareText(item) {
+            const caption = item.dataset.caption;
+            const who = item.dataset.who;
+            const parts = [`Photo from ${EVENT_NAME}`];
+            if (caption) parts.push(caption);
+            if (who) parts.push(`by ${who}`);
+            return parts.join(' — ');
+        }
+
+        function openShare(url) {
+            window.open(url, '_blank', 'noopener,noreferrer,width=600,height=500');
+        }
+
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast('Link copied!');
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                showToast('Link copied!');
+            }
+        }
+
+        function sharePhoto(item) {
+            const imageUrl = absUrl(item.dataset.url);
+            const text = photoShareText(item);
+            const pageWithHash = `${GALLERY_URL}#photo-${item.dataset.photoId}`;
+
+            return {
+                imageUrl,
+                text,
+                pageWithHash,
+                fb: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageWithHash)}`,
+                x: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(pageWithHash)}`,
+                wa: `https://wa.me/?text=${encodeURIComponent(text + ' ' + pageWithHash)}`,
+                pin: `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(pageWithHash)}&media=${encodeURIComponent(imageUrl)}&description=${encodeURIComponent(text)}`
+            };
+        }
+
+        async function nativeShare(item) {
+            const urls = sharePhoto(item);
+            if (navigator.share) {
+                try {
+                    const payload = { title: EVENT_NAME, text: urls.text, url: urls.pageWithHash };
+                    if (navigator.canShare) {
+                        const res = await fetch(item.dataset.download);
+                        if (res.ok) {
+                            const blob = await res.blob();
+                            const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+                            const file = new File([blob], `photo-${item.dataset.photoId}.${ext}`, { type: blob.type });
+                            if (navigator.canShare({ files: [file] })) {
+                                await navigator.share({ ...payload, files: [file] });
+                                return;
+                            }
+                        }
+                    }
+                    await navigator.share(payload);
+                    return;
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                }
+            }
+            copyToClipboard(urls.pageWithHash);
+        }
+
+        // Share album button
+        const shareAlbumBtn = document.getElementById('shareAlbumBtn');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        if (downloadAllBtn) {
+            downloadAllBtn.addEventListener('click', function () {
+                const icon = this.querySelector('i');
+                if (icon) icon.className = 'fas fa-spinner fa-spin me-2';
+                this.classList.add('disabled');
+                showToast('Preparing your download…');
+            });
+        }
+        if (shareAlbumBtn) {
+            shareAlbumBtn.addEventListener('click', async () => {
+                const text = `Photo album from ${EVENT_NAME}`;
+                if (navigator.share) {
+                    try {
+                        await navigator.share({ title: EVENT_NAME, text, url: GALLERY_URL });
+                        return;
+                    } catch (err) {
+                        if (err.name === 'AbortError') return;
+                    }
+                }
+                openShare(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(GALLERY_URL)}`);
+            });
+        }
+
+        // Per-thumbnail share opens lightbox share flow
+        document.querySelectorAll('.gallery-share-single').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const idx = parseInt(btn.dataset.index, 10);
+                show(idx);
+                setTimeout(() => nativeShare(items[idx]), 300);
+            });
+        });
+
+        // Prevent grid download/share clicks from opening lightbox
+        document.querySelectorAll('.gallery-item-actions').forEach(actions => {
+            actions.addEventListener('click', (e) => e.stopPropagation());
+        });
+
+        if (items.length === 0) return;
+
+        const lightbox = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lbImg');
+        const lbCaption = document.getElementById('lbCaption');
+        const lbDownload = document.getElementById('lbDownload');
+        let current = 0;
+
+        function show(index) {
+            current = (index + items.length) % items.length;
+            const item = items[current];
+            lbImg.src = item.dataset.url;
+            const who = item.dataset.who;
+            const caption = item.dataset.caption;
+            lbCaption.textContent = [caption, who ? 'by ' + who : ''].filter(Boolean).join(' — ');
+            lbDownload.href = item.dataset.download;
+            lightbox.classList.add('open');
+        }
+
+        items.forEach((item) => {
+            item.addEventListener('click', () => show(parseInt(item.dataset.index, 10)));
+        });
+        document.getElementById('lbClose').addEventListener('click', () => lightbox.classList.remove('open'));
+        document.getElementById('lbPrev').addEventListener('click', () => show(current - 1));
+        document.getElementById('lbNext').addEventListener('click', () => show(current + 1));
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) lightbox.classList.remove('open');
+        });
+        document.addEventListener('keydown', (e) => {
+            if (!lightbox.classList.contains('open')) return;
+            if (e.key === 'Escape') lightbox.classList.remove('open');
+            if (e.key === 'ArrowLeft') show(current - 1);
+            if (e.key === 'ArrowRight') show(current + 1);
+        });
+
+        // Lightbox share buttons
+        document.getElementById('shareFb').addEventListener('click', () => openShare(sharePhoto(items[current]).fb));
+        document.getElementById('shareX').addEventListener('click', () => openShare(sharePhoto(items[current]).x));
+        document.getElementById('shareWa').addEventListener('click', () => openShare(sharePhoto(items[current]).wa));
+        document.getElementById('sharePin').addEventListener('click', () => openShare(sharePhoto(items[current]).pin));
+        document.getElementById('shareCopy').addEventListener('click', () => copyToClipboard(sharePhoto(items[current]).pageWithHash));
+
+        const shareNativeBtn = document.getElementById('shareNative');
+        if (navigator.share) {
+            shareNativeBtn.classList.remove('d-none');
+            shareNativeBtn.addEventListener('click', () => nativeShare(items[current]));
+        }
+
+        // Open lightbox from URL hash if present
+        const hashMatch = window.location.hash.match(/^#photo-(\d+)$/);
+        if (hashMatch) {
+            const idx = items.findIndex(it => it.dataset.photoId === hashMatch[1]);
+            if (idx >= 0) show(idx);
+        }
+    })();
+    </script>
+</body>
+</html>

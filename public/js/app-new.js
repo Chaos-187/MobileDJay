@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="chat-bubble ${isFromDJ ? 'from-dj' : 'from-customer'}" style="max-width: 80%;">
                         <div class="d-flex align-items-center mb-1">
                             <i class="fas fa-user-tie me-2 text-warning"></i>
-                            <strong class="text-warning">DJ Chaos</strong>
+                            <strong class="text-warning">${escapeHtml(window.djName || 'DJ')}</strong>
                             <span class="badge bg-secondary ms-2 small">${reply.originalType}</span>
                         </div>
                         <p class="mb-1">${escapeHtml(reply.replyMessage)}</p>

@@ -546,7 +546,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="chat-bubble from-dj" style="max-width: 80%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                         <div class="d-flex align-items-center mb-1">
                             <i class="fas fa-user-tie me-2" style="color: #ffc107;"></i>
-                            <strong style="color: #ffc107;">DJ Chaos</strong>
+                            <strong style="color: #ffc107;">${escapeHtmlReply(window.djName || 'DJ')}</strong>
                             <span class="badge bg-secondary ms-2 small">${escapeHtmlReply(reply.originalType)}</span>
                         </div>
                         <p class="mb-1">${escapeHtmlReply(reply.replyMessage)}</p>

@@ -30,6 +30,11 @@
         .auto-refresh {
             animation: spin 2s linear infinite;
         }
+        /* Pill for messages sent privately to the DJ (never shown on the display) */
+        .badge.bg-purple-pill {
+            background: linear-gradient(135deg, #7c3aed, #a855f7);
+            color: #fff;
+        }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -197,6 +202,49 @@
         body.dark-mode .btn-outline-primary { color: #cfe8ff; border-color: rgba(79,174,255,0.18); }
         body.dark-mode .btn-outline-secondary { color: #c7d5e6; border-color: rgba(255,255,255,0.06); }
 
+        /* Photos tab grid */
+        .dash-photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 0.75rem;
+        }
+        .dash-photo-card {
+            position: relative;
+            border-radius: 0.6rem;
+            overflow: hidden;
+            background: #000;
+        }
+        .dash-photo-card img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+        }
+        .dash-photo-card.hidden-photo img {
+            opacity: 0.35;
+            filter: grayscale(1);
+        }
+        .dash-photo-meta {
+            padding: 0.35rem 0.5rem;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            font-size: 0.72rem;
+            line-height: 1.3;
+        }
+        .dash-photo-actions {
+            position: absolute;
+            top: 0.35rem;
+            right: 0.35rem;
+            display: flex;
+            gap: 0.25rem;
+        }
+        .dash-photo-hidden-badge {
+            position: absolute;
+            top: 0.35rem;
+            left: 0.35rem;
+        }
+
         /* Nav tabs styling */
         .nav-tabs .nav-link {
             color: #6c757d;
@@ -212,9 +260,309 @@
             color: #cfe8ff;
             border-color: rgba(255,255,255,0.1);
         }
+
+        /* Screen prompts panel */
+        .prompt-btn-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.85rem;
+        }
+        .prompt-trigger-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+            padding: 1rem 1.1rem;
+            border-radius: 0.75rem;
+            border: 2px solid transparent;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            min-height: 88px;
+        }
+        .prompt-trigger-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+        .prompt-trigger-btn:disabled { opacity: 0.55; }
+        .prompt-trigger-btn .prompt-btn-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.35rem;
+        }
+        .prompt-trigger-btn .prompt-btn-label {
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1.2;
+        }
+        .prompt-trigger-btn .prompt-btn-sub {
+            font-size: 0.78rem;
+            opacity: 0.85;
+            margin-top: 0.2rem;
+        }
+        .prompt-trigger-btn.prompt-great-moves {
+            background: linear-gradient(135deg, #ff006e, #8338ec);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .prompt-trigger-btn.prompt-dance-floor {
+            background: linear-gradient(135deg, #0a3d1a, #1db954);
+            color: #fff;
+            border-color: rgba(127, 255, 158, 0.4);
+        }
+        .prompt-trigger-btn.prompt-dad-dancing {
+            background: linear-gradient(135deg, #ff9500, #ffcc00);
+            color: #4a2800;
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .prompt-trigger-btn.prompt-slow-dance {
+            background: linear-gradient(135deg, #ff69b4, #c71585);
+            color: #fff;
+            border-color: rgba(255, 200, 220, 0.4);
+        }
+        .prompt-trigger-btn.prompt-last-orders {
+            background: linear-gradient(135deg, #1a1200, #ff6b00);
+            color: #ffb340;
+            border-color: #ff6b00;
+        }
+        .prompt-trigger-btn.prompt-applause {
+            background: linear-gradient(135deg, #b8860b, #ffd700);
+            color: #3d2800;
+            border-color: #fff8dc;
+        }
+        .prompt-trigger-btn.prompt-selfie {
+            background: #fff;
+            color: #222;
+            border-color: #ddd;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .prompt-trigger-btn.triggered .prompt-btn-icon i::before {
+            content: "\f00c";
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+        }
+
+        /* Tracks played tab */
+        .track-row {
+            border-left: 3px solid #0d6efd;
+        }
+        .track-row .track-source {
+            font-size: 0.72rem;
+        }
+
+        /* Guests tab */
+        .guest-row {
+            border-left: 3px solid #6c757d;
+        }
+        .guest-row.guest-row--silenced {
+            border-left-color: #ffc107;
+        }
+        .guest-row.guest-row--banned {
+            border-left-color: #dc3545;
+        }
+        .guest-row .guest-stats {
+            font-size: 0.78rem;
+        }
+        .guest-row-clickable {
+            cursor: pointer;
+            transition: box-shadow 0.15s ease, transform 0.15s ease;
+        }
+        .guest-row-clickable:hover {
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        }
+        body.dark-mode .guest-row-clickable:hover {
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        }
+        .guest-conversation-timeline {
+            max-height: min(60vh, 520px);
+            overflow-y: auto;
+            padding: 0.25rem 0;
+        }
+        .guest-conv-item {
+            margin-bottom: 0.85rem;
+            display: flex;
+        }
+        .guest-conv-item.from-guest {
+            justify-content: flex-start;
+        }
+        .guest-conv-item.from-dj,
+        .guest-conv-item.from-request {
+            justify-content: flex-end;
+        }
+        .guest-conv-bubble {
+            max-width: 88%;
+            padding: 0.65rem 0.85rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+        }
+        .guest-conv-item.from-guest .guest-conv-bubble {
+            background: rgba(13, 110, 253, 0.12);
+            border: 1px solid rgba(13, 110, 253, 0.2);
+        }
+        .guest-conv-item.from-dj .guest-conv-bubble {
+            background: rgba(46, 204, 113, 0.12);
+            border: 1px solid rgba(46, 204, 113, 0.25);
+        }
+        .guest-conv-item.from-request .guest-conv-bubble {
+            background: rgba(255, 193, 7, 0.12);
+            border: 1px solid rgba(255, 193, 7, 0.25);
+        }
+        body.dark-mode .guest-conv-item.from-guest .guest-conv-bubble {
+            background: rgba(13, 110, 253, 0.2);
+        }
+        body.dark-mode .guest-conv-item.from-dj .guest-conv-bubble {
+            background: rgba(46, 204, 113, 0.18);
+        }
+        body.dark-mode .guest-conv-item.from-request .guest-conv-bubble {
+            background: rgba(255, 193, 7, 0.15);
+        }
+        .guest-conv-meta {
+            font-size: 0.72rem;
+            opacity: 0.75;
+            margin-top: 0.35rem;
+        }
+        .guest-silence-panel {
+            display: none;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-top: 0.65rem;
+            padding-top: 0.65rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+        .guest-silence-panel.is-open {
+            display: flex;
+        }
+        body.dark-mode .guest-silence-panel {
+            border-top-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Full-width split layout: main tabs + messages sidebar */
+        .mdj-dash-layout {
+            display: flex;
+            flex: 1 1 auto;
+            min-height: 0;
+            min-width: 0;
+            gap: 1.25rem;
+            align-items: stretch;
+            overflow: visible;
+        }
+        .mdj-dash-primary {
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+        .mdj-dash-messages-panel {
+            flex: 0 1 clamp(260px, 30vw, 400px);
+            width: clamp(260px, 30vw, 400px);
+            max-width: 40%;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            min-width: 0;
+            position: relative;
+            z-index: 2;
+            border-left: 1px solid rgba(0, 0, 0, 0.08);
+            padding-left: 1.25rem;
+        }
+        .mdj-dash-messages-header {
+            flex-shrink: 0;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .mdj-dash-messages-header h4 {
+            font-size: 1.05rem;
+            margin-bottom: 0;
+        }
+        .mdj-dash-messages-list {
+            flex: 1 1 auto;
+            min-height: 0;
+            min-width: 0;
+            overflow-y: auto;
+            overflow-x: visible;
+            padding-right: 0.25rem;
+        }
+        .mdj-dash-messages-list .message-card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .mdj-dash-messages-list .message-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .mdj-dash-messages-list .message-card-meta {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .mdj-dash-messages-list .message-card-body > .flex-grow-1 {
+            min-width: 0;
+        }
+        .mdj-dash-messages-list .message-text {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .mdj-dash-messages-list .message-text img {
+            max-width: 100%;
+            height: auto;
+        }
+        .mdj-dash-messages-list .message-card-actions {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+            min-width: 72px;
+        }
+        .mdj-dash-messages-list .message-card-actions .reply-message {
+            white-space: nowrap;
+        }
+        .mdj-dash-messages-list .message-card-actions-bottom {
+            display: flex;
+            gap: 0.35rem;
+        }
+        .mdj-dash-messages-list .message-card-actions-bottom .reply-message {
+            flex: 1 1 auto;
+        }
+        body.dark-mode .mdj-dash-messages-panel {
+            border-left-color: rgba(255, 255, 255, 0.08);
+        }
+        body.dark-mode .mdj-dash-messages-header {
+            border-bottom-color: rgba(255, 255, 255, 0.06);
+        }
+        .mdj-dash-messages-list .message-needs-reply {
+            border-left: 3px solid #0d6efd;
+            background: rgba(13, 110, 253, 0.07) !important;
+            box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.15);
+        }
+        body.dark-mode .mdj-dash-messages-list .message-needs-reply {
+            background: rgba(13, 110, 253, 0.14) !important;
+            border-left-color: #4fa8ff;
+            box-shadow: 0 0 0 1px rgba(79, 168, 255, 0.2);
+        }
+
+        @media (max-width: 991.98px) {
+            .mdj-dash-layout {
+                flex-direction: column;
+            }
+            .mdj-dash-messages-panel {
+                flex: 0 0 auto;
+                border-left: none;
+                border-top: 1px solid rgba(0, 0, 0, 0.08);
+                padding-left: 0;
+                padding-top: 1rem;
+                max-height: 42vh;
+            }
+            body.dark-mode .mdj-dash-messages-panel {
+                border-top-color: rgba(255, 255, 255, 0.08);
+            }
+        }
     </style>
 </head>
-<body class="mdj-eyup-brand mdj-dash-tools">
+<body class="mdj-eyup-brand mdj-dash-tools mdj-dashboard-page">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">DJ Dashboard</h1>
 
@@ -230,7 +578,7 @@
                 <select id="activeEventSelect" class="form-select form-select-sm" style="min-width: 180px; max-width: 250px;">
                     <option value="all">All Events</option>
                     <% events.forEach(function(event) { %>
-                        <option value="<%= event.id %>"<%= event.is_active ? '' : ' class="mdj-dash-event-opt--inactive"' %>>
+                        <option value="<%= event.id %>" data-slug="<%= event.slug %>"<%= event.is_active ? '' : ' class="mdj-dash-event-opt--inactive"' %>>
                             <%= event.name %><%= event.is_active ? '' : ' (inactive)' %>
                         </option>
                     <% }); %>
@@ -246,6 +594,9 @@
                 <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" target="_blank" title="Open Spinner Display">
                     <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">Spinner</span>
                 </a>
+                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
+                    <i class="fas fa-gear me-1"></i><span class="d-none d-md-inline">Settings</span>
+                </a>
                 <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
                     <i class="fas fa-moon"></i>
                 </button>
@@ -256,8 +607,9 @@
         </div>
     </nav>
 
-    <main class="container mdj-dash-main">
-        <div class="mdj-dash-scroll">
+    <main class="container-fluid mdj-dash-main">
+        <div class="mdj-dash-layout">
+        <div class="mdj-dash-primary mdj-dash-scroll">
         <!-- Navigation Tabs -->
         <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
@@ -266,8 +618,23 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="messages-tab" data-bs-toggle="tab" data-bs-target="#messages" type="button" role="tab">
-                    <i class="fas fa-envelope me-2"></i>Messages (<span id="messageCount"><%= messages.length %></span>)
+                <button class="nav-link" id="guests-tab" data-bs-toggle="tab" data-bs-target="#guests" type="button" role="tab">
+                    <i class="fas fa-users me-2"></i>Guests (<span id="guestCount">0</span>)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab">
+                    <i class="fas fa-camera me-2"></i>Photos (<span id="photoCount">0</span>)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tracks-tab" data-bs-toggle="tab" data-bs-target="#tracks" type="button" role="tab">
+                    <i class="fas fa-compact-disc me-2"></i>Tracks (<span id="trackCount">0</span>)
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="screen-tab" data-bs-toggle="tab" data-bs-target="#screen" type="button" role="tab">
+                    <i class="fas fa-tv me-2"></i>Screen
                 </button>
             </li>
         </ul>
@@ -343,68 +710,174 @@
                 </div>
             </div>
 
-            <!-- Messages Tab -->
-            <div class="tab-pane fade" id="messages" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h4><i class="fas fa-envelope me-2"></i>Messages</h4>
-                    <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-check me-1"></i>Mark All Displayed
+            <!-- Guests Tab -->
+            <div class="tab-pane fade" id="guests" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h4 class="mb-0"><i class="fas fa-users me-2"></i>Event Guests</h4>
+                    <button id="refreshGuestsBtn" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
                     </button>
                 </div>
+                <p class="text-muted small mb-3">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Guests appear when they enter their name on the event page or submit a request, message, or photo. Click a guest to view the full conversation. Silence blocks submissions for a set time; ban removes access until you reinstate them.
+                </p>
+                <div id="guestsList">
+                    <span class="text-muted small">Loading…</span>
+                </div>
+            </div>
 
-                <div id="messagesList" style="max-height: 60vh; overflow-y: auto;">
-                    <% if (messages.length === 0) { %>
-                        <div class="card text-center">
-                            <div class="card-body py-4">
-                                <i class="fas fa-comments fa-2x text-muted mb-2"></i>
-                                <p class="text-muted mb-0">No messages</p>
+            <!-- Photos Tab -->
+            <div class="tab-pane fade" id="photos" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4><i class="fas fa-camera me-2"></i>Guest Photos</h4>
+                    <button id="refreshPhotosBtn" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+                <p class="text-muted small mb-3">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Hidden photos stay on disk but are excluded from the guest page and customer gallery. Click a photo to open it full size.
+                </p>
+                <div id="photosGrid" class="dash-photo-grid" style="max-height: 60vh; overflow-y: auto;">
+                    <span class="text-muted small">Loading…</span>
+                </div>
+            </div>
+
+            <!-- Tracks Played Tab -->
+            <div class="tab-pane fade" id="tracks" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h4 class="mb-0"><i class="fas fa-compact-disc me-2"></i>Tracks Played</h4>
+                    <button id="refreshTracksBtn" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+                <p class="text-muted small mb-3">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Tracks are logged automatically from VirtualDJ now playing (assigned to the active event). You can also add or remove entries manually below.
+                </p>
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <form id="addTrackForm" class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label for="trackTitle" class="form-label small mb-1">Title *</label>
+                                <input type="text" class="form-control" id="trackTitle" required maxlength="200" placeholder="Song title">
                             </div>
+                            <div class="col-md-3">
+                                <label for="trackArtist" class="form-label small mb-1">Artist</label>
+                                <input type="text" class="form-control" id="trackArtist" maxlength="200" placeholder="Artist">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="trackPlayedAt" class="form-label small mb-1">Played at</label>
+                                <input type="datetime-local" class="form-control" id="trackPlayedAt">
+                            </div>
+                            <div class="col-md-2 d-flex gap-1">
+                                <button type="submit" class="btn btn-primary flex-grow-1" title="Add track">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button type="button" id="logNowPlayingBtn" class="btn btn-outline-info" title="Log current now playing">
+                                    <i class="fas fa-broadcast-tower"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div id="tracksList" style="max-height: 55vh; overflow-y: auto;">
+                    <span class="text-muted small">Loading…</span>
+                </div>
+            </div>
+
+            <!-- Screen Prompts Tab -->
+            <div class="tab-pane fade" id="screen" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <h4 class="mb-0"><i class="fas fa-tv me-2"></i>Screen Prompts</h4>
+                    <a id="openDisplayLink" href="#" target="_blank" class="btn btn-outline-primary btn-sm" style="display:none;">
+                        <i class="fas fa-external-link-alt me-1"></i>Open Display
+                    </a>
+                </div>
+                <p class="text-muted small mb-3">
+                    <i class="fas fa-circle-info me-1"></i>
+                    Tap a button to flash an animated announcement on the event display screen.
+                    <span id="promptTargetHint" class="d-block mt-1"></span>
+                </p>
+                <div id="promptBtnGrid" class="prompt-btn-grid">
+                    <span class="text-muted small">Loading prompts…</span>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <aside class="mdj-dash-messages-panel" aria-label="Guest messages">
+            <div class="mdj-dash-messages-header d-flex justify-content-between align-items-center gap-2">
+                <h4><i class="fas fa-envelope me-2"></i>Messages (<span id="messageCount"><%= messages.filter(function(m){ return m.needsReply; }).length %></span>)</h4>
+                <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm flex-shrink-0">
+                    <i class="fas fa-check me-1"></i><span class="d-none d-xl-inline">Mark All</span>
+                </button>
+            </div>
+            <div id="messagesList" class="mdj-dash-messages-list">
+                <% if (messages.length === 0) { %>
+                    <div class="card text-center">
+                        <div class="card-body py-4">
+                            <i class="fas fa-comments fa-2x text-muted mb-2"></i>
+                            <p class="text-muted mb-0">No messages</p>
                         </div>
-                    <% } else { %>
-                        <% let sortedMessages = messages.slice().sort(function(a,b){ return new Date(b.timestamp) - new Date(a.timestamp); }); %>
-                        <% sortedMessages.forEach(function(message) { %>
-                            <div class="card mb-2 <%= message.displayed ? 'bg-light' : '' %>" data-message-id="<%= message.id %>" data-event-id="<%= message.eventId || '' %>">
-                                <div class="card-body py-2">
-                                    <div class="d-flex justify-content-between align-items-start">
-                                        <div class="flex-grow-1">
-                                            <div class="d-flex align-items-center mb-1 flex-wrap gap-1">
-                                                <strong class="me-1"><%= message.customerName %></strong>
-                                                <% if (message.eventName) { %>
-                                                    <span class="badge bg-dark" title="Event"><%= message.eventName %></span>
-                                                <% } %>
-                                                <% if (!message.displayed) { %>
-                                                    <span class="badge bg-primary">New</span>
-                                                <% } %>
-                                                <% if (message.private) { %>
-                                                    <span class="badge bg-secondary">Private</span>
-                                                <% } %>
-                                            </div>
-                                            <p class="mb-1 small"><%- message.message %></p>
-                                            <small class="text-muted d-block">
-                                                <i class="fas fa-clock me-1"></i>
-                                                <%= new Date(message.timestamp).toLocaleString() %>
-                                            </small>
+                    </div>
+                <% } else { %>
+                    <% let sortedMessages = messages.slice().sort(function(a,b){ return new Date(b.timestamp) - new Date(a.timestamp); }); %>
+                    <% sortedMessages.forEach(function(message) { %>
+                        <div class="card mb-2<%= message.needsReply ? ' message-needs-reply' : (message.displayed ? ' bg-light' : '') %>" data-message-id="<%= message.id %>" data-event-id="<%= message.eventId || '' %>" data-needs-reply="<%= message.needsReply ? '1' : '0' %>">
+                            <div class="card-body py-2 message-card-body">
+                                <div class="message-card-top">
+                                    <div class="message-card-meta">
+                                        <div class="d-flex align-items-center mb-1 flex-wrap gap-1">
+                                            <strong class="me-1"><%= message.customerName %></strong>
+                                            <% if (message.eventName) { %>
+                                                <span class="badge bg-dark" title="Event"><%= message.eventName %></span>
+                                            <% } %>
+                                            <% if (message.needsReply) { %>
+                                                <span class="badge bg-primary">Awaiting reply</span>
+                                            <% } %>
+                                            <% if (message.private) { %>
+                                                <span class="badge bg-purple-pill" title="Not shown on the display screen"><i class="fas fa-user-lock me-1"></i>DJ Only</span>
+                                            <% } %>
                                         </div>
+                                        <small class="text-muted d-block">
+                                            <i class="fas fa-clock me-1"></i>
+                                            <%= new Date(message.timestamp).toLocaleString() %>
+                                        </small>
+                                    </div>
+                                    <div class="message-card-actions">
                                         <% if (!message.displayed) { %>
-                                            <button class="btn btn-outline-primary btn-sm ms-2 mark-displayed" 
-                                                    data-message-id="<%= message.id %>">
+                                            <button class="btn btn-outline-primary btn-sm mark-displayed" 
+                                                    data-message-id="<%= message.id %>"
+                                                    title="Mark displayed">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                         <% } %>
-                                        <button class="btn btn-outline-success btn-sm ms-1 reply-message" 
+                                        <button class="btn btn-success btn-sm reply-message" 
                                                 data-customer-name="<%= message.customerName %>"
                                                 data-message-id="<%= message.id %>"
-                                                data-original-type="message">
+                                                data-original-type="message"
+                                                title="Reply">
                                             <i class="fas fa-reply"></i>
                                         </button>
                                     </div>
                                 </div>
+                                <div class="message-text small"><%- message.message %></div>
+                                <div class="message-card-actions-bottom">
+                                    <button class="btn btn-success btn-sm reply-message" 
+                                            data-customer-name="<%= message.customerName %>"
+                                            data-message-id="<%= message.id %>"
+                                            data-original-type="message">
+                                        <i class="fas fa-reply me-1"></i>Reply to <%= message.customerName %>
+                                    </button>
+                                </div>
                             </div>
-                        <% }); %>
-                    <% } %>
-                </div>
+                        </div>
+                    <% }); %>
+                <% } %>
             </div>
-        </div>
+        </aside>
         </div>
 
         <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">
@@ -432,7 +905,13 @@
                             <label for="replyMessage" class="form-label">Your Reply</label>
                             <textarea class="form-control" id="replyMessage" name="replyMessage" rows="4" 
                                       placeholder="Type your reply to the customer..." required></textarea>
-                            <div class="form-text">This message will be displayed on the public message screen</div>
+                            <div class="form-text" id="replyVisibilityHint">This message will be displayed on the public message screen</div>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="replyDirect">
+                            <label class="form-check-label" for="replyDirect">
+                                <i class="fas fa-user-lock me-1"></i>Send direct — only the guest sees it, never the display screen
+                            </label>
                         </div>
                         <input type="hidden" id="replyCustomerNameInput" name="customerName">
                         <input type="hidden" id="replyOriginalType" name="originalType">
@@ -443,6 +922,32 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="sendReplyBtn">
                         <i class="fas fa-paper-plane me-2"></i>Send Reply
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guest conversation modal -->
+    <div class="modal fade" id="guestConversationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-comments me-2"></i>Conversation with <span id="guestConvName"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3" id="guestConvEventHint"></p>
+                    <div id="guestConversationTimeline" class="guest-conversation-timeline">
+                        <span class="text-muted small">Loading…</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-success" id="guestConvReplyBtn">
+                        <i class="fas fa-reply me-1"></i>Reply
                     </button>
                 </div>
             </div>
@@ -486,16 +991,25 @@
         // Active Event Filter
         const eventSelect = document.getElementById('activeEventSelect');
         
-        // Load saved event selection
-        const savedEventId = localStorage.getItem('djActiveEventId') || 'all';
+        // Load saved event selection — default to first active event so screen prompts work out of the box
+        let savedEventId = localStorage.getItem('djActiveEventId') || 'all';
+        const allEventOptions = Array.from(eventSelect.options).filter(o => o.value !== 'all');
+        const firstActiveOption = allEventOptions.find(o => !o.classList.contains('mdj-dash-event-opt--inactive'));
+        if (savedEventId === 'all' && firstActiveOption) {
+            savedEventId = firstActiveOption.value;
+        }
+        if (savedEventId !== 'all' && !allEventOptions.some(o => o.value === savedEventId)) {
+            savedEventId = firstActiveOption ? firstActiveOption.value : 'all';
+        }
         eventSelect.value = savedEventId;
         
         function filterByEvent(eventId) {
             const requestCards = document.querySelectorAll('.request-card');
-            const messageCards = document.querySelectorAll('[data-message-id]');
+            const messageCards = document.querySelectorAll('#messagesList > .card[data-message-id]');
             
             let visibleRequests = 0;
             let visibleMessages = 0;
+            let awaitingReply = 0;
             
             // Filter requests
             requestCards.forEach(card => {
@@ -514,6 +1028,7 @@
                 if (eventId === 'all' || cardEventId === eventId || (!cardEventId && eventId === 'all')) {
                     card.style.display = '';
                     visibleMessages++;
+                    if (card.dataset.needsReply === '1') awaitingReply++;
                 } else {
                     card.style.display = 'none';
                 }
@@ -521,7 +1036,7 @@
             
             // Update counts in tabs
             document.getElementById('requestCount').textContent = visibleRequests;
-            document.getElementById('messageCount').textContent = visibleMessages;
+            document.getElementById('messageCount').textContent = awaitingReply;
             
             // Save selection
             localStorage.setItem('djActiveEventId', eventId);
@@ -529,11 +1044,703 @@
         
         // Apply initial filter
         filterByEvent(savedEventId);
+
+        document.addEventListener('mdj-dashboard-refreshed', function() {
+            filterByEvent(eventSelect.value);
+        });
         
         // Listen for changes
         eventSelect.addEventListener('change', function() {
             filterByEvent(this.value);
+            loadPhotos();
+            loadTracks();
+            loadGuests();
+            updateDisplayLink();
+            updatePromptButtonsState();
         });
+
+        // ── Photos tab ────────────────────────────────────────────────
+        const photosGrid = document.getElementById('photosGrid');
+        const photoCount = document.getElementById('photoCount');
+
+        // Event id → name/slug maps from the selector options
+        const eventNames = {};
+        const eventSlugs = {};
+        allEventOptions.forEach(opt => {
+            eventNames[opt.value] = opt.textContent.trim().replace(/ \(inactive\)$/, '');
+            // dataset.slug is unreliable on <option> in some browsers — use getAttribute
+            eventSlugs[opt.value] = opt.getAttribute('data-slug') || '';
+        });
+
+        function getSelectedEventSlug() {
+            const id = eventSelect.value;
+            if (id === 'all') return null;
+            return eventSlugs[id] || null;
+        }
+
+        // Slug used for screen prompts: selected event, or first active event as fallback
+        function getPromptTargetSlug() {
+            const direct = getSelectedEventSlug();
+            if (direct) return direct;
+            if (firstActiveOption) {
+                return eventSlugs[firstActiveOption.value] || firstActiveOption.getAttribute('data-slug') || null;
+            }
+            const any = allEventOptions[0];
+            return any ? (eventSlugs[any.value] || any.getAttribute('data-slug') || null) : null;
+        }
+
+        function getPromptTargetName() {
+            const id = eventSelect.value;
+            if (id !== 'all') return eventNames[id] || null;
+            if (firstActiveOption) return eventNames[firstActiveOption.value] || null;
+            return allEventOptions[0] ? eventNames[allEventOptions[0].value] : null;
+        }
+
+        function updateDisplayLink() {
+            const link = document.getElementById('openDisplayLink');
+            const slug = getSelectedEventSlug();
+            if (slug) {
+                link.href = '/dj/display/' + slug;
+                link.style.display = '';
+            } else {
+                link.style.display = 'none';
+            }
+        }
+
+        function escapePhotoText(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function renderPhotoCard(photo, showEventName) {
+            const card = document.createElement('div');
+            card.className = 'dash-photo-card' + (photo.hidden ? ' hidden-photo' : '');
+            card.dataset.photoId = photo.id;
+            const who = escapePhotoText(photo.customerName || 'Anonymous');
+            const eventLabel = showEventName ? `<div class="text-warning">${escapePhotoText(eventNames[photo.eventId] || '')}</div>` : '';
+            card.innerHTML = `
+                <img src="${photo.url}" alt="${escapePhotoText(photo.caption || 'Event photo')}" loading="lazy">
+                ${photo.hidden ? '<span class="badge bg-secondary dash-photo-hidden-badge"><i class="fas fa-eye-slash me-1"></i>Hidden</span>' : ''}
+                <div class="dash-photo-actions">
+                    <button type="button" class="btn btn-sm btn-warning photo-showcase" title="Show on display screen">
+                        <i class="fas fa-tv"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-dark photo-toggle-hidden" title="${photo.hidden ? 'Unhide' : 'Hide'}">
+                        <i class="fas fa-eye${photo.hidden ? '' : '-slash'}"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger photo-delete" title="Delete permanently">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="dash-photo-meta">
+                    ${eventLabel}
+                    <span><i class="fas fa-user me-1"></i>${who}</span>
+                    ${photo.caption ? `<div>${escapePhotoText(photo.caption)}</div>` : ''}
+                    <div class="text-muted">${new Date(photo.timestamp).toLocaleString()}</div>
+                </div>
+            `;
+            card.querySelector('img').addEventListener('click', () => window.open(photo.url, '_blank'));
+            card.querySelector('.photo-showcase').addEventListener('click', async function() {
+                const icon = this.querySelector('i');
+                try {
+                    const res = await fetch(`/api/photos/${photo.id}/showcase`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                        icon.classList.replace('fa-tv', 'fa-check');
+                        setTimeout(() => icon.classList.replace('fa-check', 'fa-tv'), 2000);
+                    }
+                } catch (err) {
+                    console.error('Failed to showcase photo:', err);
+                }
+            });
+            card.querySelector('.photo-toggle-hidden').addEventListener('click', async () => {
+                try {
+                    const res = await fetch(`/api/photos/${photo.id}/hidden`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ hidden: !photo.hidden })
+                    });
+                    const data = await res.json();
+                    if (data.success) loadPhotos();
+                } catch (err) {
+                    console.error('Failed to update photo:', err);
+                }
+            });
+            card.querySelector('.photo-delete').addEventListener('click', async () => {
+                if (!confirm('Delete this photo permanently? This cannot be undone.')) return;
+                try {
+                    const res = await fetch(`/api/photos/${photo.id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) {
+                        card.remove();
+                        photoCount.textContent = Math.max(0, parseInt(photoCount.textContent, 10) - 1);
+                    }
+                } catch (err) {
+                    console.error('Failed to delete photo:', err);
+                }
+            });
+            return card;
+        }
+
+        async function loadPhotos() {
+            const selected = eventSelect.value;
+            photosGrid.innerHTML = '<span class="text-muted small">Loading…</span>';
+            try {
+                const eventIds = selected === 'all' ? Object.keys(eventNames) : [selected];
+                const lists = await Promise.all(eventIds.map(id =>
+                    fetch(`/api/events/${id}/photos`).then(r => r.ok ? r.json() : [])
+                ));
+                const photos = lists.flat().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                photoCount.textContent = photos.length;
+                photosGrid.innerHTML = '';
+                if (photos.length === 0) {
+                    photosGrid.innerHTML = '<span class="text-muted small">No photos yet — guest photos will appear here.</span>';
+                    return;
+                }
+                photos.forEach(photo => photosGrid.appendChild(renderPhotoCard(photo, selected === 'all')));
+            } catch (err) {
+                console.error('Failed to load photos:', err);
+                photosGrid.innerHTML = '<span class="text-danger small">Could not load photos.</span>';
+            }
+        }
+
+        document.getElementById('refreshPhotosBtn').addEventListener('click', loadPhotos);
+        loadPhotos();
+
+        // ── Screen prompts tab ───────────────────────────────────────
+        const promptBtnGrid = document.getElementById('promptBtnGrid');
+        const styleClassMap = {
+            'great-moves': 'prompt-great-moves',
+            'dance-floor': 'prompt-dance-floor',
+            'dad-dancing': 'prompt-dad-dancing',
+            'slow-dance': 'prompt-slow-dance',
+            'last-orders': 'prompt-last-orders',
+            'applause': 'prompt-applause',
+            'selfie': 'prompt-selfie'
+        };
+
+        function updatePromptButtonsState() {
+            const slug = getPromptTargetSlug();
+            const name = getPromptTargetName();
+            const hint = document.getElementById('promptTargetHint');
+            const hasEvent = !!slug;
+
+            if (hint) {
+                if (!hasEvent) {
+                    hint.innerHTML = '<span class="text-warning"><i class="fas fa-triangle-exclamation me-1"></i>No events configured — create an event first.</span>';
+                } else if (eventSelect.value === 'all') {
+                    hint.innerHTML = `<span class="text-info"><i class="fas fa-tv me-1"></i>Sending to <strong>${name}</strong> (select a specific event above to choose another)</span>`;
+                } else {
+                    hint.innerHTML = `<span class="text-success"><i class="fas fa-tv me-1"></i>Display: <strong>${name}</strong></span>`;
+                }
+            }
+
+            promptBtnGrid.querySelectorAll('.prompt-trigger-btn').forEach(btn => {
+                btn.disabled = !hasEvent;
+                btn.title = hasEvent ? 'Show on display screen' : 'Create an event first';
+            });
+        }
+
+        async function loadPromptButtons() {
+            try {
+                const prompts = await fetch('/api/display-prompts').then(r => r.json());
+                promptBtnGrid.innerHTML = '';
+                Object.entries(prompts).forEach(([id, p]) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn prompt-trigger-btn ' + (styleClassMap[p.style] || '');
+                    btn.dataset.promptId = id;
+                    btn.innerHTML = `
+                        <span class="prompt-btn-icon"><i class="fas ${p.icon}"></i></span>
+                        <span class="prompt-btn-label">${p.label}</span>
+                        <span class="prompt-btn-sub">${p.subtext || ''}</span>
+                    `;
+                    btn.addEventListener('click', () => triggerScreenPrompt(id, btn));
+                    promptBtnGrid.appendChild(btn);
+                });
+                updatePromptButtonsState();
+            } catch (err) {
+                console.error('Failed to load prompts:', err);
+                promptBtnGrid.innerHTML = '<span class="text-danger small">Could not load screen prompts.</span>';
+            }
+        }
+
+        async function triggerScreenPrompt(promptId, btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            const wasDisabled = btn.disabled;
+            btn.disabled = true;
+            try {
+                const res = await fetch(`/api/display/${encodeURIComponent(slug)}/prompt/${encodeURIComponent(promptId)}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                } else {
+                    alert(data.error || 'Failed to trigger prompt');
+                }
+            } catch (err) {
+                console.error('Prompt trigger failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                btn.disabled = wasDisabled || !getPromptTargetSlug();
+                updatePromptButtonsState();
+            }
+        }
+
+        loadPromptButtons();
+        updateDisplayLink();
+
+        // ── Tracks played tab ──────────────────────────────────────────
+        const tracksList = document.getElementById('tracksList');
+        const trackCount = document.getElementById('trackCount');
+        const addTrackForm = document.getElementById('addTrackForm');
+
+        function getTrackEventId() {
+            const id = eventSelect.value;
+            if (id === 'all') {
+                if (firstActiveOption) return firstActiveOption.value;
+                return allEventOptions[0] ? allEventOptions[0].value : null;
+            }
+            return id;
+        }
+
+        function escapeTrackText(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function renderTrackRow(track, showEventName) {
+            const card = document.createElement('div');
+            card.className = 'card track-row mb-2';
+            card.dataset.trackId = track.id;
+            card.dataset.eventId = track.eventId || '';
+            const when = new Date(track.playedAt).toLocaleString();
+            const sourceLabel = track.source === 'now-playing' ? 'VirtualDJ' : 'Manual';
+            card.innerHTML = `
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                                <strong class="text-truncate">"${escapeTrackText(track.title)}"</strong>
+                                ${showEventName && track.eventName ? `<span class="badge bg-dark">${escapeTrackText(track.eventName)}</span>` : ''}
+                                <span class="badge bg-secondary track-source">${sourceLabel}</span>
+                            </div>
+                            ${track.artist ? `<div class="small">${escapeTrackText(track.artist)}</div>` : ''}
+                            <small class="text-muted"><i class="fas fa-clock me-1"></i>${when}</small>
+                        </div>
+                        <button type="button" class="btn btn-outline-danger btn-sm track-delete" title="Remove">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            card.querySelector('.track-delete').addEventListener('click', async () => {
+                if (!confirm('Remove this track from the played list?')) return;
+                try {
+                    const res = await fetch(`/api/tracks-played/${track.id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) loadTracks();
+                } catch (err) {
+                    console.error('Failed to delete track:', err);
+                }
+            });
+            return card;
+        }
+
+        async function loadTracks() {
+            const selected = eventSelect.value;
+            tracksList.innerHTML = '<span class="text-muted small">Loading…</span>';
+            try {
+                const eventIds = selected === 'all' ? Object.keys(eventNames) : [selected];
+                if (eventIds.length === 0) {
+                    tracksList.innerHTML = '<span class="text-muted small">Select an event to view tracks.</span>';
+                    trackCount.textContent = '0';
+                    return;
+                }
+                const lists = await Promise.all(eventIds.map(id =>
+                    fetch(`/api/events/${id}/tracks-played`).then(r => r.ok ? r.json() : [])
+                ));
+                const tracks = lists.flat().sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
+                trackCount.textContent = tracks.length;
+                tracksList.innerHTML = '';
+                if (tracks.length === 0) {
+                    tracksList.innerHTML = '<span class="text-muted small">No tracks logged yet.</span>';
+                    return;
+                }
+                tracks.forEach(track => tracksList.appendChild(renderTrackRow(track, selected === 'all')));
+            } catch (err) {
+                console.error('Failed to load tracks:', err);
+                tracksList.innerHTML = '<span class="text-danger small">Could not load tracks.</span>';
+            }
+        }
+
+        addTrackForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const eventId = getTrackEventId();
+            if (!eventId) {
+                alert('Select an event first.');
+                return;
+            }
+            const title = document.getElementById('trackTitle').value.trim();
+            const artist = document.getElementById('trackArtist').value.trim();
+            const playedAtRaw = document.getElementById('trackPlayedAt').value;
+            let played_at = null;
+            if (playedAtRaw) {
+                played_at = new Date(playedAtRaw).toISOString();
+            }
+            try {
+                const res = await fetch(`/api/events/${eventId}/tracks-played`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, artist, played_at })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('trackTitle').value = '';
+                    document.getElementById('trackArtist').value = '';
+                    document.getElementById('trackPlayedAt').value = '';
+                    loadTracks();
+                } else {
+                    alert(data.error || 'Failed to add track');
+                }
+            } catch (err) {
+                console.error('Failed to add track:', err);
+            }
+        });
+
+        document.getElementById('logNowPlayingBtn').addEventListener('click', async () => {
+            const eventId = getTrackEventId();
+            if (!eventId) {
+                alert('Select an event first.');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/events/${eventId}/tracks-played/from-now-playing`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    loadTracks();
+                } else {
+                    alert(data.error || 'Nothing playing');
+                }
+            } catch (err) {
+                console.error('Failed to log now playing:', err);
+            }
+        });
+
+        document.getElementById('refreshTracksBtn').addEventListener('click', loadTracks);
+        loadTracks();
+
+        // ── Guests tab ───────────────────────────────────────────────
+        const guestsList = document.getElementById('guestsList');
+        const guestCount = document.getElementById('guestCount');
+
+        function getGuestEventId() {
+            return getTrackEventId();
+        }
+
+        function escapeGuestText(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function formatGuestStatus(guest) {
+            if (guest.status === 'banned') {
+                return '<span class="badge bg-danger">Banned</span>';
+            }
+            if (guest.status === 'silenced') {
+                const until = guest.silencedUntil ? new Date(guest.silencedUntil).toLocaleString() : '';
+                return `<span class="badge bg-warning text-dark" title="Until ${until}">Silenced</span>`;
+            }
+            return '<span class="badge bg-success">Active</span>';
+        }
+
+        async function moderateGuest(eventId, customerName, action, durationMinutes) {
+            const body = { customerName, action };
+            if (durationMinutes) body.durationMinutes = durationMinutes;
+            const res = await fetch(`/api/events/${eventId}/guests/moderate`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Moderation failed');
+            return data;
+        }
+
+        function renderGuestRow(guest, eventId, showEventName) {
+            const card = document.createElement('div');
+            card.className = 'card guest-row guest-row-clickable mb-2' + (guest.status === 'silenced' ? ' guest-row--silenced' : guest.status === 'banned' ? ' guest-row--banned' : '');
+            card.dataset.guestName = guest.customerName;
+            card.dataset.eventId = eventId;
+            const lastSeen = guest.lastSeenAt ? new Date(guest.lastSeenAt).toLocaleString() : '—';
+            const silencedNote = guest.status === 'silenced' && guest.silencedUntil
+                ? `<div class="small text-warning">Silenced until ${new Date(guest.silencedUntil).toLocaleString()}</div>` : '';
+
+            card.innerHTML = `
+                <div class="card-body py-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                        <div class="flex-grow-1 min-w-0">
+                            <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                                <strong>${escapeGuestText(guest.customerName)}</strong>
+                                ${formatGuestStatus(guest)}
+                            </div>
+                            <div class="guest-stats text-muted">
+                                <span class="me-2"><i class="fas fa-music me-1"></i>${guest.requestCount}</span>
+                                <span class="me-2"><i class="fas fa-envelope me-1"></i>${guest.messageCount}</span>
+                                <span class="me-2"><i class="fas fa-camera me-1"></i>${guest.photoCount}</span>
+                                <span><i class="fas fa-clock me-1"></i>${lastSeen}</span>
+                            </div>
+                            ${silencedNote}
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 guest-actions"></div>
+                    </div>
+                    <div class="guest-silence-panel" hidden></div>
+                </div>
+            `;
+
+            const actions = card.querySelector('.guest-actions');
+            const silencePanel = card.querySelector('.guest-silence-panel');
+
+            function closeSilencePanel() {
+                silencePanel.classList.remove('is-open');
+                silencePanel.hidden = true;
+                silencePanel.innerHTML = '';
+            }
+
+            if (guest.status !== 'banned') {
+                const silenceBtn = document.createElement('button');
+                silenceBtn.type = 'button';
+                silenceBtn.className = 'btn btn-outline-warning btn-sm';
+                silenceBtn.textContent = 'Silence';
+                silenceBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = silencePanel.classList.contains('is-open');
+                    document.querySelectorAll('.guest-silence-panel.is-open').forEach(panel => {
+                        if (panel !== silencePanel) {
+                            panel.classList.remove('is-open');
+                            panel.hidden = true;
+                            panel.innerHTML = '';
+                        }
+                    });
+                    if (isOpen) {
+                        closeSilencePanel();
+                        return;
+                    }
+                    silencePanel.hidden = false;
+                    silencePanel.classList.add('is-open');
+                    silencePanel.innerHTML = '';
+                    [
+                        { minutes: 15, label: '15 min' },
+                        { minutes: 30, label: '30 min' },
+                        { minutes: 60, label: '1 hour' },
+                        { minutes: 120, label: '2 hours' },
+                        { minutes: 240, label: '4 hours' }
+                    ].forEach(({ minutes, label }) => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'btn btn-sm btn-outline-warning';
+                        btn.textContent = label;
+                        btn.addEventListener('click', async () => {
+                            try {
+                                await moderateGuest(eventId, guest.customerName, 'silence', minutes);
+                                closeSilencePanel();
+                                loadGuests();
+                            } catch (err) {
+                                alert(err.message);
+                            }
+                        });
+                        silencePanel.appendChild(btn);
+                    });
+                });
+                actions.appendChild(silenceBtn);
+            }
+
+            if (guest.status !== 'banned') {
+                const banBtn = document.createElement('button');
+                banBtn.type = 'button';
+                banBtn.className = 'btn btn-outline-danger btn-sm';
+                banBtn.textContent = 'Ban';
+                banBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (!confirm(`Ban ${guest.customerName}? They will not be able to submit requests or messages.`)) return;
+                    try {
+                        await moderateGuest(eventId, guest.customerName, 'ban');
+                        loadGuests();
+                    } catch (err) {
+                        alert(err.message);
+                    }
+                });
+                actions.appendChild(banBtn);
+            } else {
+                const reinstateBtn = document.createElement('button');
+                reinstateBtn.type = 'button';
+                reinstateBtn.className = 'btn btn-outline-success btn-sm';
+                reinstateBtn.textContent = 'Reinstate';
+                reinstateBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    try {
+                        await moderateGuest(eventId, guest.customerName, 'active');
+                        loadGuests();
+                    } catch (err) {
+                        alert(err.message);
+                    }
+                });
+                actions.appendChild(reinstateBtn);
+            }
+
+            if (guest.status === 'silenced') {
+                const unmuteBtn = document.createElement('button');
+                unmuteBtn.type = 'button';
+                unmuteBtn.className = 'btn btn-outline-secondary btn-sm';
+                unmuteBtn.textContent = 'Unsilence';
+                unmuteBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    try {
+                        await moderateGuest(eventId, guest.customerName, 'active');
+                        loadGuests();
+                    } catch (err) {
+                        alert(err.message);
+                    }
+                });
+                actions.prepend(unmuteBtn);
+            }
+
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.guest-actions') || e.target.closest('.guest-silence-panel')) return;
+                openGuestConversation(eventId, guest.customerName);
+            });
+
+            return card;
+        }
+
+        const guestConversationModal = new bootstrap.Modal(document.getElementById('guestConversationModal'));
+        const guestConversationTimeline = document.getElementById('guestConversationTimeline');
+        let activeGuestConv = { eventId: null, customerName: null };
+
+        function renderConversationItem(item, guestName) {
+            const when = new Date(item.timestamp).toLocaleString();
+            if (item.kind === 'message') {
+                return `
+                    <div class="guest-conv-item from-guest">
+                        <div class="guest-conv-bubble">
+                            <div class="fw-semibold mb-1"><i class="fas fa-user me-1"></i>${escapeGuestText(guestName)}${item.private ? ' <span class="badge bg-purple-pill">DJ Only</span>' : ''}</div>
+                            <div class="guest-conv-body">${item.body}</div>
+                            <div class="guest-conv-meta"><i class="fas fa-clock me-1"></i>${when}</div>
+                        </div>
+                    </div>`;
+            }
+            if (item.kind === 'reply') {
+                return `
+                    <div class="guest-conv-item from-dj">
+                        <div class="guest-conv-bubble">
+                            <div class="fw-semibold mb-1"><i class="fas fa-user-tie me-1"></i>DJ${item.direct ? ' <span class="badge bg-dark">Direct</span>' : ''}</div>
+                            <div>${escapeGuestText(item.body)}</div>
+                            <div class="guest-conv-meta"><i class="fas fa-clock me-1"></i>${when}</div>
+                        </div>
+                    </div>`;
+            }
+            const isKaraoke = (item.type || '').indexOf('karaoke') !== -1;
+            const icon = isKaraoke ? 'microphone' : 'music';
+            return `
+                <div class="guest-conv-item from-request">
+                    <div class="guest-conv-bubble">
+                        <div class="fw-semibold mb-1"><i class="fas fa-${icon} me-1"></i>${isKaraoke ? 'Karaoke' : 'Song'} request</div>
+                        <div>"${escapeGuestText(item.title || 'Unknown')}"${item.artist ? ` — ${escapeGuestText(item.artist)}` : ''}</div>
+                        ${item.note ? `<div class="small mt-1">${escapeGuestText(item.note)}</div>` : ''}
+                        <div class="guest-conv-meta"><i class="fas fa-clock me-1"></i>${when}</div>
+                    </div>
+                </div>`;
+        }
+
+        async function openGuestConversation(eventId, customerName) {
+            activeGuestConv = { eventId, customerName };
+            document.getElementById('guestConvName').textContent = customerName;
+            document.getElementById('guestConvEventHint').textContent = eventNames[eventId]
+                ? `Event: ${eventNames[eventId]}`
+                : '';
+            guestConversationTimeline.innerHTML = '<span class="text-muted small">Loading…</span>';
+            guestConversationModal.show();
+            try {
+                const res = await fetch(`/api/events/${eventId}/guests/${encodeURIComponent(customerName)}/conversation`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Failed to load conversation');
+                if (!data.items || data.items.length === 0) {
+                    guestConversationTimeline.innerHTML = '<p class="text-muted text-center py-4 mb-0">No conversation yet.</p>';
+                    return;
+                }
+                guestConversationTimeline.innerHTML = data.items
+                    .map(item => renderConversationItem(item, customerName))
+                    .join('');
+                guestConversationTimeline.scrollTop = guestConversationTimeline.scrollHeight;
+            } catch (err) {
+                console.error('Failed to load guest conversation:', err);
+                guestConversationTimeline.innerHTML = '<p class="text-danger small">Could not load conversation.</p>';
+            }
+        }
+
+        document.getElementById('guestConvReplyBtn').addEventListener('click', () => {
+            if (!activeGuestConv.customerName) return;
+            guestConversationModal.hide();
+            document.dispatchEvent(new CustomEvent('mdj-open-reply', {
+                detail: {
+                    customerName: activeGuestConv.customerName,
+                    originalType: 'message',
+                    originalId: ''
+                }
+            }));
+        });
+
+        async function loadGuests() {
+            const selected = eventSelect.value;
+            guestsList.innerHTML = '<span class="text-muted small">Loading…</span>';
+            try {
+                const eventIds = selected === 'all' ? Object.keys(eventNames) : [selected];
+                if (eventIds.length === 0) {
+                    guestsList.innerHTML = '<span class="text-muted small">Select an event to view guests.</span>';
+                    guestCount.textContent = '0';
+                    return;
+                }
+                const lists = await Promise.all(eventIds.map(id =>
+                    fetch(`/api/events/${id}/guests`).then(r => r.ok ? r.json() : [])
+                ));
+                const guests = lists.flat().sort((a, b) => new Date(b.lastSeenAt) - new Date(a.lastSeenAt));
+                guestCount.textContent = guests.length;
+                guestsList.innerHTML = '';
+                if (guests.length === 0) {
+                    guestsList.innerHTML = '<span class="text-muted small">No guests yet.</span>';
+                    return;
+                }
+                guests.forEach(guest => {
+                    guestsList.appendChild(renderGuestRow(guest, guest.eventId, selected === 'all'));
+                });
+            } catch (err) {
+                console.error('Failed to load guests:', err);
+                guestsList.innerHTML = '<span class="text-danger small">Could not load guests.</span>';
+            }
+        }
+
+        document.getElementById('refreshGuestsBtn').addEventListener('click', loadGuests);
+
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.guest-silence-panel') ||
+                e.target.closest('.guest-actions .btn-outline-warning')) {
+                return;
+            }
+            document.querySelectorAll('.guest-silence-panel.is-open').forEach(panel => {
+                panel.classList.remove('is-open');
+                panel.hidden = true;
+                panel.innerHTML = '';
+            });
+        });
+
+        loadGuests();
     });
     </script>
 </body>

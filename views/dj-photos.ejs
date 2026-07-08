@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photos - <%= event.name %> - MobileDJay</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+    <link href="/css/eyup-site-chrome.css" rel="stylesheet">
+    <style>
+        body.dark-mode { background: #0f1720; color: #e6eef8; }
+        body.dark-mode .card {
+            background: #101419;
+            border-color: rgba(255,255,255,0.03);
+            color: #d7e6f5;
+        }
+        .dj-photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.75rem;
+        }
+        .dj-photo-card {
+            position: relative;
+            border-radius: 0.6rem;
+            overflow: hidden;
+            background: #000;
+        }
+        .dj-photo-card img {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            display: block;
+        }
+        .dj-photo-card.hidden-photo img {
+            opacity: 0.35;
+            filter: grayscale(1);
+        }
+        .dj-photo-meta {
+            padding: 0.4rem 0.5rem;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            font-size: 0.75rem;
+        }
+        .dj-photo-meta .who { font-weight: 600; }
+        .dj-photo-actions {
+            position: absolute;
+            top: 0.4rem;
+            right: 0.4rem;
+            display: flex;
+            gap: 0.25rem;
+        }
+        .hidden-badge {
+            position: absolute;
+            top: 0.4rem;
+            left: 0.4rem;
+        }
+    </style>
+</head>
+<body class="mdj-eyup-brand mdj-dash-tools">
+    <div class="mdj-scanlines" aria-hidden="true"></div>
+    <h1 class="visually-hidden">Photo Management</h1>
+
+    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Photo management">
+        <div class="nav-container">
+            <div class="logo" role="img" aria-label="EYUP EVENTS">
+                <span class="logo-text">EYUP</span>
+                <span class="logo-accent">EVENTS</span>
+                <span class="logo-subtitle"><i class="fas fa-images" aria-hidden="true"></i> Photos · <%= event.name %></span>
+            </div>
+            <div class="mdj-nav-controls">
+                <a href="/dj/events" class="btn btn-outline-light btn-sm" title="Back to Event Management">
+                    <i class="fas fa-arrow-left me-1"></i><span class="d-none d-md-inline">Events</span>
+                </a>
+                <a href="/gallery/<%= event.slug %>/<%= event.share_token %>" target="_blank" class="btn btn-info btn-sm" title="Open customer gallery">
+                    <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">View Gallery</span>
+                </a>
+                <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mdj-dash-main">
+        <div class="mdj-dash-scroll">
+
+        <% if (photos.length === 0) { %>
+            <div class="card text-center">
+                <div class="card-body py-5">
+                    <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No photos yet</h5>
+                    <p class="text-muted">Photos guests share at this event will appear here for review.</p>
+                </div>
+            </div>
+        <% } else { %>
+            <p class="text-muted small mb-3">
+                <i class="fas fa-circle-info me-1"></i>
+                Hidden photos stay on disk but are excluded from the guest page and the customer gallery.
+            </p>
+            <div class="dj-photo-grid">
+                <% photos.forEach(function(photo) { %>
+                    <div class="dj-photo-card <%= photo.is_hidden ? 'hidden-photo' : '' %>" data-photo-id="<%= photo.id %>">
+                        <img src="/uploads/photos/<%= photo.event_id %>/<%= photo.filename %>"
+                             alt="<%= photo.caption || 'Event photo' %>" loading="lazy">
+                        <% if (photo.is_hidden) { %>
+                            <span class="badge bg-secondary hidden-badge"><i class="fas fa-eye-slash me-1"></i>Hidden</span>
+                        <% } %>
+                        <div class="dj-photo-actions">
+                            <button type="button" class="btn btn-sm btn-warning showcase-photo" title="Show on display screen">
+                                <i class="fas fa-tv"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-dark toggle-hidden" data-hidden="<%= photo.is_hidden %>" title="<%= photo.is_hidden ? 'Unhide' : 'Hide' %>">
+                                <i class="fas fa-eye<%= photo.is_hidden ? '' : '-slash' %>"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-danger delete-photo" title="Delete permanently">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="dj-photo-meta">
+                            <span class="who"><i class="fas fa-user me-1"></i><%= photo.customer_name || 'Anonymous' %></span>
+                            <% if (photo.caption) { %><div><%= photo.caption %></div><% } %>
+                            <div class="text-muted"><%= new Date(photo.created_at).toLocaleString() %></div>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+        <% } %>
+        </div>
+
+        <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">
+            <div class="mdj-footer-container">
+                <div class="mdj-company-foot">
+                    <p class="mdj-company-foot__legal">&copy; 2026 EYUP EVENTS UK LTD · Co. no. 17186451 · All rights reserved</p>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Dark mode toggle (shared storage key with other DJ pages)
+        const toggle = document.getElementById('darkModeToggle');
+        function setMode(enabled) {
+            document.body.classList.toggle('dark-mode', enabled);
+            const icon = toggle.querySelector('i');
+            icon.classList.toggle('fa-moon', !enabled);
+            icon.classList.toggle('fa-sun', enabled);
+        }
+        setMode(localStorage.getItem('djDashboardDarkMode') === 'true');
+        toggle.addEventListener('click', function () {
+            const enabled = !document.body.classList.contains('dark-mode');
+            localStorage.setItem('djDashboardDarkMode', enabled ? 'true' : 'false');
+            setMode(enabled);
+        });
+
+        // Show on display screen
+        document.querySelectorAll('.showcase-photo').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const card = this.closest('.dj-photo-card');
+                const photoId = card.dataset.photoId;
+                const icon = this.querySelector('i');
+                try {
+                    const res = await fetch(`/api/photos/${photoId}/showcase`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                        icon.classList.replace('fa-tv', 'fa-check');
+                        setTimeout(() => icon.classList.replace('fa-check', 'fa-tv'), 2000);
+                    } else {
+                        alert(data.error || 'Failed to send photo to display');
+                    }
+                } catch (err) {
+                    alert('Failed to send photo to display');
+                }
+            });
+        });
+
+        // Hide / unhide
+        document.querySelectorAll('.toggle-hidden').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const card = this.closest('.dj-photo-card');
+                const photoId = card.dataset.photoId;
+                const nowHidden = this.dataset.hidden !== '1';
+                try {
+                    const res = await fetch(`/api/photos/${photoId}/hidden`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ hidden: nowHidden })
+                    });
+                    const data = await res.json();
+                    if (data.success) window.location.reload();
+                } catch (err) {
+                    alert('Failed to update photo');
+                }
+            });
+        });
+
+        // Delete
+        document.querySelectorAll('.delete-photo').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                if (!confirm('Delete this photo permanently? This cannot be undone.')) return;
+                const card = this.closest('.dj-photo-card');
+                const photoId = card.dataset.photoId;
+                try {
+                    const res = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data.success) card.remove();
+                } catch (err) {
+                    alert('Failed to delete photo');
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>

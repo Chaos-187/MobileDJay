@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (storedName && !editMode) {
         customerNameInput.value = storedName;
         showOptionsView(storedName);
+        registerGuestCheckin(storedName);
         // Check for replies and update bell
         checkForReplies(storedName);
     } else if (storedName && editMode) {
@@ -54,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Store name and show options
         sessionStorage.setItem('customerName', customerName);
         showOptionsView(customerName);
+        registerGuestCheckin(customerName);
         // Check for replies and update bell
         checkForReplies(customerName);
     });
@@ -109,9 +111,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const target = this.dataset.target;
             
-            // Navigate to target page with customer name as query parameter
+            // Navigate to target page with customer name as query parameter.
             // The target may already include the event path (e.g., event/abc123/song-request)
-            window.location.href = `/${target}?customerName=${encodeURIComponent(customerName)}`;
+            // and may already carry a query string (e.g., photo?camera=1).
+            const sep = target.includes('?') ? '&' : '?';
+            window.location.href = `/${target}${sep}customerName=${encodeURIComponent(customerName)}`;
         });
     });
 
@@ -274,14 +278,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const originalText = refreshRepliesBtn.innerHTML;
         refreshRepliesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
 
-        fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
+        const activityUrl = `/api/customer/activity/${encodeURIComponent(customerName)}` +
+            (window.eventSlug ? `?eventSlug=${encodeURIComponent(window.eventSlug)}` : '');
+        fetch(activityUrl)
             .then(response => response.json())
-            .then(replies => {
-                displayChatMessages(replies, customerName);
-                updateBellIcon(replies.length);
+            .then(data => {
+                displayChatMessages(data.replies || [], data.requests || []);
+                updateBellIcon((data.replies || []).length);
             })
             .catch(error => {
-                console.error('Error fetching replies:', error);
+                console.error('Error fetching activity:', error);
                 showError('Failed to load messages. Please try again.');
                 chatMessages.innerHTML = `
                     <div class="text-center py-4 text-muted">
@@ -297,20 +303,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    function displayChatMessages(replies, customerName) {
-        if (replies.length === 0) {
+    function displayChatMessages(replies, requests) {
+        // Merge DJ replies and the guest's own requests into one timeline
+        const items = [
+            ...replies.map(r => ({ kind: 'reply', timestamp: r.timestamp, data: r })),
+            ...requests.map(r => ({ kind: 'request', timestamp: r.timestamp, data: r }))
+        ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        if (items.length === 0) {
             chatMessages.innerHTML = `
                 <div class="text-center py-5">
                     <i class="fas fa-comments fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">No messages yet</h5>
-                    <p class="text-muted">The DJ will reply to your requests and messages here.</p>
+                    <h5 class="text-muted">Nothing here yet</h5>
+                    <p class="text-muted">Your song and karaoke requests will show here, along with the DJ's replies.</p>
                 </div>
             `;
             return;
         }
 
-        const messagesHtml = replies.map(reply => createChatBubble(reply)).join('');
-        chatMessages.innerHTML = messagesHtml;
+        chatMessages.innerHTML = items
+            .map(item => item.kind === 'reply' ? createChatBubble(item.data) : createRequestBubble(item.data))
+            .join('');
         
         // Scroll to bottom of chat
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -326,10 +339,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="chat-bubble ${isFromDJ ? 'from-dj' : 'from-customer'}" style="max-width: 80%;">
                         <div class="d-flex align-items-center mb-1">
                             <i class="fas fa-user-tie me-2 text-warning"></i>
-                            <strong class="text-warning">DJ Chaos</strong>
+                            <strong class="text-warning">${escapeHtml(window.djName || 'DJ')}</strong>
                             <span class="badge bg-secondary ms-2 small">${reply.originalType}</span>
+                            ${reply.direct ? '<span class="badge bg-dark ms-1 small" title="Sent only to you"><i class="fas fa-user-lock me-1"></i>Just for you</span>' : ''}
                         </div>
                         <p class="mb-1">${escapeHtml(reply.replyMessage)}</p>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            ${timestamp}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Bubble for the guest's own song/karaoke request (right-hand side)
+    function createRequestBubble(request) {
+        const timestamp = new Date(request.timestamp).toLocaleString();
+        const isKaraoke = (request.type || '').indexOf('karaoke') !== -1;
+        const icon = isKaraoke ? 'microphone' : 'music';
+        const label = isKaraoke ? 'Karaoke' : 'Song';
+        
+        return `
+            <div class="mb-3">
+                <div class="d-flex justify-content-end">
+                    <div class="chat-bubble from-customer" style="max-width: 80%;">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="fas fa-${icon} me-2"></i>
+                            <strong>You requested</strong>
+                            <span class="badge bg-secondary ms-2 small">${label}</span>
+                        </div>
+                        <p class="mb-1">"${escapeHtml(request.title || 'Unknown')}"${request.artist ? ' by ' + escapeHtml(request.artist) : ''}</p>
+                        ${request.message ? `<p class="mb-1 small fst-italic">"${escapeHtml(request.message)}"</p>` : ''}
                         <small class="text-muted">
                             <i class="fas fa-clock me-1"></i>
                             ${timestamp}
@@ -348,6 +390,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Show error message function
+    function registerGuestCheckin(customerName) {
+        if (!window.eventSlug || !customerName) return;
+        fetch(`/api/event/${encodeURIComponent(window.eventSlug)}/guest-checkin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customerName })
+        }).catch(() => {});
+    }
+
     function showError(message) {
         const alert = document.createElement('div');
         alert.className = 'alert alert-danger alert-dismissible fade show position-fixed';

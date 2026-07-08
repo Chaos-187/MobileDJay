@@ -32,7 +32,8 @@ body.mdj-eyup-brand main.container {
 }
 
 /* DJ dashboard / event management: statutory footer pinned to viewport bottom */
-body.mdj-eyup-brand main.container.mdj-dash-main {
+body.mdj-eyup-brand main.container.mdj-dash-main,
+body.mdj-eyup-brand main.container-fluid.mdj-dash-main {
     margin-top: 0;
     display: flex;
     flex-direction: column;
@@ -53,6 +54,21 @@ body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll {
     scroll-behavior: smooth;
 }
 
+/* DJ dashboard: split layout (tabs left, messages right) */
+body.mdj-eyup-brand main.container-fluid.mdj-dash-main > .mdj-dash-layout {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    overflow: visible;
+    padding-top: clamp(1rem, 2.5vw, 1.75rem);
+    padding-bottom: 0.5rem;
+}
+
+body.mdj-eyup-brand main.container-fluid.mdj-dash-main > .mdj-dash-layout > .mdj-dash-scroll {
+    padding-top: 0;
+    padding-bottom: 1rem;
+}
+
 body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll::-webkit-scrollbar {
     width: 6px;
 }
@@ -67,9 +83,42 @@ body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-dash-scroll::-webkit-scr
     background: rgba(255, 255, 255, 0.25);
 }
 
-body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-eyup-footer.mdj-eyup-footer--compact {
+body.mdj-eyup-brand main.container.mdj-dash-main > .mdj-eyup-footer.mdj-eyup-footer--compact,
+body.mdj-eyup-brand main.container-fluid.mdj-dash-main > .mdj-eyup-footer.mdj-eyup-footer--compact {
     flex-shrink: 0;
-    margin-top: 0;
+    margin-top: auto;
+}
+
+/* DJ admin pages (dashboard, event management): wider than default Bootstrap container */
+body.mdj-eyup-brand.mdj-dash-tools.mdj-dashboard-page .mdj-dashboard-navbar .nav-container,
+body.mdj-eyup-brand.mdj-dash-tools.mdj-dashboard-page main.container-fluid.mdj-dash-main {
+    max-width: 100%;
+    width: 100%;
+    padding-left: clamp(0.75rem, 2vw, 1.5rem);
+    padding-right: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+body.mdj-eyup-brand.mdj-dash-tools.mdj-events-mgmt-page .mdj-events-mgmt-navbar .nav-container,
+body.mdj-eyup-brand.mdj-dash-tools.mdj-events-mgmt-page main.container.mdj-dash-main {
+    max-width: min(1680px, 96vw);
+}
+
+/* Guest pages: pin the statutory footer to the bottom of the viewport
+   even when the page content is short */
+body.mdj-eyup-brand:not(.mdj-dash-tools) {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+body.mdj-eyup-brand:not(.mdj-dash-tools) main.container {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+body.mdj-eyup-brand:not(.mdj-dash-tools) main.container > .mdj-eyup-footer--compact {
+    margin-top: auto;
 }
 
 /* ─── DJ tooling (dashboard + event mgmt): EYUP-styled Bootstrap buttons ─── */

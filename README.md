@@ -1,130 +1,125 @@
 # MobileDJay
 
-A mobile-responsive web application that allows customers to search for and request songs, karaoke tracks, and send messages to the DJ.
+Mobile-first web app for **EYUP EVENTS** DJs and guests. Customers request songs, karaoke, and messages from their phones; DJs manage everything from a live dashboard, display screens, and event settings.
 
 ## Features
 
-- **Mobile-First Design**: Optimized for mobile devices with responsive Bootstrap 5 UI
-- **Song Requests**: Browse and search through a catalogue of songs loaded from VirtualDJ XML database
-- **Karaoke Requests**: Find karaoke tracks loaded from CSV file with auto-assigned difficulty ratings
-- **Message System**: Send custom messages to the DJ via VirtualDJ API
-- **Real-time Search**: Live search functionality with debouncing across title, artist, genre/album
-- **Customer Names**: Persistent customer name storage across sessions
-- **Form Validation**: Client and server-side validation
-- **Loading States**: Visual feedback during form submissions
-- **VirtualDJ Integration**: All requests are sent directly to VirtualDJ endpoint
+### Guest experience
+- **Per-event landing pages** at `/event/:slug` with themed branding (colors, logo, background)
+- **Song & karaoke requests** with live catalogue search
+- **Messages to the DJ** with optional replies shown in-app
+- **Guest photos** (when enabled per event)
+- **DJ tipping** via configurable payment links
+- **Recently played tracks** on the guest page (optional per event)
+- **Public event picker** at `/` when enabled — guests choose which event they are at before requesting
 
-## Technology Stack
+### DJ dashboard (`/dj`)
+- Full-width layout with **requests** (main panel) and **messages** (right sidebar)
+- **Messages inbox** shows guest messages only (no DJ replies or auto-generated request notifications)
+- **Awaiting reply** highlight and badge for unreplied guest messages
+- **Reply** from the messages panel or from a guest’s full conversation timeline
+- **Guests tab** — check-in list, silence (timed), ban, reinstate; click a guest for conversation history
+- **Tracks played** tab — view log, add manually, or capture from now playing
+- **Display prompts** — push animated prompts to venue screens
+- **Photo showcase** — push a guest photo to the display screen
 
-- **Backend**: Node.js with Express.js
-- **Templating**: EJS (Embedded JavaScript)
-- **Frontend**: Bootstrap 5, Font Awesome, Vanilla JavaScript
-- **Styling**: Custom CSS with CSS animations and transitions
-- **Data Sources**: VirtualDJ XML database for songs, CSV file for karaoke
-- **XML Parsing**: xml2js for VirtualDJ database parsing
-- **CSV Parsing**: csv-parser for karaoke catalogue
-- **External API**: HTTPS requests to VirtualDJ endpoint
+### Event management (`/dj/events`)
+- Create and edit events with feature toggles (songs, karaoke, messages, photos, tips)
+- **Show on public events page** per event (listed at `/` when global setting is on)
+- **Show played tracks on guest page** per event
+- Customer URLs, QR codes, gallery share links, display configuration
+- Cancel / postpone / activate events
 
-## Installation
+### Global settings (`/dj/settings`)
+- DJ name, public base URL (for share links and QR codes)
+- **Enable public events page** — home page becomes an event picker
+- VirtualDJ integration (forward requests/messages, now playing)
+- Music catalogue upload paths
+- Photo limits and slideshow defaults
 
-1. Clone or download the project
-2. Navigate to the project directory
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Venue display
+- Per-event display screen at `/dj/display/:slug`
+- Now playing, requests, QR code, photo slideshow, DJ prompts
 
-## Running the Application
+### Data & integration
+- **SQLite persistence** for requests, messages, replies, events, photos, tracks, and guest moderation
+- **VirtualDJ** XML song database and CSV karaoke catalogue
+- **Now playing API** — see [`docs/NOW-PLAYING-API.md`](docs/NOW-PLAYING-API.md)
+- **Stealth guest moderation** — silenced/banned guests see generic success or silent thank-you pages (no visible ban message)
 
-### Development Mode
+## Quick start
+
 ```bash
+cd MobileDJay
+npm install
 npm run dev
 ```
 
-### Production Mode
-```bash
-npm start
-```
+Open `http://localhost:3000`
 
-The application will be available at `http://localhost:3000`
+| URL | Purpose |
+|-----|---------|
+| `/` | Guest home — event picker (if enabled) or legacy landing |
+| `/event/:slug` | Guest requests for a specific event |
+| `/dj` | DJ dashboard |
+| `/dj/events` | Event management |
+| `/dj/settings` | Global DJ settings |
+| `/dj/display/:slug` | Venue display screen |
 
-## Project Structure
+## Public events page
+
+1. **DJ Settings → Sharing & Links** — enable **Enable public events page**
+2. **Event Management → Edit event** — enable **Show on public events page** for each event to list
+3. Share your site root URL (`/`). Guests pick an event, then land on `/event/:slug`
+
+Only **active** events with **show public** enabled appear. `/events` redirects to `/` for backwards compatibility.
+
+## Documentation
+
+| Doc | Contents |
+|-----|----------|
+| [`docs/mobilejay-features.md`](docs/mobilejay-features.md) | Feature guide for DJs and operators |
+| [`docs/mobilejay-events-api.md`](docs/mobilejay-events-api.md) | HTTP API for events, guests, tracks, public listing |
+| [`docs/NOW-PLAYING-API.md`](docs/NOW-PLAYING-API.md) | Now playing endpoint for VirtualDJ / integrations |
+| [`docs/events-portal-api-endpoints.md`](docs/events-portal-api-endpoints.md) | Separate EYUP portal API (`/api/v1/…`) |
+
+## Technology stack
+
+- **Backend:** Node.js, Express
+- **Database:** SQLite (`db/database.js`)
+- **Templates:** EJS
+- **Frontend:** Bootstrap 5, Font Awesome, vanilla JavaScript
+- **Catalogues:** VirtualDJ XML + karaoke CSV
+
+## Project structure
 
 ```
 MobileDJay/
-├── server.js              # Main Express server
-├── package.json           # Project dependencies and scripts
-├── views/                 # EJS templates
-│   ├── index.ejs         # Main page
-│   ├── song-request.ejs  # Song request page
-│   ├── karaoke-request.ejs # Karaoke request page
-│   ├── send-message.ejs  # Message page
-│   └── thank-you.ejs     # Confirmation page
-├── public/               # Static assets
-│   ├── css/
-│   │   └── style.css     # Custom styles
-│   └── js/
-│       ├── app.js        # Main JavaScript
-│       ├── song-request.js # Song page functionality
-│       ├── karaoke-request.js # Karaoke page functionality
-│       └── send-message.js # Message page functionality
-└── .github/
-    └── copilot-instructions.md # Copilot customization
+├── server.js                 # Express app, routes, DJ/guest logic
+├── db/
+│   └── database.js           # Schema, migrations, data access
+├── views/                    # EJS templates
+│   ├── index.ejs             # Guest event landing
+│   ├── events-list.ejs       # Public event picker (home page)
+│   ├── dj-dashboard.ejs      # DJ dashboard
+│   ├── event-management.ejs  # Event CRUD
+│   ├── dj-settings.ejs       # Global settings
+│   └── …
+├── public/
+│   ├── css/                  # style.css, eyup-site-chrome.css
+│   └── js/                   # app.js, dj-dashboard.js, …
+├── portal/                   # EYUP portal API (separate DB)
+└── docs/                     # API and feature documentation
 ```
 
-## API Endpoints
+## Configuration
 
-- `GET /` - Main page with three options
-- `GET /song-request` - Song request page
-- `GET /karaoke-request` - Karaoke request page
-- `GET /send-message` - Message page
-- `GET /api/search/songs?q=query` - Search songs API
-- `GET /api/search/karaoke?q=query` - Search karaoke API
-- `POST /submit-song-request` - Submit song request
-- `POST /submit-karaoke-request` - Submit karaoke request
-- `POST /submit-message` - Submit message
+Environment variables are optional; see `.env` support in `server.js`. Key paths:
 
-## Data Sources
+- **Songs:** `DB/Song_Database.xml` (VirtualDJ format)
+- **Karaoke:** `DB/VirtualDJ_Karaoke_Catalog_*.csv`
 
-The application automatically loads data from:
-
-- **Songs**: `DB/Song_Database.xml` - VirtualDJ XML database format
-- **Karaoke**: `DB/VirtualDJ_Karaoke_Catalog_2025-07-26.csv` - CSV format with Artist, Title, Genre columns
-
-### Song Database Format
-The XML database should follow VirtualDJ format:
-```xml
-<Song FilePath="...">
-  <Tags Author="Artist Name" Title="Song Title" Album="Album Name" Year="2024" />
-  <!-- other VirtualDJ data -->
-</Song>
-```
-
-### Karaoke CSV Format
-The CSV should have columns: `Artist,Title,Genre,Date Added`
-
-If database files are not found, the application falls back to sample data.
-
-## Customization
-
-### Adding Songs/Karaoke
-- Update your VirtualDJ XML database file in the `DB/` folder
-- Update your karaoke CSV file in the `DB/` folder  
-- Restart the server to reload the catalogues
-
-### Styling
-Modify `public/css/style.css` to customize the appearance.
-
-### Search Functionality
-The search is case-insensitive and searches across title, artist, and genre/difficulty fields.
-
-## Browser Support
-
-- Chrome (recommended)
-- Firefox
-- Safari
-- Edge
-- Mobile browsers (iOS Safari, Chrome Mobile)
+Catalogues can also be uploaded from **DJ Settings**.
 
 ## License
 

@@ -27,10 +27,13 @@ const https = require('https');
 const querystring = require('querystring');
 const xml2js = require('xml2js');
 const csv = require('csv-parser');
+const crypto = require('crypto');
+const multer = require('multer');
+const archiver = require('archiver');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
 const cors = require('cors');
-const { eventDb, requestDb, messageDb, replyDb, ensureDefaultEvent } = require('./db/database');
+const { eventDb, requestDb, messageDb, replyDb, photoDb, trackDb, guestDb, settingsDb, ensureDefaultEvent } = require('./db/database');
 const portalRouter = require('./portal/router');
 const app = express();
 
@@ -53,9 +56,131 @@ app.set('views', path.join(__dirname, 'views'));
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Guest photo uploads — stored on disk under uploads/photos/<eventId>/
+const uploadsRoot = path.join(__dirname, 'uploads');
+const photosRoot = path.join(uploadsRoot, 'photos');
+fs.mkdirSync(photosRoot, { recursive: true });
+app.use('/uploads/photos', express.static(photosRoot, { maxAge: '7d', immutable: true }));
+
+const photoStorage = multer.diskStorage({
+    destination(req, file, cb) {
+        const eventDir = path.join(photosRoot, String(req.event.id));
+        fs.mkdirSync(eventDir, { recursive: true });
+        cb(null, eventDir);
+    },
+    filename(req, file, cb) {
+        const ext = ({ 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif' })[file.mimetype] || '.jpg';
+        cb(null, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`);
+    }
+});
+const photoUpload = multer({
+    storage: photoStorage,
+    limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+    fileFilter(req, file, cb) {
+        const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
+        cb(ok ? null : new Error('Only JPEG, PNG, WebP, or GIF images are allowed'), ok);
+    }
+});
+
+// Event theme assets (backgrounds/logos uploaded by the DJ) — uploads/themes/<eventId>/
+const themesRoot = path.join(uploadsRoot, 'themes');
+fs.mkdirSync(themesRoot, { recursive: true });
+app.use('/uploads/themes', express.static(themesRoot, { maxAge: '7d' }));
+
+const themeStorage = multer.diskStorage({
+    destination(req, file, cb) {
+        const eventDir = path.join(themesRoot, String(req.params.id));
+        fs.mkdirSync(eventDir, { recursive: true });
+        cb(null, eventDir);
+    },
+    filename(req, file, cb) {
+        const ext = ({ 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif', 'image/svg+xml': '.svg' })[file.mimetype] || '.jpg';
+        const kind = ['bg', 'logo', 'display_bg'].includes(req.query.kind) ? req.query.kind : 'img';
+        cb(null, `${kind}-${Date.now()}${ext}`);
+    }
+});
+const themeUpload = multer({
+    storage: themeStorage,
+    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+    fileFilter(req, file, cb) {
+        const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'].includes(file.mimetype);
+        cb(ok ? null : new Error('Only JPEG, PNG, WebP, GIF, or SVG images are allowed'), ok);
+    }
+});
+
+// Catalogue uploads (VirtualDJ song database XML / karaoke CSV) — staged in a temp
+// dir, validated by parsing, then moved into db/ and hot-reloaded.
+const catalogueTmpDir = path.join(uploadsRoot, 'tmp');
+fs.mkdirSync(catalogueTmpDir, { recursive: true });
+const catalogueUpload = multer({
+    storage: multer.diskStorage({
+        destination(req, file, cb) { cb(null, catalogueTmpDir); },
+        filename(req, file, cb) { cb(null, `catalogue-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`); }
+    }),
+    limits: { fileSize: 200 * 1024 * 1024, files: 1 }
+});
+
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// ==================== Global App Settings ====================
+// DJ-wide configuration stored in SQLite (app_settings) instead of hard-coded values.
+const GLOBAL_SETTINGS_DEFAULTS = {
+    dj_name: 'DJ Chaos',
+    // Public URL guests use to reach this app (for share links/QR codes).
+    // Empty = derive from the incoming request, which can be wrong behind a proxy.
+    public_base_url: '',
+    virtualdj_enabled: true,
+    virtualdj_ask_path: '/ask/HawaiianNight',
+    default_enable_song_requests: true,
+    default_enable_karaoke_requests: true,
+    default_enable_messages: true,
+    default_enable_photos: false,
+    default_enable_tips: false,
+    enable_public_events_page: false,
+    photo_max_per_guest: 20,
+    // Photo slideshow: display screens periodically pop up a random guest photo
+    photo_slideshow_enabled: false,
+    photo_slideshow_minutes: 5,
+    // Banner style around showcased photos: party | neon | elegant | minimal
+    photo_banner_style: 'party'
+};
+
+// Base URL for shareable guest links: configured public URL if set, else the request host.
+function getPublicBaseUrl(req) {
+    const configured = (getGlobalSettings().public_base_url || '').trim().replace(/\/+$/, '');
+    return configured || `${req.protocol}://${req.get('host')}`;
+}
+
+function getGlobalSettings() {
+    return { ...GLOBAL_SETTINGS_DEFAULTS, ...settingsDb.get('global', {}) };
+}
+
+// Make the configured DJ name available to every rendered view (used by
+// guest pages to label DJ replies instead of a hard-coded name).
+app.use((req, res, next) => {
+    res.locals.djName = getGlobalSettings().dj_name;
+    next();
+});
+
+function saveGlobalSettings(patch) {
+    const merged = { ...getGlobalSettings() };
+    for (const [key, value] of Object.entries(patch || {})) {
+        if (!(key in GLOBAL_SETTINGS_DEFAULTS)) continue;
+        const defaultValue = GLOBAL_SETTINGS_DEFAULTS[key];
+        if (typeof defaultValue === 'boolean') {
+            merged[key] = value === true || value === 1 || value === '1' || value === 'true' || value === 'on';
+        } else if (typeof defaultValue === 'number') {
+            const n = parseInt(value, 10);
+            if (Number.isFinite(n) && n >= 0) merged[key] = n;
+        } else {
+            merged[key] = value == null ? defaultValue : String(value).trim();
+        }
+    }
+    settingsDb.set('global', merged);
+    return merged;
+}
 
 // EYUP events portal JSON API (separate SQLite DB — does not touch song-request tables)
 app.use(
@@ -77,10 +202,21 @@ app.use(
 let songCatalogue = [];
 let karaokeCatalogue = [];
 
-// Legacy in-memory storage (kept for backwards compatibility during transition)
+// Requests/messages/replies are persisted in SQLite and mirrored into these
+// in-memory arrays for fast filtering. Hydrated from the DB at startup; every
+// mutation writes through to the DB so nothing is lost on restart.
 let djRequests = [];
 let djMessages = [];
 let djReplies = [];
+
+try {
+    djRequests = requestDb.getAllLive();
+    djMessages = messageDb.getAllLive();
+    djReplies = replyDb.getAllLive();
+    console.log(`Restored from DB: ${djRequests.length} requests, ${djMessages.length} messages, ${djReplies.length} replies`);
+} catch (err) {
+    console.error('Failed to restore requests/messages/replies from DB:', err);
+}
 
 // Current playing track state (for DMX controller integration)
 // Keyed by eventId or 'global' for non-event-specific tracks
@@ -114,6 +250,119 @@ function getEventFromSlug(req, res, next) {
     next();
 }
 
+// JSON variant for API routes (no EJS error pages)
+function getEventFromSlugJson(req, res, next) {
+    const slug = req.params.eventSlug;
+    if (!slug) {
+        return res.status(400).json({ error: 'Event slug is required' });
+    }
+    const event = eventDb.getBySlug(slug);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    if (!event.is_active) {
+        return res.status(403).json({ error: 'This event is no longer active' });
+    }
+    req.event = event;
+    next();
+}
+
+function isGuestMessageForReply(m) {
+    return !m.isReply && m.type !== 'song-request' && m.type !== 'karaoke-request';
+}
+
+function filterDjInboxMessages(messages) {
+    return messages.filter(isGuestMessageForReply);
+}
+
+function getDjInboxMessages() {
+    return enrichMessagesWithReplyStatus(filterDjInboxMessages(djMessages), djReplies);
+}
+
+function buildGuestConversation(eventId, customerName) {
+    const name = customerName.toLowerCase();
+    const items = [];
+
+    for (const m of djMessages) {
+        if (!isGuestMessageForReply(m)) continue;
+        if ((m.customerName || '').toLowerCase() !== name) continue;
+        if (m.eventId != null && Number(m.eventId) !== Number(eventId)) continue;
+        items.push({
+            kind: 'message',
+            id: m.id,
+            timestamp: m.timestamp,
+            body: m.message,
+            private: !!m.private
+        });
+    }
+
+    for (const r of djReplies) {
+        if ((r.customerName || '').toLowerCase() !== name) continue;
+        if (r.eventId != null && Number(r.eventId) !== Number(eventId)) continue;
+        items.push({
+            kind: 'reply',
+            id: r.id,
+            timestamp: r.timestamp,
+            body: r.replyMessage,
+            direct: !!r.direct,
+            originalType: r.originalType || null
+        });
+    }
+
+    for (const req of djRequests) {
+        if ((req.customerName || '').toLowerCase() !== name) continue;
+        if (req.eventId != null && Number(req.eventId) !== Number(eventId)) continue;
+        items.push({
+            kind: 'request',
+            id: req.id,
+            timestamp: req.timestamp,
+            type: req.type,
+            title: req.song ? req.song.title : req.title,
+            artist: req.song ? req.song.artist : req.artist,
+            note: req.message || null
+        });
+    }
+
+    items.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    return items;
+}
+
+function enrichMessagesWithReplyStatus(messages, replies) {
+    const repliedMessageIds = new Set(
+        replies
+            .filter(r => r.originalType === 'message' && r.originalId != null)
+            .map(r => Number(r.originalId))
+    );
+    return messages.map(m => ({
+        ...m,
+        needsReply: isGuestMessageForReply(m) && !repliedMessageIds.has(Number(m.id))
+    }));
+}
+
+const GUEST_SUBMIT_GENERIC_ERROR = 'Unable to complete your request right now. Please try again later.';
+
+function isGuestModerated(event, customerName) {
+    if (!event || !customerName) return false;
+    return !guestDb.getModerationStatus(event.id, customerName).allowed;
+}
+
+/** Returns false when the guest is moderated and the response has been sent. */
+function rejectGuestIfModerated(event, customerName, res, { json = false, eventSlug = null, silentThankYou = null } = {}) {
+    if (!isGuestModerated(event, customerName)) return true;
+    if (json) {
+        res.json({ success: true });
+    } else if (silentThankYou) {
+        res.render('thank-you', silentThankYou);
+    } else {
+        res.status(503).render('error', {
+            error: GUEST_SUBMIT_GENERIC_ERROR,
+            customerName,
+            eventSlug: eventSlug || (event && event.slug) || null
+        });
+    }
+    return false;
+}
+
 // Storage for karaoke spinner
 let karaokeSpinState = {
     shouldSpin: false,
@@ -121,40 +370,141 @@ let karaokeSpinState = {
     timestamp: null
 };
 
+// Photo showcase trigger — DJ pushes a guest photo to the event display screen.
+// Keyed by event slug; the display polls and clears it after showing.
+const photoShowcaseState = {};
+
+// DJ-triggered animated screen prompts (per event slug, or 'global' for legacy display)
+const displayPromptState = {};
+
+const DISPLAY_PROMPTS = {
+    'great-moves': {
+        label: 'Great Moves!',
+        icon: 'fa-fire-flame-curved',
+        subtext: "Show 'em how it's done!",
+        style: 'great-moves'
+    },
+    'dance-floor-open': {
+        label: 'Dance Floor Open!',
+        icon: 'fa-door-open',
+        subtext: "Everyone's invited!",
+        style: 'dance-floor'
+    },
+    'dad-dancing': {
+        label: 'Dad Dancing!',
+        icon: 'fa-person-walking',
+        subtext: 'Awkward moves encouraged',
+        style: 'dad-dancing'
+    },
+    'slow-dance': {
+        label: 'Slow Dance',
+        icon: 'fa-heart',
+        subtext: 'Grab your partner',
+        style: 'slow-dance'
+    },
+    'last-orders': {
+        label: 'Last Orders!',
+        icon: 'fa-bell',
+        subtext: 'Final requests coming up!',
+        style: 'last-orders'
+    },
+    'round-applause': {
+        label: 'Round of Applause!',
+        icon: 'fa-hands-clapping',
+        subtext: 'Give it up!',
+        style: 'applause'
+    },
+    'selfie-time': {
+        label: 'Selfie Time!',
+        icon: 'fa-camera',
+        subtext: 'Strike a pose!',
+        style: 'selfie'
+    }
+};
+
+// Canonical catalogue file locations (uploads from the settings page land here)
+const SONG_DB_XML_PATH = path.join(__dirname, 'db', 'Song_Database.xml');
+const KARAOKE_CSV_PATH = path.join(__dirname, 'db', 'Karaoke_Catalog.csv');
+// Pre-upload-feature install location, kept as a read fallback
+const LEGACY_KARAOKE_CSV_PATH = path.join(__dirname, 'db', 'VirtualDJ_Karaoke_Catalog_2025-12-29.csv');
+
+// Parse a VirtualDJ database XML file into a song catalogue array. Throws on invalid XML.
+async function parseSongsXML(xmlPath) {
+    const xmlData = fs.readFileSync(xmlPath, 'utf8');
+    const parser = new xml2js.Parser();
+    const result = await parser.parseStringPromise(xmlData);
+
+    const songs = [];
+    let id = 1;
+
+    if (result.VirtualDJ_Database && result.VirtualDJ_Database.Song) {
+        result.VirtualDJ_Database.Song.forEach(song => {
+            if (song.Tags && song.Tags[0]) {
+                const tags = song.Tags[0].$;
+                if (tags.Title && tags.Author) {
+                    songs.push({
+                        id: id++,
+                        title: tags.Title,
+                        artist: tags.Author,
+                        genre: tags.Album || 'Unknown',
+                        year: tags.Year || 'Unknown'
+                    });
+                }
+            }
+        });
+    }
+    return songs;
+}
+
+// Parse a karaoke catalogue CSV (Title/Artist/Genre columns) into an array. Rejects on read error.
+function parseKaraokeCSV(csvPath) {
+    return new Promise((resolve, reject) => {
+        const songs = [];
+        let id = 1;
+        fs.createReadStream(csvPath)
+            .pipe(csv())
+            .on('data', (row) => {
+                const title = row.Title || row.title;
+                const artist = row.Artist || row.artist;
+                const genre = row.Genre || row.genre || '';
+
+                // Assign difficulty based on genre or randomly if no genre
+                let difficulty = 'Medium';
+                if (genre) {
+                    if (genre.toLowerCase().includes('pop') || genre.toLowerCase().includes('rnb')) {
+                        difficulty = 'Easy';
+                    } else if (genre.toLowerCase().includes('rock') || genre.toLowerCase().includes('metal')) {
+                        difficulty = 'Hard';
+                    }
+                } else {
+                    const difficulties = ['Easy', 'Medium', 'Hard'];
+                    difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
+                }
+
+                if (title && artist) {
+                    songs.push({
+                        id: id++,
+                        title: title.trim(),
+                        artist: artist.trim(),
+                        difficulty: difficulty,
+                        genre: genre.trim()
+                    });
+                }
+            })
+            .on('end', () => resolve(songs))
+            .on('error', reject);
+    });
+}
+
 // Function to load songs from VirtualDJ XML database
 async function loadSongsFromXML() {
     try {
-        const xmlPath = path.join(__dirname, 'db', 'Song_Database.xml');
-        if (!fs.existsSync(xmlPath)) {
+        if (!fs.existsSync(SONG_DB_XML_PATH)) {
             console.warn('Song_Database.xml not found, using sample data');
             songCatalogue = getSampleSongs();
             return;
         }
-
-        const xmlData = fs.readFileSync(xmlPath, 'utf8');
-        const parser = new xml2js.Parser();
-        const result = await parser.parseStringPromise(xmlData);
-        
-        songCatalogue = [];
-        let id = 1;
-
-        if (result.VirtualDJ_Database && result.VirtualDJ_Database.Song) {
-            result.VirtualDJ_Database.Song.forEach(song => {
-                if (song.Tags && song.Tags[0]) {
-                    const tags = song.Tags[0].$;
-                    if (tags.Title && tags.Author) {
-                        songCatalogue.push({
-                            id: id++,
-                            title: tags.Title,
-                            artist: tags.Author,
-                            genre: tags.Album || 'Unknown',
-                            year: tags.Year || 'Unknown'
-                        });
-                    }
-                }
-            });
-        }
-
+        songCatalogue = await parseSongsXML(SONG_DB_XML_PATH);
         console.log(`Loaded ${songCatalogue.length} songs from XML database`);
     } catch (error) {
         console.error('Error loading songs from XML:', error);
@@ -165,59 +515,14 @@ async function loadSongsFromXML() {
 // Function to load karaoke from CSV file
 async function loadKaraokeFromCSV() {
     try {
-        const csvPath = path.join(__dirname, 'db', 'VirtualDJ_Karaoke_Catalog_2025-12-29.csv');
+        const csvPath = fs.existsSync(KARAOKE_CSV_PATH) ? KARAOKE_CSV_PATH : LEGACY_KARAOKE_CSV_PATH;
         if (!fs.existsSync(csvPath)) {
             console.warn('Karaoke CSV not found, using sample data');
             karaokeCatalogue = getSampleKaraoke();
             return;
         }
-
-        karaokeCatalogue = [];
-        let id = 1;
-
-        return new Promise((resolve, reject) => {
-            fs.createReadStream(csvPath)
-                .pipe(csv())
-                .on('data', (row) => {
-                    // Map CSV columns to our format
-                    const title = row.Title || row.title;
-                    const artist = row.Artist || row.artist;
-                    const genre = row.Genre || row.genre || '';
-                    
-                    // Assign difficulty based on genre or randomly if no genre
-                    let difficulty = 'Medium';
-                    if (genre) {
-                        if (genre.toLowerCase().includes('pop') || genre.toLowerCase().includes('rnb')) {
-                            difficulty = 'Easy';
-                        } else if (genre.toLowerCase().includes('rock') || genre.toLowerCase().includes('metal')) {
-                            difficulty = 'Hard';
-                        }
-                    } else {
-                        // Random difficulty for songs without genre
-                        const difficulties = ['Easy', 'Medium', 'Hard'];
-                        difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
-                    }
-                    
-                    if (title && artist) {
-                        karaokeCatalogue.push({
-                            id: id++,
-                            title: title.trim(),
-                            artist: artist.trim(),
-                            difficulty: difficulty,
-                            genre: genre.trim()
-                        });
-                    }
-                })
-                .on('end', () => {
-                    console.log(`Loaded ${karaokeCatalogue.length} karaoke songs from CSV`);
-                    resolve();
-                })
-                .on('error', (error) => {
-                    console.error('Error loading karaoke from CSV:', error);
-                    karaokeCatalogue = getSampleKaraoke();
-                    resolve();
-                });
-        });
+        karaokeCatalogue = await parseKaraokeCSV(csvPath);
+        console.log(`Loaded ${karaokeCatalogue.length} karaoke songs from CSV`);
     } catch (error) {
         console.error('Error loading karaoke from CSV:', error);
         karaokeCatalogue = getSampleKaraoke();
@@ -261,6 +566,13 @@ async function initializeCatalogues() {
 
 // Function to send data to VirtualDJ
 async function sendToVirtualDJ(name, messageText) {
+    const settings = getGlobalSettings();
+    if (!settings.virtualdj_enabled) {
+        console.log('VirtualDJ integration disabled in settings; skipping send.');
+        return null;
+    }
+    const askPath = settings.virtualdj_ask_path || GLOBAL_SETTINGS_DEFAULTS.virtualdj_ask_path;
+
     return new Promise((resolve, reject) => {
         const postData = querystring.stringify({
             'name': name,
@@ -269,7 +581,7 @@ async function sendToVirtualDJ(name, messageText) {
 
         const options = {
             hostname: 'virtualdj.com',
-            path: '/ask/HawaiianNight',
+            path: askPath,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -414,9 +726,9 @@ app.get('/api/events', (req, res) => {
 // Create a new event
 app.post('/api/events', (req, res) => {
     const { name, description, venue, eventDate, 
-            heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
-            enable_song_requests, enable_karaoke_requests, enable_messages,
-            enable_tips, tip_provider, tip_payment_link, tip_links } = req.body;
+            heading_color, text_color, bg_color, bg_image, accent_color, custom_css, logo_image,
+            enable_song_requests, enable_karaoke_requests, enable_messages, enable_photos,
+            enable_tips, tip_provider, tip_payment_link, tip_links, show_public } = req.body;
     
     if (!name) {
         return res.status(400).json({ error: 'Event name is required' });
@@ -424,11 +736,13 @@ app.post('/api/events', (req, res) => {
     
     try {
         const eventOptions = { 
-            heading_color, text_color, bg_color, bg_image, accent_color, custom_css,
+            heading_color, text_color, bg_color, bg_image, accent_color, custom_css, logo_image,
             enable_song_requests: enable_song_requests !== undefined ? (enable_song_requests ? 1 : 0) : 1,
             enable_karaoke_requests: enable_karaoke_requests !== undefined ? (enable_karaoke_requests ? 1 : 0) : 1,
             enable_messages: enable_messages !== undefined ? (enable_messages ? 1 : 0) : 1,
+            enable_photos: enable_photos ? 1 : 0,
             enable_tips: enable_tips ? 1 : 0,
+            show_public: show_public ? 1 : 0,
             tip_provider: tip_provider || null,
             tip_payment_link: tip_payment_link || null,
             tip_links: tip_links ? (typeof tip_links === 'string' ? tip_links : JSON.stringify(tip_links)) : null
@@ -560,15 +874,571 @@ app.get('/api/events/slug/:slug', (req, res) => {
     res.json(event);
 });
 
+// ==================== Global Settings API ====================
+
+app.get('/api/settings', (req, res) => {
+    res.json(getGlobalSettings());
+});
+
+app.put('/api/settings', (req, res) => {
+    try {
+        const merged = saveGlobalSettings(req.body || {});
+        res.json({ success: true, settings: merged });
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        res.status(500).json({ error: 'Failed to save settings' });
+    }
+});
+
+// Current catalogue status for the settings page (counts + file info)
+app.get('/api/settings/catalogues', (req, res) => {
+    function fileInfo(...candidates) {
+        for (const p of candidates) {
+            if (fs.existsSync(p)) {
+                const stat = fs.statSync(p);
+                return { exists: true, filename: path.basename(p), size: stat.size, modified: stat.mtime };
+            }
+        }
+        return { exists: false };
+    }
+    res.json({
+        songs: { count: songCatalogue.length, file: fileInfo(SONG_DB_XML_PATH) },
+        karaoke: { count: karaokeCatalogue.length, file: fileInfo(KARAOKE_CSV_PATH, LEGACY_KARAOKE_CSV_PATH) }
+    });
+});
+
+// Upload a new VirtualDJ song database XML — validated by parsing before it replaces the old one
+app.post('/api/settings/upload-song-database', catalogueUpload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const tmpPath = req.file.path;
+    try {
+        const songs = await parseSongsXML(tmpPath);
+        if (songs.length === 0) {
+            throw new Error('No songs found — is this a VirtualDJ database XML export?');
+        }
+        fs.copyFileSync(tmpPath, SONG_DB_XML_PATH);
+        songCatalogue = songs;
+        console.log(`Song database replaced via upload: ${songs.length} songs (${req.file.originalname})`);
+        res.json({ success: true, count: songs.length });
+    } catch (error) {
+        console.error('Song database upload rejected:', error.message);
+        res.status(400).json({ error: `Invalid song database: ${error.message}` });
+    } finally {
+        fs.unlink(tmpPath, () => {});
+    }
+});
+
+// Upload a new karaoke catalogue CSV — validated by parsing before it replaces the old one
+app.post('/api/settings/upload-karaoke-catalog', catalogueUpload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    const tmpPath = req.file.path;
+    try {
+        const songs = await parseKaraokeCSV(tmpPath);
+        if (songs.length === 0) {
+            throw new Error('No songs found — the CSV needs Title and Artist columns');
+        }
+        fs.copyFileSync(tmpPath, KARAOKE_CSV_PATH);
+        karaokeCatalogue = songs;
+        console.log(`Karaoke catalogue replaced via upload: ${songs.length} songs (${req.file.originalname})`);
+        res.json({ success: true, count: songs.length });
+    } catch (error) {
+        console.error('Karaoke catalogue upload rejected:', error.message);
+        res.status(400).json({ error: `Invalid karaoke catalogue: ${error.message}` });
+    } finally {
+        fs.unlink(tmpPath, () => {});
+    }
+});
+
+// Send a test message to VirtualDJ using the currently saved settings
+app.post('/api/settings/test-virtualdj', async (req, res) => {
+    const settings = getGlobalSettings();
+    if (!settings.virtualdj_enabled) {
+        return res.status(400).json({ error: 'VirtualDJ integration is disabled — enable and save it first' });
+    }
+    try {
+        await sendToVirtualDJ('MobileDJay', 'Connection test from Global Settings');
+        res.json({ success: true });
+    } catch (error) {
+        console.error('VirtualDJ test failed:', error);
+        res.status(502).json({ error: error.message || 'Could not reach VirtualDJ' });
+    }
+});
+
+// ==================== Event Share Links API ====================
+
+// All shareable links for an event (used by the DJ "Share" modal)
+app.get('/api/events/:id/links', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const base = getPublicBaseUrl(req);
+    res.json({
+        guest: `${base}/event/${event.slug}`,
+        photos: `${base}/event/${event.slug}/photo`,
+        gallery: `${base}/gallery/${event.slug}/${event.share_token}`,
+        display: `${base}/dj/display/${event.slug}`
+    });
+});
+
+// Rotate the gallery share token (invalidates previously shared gallery links)
+app.post('/api/events/:id/regenerate-share-token', (req, res) => {
+    const eventId = parseInt(req.params.id, 10);
+    const event = eventDb.getById(eventId);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const token = eventDb.regenerateShareToken(eventId);
+    if (!token) {
+        return res.status(500).json({ error: 'Failed to regenerate token' });
+    }
+    const base = getPublicBaseUrl(req);
+    res.json({ success: true, share_token: token, gallery: `${base}/gallery/${event.slug}/${token}` });
+});
+
+// ==================== Event Theme Image Uploads ====================
+
+// Upload a theme asset for an event (?kind=bg|logo|display_bg). Returns the public URL;
+// the client then saves that URL on the event via PUT /api/events/:id.
+app.post('/api/events/:id/theme-image', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    themeUpload.single('image')(req, res, (err) => {
+        if (err) {
+            const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Image is too large (max 10 MB)' : (err.message || 'Upload failed');
+            return res.status(400).json({ error: msg });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No image attached' });
+        }
+        res.json({ success: true, url: `/uploads/themes/${event.id}/${req.file.filename}` });
+    });
+});
+
+// ==================== Event Guests (check-in + moderation) ====================
+
+// Guest checks in when they enter their name on the event landing page
+app.post('/api/event/:eventSlug/guest-checkin', getEventFromSlugJson, (req, res) => {
+    const customerName = (req.body.customerName || '').toString().trim();
+    if (!customerName) {
+        return res.status(400).json({ error: 'Name is required' });
+    }
+    guestDb.checkIn(req.event.id, customerName);
+    res.json({ success: true });
+});
+
+// DJ-only guest status (not used on guest pages)
+app.get('/api/events/:id/guests/:customerName/status', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const customerName = (req.params.customerName || '').toString().trim();
+    const mod = guestDb.getModerationStatus(event.id, customerName);
+    res.json({
+        status: mod.allowed ? 'active' : mod.reason,
+        until: mod.until || null
+    });
+});
+
+// DJ: list guests who have signed up or interacted with an event
+app.get('/api/events/:id/guests', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    res.json(guestDb.getByEvent(event.id));
+});
+
+// DJ: full conversation timeline for a guest at an event
+app.get('/api/events/:id/guests/:customerName/conversation', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const customerName = decodeURIComponent(req.params.customerName || '').trim();
+    if (!customerName) {
+        return res.status(400).json({ error: 'customerName is required' });
+    }
+    res.json({
+        eventId: event.id,
+        eventName: event.name,
+        customerName,
+        items: buildGuestConversation(event.id, customerName)
+    });
+});
+
+// DJ: silence, ban, or reinstate a guest
+app.put('/api/events/:id/guests/moderate', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const customerName = (req.body.customerName || '').toString().trim();
+    const action = (req.body.action || '').toString().toLowerCase();
+    if (!customerName) {
+        return res.status(400).json({ error: 'customerName is required' });
+    }
+
+    if (action === 'silence') {
+        const minutes = parseInt(req.body.durationMinutes, 10);
+        if (!minutes || minutes < 1 || minutes > 24 * 60) {
+            return res.status(400).json({ error: 'durationMinutes must be between 1 and 1440' });
+        }
+        guestDb.setSilenced(event.id, customerName, minutes, req.body.note || null);
+    } else if (action === 'ban') {
+        guestDb.setBanned(event.id, customerName, req.body.note || null);
+    } else if (action === 'active' || action === 'reinstate') {
+        guestDb.setActive(event.id, customerName);
+    } else {
+        return res.status(400).json({ error: 'action must be silence, ban, or active' });
+    }
+
+    const guests = guestDb.getByEvent(event.id);
+    const updated = guests.find(g => g.customerName.toLowerCase() === customerName.toLowerCase());
+    res.json({ success: true, guest: updated || null });
+});
+
+// ==================== Photos API ====================
+
+function photoToJson(row) {
+    return {
+        id: row.id,
+        eventId: row.event_id,
+        customerName: row.customer_name,
+        url: `/uploads/photos/${row.event_id}/${row.filename}`,
+        caption: row.caption,
+        hidden: row.is_hidden === 1,
+        timestamp: row.created_at
+    };
+}
+
+// Guest photo upload (multipart form: photo file + customerName + caption)
+app.post('/api/event/:eventSlug/photos', getEventFromSlugJson, (req, res) => {
+    if (!req.event.enable_photos) {
+        return res.status(403).json({ error: 'Photos are not enabled for this event' });
+    }
+    photoUpload.single('photo')(req, res, (err) => {
+        if (err) {
+            const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Image is too large (max 15 MB)' : (err.message || 'Upload failed');
+            return res.status(400).json({ error: msg });
+        }
+        if (!req.file) {
+            return res.status(400).json({ error: 'No photo attached' });
+        }
+        const customerName = (req.body.customerName || '').toString().trim().slice(0, 50) || null;
+        const caption = (req.body.caption || '').toString().trim().slice(0, 200) || null;
+
+        if (customerName && !rejectGuestIfModerated(req.event, customerName, res, { json: true })) {
+            fs.unlink(req.file.path, () => {});
+            return;
+        }
+        if (customerName) {
+            const maxPerGuest = getGlobalSettings().photo_max_per_guest;
+            const guestCount = photoDb.getByEvent(req.event.id, true)
+                .filter((p) => (p.customer_name || '').toLowerCase() === customerName.toLowerCase()).length;
+            if (guestCount >= maxPerGuest) {
+                fs.unlink(req.file.path, () => {});
+                return res.status(429).json({ error: `Photo limit reached (${maxPerGuest} per guest)` });
+            }
+        }
+        const photoId = photoDb.create(req.event.id, {
+            customerName,
+            filename: req.file.filename,
+            originalName: req.file.originalname || null,
+            mimeType: req.file.mimetype,
+            sizeBytes: req.file.size,
+            caption
+        });
+        const row = photoDb.getById(photoId);
+        console.log(`Photo uploaded for event ${req.event.slug} by ${customerName || 'anonymous'} (${req.file.size} bytes)`);
+        res.json({ success: true, photo: photoToJson(row) });
+    });
+});
+
+// Public list of visible photos for an event (guest + customer gallery)
+app.get('/api/event/:eventSlug/photos', getEventFromSlugJson, (req, res) => {
+    const rows = photoDb.getByEvent(req.event.id, false);
+    res.json(rows.map(photoToJson));
+});
+
+// DJ list including hidden photos
+app.get('/api/events/:id/photos', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const rows = photoDb.getByEvent(event.id, true);
+    res.json(rows.map(photoToJson));
+});
+
+// DJ hide/unhide a photo (kept on disk, excluded from guest gallery)
+app.put('/api/photos/:id/hidden', (req, res) => {
+    const photo = photoDb.getById(parseInt(req.params.id, 10));
+    if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+    }
+    const hidden = req.body.hidden === true || req.body.hidden === 1 || req.body.hidden === '1' || req.body.hidden === 'true';
+    photoDb.setHidden(photo.id, hidden);
+    res.json({ success: true, hidden });
+});
+
+// DJ delete a photo (removes DB row + file on disk)
+app.delete('/api/photos/:id', (req, res) => {
+    const photo = photoDb.getById(parseInt(req.params.id, 10));
+    if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+    }
+    photoDb.delete(photo.id);
+    const filePath = path.join(photosRoot, String(photo.event_id), photo.filename);
+    fs.unlink(filePath, (err) => {
+        if (err && err.code !== 'ENOENT') {
+            console.error('Failed to delete photo file:', filePath, err.message);
+        }
+    });
+    res.json({ success: true });
+});
+
+// ==================== Photo Showcase (DJ pushes a photo to the display) ====================
+
+// Trigger: show this photo on the event's display screen
+app.post('/api/photos/:id/showcase', (req, res) => {
+    const photo = photoDb.getById(parseInt(req.params.id, 10));
+    if (!photo) {
+        return res.status(404).json({ error: 'Photo not found' });
+    }
+    const event = eventDb.getById(photo.event_id);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    photoShowcaseState[event.slug] = {
+        photo: photoToJson(photo),
+        eventName: event.name,
+        // Per-event style wins; fall back to the global setting
+        bannerStyle: event.photo_banner_style || getGlobalSettings().photo_banner_style,
+        timestamp: Date.now()
+    };
+    res.json({ success: true });
+});
+
+// Slideshow pacing — last time an automatic photo was served, per event slug
+const photoSlideshowLast = {};
+
+// Poll: the display checks whether a photo should be shown.
+// DJ-triggered showcases take priority; otherwise, if the slideshow is enabled,
+// a random guest photo is served once every X minutes.
+app.get('/api/display/:eventSlug/photo-showcase', (req, res) => {
+    const slug = req.params.eventSlug;
+    if (photoShowcaseState[slug]) {
+        return res.json(photoShowcaseState[slug]);
+    }
+
+    const settings = getGlobalSettings();
+    if (!settings.photo_slideshow_enabled) {
+        return res.json({});
+    }
+
+    // Start the countdown from the first poll so a photo doesn't pop up
+    // the moment the display is opened.
+    if (!(slug in photoSlideshowLast)) {
+        photoSlideshowLast[slug] = Date.now();
+        return res.json({});
+    }
+
+    const intervalMs = Math.max(1, settings.photo_slideshow_minutes) * 60 * 1000;
+    if (Date.now() - photoSlideshowLast[slug] < intervalMs) {
+        return res.json({});
+    }
+
+    const event = eventDb.getBySlug(slug);
+    if (!event || !event.enable_photos) {
+        return res.json({});
+    }
+    const rows = photoDb.getByEvent(event.id, false); // visible photos only
+    if (rows.length === 0) {
+        return res.json({});
+    }
+
+    photoSlideshowLast[slug] = Date.now();
+    const photo = rows[Math.floor(Math.random() * rows.length)];
+    res.json({
+        photo: photoToJson(photo),
+        eventName: event.name,
+        slideshow: true,
+        bannerStyle: event.photo_banner_style || settings.photo_banner_style,
+        timestamp: Date.now()
+    });
+});
+
+// Clear: the display acknowledges it has shown the photo
+app.post('/api/display/:eventSlug/photo-showcase/clear', (req, res) => {
+    delete photoShowcaseState[req.params.eventSlug];
+    res.json({ success: true });
+});
+
+// ==================== Display Prompts (DJ pushes animated announcements to the screen) ====================
+
+app.get('/api/display-prompts', (req, res) => {
+    res.json(DISPLAY_PROMPTS);
+});
+
+app.post('/api/display/:eventSlug/prompt/:promptId', (req, res) => {
+    const { eventSlug, promptId } = req.params;
+    const prompt = DISPLAY_PROMPTS[promptId];
+    if (!prompt) {
+        return res.status(404).json({ error: 'Unknown prompt' });
+    }
+    displayPromptState[eventSlug] = {
+        prompt: { ...prompt, id: promptId },
+        timestamp: Date.now()
+    };
+    res.json({ success: true, prompt: displayPromptState[eventSlug].prompt });
+});
+
+app.get('/api/display/:eventSlug/prompt', (req, res) => {
+    const slug = req.params.eventSlug;
+    const state = displayPromptState[slug];
+    if (!state) {
+        return res.json({});
+    }
+    // Consume immediately so repeat polls cannot re-show the same prompt
+    delete displayPromptState[slug];
+    res.json(state);
+});
+
+app.post('/api/display/:eventSlug/prompt/clear', (req, res) => {
+    delete displayPromptState[req.params.eventSlug];
+    res.json({ success: true });
+});
+
+// ==================== Tracks Played ====================
+
+function maybeLogTrackFromNowPlaying(eventId, { title, artist, album }) {
+    if (!eventId || !title) return;
+    const latest = trackDb.getLatest(eventId);
+    if (latest && latest.title === title && (latest.artist || '') === (artist || '')) {
+        return;
+    }
+    trackDb.add(eventId, { title, artist, album, source: 'now-playing' });
+}
+
+// When VirtualDJ/DMX posts now-playing without an event, log to the active event
+function resolveEventForTrackLog(eventId, eventSlug) {
+    if (eventId) {
+        const event = eventDb.getById(parseInt(eventId, 10));
+        if (event) return event.id;
+    }
+    if (eventSlug) {
+        const event = eventDb.getBySlug(eventSlug);
+        if (event) return event.id;
+    }
+    const active = eventDb.getActive();
+    if (active.length === 0) return null;
+    if (active.length === 1) return active[0].id;
+    // Multiple active events — use the most recently updated
+    active.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    return active[0].id;
+}
+
+// Guest-facing list (only when the event has "show on guest page" enabled)
+app.get('/api/event/:eventSlug/tracks-played', getEventFromSlugJson, (req, res) => {
+    if (!req.event.show_tracks_played_guest) {
+        return res.json([]);
+    }
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    res.json(trackDb.getByEvent(req.event.id, limit));
+});
+
+// DJ: list tracks for an event
+app.get('/api/events/:id/tracks-played', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+    res.json(trackDb.getByEvent(event.id, limit));
+});
+
+// DJ: manually log a track
+app.post('/api/events/:id/tracks-played', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const title = (req.body.title || '').trim();
+    if (!title) {
+        return res.status(400).json({ error: 'Title is required' });
+    }
+    const id = trackDb.add(event.id, {
+        title,
+        artist: (req.body.artist || '').trim() || null,
+        album: (req.body.album || '').trim() || null,
+        source: 'manual',
+        playedAt: req.body.played_at || req.body.playedAt || null
+    });
+    const row = trackDb.getById(id);
+    res.json({ success: true, track: row ? trackDb._toJson(row) : null });
+});
+
+// DJ: log the current now-playing track for this event
+app.post('/api/events/:id/tracks-played/from-now-playing', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const key = `event_${event.id}`;
+    const np = nowPlayingMap[key] || nowPlayingMap['global'];
+    if (!np || !np.title) {
+        return res.status(400).json({ error: 'Nothing is currently playing' });
+    }
+    maybeLogTrackFromNowPlaying(event.id, np);
+    const track = trackDb.getLatest(event.id);
+    res.json({ success: true, track });
+});
+
+app.delete('/api/tracks-played/:id', (req, res) => {
+    const track = trackDb.getById(parseInt(req.params.id, 10));
+    if (!track) {
+        return res.status(404).json({ error: 'Track not found' });
+    }
+    trackDb.delete(track.id);
+    res.json({ success: true });
+});
+
 // ==================== DJ Routes ====================
 app.get('/dj', (req, res) => {
     const events = eventDb.getAll();
-    res.render('dj-dashboard', { events, requests: djRequests, messages: djMessages });
+    const messages = getDjInboxMessages();
+    res.render('dj-dashboard', { events, requests: djRequests, messages });
 });
 
 app.get('/dj/events', (req, res) => {
-    const events = eventDb.getAll();
+    const events = eventDb.getAll().map(event => ({
+        ...event,
+        stats: eventDb.getStats(event.id)
+    }));
     res.render('event-management', { events });
+});
+
+// Global DJ configuration page (settings that apply to every event)
+app.get('/dj/settings', (req, res) => {
+    res.render('dj-settings', { settings: getGlobalSettings() });
+});
+
+// DJ photo management for an event (hide/unhide/delete guest photos)
+app.get('/dj/photos/:eventSlug', (req, res) => {
+    const event = eventDb.getBySlug(req.params.eventSlug);
+    if (!event) {
+        return res.status(404).render('error', { error: 'Event not found', customerName: '', eventSlug: null });
+    }
+    const photos = photoDb.getByEvent(event.id, true);
+    res.render('dj-photos', { event, photos });
 });
 
 // Event-specific display config
@@ -629,7 +1499,7 @@ app.get('/karaoke-spinner', (req, res) => {
 app.get('/api/dj/dashboard-data', (req, res) => {
     res.json({ 
         requests: djRequests, 
-        messages: djMessages 
+        messages: getDjInboxMessages()
     });
 });
 
@@ -656,6 +1526,7 @@ app.post('/api/dj/message/:id/mark-displayed', (req, res) => {
     if (message) {
         message.displayed = true;
     }
+    messageDb.markDisplayed(messageId);
     res.json({ success: true });
 });
 
@@ -665,42 +1536,46 @@ app.delete('/api/dj/request/:id', (req, res) => {
     if (index !== -1) {
         djRequests.splice(index, 1);
     }
+    requestDb.delete(requestId);
     res.json({ success: true });
 });
 
 app.post('/api/dj/reply', (req, res) => {
-    const { customerName, replyMessage, originalType, originalId } = req.body;
+    const { customerName, replyMessage, originalType, originalId, direct } = req.body;
     
     if (!customerName || !replyMessage) {
         return res.status(400).json({ error: 'Customer name and reply message are required' });
     }
     
-    // Create reply entry
+    const isDirect = direct === true || direct === 'true';
+
+    // Create reply entry (always delivered to the guest's messages screen)
     const reply = {
-        id: Date.now(),
         customerName,
         replyMessage,
         originalType: originalType || 'request', // Default to 'request' if not provided
         originalId,
         timestamp: new Date().toISOString(),
-        displayed: false
+        displayed: false,
+        direct: isDirect
     };
-    
+    reply.id = replyDb.add(reply);
     djReplies.push(reply);
     
-    // Also add to djMessages for display system
-    const displayMessage = {
-        id: Date.now() + 1,
-        customerName: `DJ Reply to ${customerName}`,
-        message: replyMessage,
-        timestamp: new Date().toISOString(),
-        displayed: false,
-        isReply: true
-    };
+    // Queue for the public display screen — skipped for direct replies
+    if (!isDirect) {
+        const displayMessage = {
+            customerName: `DJ Reply to ${customerName}`,
+            message: replyMessage,
+            timestamp: new Date().toISOString(),
+            displayed: false,
+            isReply: true
+        };
+        displayMessage.id = messageDb.add(displayMessage);
+        djMessages.push(displayMessage);
+    }
     
-    djMessages.push(displayMessage);
-    
-    console.log('DJ reply sent:', reply);
+    console.log(`DJ reply sent${isDirect ? ' (direct)' : ''}:`, reply);
     res.json({ success: true, reply });
 });
 
@@ -714,6 +1589,29 @@ app.get('/api/customer/replies/:customerName', (req, res) => {
         reply.customerName.toLowerCase() === customerName.toLowerCase()
     );
     res.json(customerReplies);
+});
+
+// Full activity for a guest: DJ replies + their own song/karaoke requests,
+// so the messages screen can show a complete conversation timeline.
+app.get('/api/customer/activity/:customerName', (req, res) => {
+    const name = req.params.customerName.toLowerCase();
+    const eventSlug = req.query.eventSlug || null;
+
+    const replies = djReplies.filter(r => r.customerName.toLowerCase() === name);
+    const requests = djRequests
+        .filter(r => r.customerName && r.customerName.toLowerCase() === name)
+        .filter(r => !eventSlug || !r.eventSlug || r.eventSlug === eventSlug)
+        .map(r => ({
+            id: r.id,
+            type: r.type,
+            title: r.song ? r.song.title : r.title,
+            artist: r.song ? r.song.artist : r.artist,
+            message: r.message || null,
+            status: r.status || 'pending',
+            timestamp: r.timestamp
+        }));
+
+    res.json({ replies, requests });
 });
 
 // Karaoke Spinner API endpoints
@@ -739,7 +1637,6 @@ function triggerKaraokeSpin() {
     
     // Add the randomly selected song to DJ requests
     const request = {
-        id: Date.now(),
         type: 'karaoke',
         customerName: '🎲 Random Spinner',
         song: selectedSong,
@@ -747,6 +1644,7 @@ function triggerKaraokeSpin() {
         timestamp: new Date().toISOString(),
         status: 'pending'
     };
+    request.id = requestDb.add(request);
     djRequests.push(request);
     
     console.log('Karaoke spin triggered:', selectedSong.title);
@@ -785,6 +1683,9 @@ app.post('/api/karaoke/clear-spin', (req, res) => {
 
 // Customer Routes
 app.get('/', (req, res) => {
+    if (getGlobalSettings().enable_public_events_page) {
+        return res.render('events-list', { events: eventDb.getPublicListing() });
+    }
     res.render('index', { eventSlug: null, event: null });
 });
 
@@ -803,6 +1704,18 @@ app.get('/karaoke-request', (req, res) => {
 app.get('/send-message', (req, res) => {
     const customerName = req.query.customerName || '';
     res.render('send-message', { customerName, eventSlug: null }); // Pass customer name
+});
+
+// Legacy alias — public events picker lives at /
+app.get('/events', (req, res) => {
+    res.redirect('/');
+});
+
+app.get('/api/public/events', (req, res) => {
+    if (!getGlobalSettings().enable_public_events_page) {
+        return res.status(404).json({ error: 'Public events page is not enabled' });
+    }
+    res.json(eventDb.getPublicListing());
 });
 
 // ==================== Event-specific Customer Routes ====================
@@ -840,6 +1753,128 @@ app.get('/event/:eventSlug/send-message', getEventFromSlug, (req, res) => {
         customerName, 
         eventSlug: req.event.slug,
         event: req.event
+    });
+});
+
+// Event-specific photo capture page
+app.get('/event/:eventSlug/photo', getEventFromSlug, (req, res) => {
+    if (!req.event.enable_photos) {
+        return res.status(403).render('error', {
+            error: 'Photos are not enabled for this event',
+            customerName: '',
+            eventSlug: req.event.slug
+        });
+    }
+    const customerName = req.query.customerName || '';
+    res.render('photo-capture', {
+        customerName,
+        eventSlug: req.event.slug,
+        event: req.event
+    });
+});
+
+// Dedicated full-screen live camera page ("Just Take a Pic")
+app.get('/event/:eventSlug/camera', getEventFromSlug, (req, res) => {
+    if (!req.event.enable_photos) {
+        return res.status(403).render('error', {
+            error: 'Photos are not enabled for this event',
+            customerName: '',
+            eventSlug: req.event.slug
+        });
+    }
+    const customerName = req.query.customerName || '';
+    res.render('photo-camera', {
+        customerName,
+        eventSlug: req.event.slug,
+        event: req.event
+    });
+});
+
+// Customer-facing photo gallery — token-protected link the DJ shares after the event.
+// Works even when the event has been deactivated (customers view photos afterwards).
+function getGalleryEvent(eventSlug, token) {
+    const event = eventDb.getBySlug(eventSlug);
+    if (!event || !event.share_token || event.share_token !== token) {
+        return null;
+    }
+    return event;
+}
+
+function safeDownloadName(name) {
+    return (name || 'photo').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'photo';
+}
+
+// Download every visible gallery photo as a zip archive
+app.get('/gallery/:eventSlug/:token/download-all', (req, res) => {
+    const event = getGalleryEvent(req.params.eventSlug, req.params.token);
+    if (!event) {
+        return res.status(404).json({ error: 'Gallery not found' });
+    }
+
+    const photos = photoDb.getByEvent(event.id, false);
+    if (photos.length === 0) {
+        return res.status(404).json({ error: 'No photos to download' });
+    }
+
+    const zipName = `${safeDownloadName(event.name)}-photos.zip`;
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${zipName}"`);
+
+    const archive = archiver('zip', { zlib: { level: 5 } });
+    archive.on('error', (err) => {
+        console.error('Gallery zip error:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Failed to create zip' });
+        }
+    });
+    archive.pipe(res);
+
+    for (const photo of photos) {
+        const filePath = path.join(photosRoot, String(photo.event_id), photo.filename);
+        if (fs.existsSync(filePath)) {
+            const who = photo.customer_name ? safeDownloadName(photo.customer_name) + '-' : '';
+            archive.file(filePath, { name: `${who}${photo.id}-${photo.filename}` });
+        }
+    }
+
+    archive.finalize();
+});
+
+// Download a single gallery photo (token-protected)
+app.get('/gallery/:eventSlug/:token/photo/:id/download', (req, res) => {
+    const event = getGalleryEvent(req.params.eventSlug, req.params.token);
+    if (!event) {
+        return res.status(404).json({ error: 'Gallery not found' });
+    }
+
+    const photo = photoDb.getById(parseInt(req.params.id, 10));
+    if (!photo || photo.event_id !== event.id || photo.is_hidden) {
+        return res.status(404).json({ error: 'Photo not found' });
+    }
+
+    const filePath = path.join(photosRoot, String(photo.event_id), photo.filename);
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Photo file missing' });
+    }
+
+    const who = photo.customer_name ? safeDownloadName(photo.customer_name) + '-' : '';
+    res.download(filePath, `${who}${photo.filename}`);
+});
+
+app.get('/gallery/:eventSlug/:token', (req, res) => {
+    const event = getGalleryEvent(req.params.eventSlug, req.params.token);
+    if (!event) {
+        return res.status(404).render('error', {
+            error: 'Gallery not found — the link may have expired',
+            customerName: '',
+            eventSlug: null
+        });
+    }
+    const photos = photoDb.getByEvent(event.id, false);
+    res.render('photo-gallery', {
+        event,
+        photos,
+        galleryToken: req.params.token
     });
 });
 
@@ -885,10 +1920,21 @@ app.post('/submit-song-request', async (req, res) => {
     
     // Get event info if eventSlug provided
     const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
+
+    if (!rejectGuestIfModerated(event, customerName, res, {
+        eventSlug,
+        silentThankYou: {
+            customerName,
+            requestType: 'song request',
+            details: selectedSong,
+            eventSlug: eventSlug || null
+        }
+    })) {
+        return;
+    }
     
     // Store the request for DJ dashboard
     const request = {
-        id: Date.now(),
         type: 'song',
         customerName,
         song: selectedSong,
@@ -899,18 +1945,22 @@ app.post('/submit-song-request', async (req, res) => {
         eventSlug: eventSlug || null,
         eventName: event ? event.name : null
     };
+    request.id = requestDb.add(request);
     djRequests.push(request);
     
     // Also add to djMessages for DJ display screen
     const displayMessage = {
-        id: Date.now() + 2,
         customerName: customerName,
         message: `🎵 Song Request: "${selectedSong.title}" by ${selectedSong.artist}`,
         timestamp: new Date().toISOString(),
         displayed: false,
         isReply: false,
-        type: 'song-request'
+        type: 'song-request',
+        eventId: event ? event.id : null,
+        eventSlug: eventSlug || null,
+        eventName: event ? event.name : null
     };
+    displayMessage.id = messageDb.add(displayMessage);
     djMessages.push(displayMessage);
     
     // Prepare message for VirtualDJ
@@ -943,10 +1993,21 @@ app.post('/submit-karaoke-request', async (req, res) => {
     
     // Get event info if eventSlug provided
     const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
+
+    if (!rejectGuestIfModerated(event, customerName, res, {
+        eventSlug,
+        silentThankYou: {
+            customerName,
+            requestType: 'karaoke request',
+            details: selectedKaraoke,
+            eventSlug: eventSlug || null
+        }
+    })) {
+        return;
+    }
     
     // Store the request for DJ dashboard
     const request = {
-        id: Date.now() + 1, // Ensure unique ID
         type: 'karaoke',
         customerName,
         song: selectedKaraoke,
@@ -957,18 +2018,22 @@ app.post('/submit-karaoke-request', async (req, res) => {
         eventSlug: eventSlug || null,
         eventName: event ? event.name : null
     };
+    request.id = requestDb.add(request);
     djRequests.push(request);
     
     // Also add to djMessages for DJ display screen
     const displayMessage = {
-        id: Date.now() + 2,
         customerName: customerName,
         message: `🎤 Karaoke Request: "${selectedKaraoke.title}" by ${selectedKaraoke.artist}`,
         timestamp: new Date().toISOString(),
         displayed: false,
         isReply: false,
-        type: 'karaoke-request'
+        type: 'karaoke-request',
+        eventId: event ? event.id : null,
+        eventSlug: eventSlug || null,
+        eventName: event ? event.name : null
     };
+    displayMessage.id = messageDb.add(displayMessage);
     djMessages.push(displayMessage);
     
     // Prepare message for VirtualDJ
@@ -1001,6 +2066,18 @@ app.post('/submit-message', async (req, res) => {
     
     // Get event info if eventSlug provided
     const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
+
+    if (!rejectGuestIfModerated(event, customerName, res, {
+        eventSlug,
+        silentThankYou: {
+            customerName,
+            requestType: 'message',
+            details: { message: 'Your message' },
+            eventSlug: eventSlug || null
+        }
+    })) {
+        return;
+    }
     
     // djOnly may be submitted as '1', 'on', 'true' or boolean
     const rawDjOnly = req.body.djOnly;
@@ -1038,7 +2115,6 @@ app.post('/submit-message', async (req, res) => {
 
     // Store the message for DJ display
     const djDisplayMessage = {
-        id: Date.now() + 2,
         customerName,
         message: finalMessage, // Rich HTML with inline images
         textMessage: textContent || (hasMedia ? 'Message with media' : 'Empty message'),
@@ -1050,6 +2126,7 @@ app.post('/submit-message', async (req, res) => {
         eventSlug: eventSlug || null,
         eventName: event ? event.name : null
     };
+    djDisplayMessage.id = messageDb.add(djDisplayMessage);
 
     djMessages.push(djDisplayMessage);
 
@@ -1144,6 +2221,12 @@ app.post('/api/now-playing', (req, res) => {
     };
     
     nowPlayingMap[key] = nowPlaying;
+    
+    // Always log played tracks — use explicit event or fall back to the active event
+    const trackLogEventId = resolveEventForTrackLog(resolvedEventId, resolvedEventSlug);
+    if (trackLogEventId) {
+        maybeLogTrackFromNowPlaying(trackLogEventId, nowPlaying);
+    }
     
     console.log('Now playing updated:', nowPlaying.title, '-', nowPlaying.artist, key !== 'global' ? `(${key})` : '(global)');
     res.json({ success: true, nowPlaying });

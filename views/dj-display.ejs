@@ -316,6 +316,253 @@
         }
 
         /* ============================================
+           PHOTO SHOWCASE STYLES
+           ============================================ */
+        .photo-showcase-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2500;
+        }
+        .photo-showcase-overlay.active { display: flex; }
+
+        .photo-showcase-frame {
+            position: relative;
+            background: #fff;
+            padding: 16px 16px 22px;
+            border-radius: 10px;
+            box-shadow: 0 40px 120px rgba(0, 0, 0, 0.7), 0 0 60px rgba(255, 215, 0, 0.25);
+            max-width: min(94vw, 1700px);
+            max-height: 94vh;
+            transform: scale(0.4) rotate(-6deg);
+            opacity: 0;
+        }
+        .photo-showcase-overlay.active .photo-showcase-frame {
+            animation: photoFrameIn 900ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .photo-showcase-overlay.closing .photo-showcase-frame {
+            /* !important so style variants (e.g. neon's pulse) can't override the exit */
+            animation: photoFrameOut 500ms cubic-bezier(0.4, 0, 1, 1) forwards !important;
+        }
+        @keyframes photoFrameIn {
+            0% { transform: scale(0.4) rotate(-6deg); opacity: 0; }
+            60% { transform: scale(1.05) rotate(1.5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes photoFrameOut {
+            0% { transform: scale(1) rotate(0deg); opacity: 1; }
+            100% { transform: scale(0.5) rotate(5deg) translateY(60px); opacity: 0; }
+        }
+
+        .photo-showcase-frame img {
+            display: block;
+            max-width: 100%;
+            max-height: calc(94vh - 120px);
+            min-height: 40vh;
+            border-radius: 6px;
+            object-fit: contain;
+        }
+
+        /* Ribbon banner across the top of the frame */
+        .photo-showcase-banner {
+            position: absolute;
+            top: -26px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ff6b00 0%, #ffb340 100%);
+            color: #fff;
+            font-weight: 800;
+            font-size: clamp(1.1rem, 2.4vw, 1.8rem);
+            padding: 0.55rem 2.4rem;
+            border-radius: 50px;
+            white-space: nowrap;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            animation: bannerBounce 2.2s ease-in-out infinite;
+        }
+        @keyframes bannerBounce {
+            0%, 100% { transform: translateX(-50%) translateY(0) rotate(-1deg); }
+            50% { transform: translateX(-50%) translateY(-6px) rotate(1deg); }
+        }
+
+        /* Banner style variants (chosen in Global Settings → Photos) */
+        .photo-showcase-banner.banner-neon {
+            background: #12001a;
+            border: 2px solid #ff00e6;
+            color: #ff9df3;
+            box-shadow: 0 0 22px rgba(255, 0, 230, 0.85), inset 0 0 12px rgba(255, 0, 230, 0.35);
+            text-shadow: 0 0 10px #ff00e6;
+            animation: bannerBounce 2.2s ease-in-out infinite, neonFlicker 3.5s linear infinite;
+        }
+        @keyframes neonFlicker {
+            0%, 91%, 94%, 97%, 100% { opacity: 1; }
+            92%, 95% { opacity: 0.7; }
+        }
+        .photo-showcase-banner.banner-elegant {
+            background: linear-gradient(135deg, #8a6d1d, #d4af37 45%, #f5e28a);
+            color: #fff;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            animation: none;
+        }
+        .photo-showcase-banner.banner-minimal {
+            background: rgba(15, 23, 32, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            font-weight: 600;
+            text-shadow: none;
+            animation: none;
+        }
+
+        .photo-showcase-caption {
+            text-align: center;
+            color: #333;
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            font-weight: 600;
+            margin-top: 14px;
+        }
+        .photo-showcase-caption .who {
+            color: #ff6b00;
+            font-weight: 800;
+        }
+
+        /* Sparkles floating around the frame */
+        .photo-sparkle {
+            position: absolute;
+            color: #ffd700;
+            pointer-events: none;
+            animation: sparkleTwinkle 1.6s ease-in-out infinite;
+            filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+        }
+        @keyframes sparkleTwinkle {
+            0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+            50% { opacity: 1; transform: scale(1.15) rotate(25deg); }
+        }
+
+        /* Full-screen ambient effects behind the frame */
+        .photo-showcase-ambient {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .photo-showcase-frame { z-index: 1; }
+
+        /* ── Party: rotating rainbow edge + falling confetti ── */
+        .photo-showcase-overlay.style-party .photo-showcase-frame::before {
+            content: '';
+            position: absolute;
+            inset: -7px;
+            border-radius: 14px;
+            background: conic-gradient(#ff6b6b, #ffb340, #ffe45c, #6bff8f, #6be7ff, #b06bff, #ff6bd8, #ff6b6b);
+            z-index: -1;
+            animation: partyHue 4s linear infinite;
+        }
+        @keyframes partyHue {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        .showcase-confetti {
+            position: absolute;
+            top: -4vh;
+            width: 12px;
+            height: 12px;
+            opacity: 0;
+            animation: showcaseConfettiFall linear forwards;
+        }
+        @keyframes showcaseConfettiFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0.4; }
+        }
+
+        /* ── Neon: dark frame, pulsing glow, drifting orbs ── */
+        .photo-showcase-overlay.style-neon .photo-showcase-frame {
+            background: #0b0b14;
+            border: 2px solid #ff00e6;
+            box-shadow: 0 0 40px rgba(255, 0, 230, 0.55), 0 0 90px rgba(107, 231, 255, 0.25);
+        }
+        .photo-showcase-overlay.style-neon.active .photo-showcase-frame {
+            animation: photoFrameIn 900ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                       neonFramePulse 2.4s ease-in-out infinite 900ms;
+        }
+        @keyframes neonFramePulse {
+            0%, 100% { box-shadow: 0 0 40px rgba(255, 0, 230, 0.55), 0 0 90px rgba(107, 231, 255, 0.25); }
+            50% { box-shadow: 0 0 70px rgba(107, 231, 255, 0.6), 0 0 110px rgba(255, 0, 230, 0.35); }
+        }
+        .photo-showcase-overlay.style-neon .photo-showcase-caption { color: #9fe8ff; }
+        .photo-showcase-overlay.style-neon .photo-showcase-caption .who { color: #ff6bd8; }
+        .photo-showcase-overlay.style-neon .photo-sparkle {
+            color: #6be7ff;
+            filter: drop-shadow(0 0 8px rgba(107, 231, 255, 0.9));
+        }
+        .neon-orb {
+            position: absolute;
+            width: 45vmin;
+            height: 45vmin;
+            border-radius: 50%;
+            filter: blur(12px);
+            animation: neonOrbPulse ease-in-out infinite;
+        }
+        @keyframes neonOrbPulse {
+            0%, 100% { opacity: 0.15; transform: scale(0.8); }
+            50% { opacity: 0.55; transform: scale(1.15); }
+        }
+
+        /* ── Elegant: ivory frame, gold double border, shimmer + rising motes ── */
+        .photo-showcase-overlay.style-elegant .photo-showcase-frame {
+            background: #fffdf4;
+            border: 6px double #d4af37;
+            box-shadow: 0 40px 120px rgba(0, 0, 0, 0.7), 0 0 50px rgba(212, 175, 55, 0.3);
+        }
+        .photo-showcase-overlay.style-elegant .photo-showcase-frame::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            background: linear-gradient(115deg, transparent 42%, rgba(255, 245, 200, 0.35) 50%, transparent 58%);
+            background-size: 250% 100%;
+            pointer-events: none;
+            animation: elegantShimmer 4.5s ease-in-out infinite;
+        }
+        @keyframes elegantShimmer {
+            0%, 20% { background-position: 120% 0; }
+            60%, 100% { background-position: -120% 0; }
+        }
+        .photo-showcase-overlay.style-elegant .photo-showcase-caption { color: #6b5b1e; }
+        .photo-showcase-overlay.style-elegant .photo-showcase-caption .who { color: #a8842c; }
+        .gold-mote {
+            position: absolute;
+            bottom: -12px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ffd700;
+            box-shadow: 0 0 10px 2px rgba(255, 215, 0, 0.7);
+            opacity: 0;
+            animation: moteRise linear forwards;
+        }
+        @keyframes moteRise {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 0.9; }
+            100% { transform: translateY(-105vh) translateX(6vw); opacity: 0; }
+        }
+
+        /* ── Minimal: quiet dark frame, no extras ── */
+        .photo-showcase-overlay.style-minimal .photo-showcase-frame {
+            background: #141a22;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            box-shadow: 0 40px 120px rgba(0, 0, 0, 0.8);
+        }
+        .photo-showcase-overlay.style-minimal .photo-showcase-caption { color: #c9d4e0; }
+        .photo-showcase-overlay.style-minimal .photo-showcase-caption .who { color: #6be7ff; }
+
+        /* ============================================
            KARAOKE SPINNER STYLES
            ============================================ */
         .spinner-overlay {
@@ -550,6 +797,306 @@
             0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
             100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
+
+        /* ============================================
+           DJ SCREEN PROMPTS — animated announcements
+           ============================================ */
+        .screen-prompt-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2800;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .screen-prompt-overlay.active { display: flex; }
+
+        .screen-prompt-ambient {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .screen-prompt-card {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: clamp(2rem, 5vw, 4rem) clamp(2.5rem, 8vw, 6rem);
+            border-radius: 24px;
+            transform: scale(0.3) rotate(-8deg);
+            opacity: 0;
+            max-width: 92vw;
+        }
+        .screen-prompt-overlay.active .screen-prompt-card {
+            animation: promptCardIn 850ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .screen-prompt-overlay.closing .screen-prompt-card {
+            animation: promptCardOut 480ms cubic-bezier(0.4, 0, 1, 1) forwards !important;
+        }
+        @keyframes promptCardIn {
+            0% { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+            55% { transform: scale(1.08) rotate(2deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes promptCardOut {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.4) translateY(80px); opacity: 0; }
+        }
+
+        .screen-prompt-icon {
+            font-size: clamp(3.5rem, 10vw, 7rem);
+            margin-bottom: 0.5rem;
+            display: block;
+            line-height: 1;
+        }
+        .screen-prompt-overlay.active .screen-prompt-icon i {
+            animation: promptIconBounce 1.2s ease-in-out infinite 600ms;
+        }
+        @keyframes promptIconBounce {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-12px) scale(1.08); }
+        }
+
+        .screen-prompt-title {
+            font-size: clamp(2.8rem, 8vw, 6.5rem);
+            font-weight: 900;
+            line-height: 1.05;
+            margin: 0;
+            letter-spacing: -1px;
+        }
+        .screen-prompt-sub {
+            font-size: clamp(1.2rem, 3vw, 2.2rem);
+            margin-top: 0.75rem;
+            opacity: 0.92;
+            font-weight: 600;
+        }
+
+        /* ── Great Moves: disco burst, rainbow shimmer ── */
+        .screen-prompt-overlay.style-great-moves {
+            background: radial-gradient(ellipse at center, rgba(255, 0, 128, 0.35) 0%, rgba(0, 0, 0, 0.82) 70%);
+        }
+        .screen-prompt-overlay.style-great-moves .screen-prompt-card {
+            background: linear-gradient(135deg, #ff006e, #8338ec, #3a86ff);
+            color: #fff;
+            border: 4px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 80px rgba(255, 0, 110, 0.6), 0 0 120px rgba(131, 56, 236, 0.4);
+            animation: promptCardIn 850ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                       greatMovesPulse 1.8s ease-in-out infinite 850ms;
+        }
+        @keyframes greatMovesPulse {
+            0%, 100% { box-shadow: 0 0 80px rgba(255, 0, 110, 0.6), 0 0 120px rgba(131, 56, 236, 0.4); }
+            50% { box-shadow: 0 0 120px rgba(58, 134, 255, 0.7), 0 0 160px rgba(255, 0, 110, 0.5); }
+        }
+        .screen-prompt-overlay.style-great-moves .screen-prompt-title {
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.8), 0 4px 20px rgba(0, 0, 0, 0.4);
+            animation: rainbowShift 3s linear infinite;
+        }
+        @keyframes rainbowShift {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+        .prompt-star-burst {
+            position: absolute;
+            color: #ffd700;
+            font-size: 2rem;
+            animation: starBurst 1.4s ease-out forwards;
+            filter: drop-shadow(0 0 8px #ffd700);
+        }
+        @keyframes starBurst {
+            0% { transform: scale(0) rotate(0deg); opacity: 1; }
+            100% { transform: scale(2.5) rotate(180deg); opacity: 0; }
+        }
+
+        /* ── Dance Floor Open: green spotlight sweep ── */
+        .screen-prompt-overlay.style-dance-floor {
+            background: rgba(0, 0, 0, 0.75);
+        }
+        .screen-prompt-overlay.style-dance-floor::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: conic-gradient(from 0deg, transparent 0deg, rgba(0, 255, 100, 0.15) 30deg, transparent 60deg);
+            animation: spotlightSweep 3s linear infinite;
+        }
+        @keyframes spotlightSweep {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .screen-prompt-overlay.style-dance-floor .screen-prompt-card {
+            background: linear-gradient(160deg, #0a3d1a, #1db954 40%, #0a3d1a);
+            color: #fff;
+            border: 3px solid #7fff9e;
+            box-shadow: 0 0 60px rgba(29, 185, 84, 0.7), inset 0 0 40px rgba(127, 255, 158, 0.15);
+        }
+        .screen-prompt-overlay.style-dance-floor .screen-prompt-title {
+            animation: danceFloorGlow 1.5s ease-in-out infinite;
+        }
+        @keyframes danceFloorGlow {
+            0%, 100% { text-shadow: 0 0 20px #7fff9e; }
+            50% { text-shadow: 0 0 50px #7fff9e, 0 0 80px #1db954; }
+        }
+        .prompt-floor-light {
+            position: absolute;
+            bottom: 0;
+            width: 8px;
+            height: 40vh;
+            background: linear-gradient(to top, rgba(0, 255, 100, 0.6), transparent);
+            animation: floorLightPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes floorLightPulse {
+            0%, 100% { opacity: 0.4; transform: scaleY(0.8); }
+            50% { opacity: 1; transform: scaleY(1.1); }
+        }
+
+        /* ── Dad Dancing: retro cheesy wobble ── */
+        .screen-prompt-overlay.style-dad-dancing {
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(255, 200, 0, 0.08) 0px, rgba(255, 200, 0, 0.08) 20px,
+                rgba(255, 100, 0, 0.08) 20px, rgba(255, 100, 0, 0.08) 40px
+            ), rgba(0, 0, 0, 0.8);
+        }
+        .screen-prompt-overlay.style-dad-dancing .screen-prompt-card {
+            background: linear-gradient(180deg, #ff9500, #ffcc00);
+            color: #4a2800;
+            border: 5px dashed #fff;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+            animation: promptCardIn 850ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                       dadWobble 0.6s ease-in-out infinite 850ms;
+        }
+        @keyframes dadWobble {
+            0%, 100% { transform: rotate(-2deg) scale(1); }
+            25% { transform: rotate(3deg) scale(1.02); }
+            75% { transform: rotate(-3deg) scale(0.98); }
+        }
+        .screen-prompt-overlay.style-dad-dancing .screen-prompt-icon i {
+            animation: dadPoint 0.8s ease-in-out infinite 600ms !important;
+        }
+        @keyframes dadPoint {
+            0%, 100% { transform: rotate(-15deg); }
+            50% { transform: rotate(25deg) scale(1.2); }
+        }
+
+        /* ── Slow Dance: romantic hearts ── */
+        .screen-prompt-overlay.style-slow-dance {
+            background: radial-gradient(ellipse at center, rgba(255, 105, 180, 0.25) 0%, rgba(80, 0, 60, 0.85) 100%);
+        }
+        .screen-prompt-overlay.style-slow-dance .screen-prompt-card {
+            background: linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(199, 21, 133, 0.95));
+            color: #fff;
+            border: 3px solid rgba(255, 200, 220, 0.6);
+            box-shadow: 0 0 60px rgba(255, 105, 180, 0.5);
+            animation: promptCardIn 850ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                       slowDanceFloat 3s ease-in-out infinite 850ms;
+        }
+        @keyframes slowDanceFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .prompt-heart {
+            position: absolute;
+            color: #ff69b4;
+            animation: heartFloat linear forwards;
+            filter: drop-shadow(0 0 6px rgba(255, 105, 180, 0.8));
+        }
+        @keyframes heartFloat {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            10% { opacity: 1; }
+            100% { transform: translateY(-110vh) scale(1.2); opacity: 0; }
+        }
+
+        /* ── Last Orders: urgent amber flash ── */
+        .screen-prompt-overlay.style-last-orders {
+            background: rgba(0, 0, 0, 0.88);
+        }
+        .screen-prompt-overlay.style-last-orders .screen-prompt-card {
+            background: #1a1200;
+            color: #ffb340;
+            border: 4px solid #ff6b00;
+            box-shadow: 0 0 40px rgba(255, 107, 0, 0.5);
+            animation: promptCardIn 850ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                       lastOrdersFlash 1s ease-in-out infinite 850ms;
+        }
+        @keyframes lastOrdersFlash {
+            0%, 100% { border-color: #ff6b00; box-shadow: 0 0 40px rgba(255, 107, 0, 0.5); }
+            50% { border-color: #ffb340; box-shadow: 0 0 80px rgba(255, 179, 64, 0.8); }
+        }
+        .screen-prompt-overlay.style-last-orders .screen-prompt-title {
+            animation: lastOrdersBlink 0.8s step-end infinite;
+        }
+        @keyframes lastOrdersBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* ── Round of Applause: gold burst ── */
+        .screen-prompt-overlay.style-applause {
+            background: radial-gradient(ellipse at center, rgba(255, 215, 0, 0.2) 0%, rgba(0, 0, 0, 0.82) 70%);
+        }
+        .screen-prompt-overlay.style-applause .screen-prompt-card {
+            background: linear-gradient(135deg, #b8860b, #ffd700, #daa520);
+            color: #3d2800;
+            border: 4px solid #fff8dc;
+            box-shadow: 0 0 70px rgba(255, 215, 0, 0.6);
+        }
+        .screen-prompt-overlay.style-applause .screen-prompt-icon i {
+            animation: clapHands 0.4s ease-in-out infinite 600ms !important;
+        }
+        @keyframes clapHands {
+            0%, 100% { transform: scaleX(1); }
+            50% { transform: scaleX(0.85); }
+        }
+        .prompt-applause-confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: applauseConfettiFall linear forwards;
+        }
+        @keyframes applauseConfettiFall {
+            0% { transform: translateY(-5vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(540deg); opacity: 0.6; }
+        }
+
+        /* ── Selfie Time: camera flash + polaroid ── */
+        .screen-prompt-overlay.style-selfie {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .screen-prompt-overlay.style-selfie .screen-prompt-card {
+            background: #fff;
+            color: #222;
+            border: 12px solid #fff;
+            border-bottom: 48px solid #fff;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 2px #ddd;
+            transform-origin: center bottom;
+        }
+        .screen-prompt-overlay.style-selfie.active .screen-prompt-card {
+            animation: promptCardIn 850ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                       polaroidTilt 2.5s ease-in-out infinite 850ms;
+        }
+        @keyframes polaroidTilt {
+            0%, 100% { transform: rotate(-1deg); }
+            50% { transform: rotate(1.5deg); }
+        }
+        .screen-prompt-overlay.style-selfie .screen-prompt-title { color: #111; }
+        .screen-prompt-overlay.style-selfie .screen-prompt-sub { color: #555; }
+        .prompt-camera-flash {
+            position: absolute;
+            inset: 0;
+            background: #fff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .prompt-camera-flash.flash {
+            animation: cameraFlash 0.35s ease-out forwards;
+        }
+        @keyframes cameraFlash {
+            0% { opacity: 0.95; }
+            100% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -600,6 +1147,29 @@
             </div>
             <div class="message-content" id="messageContent"></div>
             <div class="message-from" id="messageFrom"></div>
+        </div>
+    </div>
+
+    <!-- Photo Showcase Overlay -->
+    <div class="photo-showcase-overlay" id="photoShowcaseOverlay">
+        <div class="photo-showcase-ambient" id="photoShowcaseAmbient" aria-hidden="true"></div>
+        <div class="photo-showcase-frame" id="photoShowcaseFrame">
+            <div class="photo-showcase-banner" id="photoShowcaseBanner">
+                <i class="fas fa-camera me-2"></i>Guest Photo!
+            </div>
+            <img id="photoShowcaseImg" src="" alt="Guest photo">
+            <div class="photo-showcase-caption" id="photoShowcaseCaption"></div>
+        </div>
+    </div>
+
+    <!-- DJ Screen Prompt Overlay -->
+    <div class="screen-prompt-overlay" id="screenPromptOverlay">
+        <div class="screen-prompt-ambient" id="screenPromptAmbient" aria-hidden="true"></div>
+        <div class="prompt-camera-flash" id="promptCameraFlash"></div>
+        <div class="screen-prompt-card" id="screenPromptCard">
+            <span class="screen-prompt-icon" id="screenPromptIcon"><i class="fas fa-star"></i></span>
+            <h1 class="screen-prompt-title" id="screenPromptTitle"></h1>
+            <p class="screen-prompt-sub" id="screenPromptSub"></p>
         </div>
     </div>
 
@@ -708,6 +1278,9 @@
             });
         }
         
+        // Expose the event slug for dj-display.js (photo showcase polling)
+        window.displayEventSlug = config.eventSlug;
+
         // Keyboard shortcut to open config
         document.addEventListener('keydown', function(e) {
             if (e.key === 'c' || e.key === 'C') {

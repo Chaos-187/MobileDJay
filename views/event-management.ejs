@@ -27,6 +27,157 @@
         .event-card.inactive {
             opacity: 0.6;
         }
+
+        /* Bigger edit modal — room for options + live previews */
+        #editEventModal .modal-dialog {
+            max-width: min(1500px, 96vw);
+        }
+
+        /* Photo banner style picker (same look as Global Settings) */
+        .banner-preview {
+            display: inline-block;
+            padding: 0.3rem 1.1rem;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 0.8rem;
+            color: #fff;
+            white-space: nowrap;
+        }
+        .banner-preview.party { background: linear-gradient(135deg, #ff6b00 0%, #ffb340 100%); text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+        .banner-preview.neon { background: #12001a; border: 2px solid #ff00e6; color: #ff9df3; box-shadow: 0 0 10px rgba(255,0,230,0.7); text-shadow: 0 0 6px #ff00e6; }
+        .banner-preview.elegant { background: linear-gradient(135deg, #8a6d1d, #d4af37 45%, #f5e28a); font-family: Georgia, serif; letter-spacing: 1px; }
+        .banner-preview.minimal { background: rgba(15,23,32,0.92); border: 1px solid rgba(255,255,255,0.35); }
+        .banner-style-option {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.45rem 0.6rem;
+            border: 2px solid transparent;
+            border-radius: 0.6rem;
+            cursor: pointer;
+            margin-bottom: 0.35rem;
+        }
+        .banner-style-option:hover { background: rgba(128,128,128,0.08); }
+        .banner-style-option.selected { border-color: #0d6efd; background: rgba(13,110,253,0.08); }
+
+        /* Live example previews inside the edit modal */
+        .screen-preview-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.7;
+            margin-bottom: 0.3rem;
+        }
+        .display-preview {
+            position: relative;
+            aspect-ratio: 16 / 9;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(128, 128, 128, 0.35);
+            background: linear-gradient(180deg, #000428, #004e92);
+        }
+        .dp-qr {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #fff;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+            font-size: 0.9rem;
+            margin: 8px;
+        }
+        .dp-qr.top-left { top: 0; left: 0; }
+        .dp-qr.top-right { top: 0; right: 0; }
+        .dp-qr.bottom-left { bottom: 0; left: 0; }
+        .dp-qr.bottom-right { bottom: 0; right: 0; }
+        .dp-card {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 62%;
+            border-radius: 8px;
+            text-align: center;
+            padding: 0.7rem 0.5rem;
+            background: rgba(255, 255, 255, 0.85);
+        }
+        .dp-card .dp-msg { font-weight: 800; font-size: 0.85rem; color: #111; }
+        .dp-card .dp-from { font-size: 0.7rem; font-style: italic; color: #555; }
+        .photo-preview {
+            position: relative;
+            aspect-ratio: 16 / 9;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(128, 128, 128, 0.35);
+            background: rgba(10, 10, 16, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pp-frame {
+            position: relative;
+            background: #fff;
+            border-radius: 6px;
+            padding: 8px 8px 6px;
+            width: 46%;
+        }
+        .pp-frame .pp-img {
+            aspect-ratio: 4 / 3;
+            border-radius: 4px;
+            background: linear-gradient(160deg, #3a6073, #16222a);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.6rem;
+        }
+        .pp-frame .pp-caption {
+            text-align: center;
+            font-size: 0.6rem;
+            color: #333;
+            padding-top: 4px;
+        }
+        .pp-frame .pp-banner {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.62rem;
+            padding: 0.2rem 0.8rem;
+            z-index: 1;
+        }
+        .photo-preview.pp-style-neon .pp-frame { background: #0b0b14; border: 1.5px solid #ff00e6; box-shadow: 0 0 18px rgba(255,0,230,0.6); }
+        .photo-preview.pp-style-neon .pp-caption { color: #9fe8ff; }
+        .photo-preview.pp-style-elegant .pp-frame { background: #fffdf4; border: 3px double #d4af37; box-shadow: 0 0 16px rgba(212,175,55,0.4); }
+        .photo-preview.pp-style-elegant .pp-caption { color: #6b5b1e; font-family: Georgia, serif; }
+        .photo-preview.pp-style-minimal .pp-frame { background: #141a22; border: 1px solid rgba(255,255,255,0.25); }
+        .photo-preview.pp-style-minimal .pp-caption { color: #c9d4e0; }
+
+        /* Guest page preview */
+        .guest-preview {
+            border-radius: 10px;
+            border: 1px solid rgba(128, 128, 128, 0.35);
+            overflow: hidden;
+            padding: 1.1rem 1rem;
+            text-align: center;
+            background: #fff;
+            background-size: cover;
+            background-position: center;
+        }
+        .guest-preview .gp-logo img { max-height: 44px; max-width: 60%; margin-bottom: 0.5rem; }
+        .guest-preview .gp-heading { font-weight: 800; font-size: 1.05rem; margin-bottom: 0.25rem; }
+        .guest-preview .gp-text { font-size: 0.8rem; margin-bottom: 0.7rem; }
+        .guest-preview .gp-btn {
+            display: inline-block;
+            padding: 0.4rem 1.2rem;
+            border-radius: 0.5rem;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
         .event-url {
             font-family: monospace;
             font-size: 0.85rem;
@@ -128,84 +279,123 @@
         /*
          Global style.css is a dark theme (light text). Bootstrap modals stay light unless
          body.dark-mode touches them, so headings/labels become low-contrast on white.
+         Applies to EVERY modal on this page so new modals can't be missed.
         */
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .modal-content {
+        body:not(.dark-mode) .modal .modal-content {
             background-color: #fff;
             color: #212529;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .modal-title,
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .modal-body :where(h1, h2, h3, h4, h5, h6),
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .modal-footer {
+        body:not(.dark-mode) .modal .modal-title,
+        body:not(.dark-mode) .modal .modal-body :where(h1, h2, h3, h4, h5, h6),
+        body:not(.dark-mode) .modal .modal-footer {
             color: #212529;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .modal-body :where(p, .lead, #qrEventName) {
+        body:not(.dark-mode) .modal .modal-body :where(p, .lead, #qrEventName) {
             color: #212529 !important;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .text-muted {
+        body:not(.dark-mode) .modal .text-muted {
             color: #6c757d !important;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) label {
+        body:not(.dark-mode) .modal label {
             color: #212529;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-label {
+        body:not(.dark-mode) .modal .form-label {
             color: #495057;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-text {
+        body:not(.dark-mode) .modal .form-text {
             color: #6c757d !important;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .form-check-label {
+        body:not(.dark-mode) .modal .form-check-label {
             color: #212529 !important;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-control,
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal) .form-select {
+        body:not(.dark-mode) .modal .form-control,
+        body:not(.dark-mode) .modal .form-select {
             background-color: #fff;
             color: #212529;
             border-color: #ced4da;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .form-control::placeholder {
+        body:not(.dark-mode) .modal .form-control::placeholder {
             color: #6c757d;
             opacity: 1;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .form-control:focus,
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .form-select:focus {
+        body:not(.dark-mode) .modal .form-control:focus,
+        body:not(.dark-mode) .modal .form-select:focus {
             background-color: #fff;
             color: #212529;
             border-color: #86b7fe;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .form-control[readonly] {
+        body:not(.dark-mode) .modal .form-control[readonly] {
             background-color: #e9ecef;
             color: #212529;
             border-color: #ced4da;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .form-control[readonly]:focus {
+        body:not(.dark-mode) .modal .form-control[readonly]:focus {
             background-color: #e9ecef;
             color: #212529;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .form-check-input {
+        body:not(.dark-mode) .modal .form-check-input {
             background-color: #fff;
             border-color: #adb5bd;
         }
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .modal-header,
-        body:not(.dark-mode) :is(#createEventModal, #editEventModal, #qrCodeModal)
-            .modal-footer {
+        body:not(.dark-mode) .modal .modal-header,
+        body:not(.dark-mode) .modal .modal-footer {
             border-color: rgba(0, 0, 0, 0.175);
+        }
+        body:not(.dark-mode) .modal .nav-tabs .nav-link {
+            color: #495057;
+        }
+        body:not(.dark-mode) .modal .nav-tabs .nav-link.active {
+            color: #212529;
+        }
+        body:not(.dark-mode) .modal .form-range::-webkit-slider-runnable-track {
+            background-color: #dee2e6;
+        }
+        /* .event-url inputs sit on light backgrounds in both card + modal contexts */
+        .event-url {
+            color: #212529;
+        }
+        /* Dropdown menus on the dark page background need dark styling outside dark-mode too */
+        body:not(.dark-mode) .dropdown-menu {
+            background-color: #fff;
+        }
+        body:not(.dark-mode) .dropdown-menu .dropdown-item {
+            color: #212529;
+        }
+        body:not(.dark-mode) .dropdown-menu .dropdown-item.text-danger {
+            color: #dc3545 !important;
+        }
+        body.dark-mode .dropdown-menu {
+            background-color: #101419;
+            border-color: rgba(255,255,255,0.1);
+        }
+        body.dark-mode .dropdown-menu .dropdown-item { color: #d7e6f5; }
+        body.dark-mode .dropdown-menu .dropdown-item:hover { background: rgba(255,255,255,0.06); }
+        body.dark-mode .nav-tabs .nav-link { color: #98a9bf; }
+        body.dark-mode .nav-tabs .nav-link.active {
+            background: #101419;
+            color: #cfe8ff;
+            border-color: rgba(255,255,255,0.1);
+        }
+
+        /* Image upload rows in the theme/display tabs */
+        .img-upload-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .img-upload-row .img-thumb {
+            width: 44px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 0.4rem;
+            border: 1px solid rgba(128,128,128,0.35);
+            background: rgba(128,128,128,0.15);
+            flex-shrink: 0;
         }
     </style>
 </head>
-<body class="mdj-eyup-brand mdj-dash-tools">
+<body class="mdj-eyup-brand mdj-dash-tools mdj-events-mgmt-page">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">Event Management</h1>
 
@@ -220,9 +410,12 @@
                 <a href="/dj" class="btn btn-outline-light btn-sm" title="Back to Dashboard">
                     <i class="fas fa-arrow-left"></i>
                 </a>
-                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#createEventModal">
-                    <i class="fas fa-plus me-1"></i><span class="d-none d-md-inline">Create Event</span>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                    <i class="fas fa-plus me-1"></i>Create Event
                 </button>
+                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
+                    <i class="fas fa-gear"></i>
+                </a>
                 <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
                     <i class="fas fa-moon"></i>
                 </button>
@@ -248,7 +441,7 @@
                 </div>
             <% } else if (events) { %>
                 <% events.forEach(function(event) { %>
-                    <div class="col-md-6 col-lg-4">
+                    <div class="col-md-6 col-xl-4 col-xxl-3">
                         <div class="card event-card <%= event.is_active ? 'active' : 'inactive' %>" data-event-id="<%= event.id %>">
                             <div class="card-header d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0">
@@ -256,6 +449,9 @@
                                         <span class="badge bg-success me-2">Active</span>
                                     <% } else { %>
                                         <span class="badge bg-secondary me-2">Inactive</span>
+                                    <% } %>
+                                    <% if (event.show_public) { %>
+                                        <span class="badge bg-primary me-2" title="Listed on public events page"><i class="fas fa-globe me-1"></i>Public</span>
                                     <% } %>
                                     <%= event.name %>
                                 </h6>
@@ -289,6 +485,7 @@
                                     <% if (event.enable_song_requests) { %><span class="badge bg-success me-1"><i class="fas fa-music me-1"></i>Songs</span><% } %>
                                     <% if (event.enable_karaoke_requests) { %><span class="badge bg-info me-1"><i class="fas fa-microphone me-1"></i>Karaoke</span><% } %>
                                     <% if (event.enable_messages) { %><span class="badge bg-warning text-dark me-1"><i class="fas fa-envelope me-1"></i>Messages</span><% } %>
+                                    <% if (event.enable_photos) { %><span class="badge me-1" style="background:#a855f7;"><i class="fas fa-camera me-1"></i>Photos</span><% } %>
                                 </div>
                                 
                                 <div class="mt-3">
@@ -315,9 +512,21 @@
                                     <a href="/dj/display/<%= event.slug %>" target="_blank" class="btn btn-sm btn-primary flex-grow-1" title="Open Display for this event">
                                         <i class="fas fa-tv me-1"></i>Display
                                     </a>
-                                    <a href="/dj/display-config/<%= event.slug %>" class="btn btn-sm btn-outline-primary" title="Configure Display">
+                                    <button type="button" class="btn btn-sm btn-outline-primary edit-display" data-event-id="<%= event.id %>" title="Configure Display">
                                         <i class="fas fa-cog"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Share + photos -->
+                                <div class="mt-2 d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-info flex-grow-1 share-links" data-event-id="<%= event.id %>" data-name="<%= event.name %>" title="Share event links">
+                                        <i class="fas fa-share-nodes me-1"></i>Share Links
+                                    </button>
+                                    <% if (event.enable_photos) { %>
+                                    <a href="/dj/photos/<%= event.slug %>" class="btn btn-sm btn-outline-light" title="Manage photos" style="border-color:#a855f7; color:#c084fc;">
+                                        <i class="fas fa-images"></i><% if (event.stats && event.stats.totalPhotos) { %> <%= event.stats.totalPhotos %><% } %>
                                     </a>
+                                    <% } %>
                                 </div>
                             </div>
                             <div class="card-footer bg-transparent">
@@ -388,13 +597,30 @@
                                         </label>
                                     </div>
                                 </div>
-                                <div class="mb-3">
+                                <div class="mb-2">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input" type="checkbox" id="eventEnableMessages" checked>
                                         <label class="form-check-label" for="eventEnableMessages">
                                             <i class="fas fa-envelope me-1 text-warning"></i>Messages
                                         </label>
                                     </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="eventEnablePhotos">
+                                        <label class="form-check-label" for="eventEnablePhotos">
+                                            <i class="fas fa-camera me-1" style="color:#c084fc;"></i>Guest Photos
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="eventShowPublic">
+                                        <label class="form-check-label" for="eventShowPublic">
+                                            <i class="fas fa-globe me-1 text-primary"></i>Show on public events page
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Only applies when the public events page is enabled in DJ settings.</div>
                                 </div>
                                 
                                 <h6 class="text-muted mb-3 mt-4"><i class="fas fa-hand-holding-dollar me-2"></i>DJ Tipping</h6>
@@ -473,7 +699,7 @@
 
     <!-- Edit Event Modal -->
     <div class="modal fade" id="editEventModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Event</h5>
@@ -482,111 +708,333 @@
                 <div class="modal-body">
                     <form id="editEventForm">
                         <input type="hidden" id="editEventId">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6 class="text-muted mb-3"><i class="fas fa-info-circle me-2"></i>Event Details</h6>
-                                <div class="mb-3">
-                                    <label for="editEventName" class="form-label">Event Name *</label>
-                                    <input type="text" class="form-control" id="editEventName" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editEventDescription" class="form-label">Description</label>
-                                    <textarea class="form-control" id="editEventDescription" rows="2"></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editEventVenue" class="form-label">Venue</label>
-                                    <input type="text" class="form-control" id="editEventVenue">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editEventDate" class="form-label">Event Date</label>
-                                    <input type="date" class="form-control" id="editEventDate">
-                                </div>
-                                
-                                <h6 class="text-muted mb-3 mt-4"><i class="fas fa-toggle-on me-2"></i>Enabled Features</h6>
-                                <div class="mb-2">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="editEventEnableSongRequests" checked>
-                                        <label class="form-check-label" for="editEventEnableSongRequests">
-                                            <i class="fas fa-music me-1 text-success"></i>Song Requests
-                                        </label>
+
+                        <ul class="nav nav-tabs mb-3" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="editTabDetailsBtn" data-bs-toggle="tab" data-bs-target="#editTabDetails" type="button" role="tab">
+                                    <i class="fas fa-info-circle me-1"></i>Details &amp; Features
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="editTabThemeBtn" data-bs-toggle="tab" data-bs-target="#editTabTheme" type="button" role="tab">
+                                    <i class="fas fa-palette me-1"></i>Guest Page Theme
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="editTabDisplayBtn" data-bs-toggle="tab" data-bs-target="#editTabDisplay" type="button" role="tab">
+                                    <i class="fas fa-tv me-1"></i>Display Screen
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <!-- ── Tab 1: Details & Features ── -->
+                            <div class="tab-pane fade show active" id="editTabDetails" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted mb-3"><i class="fas fa-info-circle me-2"></i>Event Details</h6>
+                                        <div class="mb-3">
+                                            <label for="editEventName" class="form-label">Event Name *</label>
+                                            <input type="text" class="form-control" id="editEventName" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editEventDescription" class="form-label">Description</label>
+                                            <textarea class="form-control" id="editEventDescription" rows="2"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editEventVenue" class="form-label">Venue</label>
+                                            <input type="text" class="form-control" id="editEventVenue">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editEventDate" class="form-label">Event Date</label>
+                                            <input type="date" class="form-control" id="editEventDate">
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="mb-2">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="editEventEnableKaraokeRequests" checked>
-                                        <label class="form-check-label" for="editEventEnableKaraokeRequests">
-                                            <i class="fas fa-microphone me-1 text-info"></i>Karaoke Requests
-                                        </label>
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted mb-3"><i class="fas fa-toggle-on me-2"></i>Enabled Features</h6>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventEnableSongRequests" checked>
+                                                <label class="form-check-label" for="editEventEnableSongRequests">
+                                                    <i class="fas fa-music me-1 text-success"></i>Song Requests
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventEnableKaraokeRequests" checked>
+                                                <label class="form-check-label" for="editEventEnableKaraokeRequests">
+                                                    <i class="fas fa-microphone me-1 text-info"></i>Karaoke Requests
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventEnableMessages" checked>
+                                                <label class="form-check-label" for="editEventEnableMessages">
+                                                    <i class="fas fa-envelope me-1 text-warning"></i>Messages
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventEnablePhotos">
+                                                <label class="form-check-label" for="editEventEnablePhotos">
+                                                    <i class="fas fa-camera me-1" style="color:#c084fc;"></i>Guest Photos
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventShowTracksGuest">
+                                                <label class="form-check-label" for="editEventShowTracksGuest">
+                                                    <i class="fas fa-list-ul me-1 text-info"></i>Show played tracks on guest page
+                                                </label>
+                                            </div>
+                                            <div class="form-text">Displays a recently played list on the customer landing screen. Tracks are logged automatically from VirtualDJ now playing.</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventShowPublic">
+                                                <label class="form-check-label" for="editEventShowPublic">
+                                                    <i class="fas fa-globe me-1 text-primary"></i>Show on public events page
+                                                </label>
+                                            </div>
+                                            <div class="form-text">Lists this event on the home page when the public events page is enabled in DJ settings.</div>
+                                        </div>
+
+                                        <h6 class="text-muted mb-3 mt-4"><i class="fas fa-hand-holding-dollar me-2"></i>DJ Tipping</h6>
+                                        <div class="mb-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventEnableTips">
+                                                <label class="form-check-label" for="editEventEnableTips">
+                                                    <i class="fas fa-dollar-sign me-1 text-success"></i>Enable Tips
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div id="editTipConfigFields" style="display: none;">
+                                            <div id="editTipLinksContainer"></div>
+                                            <button type="button" class="btn btn-sm btn-outline-success mb-3" id="editAddTipLinkBtn">
+                                                <i class="fas fa-plus me-1"></i>Add Payment Link
+                                            </button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="mb-3">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="editEventEnableMessages" checked>
-                                        <label class="form-check-label" for="editEventEnableMessages">
-                                            <i class="fas fa-envelope me-1 text-warning"></i>Messages
-                                        </label>
-                                    </div>
-                                </div>
-                                
-                                <h6 class="text-muted mb-3 mt-4"><i class="fas fa-hand-holding-dollar me-2"></i>DJ Tipping</h6>
-                                <div class="mb-2">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="editEventEnableTips">
-                                        <label class="form-check-label" for="editEventEnableTips">
-                                            <i class="fas fa-dollar-sign me-1 text-success"></i>Enable Tips
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="editTipConfigFields" style="display: none;">
-                                    <div id="editTipLinksContainer"></div>
-                                    <button type="button" class="btn btn-sm btn-outline-success mb-3" id="editAddTipLinkBtn">
-                                        <i class="fas fa-plus me-1"></i>Add Payment Link
-                                    </button>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <h6 class="text-muted mb-3"><i class="fas fa-palette me-2"></i>Custom Styling</h6>
+
+                            <!-- ── Tab 2: Guest Page Theme ── -->
+                            <div class="tab-pane fade" id="editTabTheme" role="tabpanel">
                                 <div class="row">
-                                    <div class="col-6 mb-3">
-                                        <label for="editEventHeadingColor" class="form-label">Heading Color</label>
-                                        <div class="input-group">
-                                            <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#007bff">
-                                            <input type="text" class="form-control" id="editEventHeadingColorText" value="#007bff" maxlength="7">
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
+                                        <div class="row">
+                                            <div class="col-6 mb-3">
+                                                <label for="editEventHeadingColor" class="form-label">Heading Color</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#007bff">
+                                                    <input type="text" class="form-control" id="editEventHeadingColorText" value="#007bff" maxlength="7">
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label for="editEventTextColor" class="form-label">Text Color</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#212529">
+                                                    <input type="text" class="form-control" id="editEventTextColorText" value="#212529" maxlength="7">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6 mb-3">
+                                                <label for="editEventBgColor" class="form-label">Background Color</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#ffffff">
+                                                    <input type="text" class="form-control" id="editEventBgColorText" value="#ffffff" maxlength="7">
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label for="editEventAccentColor" class="form-label">Accent/Button Color</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#0d6efd">
+                                                    <input type="text" class="form-control" id="editEventAccentColorText" value="#0d6efd" maxlength="7">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editEventCustomCss" class="form-label">Custom CSS <span class="badge bg-secondary">Advanced</span></label>
+                                            <textarea class="form-control font-monospace" id="editEventCustomCss" rows="4" placeholder=".navbar { ... }"></textarea>
+                                            <div class="form-text">Add custom CSS rules for advanced styling</div>
                                         </div>
                                     </div>
-                                    <div class="col-6 mb-3">
-                                        <label for="editEventTextColor" class="form-label">Text Color</label>
-                                        <div class="input-group">
-                                            <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#212529">
-                                            <input type="text" class="form-control" id="editEventTextColorText" value="#212529" maxlength="7">
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted mb-3"><i class="fas fa-images me-2"></i>Images</h6>
+                                        <div class="mb-3">
+                                            <label for="editEventBgImage" class="form-label">Background Image</label>
+                                            <div class="img-upload-row mb-1">
+                                                <img id="editBgImageThumb" class="img-thumb" src="" alt="" style="display: none;">
+                                                <input type="url" class="form-control" id="editEventBgImage" placeholder="https://... or upload →">
+                                                <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="bg" data-target="editEventBgImage" data-thumb="editBgImageThumb" title="Upload image">
+                                                    <i class="fas fa-upload"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Shown behind the guest request pages. Leave empty for solid color.</div>
                                         </div>
+                                        <div class="mb-3">
+                                            <label for="editEventLogoImage" class="form-label">Event Logo</label>
+                                            <div class="img-upload-row mb-1">
+                                                <img id="editLogoImageThumb" class="img-thumb" src="" alt="" style="display: none;">
+                                                <input type="url" class="form-control" id="editEventLogoImage" placeholder="https://... or upload →">
+                                                <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="logo" data-target="editEventLogoImage" data-thumb="editLogoImageThumb" title="Upload logo">
+                                                    <i class="fas fa-upload"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Displayed at the top of the guest landing page (PNG/SVG with transparency works best).</div>
+                                        </div>
+                                        <div id="themeUploadStatus" class="small" aria-live="polite"></div>
                                     </div>
                                 </div>
+
+                                <hr class="my-3">
+                                <div class="screen-preview-label"><i class="fas fa-eye me-1"></i>Live example — guest landing page</div>
+                                <div class="guest-preview" id="guestPreview">
+                                    <div class="gp-logo" id="gpLogo" style="display: none;"><img id="gpLogoImg" src="" alt="Event logo"></div>
+                                    <div class="gp-heading" id="gpHeading">Your Event Name</div>
+                                    <div class="gp-text" id="gpText">Welcome! Pick an option below to get involved.</div>
+                                    <span class="gp-btn" id="gpBtn"><i class="fas fa-music me-1"></i>Request a Song</span>
+                                </div>
+                            </div>
+
+                            <!-- ── Tab 3: Display Screen ── -->
+                            <div class="tab-pane fade" id="editTabDisplay" role="tabpanel">
                                 <div class="row">
-                                    <div class="col-6 mb-3">
-                                        <label for="editEventBgColor" class="form-label">Background Color</label>
-                                        <div class="input-group">
-                                            <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#ffffff">
-                                            <input type="text" class="form-control" id="editEventBgColorText" value="#ffffff" maxlength="7">
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted mb-3"><i class="fas fa-qrcode me-2"></i>QR Code</h6>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="editDisplayShowQr" checked>
+                                            <label class="form-check-label" for="editDisplayShowQr">Show QR code on display</label>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editDisplayQrPosition" class="form-label">QR Position</label>
+                                            <select class="form-select" id="editDisplayQrPosition">
+                                                <option value="top-left">Top left</option>
+                                                <option value="top-right" selected>Top right</option>
+                                                <option value="bottom-left">Bottom left</option>
+                                                <option value="bottom-right">Bottom right</option>
+                                            </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editDisplayQrSize" class="form-label">QR Size: <span id="editDisplayQrSizeValue">120</span>px</label>
+                                            <input type="range" class="form-range" id="editDisplayQrSize" min="80" max="200" value="120">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="editDisplayQrLabel" class="form-label">QR Label</label>
+                                            <input type="text" class="form-control" id="editDisplayQrLabel" placeholder="Scan to Request Songs!">
                                         </div>
                                     </div>
-                                    <div class="col-6 mb-3">
-                                        <label for="editEventAccentColor" class="form-label">Accent/Button Color</label>
-                                        <div class="input-group">
-                                            <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#0d6efd">
-                                            <input type="text" class="form-control" id="editEventAccentColorText" value="#0d6efd" maxlength="7">
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted mb-3"><i class="fas fa-image me-2"></i>Background &amp; Message Card</h6>
+                                        <div class="row">
+                                            <div class="col-6 mb-3">
+                                                <label for="editDisplayBgColor1" class="form-label">Gradient Start</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" id="editDisplayBgColor1" value="#000428">
+                                                    <input type="text" class="form-control" id="editDisplayBgColor1Text" value="#000428" maxlength="7">
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label for="editDisplayBgColor2" class="form-label">Gradient End</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" id="editDisplayBgColor2" value="#004e92">
+                                                    <input type="text" class="form-control" id="editDisplayBgColor2Text" value="#004e92" maxlength="7">
+                                                </div>
+                                            </div>
                                         </div>
+                                        <div class="mb-3">
+                                            <label for="editDisplayBgImage" class="form-label">Background Image</label>
+                                            <div class="img-upload-row mb-1">
+                                                <img id="editDisplayBgImageThumb" class="img-thumb" src="" alt="" style="display: none;">
+                                                <input type="url" class="form-control" id="editDisplayBgImage" placeholder="https://... or upload →">
+                                                <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="display_bg" data-target="editDisplayBgImage" data-thumb="editDisplayBgImageThumb" title="Upload image">
+                                                    <i class="fas fa-upload"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Leave empty to use the gradient only.</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-6 mb-3">
+                                                <label for="editDisplayCardColor" class="form-label">Card Background</label>
+                                                <div class="input-group">
+                                                    <input type="color" class="form-control form-control-color" id="editDisplayCardColor" value="#ffffff">
+                                                    <input type="text" class="form-control" id="editDisplayCardColorText" value="#ffffff" maxlength="7">
+                                                </div>
+                                            </div>
+                                            <div class="col-6 mb-3">
+                                                <label for="editDisplayCardOpacity" class="form-label">Opacity: <span id="editDisplayCardOpacityValue">85</span>%</label>
+                                                <input type="range" class="form-range" id="editDisplayCardOpacity" min="50" max="100" value="85">
+                                            </div>
+                                        </div>
+                                        <a href="#" id="editOpenDisplayLink" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-tv me-1"></i>Open Display
+                                        </a>
                                     </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="editEventBgImage" class="form-label">Background Image URL</label>
-                                    <input type="url" class="form-control" id="editEventBgImage" placeholder="https://example.com/image.jpg">
-                                    <div class="form-text">Leave empty for solid color background</div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="editEventCustomCss" class="form-label">Custom CSS <span class="badge bg-secondary">Advanced</span></label>
-                                    <textarea class="form-control font-monospace" id="editEventCustomCss" rows="3" placeholder=".navbar { ... }"></textarea>
-                                    <div class="form-text">Add custom CSS rules for advanced styling</div>
+
+                                <hr class="my-3">
+                                <div class="row">
+                                    <div class="col-lg-5">
+                                        <h6 class="text-muted mb-2"><i class="fas fa-camera me-2"></i>Photo Popup Banner</h6>
+                                        <p class="small text-muted mb-2">Style of the banner and frame when guest photos pop up on this event's display.</p>
+                                        <div id="editBannerStyleOptions">
+                                            <div class="banner-style-option" data-value="">
+                                                <input type="radio" name="editBannerStyle" value="" class="form-check-input mt-0">
+                                                <span class="banner-preview" style="background: rgba(128,128,128,0.5);"><i class="fas fa-globe me-1"></i>Global</span>
+                                                <span class="small text-muted">Use the style from Global Settings</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="party">
+                                                <input type="radio" name="editBannerStyle" value="party" class="form-check-input mt-0">
+                                                <span class="banner-preview party"><i class="fas fa-camera me-1"></i>Guest Photo!</span>
+                                                <span class="small text-muted">Party — rainbow &amp; confetti</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="neon">
+                                                <input type="radio" name="editBannerStyle" value="neon" class="form-check-input mt-0">
+                                                <span class="banner-preview neon"><i class="fas fa-camera me-1"></i>Guest Photo!</span>
+                                                <span class="small text-muted">Neon — glowing club vibes</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="elegant">
+                                                <input type="radio" name="editBannerStyle" value="elegant" class="form-check-input mt-0">
+                                                <span class="banner-preview elegant"><i class="fas fa-camera me-1"></i>Guest Photo!</span>
+                                                <span class="small text-muted">Elegant — gold &amp; shimmer</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="minimal">
+                                                <input type="radio" name="editBannerStyle" value="minimal" class="form-check-input mt-0">
+                                                <span class="banner-preview minimal"><i class="fas fa-camera me-1"></i>Guest Photo!</span>
+                                                <span class="small text-muted">Minimal — clean &amp; understated</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-7">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-3">
+                                                <div class="screen-preview-label"><i class="fas fa-eye me-1"></i>Example — message display</div>
+                                                <div class="display-preview" id="displayPreview">
+                                                    <div class="dp-qr top-right" id="dpQr"><i class="fas fa-qrcode"></i></div>
+                                                    <div class="dp-card" id="dpCard">
+                                                        <div class="dp-msg">Happy Birthday Sarah! 🎉</div>
+                                                        <div class="dp-from">- from Alex</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6 mb-3">
+                                                <div class="screen-preview-label"><i class="fas fa-eye me-1"></i>Example — photo popup</div>
+                                                <div class="photo-preview" id="photoPreview">
+                                                    <div class="pp-frame">
+                                                        <span class="pp-banner banner-preview party" id="ppBanner"><i class="fas fa-camera me-1"></i>Guest Photo!</span>
+                                                        <div class="pp-img"><i class="fas fa-image"></i></div>
+                                                        <div class="pp-caption">"Best night ever!" — Alex</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -597,6 +1045,30 @@
                     <button type="button" class="btn btn-primary" id="updateEventBtn">
                         <i class="fas fa-save me-2"></i>Save Changes
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Share Links Modal -->
+    <div class="modal fade" id="shareLinksModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-share-nodes me-2"></i>Share Links — <span id="shareEventName"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="shareLinksLoading" class="text-center py-3">
+                        <i class="fas fa-spinner fa-spin me-2"></i>Loading links…
+                    </div>
+                    <div id="shareLinksList" style="display: none;"></div>
+                    <div class="mt-3 pt-3 border-top">
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="regenTokenBtn">
+                            <i class="fas fa-rotate me-1"></i>Regenerate gallery link
+                        </button>
+                        <div class="form-text">Invalidates any previously shared gallery links.</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -662,6 +1134,19 @@
         const editEventModal = new bootstrap.Modal(document.getElementById('editEventModal'));
         const qrCodeModal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
 
+        // Pre-check the create-modal feature toggles from global "New Event Defaults"
+        fetch('/api/settings')
+            .then(res => res.json())
+            .then(settings => {
+                document.getElementById('eventEnableSongRequests').checked = settings.default_enable_song_requests !== false;
+                document.getElementById('eventEnableKaraokeRequests').checked = settings.default_enable_karaoke_requests !== false;
+                document.getElementById('eventEnableMessages').checked = settings.default_enable_messages !== false;
+                document.getElementById('eventEnablePhotos').checked = settings.default_enable_photos === true;
+                document.getElementById('eventEnableTips').checked = settings.default_enable_tips === true;
+                document.getElementById('tipConfigFields').style.display = settings.default_enable_tips ? 'block' : 'none';
+            })
+            .catch(() => { /* fall back to hard-coded checked states */ });
+
         // Sync color pickers with text inputs
         function setupColorSync(colorId, textId) {
             const colorInput = document.getElementById(colorId);
@@ -687,6 +1172,146 @@
         setupColorSync('editEventTextColor', 'editEventTextColorText');
         setupColorSync('editEventBgColor', 'editEventBgColorText');
         setupColorSync('editEventAccentColor', 'editEventAccentColorText');
+        setupColorSync('editDisplayBgColor1', 'editDisplayBgColor1Text');
+        setupColorSync('editDisplayBgColor2', 'editDisplayBgColor2Text');
+        setupColorSync('editDisplayCardColor', 'editDisplayCardColorText');
+
+        // Range slider value labels (display tab)
+        document.getElementById('editDisplayQrSize').addEventListener('input', function() {
+            document.getElementById('editDisplayQrSizeValue').textContent = this.value;
+        });
+        document.getElementById('editDisplayCardOpacity').addEventListener('input', function() {
+            document.getElementById('editDisplayCardOpacityValue').textContent = this.value;
+        });
+
+        // ── Photo banner style picker (per event; '' = use global setting) ──
+        const editBannerOptions = document.querySelectorAll('#editBannerStyleOptions .banner-style-option');
+        function selectEditBannerStyle(value) {
+            editBannerOptions.forEach(opt => {
+                const isSelected = opt.dataset.value === value;
+                opt.classList.toggle('selected', isSelected);
+                opt.querySelector('input').checked = isSelected;
+            });
+            // Reflect in the photo popup example (fall back to party for "Global")
+            const styleForPreview = value || 'party';
+            document.getElementById('photoPreview').className = 'photo-preview pp-style-' + styleForPreview;
+            document.getElementById('ppBanner').className = 'pp-banner banner-preview ' + styleForPreview;
+        }
+        editBannerOptions.forEach(opt => {
+            opt.addEventListener('click', () => selectEditBannerStyle(opt.dataset.value));
+        });
+
+        // ── Live example previews ──
+        function updateGuestPreview() {
+            const preview = document.getElementById('guestPreview');
+            const bgColor = document.getElementById('editEventBgColorText').value || '#ffffff';
+            const bgImage = document.getElementById('editEventBgImage').value.trim();
+            preview.style.backgroundColor = bgColor;
+            preview.style.backgroundImage = bgImage ? `linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url('${bgImage}')` : 'none';
+            document.getElementById('gpHeading').style.color = document.getElementById('editEventHeadingColorText').value || '#007bff';
+            document.getElementById('gpHeading').textContent = document.getElementById('editEventName').value.trim() || 'Your Event Name';
+            document.getElementById('gpText').style.color = document.getElementById('editEventTextColorText').value || '#212529';
+            document.getElementById('gpBtn').style.background = document.getElementById('editEventAccentColorText').value || '#0d6efd';
+            const logo = document.getElementById('editEventLogoImage').value.trim();
+            document.getElementById('gpLogo').style.display = logo ? '' : 'none';
+            if (logo) document.getElementById('gpLogoImg').src = logo;
+        }
+
+        function updateDisplayPreview() {
+            const preview = document.getElementById('displayPreview');
+            const bg1 = document.getElementById('editDisplayBgColor1Text').value || '#000428';
+            const bg2 = document.getElementById('editDisplayBgColor2Text').value || '#004e92';
+            const bgImage = document.getElementById('editDisplayBgImage').value.trim();
+            preview.style.background = bgImage
+                ? `linear-gradient(180deg, ${bg1}aa, ${bg2}aa), url('${bgImage}') center/cover`
+                : `linear-gradient(180deg, ${bg1}, ${bg2})`;
+
+            const qr = document.getElementById('dpQr');
+            qr.style.display = document.getElementById('editDisplayShowQr').checked ? 'flex' : 'none';
+            qr.className = 'dp-qr ' + (document.getElementById('editDisplayQrPosition').value || 'top-right');
+
+            const cardColor = document.getElementById('editDisplayCardColorText').value || '#ffffff';
+            const opacity = (parseInt(document.getElementById('editDisplayCardOpacity').value, 10) || 85) / 100;
+            const r = parseInt(cardColor.slice(1, 3), 16), g = parseInt(cardColor.slice(3, 5), 16), b = parseInt(cardColor.slice(5, 7), 16);
+            document.getElementById('dpCard').style.background = `rgba(${r},${g},${b},${opacity})`;
+        }
+
+        // Any relevant field updates its preview as you type/pick
+        ['editEventName', 'editEventHeadingColor', 'editEventHeadingColorText', 'editEventTextColor', 'editEventTextColorText',
+         'editEventBgColor', 'editEventBgColorText', 'editEventAccentColor', 'editEventAccentColorText',
+         'editEventBgImage', 'editEventLogoImage'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', updateGuestPreview);
+            el.addEventListener('change', updateGuestPreview);
+        });
+        ['editDisplayShowQr', 'editDisplayQrPosition', 'editDisplayBgColor1', 'editDisplayBgColor1Text',
+         'editDisplayBgColor2', 'editDisplayBgColor2Text', 'editDisplayBgImage',
+         'editDisplayCardColor', 'editDisplayCardColorText', 'editDisplayCardOpacity'].forEach(id => {
+            const el = document.getElementById(id);
+            el.addEventListener('input', updateDisplayPreview);
+            el.addEventListener('change', updateDisplayPreview);
+        });
+
+        // Image URL fields ↔ thumbnails
+        function syncThumb(inputId, thumbId) {
+            const input = document.getElementById(inputId);
+            const thumb = document.getElementById(thumbId);
+            const update = () => {
+                const url = input.value.trim();
+                thumb.src = url;
+                thumb.style.display = url ? '' : 'none';
+            };
+            input.addEventListener('input', update);
+            input.addEventListener('change', update);
+        }
+        syncThumb('editEventBgImage', 'editBgImageThumb');
+        syncThumb('editEventLogoImage', 'editLogoImageThumb');
+        syncThumb('editDisplayBgImage', 'editDisplayBgImageThumb');
+
+        // Theme image upload buttons (bg / logo / display_bg)
+        document.querySelectorAll('.theme-upload-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const kind = this.dataset.kind;
+                const targetInput = document.getElementById(this.dataset.target);
+                const thumb = document.getElementById(this.dataset.thumb);
+                const status = document.getElementById('themeUploadStatus');
+                const eventId = document.getElementById('editEventId').value;
+                if (!eventId) return;
+
+                const picker = document.createElement('input');
+                picker.type = 'file';
+                picker.accept = 'image/*';
+                picker.addEventListener('change', async () => {
+                    const file = picker.files && picker.files[0];
+                    if (!file) return;
+                    const icon = this.querySelector('i');
+                    icon.classList.replace('fa-upload', 'fa-spinner');
+                    icon.classList.add('fa-spin');
+                    if (status) { status.textContent = 'Uploading…'; status.className = 'small text-muted'; }
+                    try {
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        const res = await fetch(`/api/events/${eventId}/theme-image?kind=${kind}`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await res.json();
+                        if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed');
+                        targetInput.value = data.url;
+                        targetInput.dispatchEvent(new Event('change'));
+                        if (thumb) { thumb.src = data.url; thumb.style.display = ''; }
+                        if (status) { status.textContent = 'Uploaded ✓ — remember to Save Changes'; status.className = 'small text-success'; }
+                    } catch (err) {
+                        if (status) { status.textContent = err.message || 'Upload failed'; status.className = 'small text-danger'; }
+                        else alert(err.message || 'Upload failed');
+                    } finally {
+                        icon.classList.remove('fa-spin');
+                        icon.classList.replace('fa-spinner', 'fa-upload');
+                    }
+                });
+                picker.click();
+            });
+        });
 
         // Tip toggle visibility
         function setupTipToggle(checkboxId, fieldsId) {
@@ -777,7 +1402,9 @@
                 enable_song_requests: document.getElementById('eventEnableSongRequests').checked,
                 enable_karaoke_requests: document.getElementById('eventEnableKaraokeRequests').checked,
                 enable_messages: document.getElementById('eventEnableMessages').checked,
+                enable_photos: document.getElementById('eventEnablePhotos').checked,
                 enable_tips: document.getElementById('eventEnableTips').checked,
+                show_public: document.getElementById('eventShowPublic').checked,
                 tip_links: getTipLinks('tipLinksContainer')
             };
 
@@ -801,11 +1428,8 @@
             }
         });
 
-        // Edit event click handlers
-        document.querySelectorAll('.edit-event').forEach(btn => {
-            btn.addEventListener('click', async function(e) {
-                e.preventDefault();
-                const eventId = this.dataset.eventId;
+        // Edit event (optionally opening straight onto a specific tab)
+        async function openEditModal(eventId, tabBtnId) {
                 try {
                     const response = await fetch(`/api/events`);
                     const events = await response.json();
@@ -832,12 +1456,39 @@
                         document.getElementById('editEventAccentColor').value = accentColor;
                         document.getElementById('editEventAccentColorText').value = accentColor;
                         document.getElementById('editEventBgImage').value = event.bg_image || '';
+                        document.getElementById('editEventBgImage').dispatchEvent(new Event('change'));
+                        document.getElementById('editEventLogoImage').value = event.logo_image || '';
+                        document.getElementById('editEventLogoImage').dispatchEvent(new Event('change'));
                         document.getElementById('editEventCustomCss').value = event.custom_css || '';
+
+                        // Load display screen config
+                        document.getElementById('editDisplayShowQr').checked = event.display_show_qr !== 0;
+                        document.getElementById('editDisplayQrPosition').value = event.display_qr_position || 'top-right';
+                        document.getElementById('editDisplayQrSize').value = event.display_qr_size || 120;
+                        document.getElementById('editDisplayQrSizeValue').textContent = event.display_qr_size || 120;
+                        document.getElementById('editDisplayQrLabel').value = event.display_qr_label || 'Scan to Request Songs!';
+                        const dispBg1 = event.display_bg_color1 || '#000428';
+                        const dispBg2 = event.display_bg_color2 || '#004e92';
+                        const dispCard = event.display_card_color || '#ffffff';
+                        document.getElementById('editDisplayBgColor1').value = dispBg1;
+                        document.getElementById('editDisplayBgColor1Text').value = dispBg1;
+                        document.getElementById('editDisplayBgColor2').value = dispBg2;
+                        document.getElementById('editDisplayBgColor2Text').value = dispBg2;
+                        document.getElementById('editDisplayCardColor').value = dispCard;
+                        document.getElementById('editDisplayCardColorText').value = dispCard;
+                        document.getElementById('editDisplayCardOpacity').value = event.display_card_opacity || 85;
+                        document.getElementById('editDisplayCardOpacityValue').textContent = event.display_card_opacity || 85;
+                        document.getElementById('editDisplayBgImage').value = event.display_bg_image || '';
+                        document.getElementById('editDisplayBgImage').dispatchEvent(new Event('change'));
+                        document.getElementById('editOpenDisplayLink').href = '/dj/display/' + event.slug;
                         
                         // Load feature toggles
                         document.getElementById('editEventEnableSongRequests').checked = event.enable_song_requests !== 0;
                         document.getElementById('editEventEnableKaraokeRequests').checked = event.enable_karaoke_requests !== 0;
                         document.getElementById('editEventEnableMessages').checked = event.enable_messages !== 0;
+                        document.getElementById('editEventEnablePhotos').checked = event.enable_photos === 1;
+                        document.getElementById('editEventShowTracksGuest').checked = event.show_tracks_played_guest === 1;
+                        document.getElementById('editEventShowPublic').checked = event.show_public === 1;
                         
                         // Load tip settings
                         document.getElementById('editEventEnableTips').checked = event.enable_tips !== 0;
@@ -854,12 +1505,32 @@
                             tipLinks = [{ provider: event.tip_provider, url: event.tip_payment_link }];
                         }
                         tipLinks.forEach(link => createTipLinkRow(editContainer, link));
-                        
+
+                        // Photo banner style + live previews
+                        selectEditBannerStyle(event.photo_banner_style || '');
+                        updateGuestPreview();
+                        updateDisplayPreview();
+
+                        bootstrap.Tab.getOrCreateInstance(
+                            document.getElementById(tabBtnId || 'editTabDetailsBtn')
+                        ).show();
                         editEventModal.show();
                     }
                 } catch (error) {
                     console.error('Error fetching event:', error);
                 }
+        }
+
+        document.querySelectorAll('.edit-event').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                openEditModal(this.dataset.eventId);
+            });
+        });
+        document.querySelectorAll('.edit-display').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                openEditModal(this.dataset.eventId, 'editTabDisplayBtn');
             });
         });
 
@@ -876,12 +1547,26 @@
                 bg_color: document.getElementById('editEventBgColorText').value || null,
                 accent_color: document.getElementById('editEventAccentColorText').value || null,
                 bg_image: document.getElementById('editEventBgImage').value.trim() || null,
+                logo_image: document.getElementById('editEventLogoImage').value.trim() || null,
                 custom_css: document.getElementById('editEventCustomCss').value.trim() || null,
                 enable_song_requests: document.getElementById('editEventEnableSongRequests').checked ? 1 : 0,
                 enable_karaoke_requests: document.getElementById('editEventEnableKaraokeRequests').checked ? 1 : 0,
                 enable_messages: document.getElementById('editEventEnableMessages').checked ? 1 : 0,
+                enable_photos: document.getElementById('editEventEnablePhotos').checked ? 1 : 0,
+                show_tracks_played_guest: document.getElementById('editEventShowTracksGuest').checked ? 1 : 0,
+                show_public: document.getElementById('editEventShowPublic').checked ? 1 : 0,
                 enable_tips: document.getElementById('editEventEnableTips').checked ? 1 : 0,
-                tip_links: getTipLinks('editTipLinksContainer')
+                tip_links: getTipLinks('editTipLinksContainer'),
+                display_show_qr: document.getElementById('editDisplayShowQr').checked ? 1 : 0,
+                display_qr_position: document.getElementById('editDisplayQrPosition').value,
+                display_qr_size: parseInt(document.getElementById('editDisplayQrSize').value, 10) || 120,
+                display_qr_label: document.getElementById('editDisplayQrLabel').value.trim() || 'Scan to Request Songs!',
+                display_bg_color1: document.getElementById('editDisplayBgColor1Text').value || '#000428',
+                display_bg_color2: document.getElementById('editDisplayBgColor2Text').value || '#004e92',
+                display_bg_image: document.getElementById('editDisplayBgImage').value.trim() || null,
+                display_card_color: document.getElementById('editDisplayCardColorText').value || '#ffffff',
+                display_card_opacity: parseInt(document.getElementById('editDisplayCardOpacity').value, 10) || 85,
+                photo_banner_style: (document.querySelector('input[name="editBannerStyle"]:checked') || {}).value || null
             };
 
             try {
@@ -993,6 +1678,102 @@
                 
                 qrCodeModal.show();
             });
+        });
+
+        // ── Share links modal ─────────────────────────────────────────
+        const shareLinksModal = new bootstrap.Modal(document.getElementById('shareLinksModal'));
+        const shareLinksList = document.getElementById('shareLinksList');
+        const shareLinksLoading = document.getElementById('shareLinksLoading');
+        let shareEventId = null;
+
+        const LINK_META = [
+            { key: 'guest',   label: 'Guest requests page', icon: 'fa-users',  desc: 'Send/QR to guests at the event' },
+            { key: 'photos',  label: 'Photo upload page',   icon: 'fa-camera', desc: 'Guests snap photos into the album' },
+            { key: 'gallery', label: 'Customer photo album', icon: 'fa-images', desc: 'Private link — send to the customer after the event' },
+            { key: 'display', label: 'DJ display screen',   icon: 'fa-tv',     desc: 'Open on a big screen / projector' }
+        ];
+
+        function renderShareLinks(links) {
+            shareLinksList.innerHTML = '';
+            LINK_META.forEach(meta => {
+                const url = links[meta.key];
+                if (!url) return;
+                const row = document.createElement('div');
+                row.className = 'mb-3';
+                row.innerHTML = `
+                    <label class="form-label small fw-bold mb-1"><i class="fas ${meta.icon} me-2"></i>${meta.label}</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control event-url" value="${url}" readonly>
+                        <button class="btn btn-outline-secondary share-copy" type="button" title="Copy link"><i class="fas fa-copy"></i></button>
+                        <button class="btn btn-outline-primary share-qr" type="button" title="Show QR code"><i class="fas fa-qrcode"></i></button>
+                    </div>
+                    <div class="form-text">${meta.desc}</div>
+                `;
+                row.querySelector('.share-copy').addEventListener('click', function() {
+                    navigator.clipboard.writeText(url).then(() => {
+                        const icon = this.querySelector('i');
+                        icon.classList.replace('fa-copy', 'fa-check');
+                        setTimeout(() => icon.classList.replace('fa-check', 'fa-copy'), 2000);
+                    });
+                });
+                row.querySelector('.share-qr').addEventListener('click', function() {
+                    document.getElementById('qrEventName').textContent = meta.label;
+                    document.getElementById('qrEventUrl').value = url;
+                    const container = document.getElementById('qrCodeContainer');
+                    container.innerHTML = '';
+                    if (typeof QRCode !== 'undefined') {
+                        QRCode.toCanvas(url, { width: 200 }, function(error, canvas) {
+                            if (error) {
+                                container.innerHTML = '<p class="text-danger">Failed to generate QR code</p>';
+                                return;
+                            }
+                            container.appendChild(canvas);
+                        });
+                    }
+                    shareLinksModal.hide();
+                    qrCodeModal.show();
+                });
+                shareLinksList.appendChild(row);
+            });
+            shareLinksLoading.style.display = 'none';
+            shareLinksList.style.display = 'block';
+        }
+
+        async function loadShareLinks(eventId) {
+            shareLinksLoading.style.display = 'block';
+            shareLinksList.style.display = 'none';
+            try {
+                const res = await fetch(`/api/events/${eventId}/links`);
+                const links = await res.json();
+                renderShareLinks(links);
+            } catch (err) {
+                shareLinksLoading.innerHTML = '<span class="text-danger">Failed to load links</span>';
+            }
+        }
+
+        document.querySelectorAll('.share-links').forEach(btn => {
+            btn.addEventListener('click', function() {
+                shareEventId = this.dataset.eventId;
+                document.getElementById('shareEventName').textContent = this.dataset.name;
+                shareLinksModal.show();
+                loadShareLinks(shareEventId);
+            });
+        });
+
+        document.getElementById('regenTokenBtn').addEventListener('click', async function() {
+            if (!shareEventId) return;
+            if (!confirm('Regenerate the gallery link? Anyone with the old link will lose access.')) return;
+            try {
+                const res = await fetch(`/api/events/${shareEventId}/regenerate-share-token`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    loadShareLinks(shareEventId);
+                } else {
+                    alert('Failed to regenerate link');
+                }
+            } catch (err) {
+                alert('Failed to regenerate link');
+            }
         });
 
         // Copy QR URL

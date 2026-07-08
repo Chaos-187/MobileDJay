@@ -108,29 +108,32 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update request counts
         updateRequestCount(data.requests.length);
         
-        // Update requests list
+        // Update requests list — newest first, same as the server-rendered page
         const requestsList = document.getElementById('requestsList');
         if (data.requests.length === 0) {
             showEmptyRequestsMessage();
         } else {
-            requestsList.innerHTML = data.requests.map(request => createRequestCard(request)).join('');
+            const sortedRequests = data.requests.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            requestsList.innerHTML = sortedRequests.map(request => createRequestCard(request)).join('');
         }
         
-        // Update messages list
+        // Update messages list — newest first, same as the server-rendered page
         const messagesList = document.getElementById('messagesList');
         if (data.messages.length === 0) {
             messagesList.innerHTML = `
                 <div class="card text-center">
-                    <div class="card-body py-5">
-                        <i class="fas fa-envelope fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">No messages yet</h5>
-                        <p class="text-muted">Customer messages will appear here</p>
+                    <div class="card-body py-4">
+                        <i class="fas fa-comments fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">No messages</p>
                     </div>
                 </div>
             `;
         } else {
-            messagesList.innerHTML = data.messages.map(message => createMessageCard(message)).join('');
+            const sortedMessages = data.messages.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            messagesList.innerHTML = sortedMessages.map(message => createMessageCard(message)).join('');
         }
+
+        document.dispatchEvent(new CustomEvent('mdj-dashboard-refreshed'));
     }
 
     // Create request card HTML
@@ -147,80 +150,100 @@ document.addEventListener('DOMContentLoaded', function() {
         const artist = request.song ? (request.song.artist || request.artist || '') : (request.artist || '');
         const difficulty = request.song ? request.song.difficulty : request.difficulty;
 
+        // Markup mirrors the server-rendered card in dj-dashboard.ejs so a
+        // refresh doesn't change how the list looks.
+        const genre = request.song ? request.song.genre : request.genre;
+        const typeKey = isKaraoke ? 'karaoke' : 'song';
         return `
-            <div class="card mb-3 request-card ${cardClass}" data-request-id="${request.id}">
+            <div class="card request-card ${typeKey}-request mb-3" data-request-id="${request.id}" data-event-id="${request.eventId || ''}">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <div class="flex-grow-1">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-${icon} text-${color} me-2"></i>
-                                <h6 class="mb-0">${escapeHtml(request.customerName)}</h6>
-                                <span class="badge bg-${color} ms-2">${isKaraoke ? 'Karaoke' : 'Song'}</span>
+                            <div class="d-flex align-items-center mb-2 flex-wrap gap-1">
+                                <span class="badge bg-${color} me-1">
+                                    <i class="fas fa-${icon} me-1"></i>${typeKey.toUpperCase()}
+                                </span>
+                                ${request.eventName ? `<span class="badge bg-dark me-1" title="Event">${escapeHtml(request.eventName)}</span>` : ''}
+                                <strong class="me-2">${escapeHtml(request.customerName)}</strong>
+                                <span class="request-timestamp">${new Date(request.timestamp).toLocaleString()}</span>
                             </div>
-                            <div class="request-details">
-                                <strong>${escapeHtml(title)}</strong>
-                                ${artist ? `<br><small class="text-muted">by ${escapeHtml(artist)}</small>` : ''}
-                                ${difficulty ? `<br><span class="badge bg-secondary">${escapeHtml(difficulty)}</span>` : ''}
-                            </div>
-                            <div class="request-timestamp">
-                                <i class="fas fa-clock me-1"></i>
-                                ${new Date(request.timestamp).toLocaleString()}
-                            </div>
+                            <h6 class="card-title mb-1">
+                                "${escapeHtml(title)}" by ${escapeHtml(artist || 'Unknown')}
+                            </h6>
+                            ${genre ? `<span class="badge bg-secondary me-2">${escapeHtml(genre)}</span>` : ''}
+                            ${difficulty ? `<span class="badge bg-info">${escapeHtml(difficulty)}</span>` : ''}
+                            ${request.message ? `
+                                <div class="message-preview">
+                                    <small><strong>Message:</strong> ${escapeHtml(request.message)}</small>
+                                </div>
+                            ` : ''}
                         </div>
-                        <div class="ms-3">
-                            <button class="btn btn-outline-primary btn-sm reply-request mb-1" 
-                                    data-customer-name="${escapeHtml(request.customerName)}" 
-                                    data-original-type="${requestType}" 
-                                    data-request-id="${request.id}">
-                                <i class="fas fa-reply me-1"></i>Reply
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm remove-request" 
-                                    data-request-id="${request.id}">
-                                <i class="fas fa-trash me-1"></i>Remove
-                            </button>
-                        </div>
+                        <button class="btn btn-outline-danger btn-sm ms-3 remove-request" 
+                                data-request-id="${request.id}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm ms-2 reply-request" 
+                                data-customer-name="${escapeHtml(request.customerName)}"
+                                data-request-id="${request.id}"
+                                data-original-type="request">
+                            <i class="fas fa-reply"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    // Create message card HTML
+    // Create message card HTML — mirrors the server-rendered card in
+    // dj-dashboard.ejs so a refresh doesn't change how the list looks.
+    // message.message is sanitized server-side, so it's safe to render as HTML
+    // (needed for messages with inline media).
     function createMessageCard(message) {
-        const isNew = !message.displayed;
+        const needsReply = !!message.needsReply;
+        const name = escapeHtml(message.customerName);
+        const nameAttr = escapeAttr(message.customerName);
         
         return `
-            <div class="card mb-3 ${isNew ? '' : 'bg-light'}" data-message-id="${message.id}">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center mb-2">
-                                <i class="fas fa-envelope text-info me-2"></i>
-                                <h6 class="mb-0">${escapeHtml(message.customerName)}</h6>
-                                ${isNew ? '<span class="badge bg-danger ms-2">New</span>' : ''}
+            <div class="card mb-2${needsReply ? ' message-needs-reply' : (!message.displayed ? '' : ' bg-light')}" data-message-id="${message.id}" data-event-id="${message.eventId || ''}" data-needs-reply="${needsReply ? '1' : '0'}">
+                <div class="card-body py-2 message-card-body">
+                    <div class="message-card-top">
+                        <div class="message-card-meta">
+                            <div class="d-flex align-items-center mb-1 flex-wrap gap-1">
+                                <strong class="me-1">${name}</strong>
+                                ${message.eventName ? `<span class="badge bg-dark" title="Event">${escapeHtml(message.eventName)}</span>` : ''}
+                                ${needsReply ? '<span class="badge bg-primary">Awaiting reply</span>' : ''}
+                                ${message.private ? '<span class="badge bg-purple-pill" title="Not shown on the display screen"><i class="fas fa-user-lock me-1"></i>DJ Only</span>' : ''}
                             </div>
-                            <div class="message-preview">
-                                ${escapeHtml(message.message)}
-                            </div>
-                            <div class="request-timestamp">
+                            <small class="text-muted d-block">
                                 <i class="fas fa-clock me-1"></i>
                                 ${new Date(message.timestamp).toLocaleString()}
-                            </div>
+                            </small>
                         </div>
-                        <div class="ms-3">
-                            <button class="btn btn-outline-primary btn-sm reply-message mb-1" 
-                                    data-customer-name="${escapeHtml(message.customerName)}" 
-                                    data-original-type="message" 
-                                    data-message-id="${message.id}">
-                                <i class="fas fa-reply me-1"></i>Reply
-                            </button>
-                            ${isNew ? `
-                                <button class="btn btn-outline-secondary btn-sm mark-displayed" 
-                                        data-message-id="${message.id}">
-                                    <i class="fas fa-check me-1"></i>Mark Displayed
+                        <div class="message-card-actions">
+                            ${!message.displayed ? `
+                                <button class="btn btn-outline-primary btn-sm mark-displayed" 
+                                        data-message-id="${message.id}"
+                                        title="Mark displayed">
+                                    <i class="fas fa-check"></i>
                                 </button>
                             ` : ''}
+                            <button class="btn btn-success btn-sm reply-message" 
+                                    data-customer-name="${nameAttr}"
+                                    data-message-id="${message.id}"
+                                    data-original-type="message"
+                                    title="Reply">
+                                <i class="fas fa-reply"></i>
+                            </button>
                         </div>
+                    </div>
+                    <div class="message-text small">${message.message}</div>
+                    <div class="message-card-actions-bottom">
+                        <button class="btn btn-success btn-sm reply-message" 
+                                data-customer-name="${nameAttr}"
+                                data-message-id="${message.id}"
+                                data-original-type="message">
+                            <i class="fas fa-reply me-1"></i>Reply to ${name}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -232,6 +255,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    function escapeAttr(text) {
+        return String(text ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;');
     }
 
     // Remove individual request
@@ -296,7 +326,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Mark all messages as displayed
     markAllDisplayed.addEventListener('click', function() {
-        const unreadMessages = document.querySelectorAll('[data-message-id] .mark-displayed');
+        const unreadMessages = document.querySelectorAll('#messagesList > .card .mark-displayed');
         if (unreadMessages.length === 0) {
             showAlert('No new messages to mark', 'info');
             return;
@@ -356,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                const messageCard = document.querySelector(`[data-message-id="${messageId}"]`);
+                const messageCard = document.querySelector(`#messagesList > .card[data-message-id="${messageId}"]`);
                 if (messageCard) {
                     messageCard.classList.add('bg-light');
                     const button = messageCard.querySelector('.mark-displayed');
@@ -395,6 +425,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 300);
     }
 
+    document.addEventListener('mdj-open-reply', function(e) {
+        const { customerName, originalType, originalId } = e.detail || {};
+        if (customerName) {
+            openReplyModal(customerName, originalType || 'message', originalId || '');
+        }
+    });
+
+    // Direct toggle updates the visibility hint under the reply box
+    const replyDirectToggle = document.getElementById('replyDirect');
+    const replyVisibilityHint = document.getElementById('replyVisibilityHint');
+    if (replyDirectToggle && replyVisibilityHint) {
+        replyDirectToggle.addEventListener('change', function() {
+            replyVisibilityHint.textContent = this.checked
+                ? 'Sent privately to the guest\u2019s phone only'
+                : 'This message will be displayed on the public message screen';
+        });
+    }
+
     // Send reply
     sendReplyBtn.addEventListener('click', function() {
         const formData = new FormData(replyForm);
@@ -402,7 +450,8 @@ document.addEventListener('DOMContentLoaded', function() {
             customerName: formData.get('customerName'),
             replyMessage: formData.get('replyMessage'),
             originalType: formData.get('originalType'),
-            originalId: formData.get('originalId')
+            originalId: formData.get('originalId'),
+            direct: replyDirectToggle ? replyDirectToggle.checked : false
         };
 
         if (!replyData.replyMessage.trim()) {
@@ -425,11 +474,18 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                showAlert(`Reply sent to ${replyData.customerName}!`, 'success');
+                showAlert(replyData.direct
+                    ? `Direct reply sent to ${replyData.customerName} (not shown on display)`
+                    : `Reply sent to ${replyData.customerName}!`, 'success');
                 replyModal.hide();
                 
-                // Reset form
+                // Reset form (including the direct toggle and its hint)
                 replyForm.reset();
+                if (replyDirectToggle) {
+                    replyDirectToggle.checked = false;
+                    replyDirectToggle.dispatchEvent(new Event('change'));
+                }
+                refreshData();
             } else {
                 showAlert('Failed to send reply', 'danger');
             }

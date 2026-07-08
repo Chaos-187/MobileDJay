@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose an Event — EYUP EVENTS</title>
+    <meta name="theme-color" content="#0a0a0a">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+    <link href="/css/eyup-site-chrome.css" rel="stylesheet">
+    <style>
+        .events-picker-page { max-width: 960px; margin: 0 auto; padding-bottom: 2rem; }
+        .events-picker-hero { text-align: center; padding: 2rem 0 1.5rem; }
+        .events-picker-hero h1 { font-family: Orbitron, Inter, sans-serif; font-weight: 700; letter-spacing: 0.02em; }
+        .events-picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+        .event-picker-card {
+            display: flex; flex-direction: column; height: 100%;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; overflow: hidden; text-decoration: none; color: inherit;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .event-picker-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(99, 179, 237, 0.5);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            color: inherit;
+        }
+        .event-picker-card__logo {
+            min-height: 100px; display: flex; align-items: center; justify-content: center;
+            padding: 1.25rem 1rem 0.5rem; background: rgba(0,0,0,0.2);
+        }
+        .event-picker-card__logo img { max-height: 72px; max-width: 80%; object-fit: contain; }
+        .event-picker-card__body { padding: 1rem 1.25rem 1.25rem; flex: 1; display: flex; flex-direction: column; }
+        .event-picker-card__title { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.35rem; }
+        .event-picker-card__meta { font-size: 0.875rem; opacity: 0.75; margin-bottom: 0.25rem; }
+        .event-picker-card__desc {
+            font-size: 0.875rem; opacity: 0.85; margin-top: 0.5rem; flex: 1;
+            display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .event-picker-card__cta {
+            margin-top: 1rem; font-size: 0.875rem; font-weight: 600; color: #63b3ed;
+        }
+        .events-picker-empty {
+            text-align: center; padding: 3rem 1.5rem;
+            background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.15);
+        }
+    </style>
+</head>
+<body class="mdj-eyup-brand">
+    <div class="mdj-scanlines" aria-hidden="true"></div>
+
+    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Events">
+        <div class="nav-container">
+            <div class="logo" role="img" aria-label="EYUP EVENTS">
+                <span class="logo-text">EYUP</span>
+                <span class="logo-accent">EVENTS</span>
+                <span class="logo-subtitle">Choose your event</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        <div class="events-picker-page">
+            <header class="events-picker-hero">
+                <h1>Choose an event</h1>
+                <p class="lead mb-0">Select the event you're attending to send requests and messages to the DJ.</p>
+            </header>
+
+            <% if (!events || events.length === 0) { %>
+            <div class="events-picker-empty">
+                <i class="fas fa-calendar-xmark fa-3x mb-3 opacity-50"></i>
+                <h2 class="h5">No events available right now</h2>
+                <p class="text-muted mb-0">Check back later or ask your DJ for a direct event link.</p>
+            </div>
+            <% } else { %>
+            <div class="events-picker-grid">
+                <% events.forEach(function(event) {
+                    const accent = event.accent_color || '#0d6efd';
+                    const heading = event.heading_color || '#fff';
+                %>
+                <a href="/event/<%= event.slug %>" class="event-picker-card" style="--event-accent: <%= accent %>;">
+                    <div class="event-picker-card__logo">
+                        <% if (event.logo_image) { %>
+                        <img src="<%= event.logo_image %>" alt="<%= event.name %> logo">
+                        <% } else { %>
+                        <i class="fas fa-calendar-day fa-2x opacity-50"></i>
+                        <% } %>
+                    </div>
+                    <div class="event-picker-card__body">
+                        <div class="event-picker-card__title" style="color: <%= heading %>;"><%= event.name %></div>
+                        <% if (event.venue) { %>
+                        <div class="event-picker-card__meta"><i class="fas fa-map-marker-alt me-1"></i><%= event.venue %></div>
+                        <% } %>
+                        <% if (event.event_date) { %>
+                        <div class="event-picker-card__meta"><i class="fas fa-clock me-1"></i><%= new Date(event.event_date).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) %></div>
+                        <% } %>
+                        <% if (event.description) { %>
+                        <p class="event-picker-card__desc"><%= event.description %></p>
+                        <% } %>
+                        <span class="event-picker-card__cta" style="color: <%= accent %>;">
+                            Open event <i class="fas fa-arrow-right ms-1"></i>
+                        </span>
+                    </div>
+                </a>
+                <% }); %>
+            </div>
+            <% } %>
+        </div>
+
+        <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-label="Company">
+            <div class="mdj-footer-container">
+                <div class="mdj-company-foot">
+                    <p class="mdj-company-foot__legal">&copy; 2026 EYUP EVENTS UK LTD · Co. no. 17186451 · All rights reserved</p>
+                </div>
+            </div>
+        </footer>
+    </main>
+</body>
+</html>

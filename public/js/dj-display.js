@@ -507,4 +507,322 @@ document.addEventListener('DOMContentLoaded', function() {
         div.textContent = text;
         return div.innerHTML;
     }
+
+    // ============================================
+    // PHOTO SHOWCASE (DJ pushes a guest photo to this display)
+    // ============================================
+    const photoShowcaseOverlay = document.getElementById('photoShowcaseOverlay');
+    const photoShowcaseFrame = document.getElementById('photoShowcaseFrame');
+    const photoShowcaseImg = document.getElementById('photoShowcaseImg');
+    const photoShowcaseBanner = document.getElementById('photoShowcaseBanner');
+    const photoShowcaseCaption = document.getElementById('photoShowcaseCaption');
+    const photoShowcaseAmbient = document.getElementById('photoShowcaseAmbient');
+
+    const PHOTO_SHOWCASE_TIME = 12000; // how long the photo stays up
+    let photoShowcasePollInterval;
+    let isShowingPhoto = false;
+    let ambientTimer = null;
+
+    // Full-screen ambience per banner style, runs while the photo is up
+    function startAmbient(style) {
+        stopAmbient();
+        if (style === 'party') {
+            const colors = ['#ff6b6b', '#ffb340', '#ffe45c', '#6bff8f', '#6be7ff', '#b06bff'];
+            ambientTimer = setInterval(() => {
+                const piece = document.createElement('div');
+                piece.className = 'showcase-confetti';
+                piece.style.left = Math.random() * 100 + 'vw';
+                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.animationDuration = (2.5 + Math.random() * 2) + 's';
+                piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                photoShowcaseAmbient.appendChild(piece);
+                setTimeout(() => piece.remove(), 5000);
+            }, 180);
+        } else if (style === 'neon') {
+            const orbColors = ['rgba(255,0,230,0.4)', 'rgba(107,231,255,0.4)', 'rgba(176,107,255,0.35)'];
+            const spots = [
+                { left: '-12vmin', top: '-12vmin' }, { right: '-12vmin', top: '-12vmin' },
+                { left: '-12vmin', bottom: '-12vmin' }, { right: '-12vmin', bottom: '-12vmin' },
+                { left: '40vw', top: '-18vmin' }, { left: '40vw', bottom: '-18vmin' }
+            ];
+            spots.forEach((pos, i) => {
+                const orb = document.createElement('div');
+                orb.className = 'neon-orb';
+                Object.assign(orb.style, pos);
+                orb.style.background = `radial-gradient(circle, ${orbColors[i % orbColors.length]}, transparent 70%)`;
+                orb.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+                orb.style.animationDelay = (Math.random() * 1.5) + 's';
+                photoShowcaseAmbient.appendChild(orb);
+            });
+        } else if (style === 'elegant') {
+            ambientTimer = setInterval(() => {
+                const mote = document.createElement('div');
+                mote.className = 'gold-mote';
+                mote.style.left = Math.random() * 100 + 'vw';
+                const size = 4 + Math.random() * 6;
+                mote.style.width = size + 'px';
+                mote.style.height = size + 'px';
+                mote.style.animationDuration = (5 + Math.random() * 4) + 's';
+                photoShowcaseAmbient.appendChild(mote);
+                setTimeout(() => mote.remove(), 10000);
+            }, 350);
+        }
+        // minimal: intentionally no ambience
+    }
+
+    function stopAmbient() {
+        if (ambientTimer) {
+            clearInterval(ambientTimer);
+            ambientTimer = null;
+        }
+        photoShowcaseAmbient.innerHTML = '';
+    }
+
+    function startPhotoShowcasePolling() {
+        if (!window.displayEventSlug || !photoShowcaseOverlay) return;
+        photoShowcasePollInterval = setInterval(checkForPhotoShowcase, 2000);
+    }
+
+    function checkForPhotoShowcase() {
+        if (isShowingPhoto) return;
+        fetch(`/api/display/${encodeURIComponent(window.displayEventSlug)}/photo-showcase`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.photo) {
+                    // Acknowledge immediately so it isn't shown twice
+                    fetch(`/api/display/${encodeURIComponent(window.displayEventSlug)}/photo-showcase/clear`, { method: 'POST' });
+                    showPhotoShowcase(data);
+                }
+            })
+            .catch(() => { /* transient network error — keep polling */ });
+    }
+
+    function showPhotoShowcase(data) {
+        isShowingPhoto = true;
+        const photo = data.photo;
+
+        photoShowcaseImg.src = photo.url;
+        const style = ['party', 'neon', 'elegant', 'minimal'].includes(data.bannerStyle) ? data.bannerStyle : 'party';
+        photoShowcaseBanner.className = 'photo-showcase-banner banner-' + style;
+        photoShowcaseOverlay.classList.remove('style-party', 'style-neon', 'style-elegant', 'style-minimal');
+        photoShowcaseOverlay.classList.add('style-' + style);
+        const who = photo.customerName || 'A guest';
+        if (data.slideshow) {
+            photoShowcaseBanner.innerHTML = `<i class="fas fa-camera-retro me-2"></i>Photo Memories`;
+        } else {
+            photoShowcaseBanner.innerHTML = `<i class="fas fa-camera me-2"></i>${escapeHtml(who)}'s Photo!`;
+        }
+        photoShowcaseCaption.innerHTML = photo.caption
+            ? `"${escapeHtml(photo.caption)}" — <span class="who">${escapeHtml(who)}</span>`
+            : `Shared by <span class="who">${escapeHtml(who)}</span>`;
+
+        // Sprinkle sparkles around the frame (not for the minimal style)
+        photoShowcaseFrame.querySelectorAll('.photo-sparkle').forEach(s => s.remove());
+        if (style !== 'minimal') {
+            const sparkleIcons = ['fa-star', 'fa-star', 'fa-certificate', 'fa-star-of-life'];
+            for (let i = 0; i < 10; i++) {
+                const sparkle = document.createElement('i');
+                sparkle.className = `fas ${sparkleIcons[i % sparkleIcons.length]} photo-sparkle`;
+                sparkle.style.fontSize = `${14 + Math.random() * 22}px`;
+                sparkle.style.left = `${-4 + Math.random() * 108}%`;
+                sparkle.style.top = `${-4 + Math.random() * 108}%`;
+                sparkle.style.animationDelay = `${Math.random() * 1.6}s`;
+                photoShowcaseFrame.appendChild(sparkle);
+            }
+        }
+
+        photoShowcaseOverlay.classList.remove('closing');
+        photoShowcaseOverlay.classList.add('active');
+        startAmbient(style);
+
+        setTimeout(hidePhotoShowcase, PHOTO_SHOWCASE_TIME);
+    }
+
+    function hidePhotoShowcase() {
+        if (!isShowingPhoto) return;
+        photoShowcaseOverlay.classList.add('closing');
+        setTimeout(() => {
+            photoShowcaseOverlay.classList.remove('active', 'closing');
+            stopAmbient();
+            photoShowcaseImg.src = '';
+            isShowingPhoto = false;
+        }, 520);
+    }
+
+    // Allow Escape to dismiss the photo early (matches message behavior)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isShowingPhoto) hidePhotoShowcase();
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            clearInterval(photoShowcasePollInterval);
+        } else {
+            startPhotoShowcasePolling();
+        }
+    });
+
+    startPhotoShowcasePolling();
+
+    // ============================================
+    // DJ SCREEN PROMPTS (animated announcements from the dashboard)
+    // ============================================
+    const screenPromptOverlay = document.getElementById('screenPromptOverlay');
+    const screenPromptAmbient = document.getElementById('screenPromptAmbient');
+    const screenPromptCard = document.getElementById('screenPromptCard');
+    const screenPromptIcon = document.getElementById('screenPromptIcon');
+    const screenPromptTitle = document.getElementById('screenPromptTitle');
+    const screenPromptSub = document.getElementById('screenPromptSub');
+    const promptCameraFlash = document.getElementById('promptCameraFlash');
+
+    const PROMPT_DISPLAY_TIME = 6500;
+    let screenPromptPollInterval;
+    let isShowingPrompt = false;
+    let promptAmbientTimer = null;
+    let promptHideTimer = null;
+    let lastShownPromptKey = null;
+
+    function getPromptPollSlug() {
+        return window.displayEventSlug || 'global';
+    }
+
+    function startPromptAmbient(style) {
+        stopPromptAmbient();
+        if (style === 'great-moves') {
+            promptAmbientTimer = setInterval(() => {
+                const star = document.createElement('i');
+                star.className = 'fas fa-star prompt-star-burst';
+                star.style.left = (20 + Math.random() * 60) + 'vw';
+                star.style.top = (20 + Math.random() * 60) + 'vh';
+                screenPromptAmbient.appendChild(star);
+                setTimeout(() => star.remove(), 1400);
+            }, 280);
+        } else if (style === 'dance-floor') {
+            for (let i = 0; i < 12; i++) {
+                const light = document.createElement('div');
+                light.className = 'prompt-floor-light';
+                light.style.left = (i * 8.5) + 'vw';
+                light.style.animationDelay = (i * 0.1) + 's';
+                screenPromptAmbient.appendChild(light);
+            }
+        } else if (style === 'slow-dance') {
+            promptAmbientTimer = setInterval(() => {
+                const heart = document.createElement('i');
+                heart.className = 'fas fa-heart prompt-heart';
+                heart.style.left = Math.random() * 100 + 'vw';
+                heart.style.bottom = '-20px';
+                heart.style.fontSize = (1.2 + Math.random() * 2) + 'rem';
+                heart.style.animationDuration = (4 + Math.random() * 3) + 's';
+                screenPromptAmbient.appendChild(heart);
+                setTimeout(() => heart.remove(), 8000);
+            }, 400);
+        } else if (style === 'applause') {
+            const colors = ['#ffd700', '#ffb340', '#ff6b6b', '#fff8dc', '#daa520'];
+            promptAmbientTimer = setInterval(() => {
+                const piece = document.createElement('div');
+                piece.className = 'prompt-applause-confetti';
+                piece.style.left = Math.random() * 100 + 'vw';
+                piece.style.top = '-10px';
+                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+                piece.style.animationDuration = (2 + Math.random() * 2) + 's';
+                screenPromptAmbient.appendChild(piece);
+                setTimeout(() => piece.remove(), 5000);
+            }, 120);
+        } else if (style === 'selfie') {
+            if (promptCameraFlash) {
+                promptCameraFlash.classList.add('flash');
+                setTimeout(() => promptCameraFlash.classList.remove('flash'), 400);
+                promptAmbientTimer = setInterval(() => {
+                    promptCameraFlash.classList.add('flash');
+                    setTimeout(() => promptCameraFlash.classList.remove('flash'), 400);
+                }, 2200);
+            }
+        }
+    }
+
+    function stopPromptAmbient() {
+        if (promptAmbientTimer) {
+            clearInterval(promptAmbientTimer);
+            promptAmbientTimer = null;
+        }
+        if (screenPromptAmbient) screenPromptAmbient.innerHTML = '';
+    }
+
+    function startScreenPromptPolling() {
+        if (!screenPromptOverlay) return;
+        if (screenPromptPollInterval) {
+            clearInterval(screenPromptPollInterval);
+        }
+        screenPromptPollInterval = setInterval(checkForScreenPrompt, 1500);
+    }
+
+    function checkForScreenPrompt() {
+        if (isShowingPrompt) return;
+        const slug = getPromptPollSlug();
+        fetch(`/api/display/${encodeURIComponent(slug)}/prompt`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data || !data.prompt) return;
+
+                // Belt-and-braces: skip if we already showed this exact trigger
+                const promptKey = `${data.prompt.id}-${data.timestamp || 0}`;
+                if (promptKey === lastShownPromptKey) return;
+                lastShownPromptKey = promptKey;
+
+                showScreenPrompt(data.prompt);
+            })
+            .catch(() => {});
+    }
+
+    function showScreenPrompt(prompt) {
+        if (!screenPromptOverlay || isShowingPrompt) return;
+        isShowingPrompt = true;
+
+        if (promptHideTimer) {
+            clearTimeout(promptHideTimer);
+            promptHideTimer = null;
+        }
+
+        const style = prompt.style || 'great-moves';
+        screenPromptOverlay.className = 'screen-prompt-overlay style-' + style;
+        screenPromptIcon.innerHTML = `<i class="fas ${prompt.icon || 'fa-star'}"></i>`;
+        screenPromptTitle.textContent = prompt.label || 'Announcement';
+        screenPromptSub.textContent = prompt.subtext || '';
+
+        screenPromptOverlay.classList.remove('closing');
+        screenPromptOverlay.classList.add('active');
+        startPromptAmbient(style);
+
+        promptHideTimer = setTimeout(hideScreenPrompt, PROMPT_DISPLAY_TIME);
+    }
+
+    function hideScreenPrompt() {
+        if (!isShowingPrompt) return;
+        if (promptHideTimer) {
+            clearTimeout(promptHideTimer);
+            promptHideTimer = null;
+        }
+        screenPromptOverlay.classList.add('closing');
+        setTimeout(() => {
+            screenPromptOverlay.classList.remove('active', 'closing');
+            screenPromptOverlay.className = 'screen-prompt-overlay';
+            stopPromptAmbient();
+            isShowingPrompt = false;
+        }, 500);
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && isShowingPrompt) hideScreenPrompt();
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            clearInterval(screenPromptPollInterval);
+        } else {
+            startScreenPromptPolling();
+        }
+    });
+
+    startScreenPromptPolling();
 });

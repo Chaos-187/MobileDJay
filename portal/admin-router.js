@@ -457,6 +457,30 @@ router.delete('/bookings/:id/assignments/:dj_user_id', (req, res) => {
 
 // --- Catalog products & services ---
 
+router.get('/catalog/export', (req, res) => {
+    const snapshot = portalDb.exportCatalogSnapshot();
+    audit(req.portalUser.id, 'catalog.export', 'catalog', null, {
+        product_count: snapshot.products.length
+    });
+    res.json(snapshot);
+});
+
+router.post('/catalog/import', (req, res) => {
+    const body = req.body || {};
+    if (!body.products || !Array.isArray(body.products)) {
+        return jsonError(res, 'validation_error', 'products array is required', 422);
+    }
+    try {
+        const replaceAddonLinks = body.replace_addon_links !== false;
+        const stats = portalDb.importCatalogSnapshot(body, { replaceAddonLinks });
+        audit(req.portalUser.id, 'catalog.import', 'catalog', null, stats);
+        res.json({ ok: true, ...stats });
+    } catch (err) {
+        console.error('[portal] admin/catalog/import', err);
+        return jsonError(res, 'internal_error', err.message || 'Import failed', 500);
+    }
+});
+
 router.get('/catalog/products', (req, res) => {
     const activeOnly = req.query.active === '1' || req.query.active === 'true';
     const products = portalDb.listCatalogProducts({ activeOnly });

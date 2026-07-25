@@ -823,7 +823,7 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | Method | Path | Notes |
 |--------|------|--------|
 | `GET` | `/admin/catalog/products` | Query `?active=1` for booking picker |
-| `POST` | `/admin/catalog/products` | Body: `code`, `name`, `pricing_model` (`hourly` \| `flat` \| `unit`), `standalone_rate`, optional `capability_code`, `allows_addons`, `is_active`, `sort_order` |
+| `POST` | `/admin/catalog/products` | Body: `code`, `name`, `pricing_model` (`hourly` \| `flat` \| `unit`), `standalone_rate`, optional `minimum_hours` (hourly), optional `capability_code`, `allows_addons`, `is_active`, `sort_order` |
 | `GET` | `/admin/catalog/products/:id` | Includes **`addons[]`** |
 | `PATCH` | `/admin/catalog/products/:id` | Partial update |
 | `DELETE` | `/admin/catalog/products/:id` | Hard delete or deactivate if used on bookings |
@@ -833,6 +833,11 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 **Booking create/patch** optional **`line_items`**: array of `{ product_id, pricing_context: "standalone"|"addon", client_key?, parent_client_key?, hours?, quantity?, unit_rate?, discount_type?, discount_value?, label? }`. Parent add-ons must reference a root line via **`parent_client_key`** on create.
 
 **GET booking** includes **`line_items`**, **`quote_subtotal`**, **`quote_total`**.
+
+| Method | Path | Notes |
+|--------|------|--------|
+| `GET` | `/admin/catalog/export` | Full catalog JSON (`version`, `exported_at`, `products[]` with `addons[]` by **code**) |
+| `POST` | `/admin/catalog/import` | Body: `{ "products": [...], "replace_addon_links"?: true }` — upsert by **code**; returns `{ created, updated, addons_linked, errors[] }` |
 
 ---
 

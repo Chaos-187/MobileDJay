@@ -81,6 +81,7 @@ async function main() {
         description: 'Professional mobile DJ — hourly rate',
         pricing_model: 'hourly',
         standalone_rate: 150,
+        minimum_hours: 2,
         capability_code: 'mobile_dj',
         sort_order: 10
     });

@@ -217,6 +217,7 @@ db.exec(`
         pricing_model TEXT NOT NULL DEFAULT 'hourly'
             CHECK(pricing_model IN ('hourly','flat','unit')),
         standalone_rate REAL NOT NULL DEFAULT 0,
+        minimum_hours REAL,
         currency TEXT NOT NULL DEFAULT 'GBP',
         capability_code TEXT,
         allows_addons INTEGER NOT NULL DEFAULT 1 CHECK(allows_addons IN (0,1)),
@@ -259,6 +260,26 @@ db.exec(`
     );
     CREATE INDEX IF NOT EXISTS idx_booking_line_items_booking ON booking_line_items(booking_id, sort_order);
 `);
+
+try {
+    db.exec(`ALTER TABLE catalog_products ADD COLUMN minimum_hours REAL`);
+} catch (e) {
+    /* exists */
+}
+
+function clampHoursToProductMinimum(product, hours) {
+    const min =
+        product && product.minimum_hours != null && Number.isFinite(Number(product.minimum_hours))
+            ? Number(product.minimum_hours)
+            : 0;
+    let h = Number(hours);
+    if (!Number.isFinite(h) || h <= 0) {
+        h = min > 0 ? min : 0;
+    } else if (min > 0 && h < min) {
+        h = min;
+    }
+    return h;
+}
 
 function computeCatalogLineSubtotal({ pricing_model: pricingModel, quantity, hours, unit_rate: unitRate, discount_type: discountType, discount_value: discountValue }) {
     const model = pricingModel || 'hourly';
@@ -1253,9 +1274,9 @@ const portalDb = {
         const t = nowIso();
         db.prepare(`
             INSERT INTO catalog_products (
-                id, code, name, description, pricing_model, standalone_rate, currency,
+                id, code, name, description, pricing_model, standalone_rate, minimum_hours, currency,
                 capability_code, allows_addons, is_active, sort_order, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             id,
             String(row.code).trim().toLowerCase(),
@@ -1263,6 +1284,9 @@ const portalDb = {
             row.description != null ? String(row.description) : '',
             ['hourly', 'flat', 'unit'].includes(row.pricing_model) ? row.pricing_model : 'hourly',
             Number.isFinite(Number(row.standalone_rate)) ? Number(row.standalone_rate) : 0,
+            row.minimum_hours != null && row.minimum_hours !== '' && Number.isFinite(Number(row.minimum_hours))
+                ? Number(row.minimum_hours)
+                : null,
             row.currency != null && String(row.currency).trim()
                 ? String(row.currency).trim().toUpperCase()
                 : 'GBP',
@@ -1287,6 +1311,7 @@ const portalDb = {
             'description',
             'pricing_model',
             'standalone_rate',
+            'minimum_hours',
             'currency',
             'capability_code',
             'allows_addons',
@@ -1304,7 +1329,10 @@ const portalDb = {
             else if (key === 'pricing_model') {
                 if (!['hourly', 'flat', 'unit'].includes(val)) continue;
             } else if (key === 'standalone_rate') val = Number(val);
-            else if (key === 'currency') val = String(val).trim().toUpperCase();
+            else if (key === 'minimum_hours') {
+                val =
+                    val != null && val !== '' && Number.isFinite(Number(val)) ? Number(val) : null;
+            } else if (key === 'currency') val = String(val).trim().toUpperCase();
             else if (key === 'capability_code') {
                 val =
                     val != null && String(val).trim() ? String(val).trim().toLowerCase() : null;
@@ -1469,10 +1497,17 @@ const portalDb = {
                           })()
                         : product.pricing_model;
 
+                let hoursOut =
+                    raw.hours != null && raw.hours !== '' ? Number(raw.hours) : null;
+                if (pricingModel === 'hourly') {
+                    hoursOut = clampHoursToProductMinimum(product, hoursOut);
+                    if (!Number.isFinite(hoursOut) || hoursOut <= 0) hoursOut = null;
+                }
+
                 const lineSubtotal = computeCatalogLineSubtotal({
                     pricing_model: pricingModel,
                     quantity: raw.quantity,
-                    hours: raw.hours,
+                    hours: hoursOut,
                     unit_rate: unitRate,
                     discount_type: raw.discount_type,
                     discount_value: raw.discount_value
@@ -1490,7 +1525,7 @@ const portalDb = {
                     parentId,
                     pricingContext,
                     Number.isFinite(Number(raw.quantity)) ? Number(raw.quantity) : 1,
-                    raw.hours != null && raw.hours !== '' ? Number(raw.hours) : null,
+                    hoursOut,
                     unitRate,
                     ['none', 'percent', 'fixed'].includes(raw.discount_type) ? raw.discount_type : 'none',
                     Number.isFinite(Number(raw.discount_value)) ? Number(raw.discount_value) : 0,
@@ -1504,6 +1539,136 @@ const portalDb = {
         })();
 
         return portalDb.getBookingLineItems(bookingId);
+    },
+
+    exportCatalogSnapshot() {
+        const rows = portalDb.listCatalogProducts({ activeOnly: false });
+        const products = rows.map((p) => {
+            const full = portalDb.getCatalogProductById(p.id);
+            const addons = (full.addons || []).map((a) => ({
+                addon_code: a.addon_code,
+                addon_rate: a.addon_rate,
+                addon_pricing_model: a.addon_pricing_model || null
+            }));
+            return {
+                code: full.code,
+                name: full.name,
+                description: full.description || '',
+                pricing_model: full.pricing_model,
+                standalone_rate: full.standalone_rate,
+                minimum_hours: full.minimum_hours != null ? full.minimum_hours : null,
+                currency: full.currency || 'GBP',
+                capability_code: full.capability_code || null,
+                allows_addons: full.allows_addons !== false,
+                is_active: full.is_active !== false,
+                sort_order: full.sort_order != null ? full.sort_order : 0,
+                addons
+            };
+        });
+        return {
+            version: 1,
+            exported_at: nowIso(),
+            products
+        };
+    },
+
+    importCatalogSnapshot(payload, { replaceAddonLinks = true } = {}) {
+        const list = payload && Array.isArray(payload.products) ? payload.products : [];
+        const stats = { created: 0, updated: 0, addons_linked: 0, errors: [] };
+
+        const upsertOne = (row) => {
+            const code = String(row.code || '').trim().toLowerCase();
+            if (!code || !row.name) {
+                stats.errors.push({ code: row.code || '', message: 'code and name required' });
+                return null;
+            }
+            const existing = portalDb.getCatalogProductByCode(code);
+            const fields = {
+                name: String(row.name).trim(),
+                description: row.description != null ? String(row.description) : '',
+                pricing_model: ['hourly', 'flat', 'unit'].includes(row.pricing_model)
+                    ? row.pricing_model
+                    : 'hourly',
+                standalone_rate: Number.isFinite(Number(row.standalone_rate))
+                    ? Number(row.standalone_rate)
+                    : 0,
+                minimum_hours:
+                    row.minimum_hours != null &&
+                    row.minimum_hours !== '' &&
+                    Number.isFinite(Number(row.minimum_hours))
+                        ? Number(row.minimum_hours)
+                        : null,
+                currency:
+                    row.currency != null && String(row.currency).trim()
+                        ? String(row.currency).trim().toUpperCase()
+                        : 'GBP',
+                capability_code:
+                    row.capability_code != null && String(row.capability_code).trim()
+                        ? String(row.capability_code).trim().toLowerCase()
+                        : null,
+                allows_addons: !(row.allows_addons === false || row.allows_addons === 0),
+                is_active: !(row.is_active === false || row.is_active === 0),
+                sort_order: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0
+            };
+            if (existing) {
+                portalDb.updateCatalogProduct(existing.id, fields);
+                stats.updated += 1;
+                return portalDb.getCatalogProductById(existing.id);
+            }
+            const created = portalDb.insertCatalogProduct({ code, ...fields });
+            stats.created += 1;
+            return created;
+        };
+
+        db.transaction(() => {
+            list.forEach((row) => upsertOne(row));
+        })();
+
+        const codeToId = new Map();
+        portalDb.listCatalogProducts({ activeOnly: false }).forEach((p) => {
+            codeToId.set(String(p.code).toLowerCase(), p.id);
+        });
+
+        list.forEach((row) => {
+            const parentCode = String(row.code || '').trim().toLowerCase();
+            const parentId = codeToId.get(parentCode);
+            if (!parentId) return;
+            const addons = Array.isArray(row.addons) ? row.addons : [];
+
+            if (replaceAddonLinks) {
+                const parentFull = portalDb.getCatalogProductById(parentId);
+                (parentFull.addons || []).forEach((a) => {
+                    portalDb.deleteCatalogProductAddon(parentId, a.addon_product_id);
+                });
+            }
+
+            addons.forEach((a) => {
+                const addonCode = String(a.addon_code || a.code || '').trim().toLowerCase();
+                if (!addonCode) {
+                    stats.errors.push({
+                        code: parentCode,
+                        message: 'addon missing addon_code'
+                    });
+                    return;
+                }
+                const addonId = codeToId.get(addonCode);
+                if (!addonId) {
+                    stats.errors.push({
+                        code: parentCode,
+                        message: 'unknown addon_code: ' + addonCode
+                    });
+                    return;
+                }
+                if (addonId === parentId) return;
+                portalDb.upsertCatalogProductAddon(parentId, addonId, {
+                    addon_rate: a.addon_rate,
+                    addon_pricing_model: a.addon_pricing_model
+                });
+                stats.addons_linked += 1;
+            });
+        });
+
+        return stats;
     }
 };
 

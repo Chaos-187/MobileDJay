@@ -82,9 +82,11 @@ function djRowToPayload(row) {
         assignment_crew_capabilities_json: capsJson,
         ...bookingRow
     } = row;
+    const music = resolveMusicPlanForBooking(bookingRow);
     return {
         ...bookingCard(bookingRow),
         dj_briefing: bookingRow.dj_briefing || '',
+        music_plan_summary: music.music_plan_summary,
         assignment: {
             crew_role_label: roleLabel || null,
             crew_capabilities: parseCapabilitiesJson(capsJson)
@@ -427,10 +429,31 @@ customerBookingRouter.get('/:id', (req, res) => {
         return jsonError(res, 'not_found', 'Booking not found', 404);
     }
     const note = portalDb.getCustomerBookingNote(req.portalUser.id, booking.id);
+    const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
     res.json({
         ...bookingCard(booking),
         notes_from_company: booking.notes_from_company || '',
-        booking_customer_note: note?.body ?? ''
+        booking_customer_note: note?.body ?? '',
+        music_plan,
+        music_plan_summary
+    });
+});
+
+customerBookingRouter.put('/:id/music-plan', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking || booking.customer_id !== req.portalUser.id) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const { music_plan: musicPlanIn } = req.body || {};
+    if (musicPlanIn == null || typeof musicPlanIn !== 'object') {
+        return jsonError(res, 'validation_error', 'music_plan object is required', 422);
+    }
+    const normalized = normalizePlaylist(musicPlanIn);
+    portalDb.upsertMusicPlan(booking.customer_id, booking.id, normalized);
+    const resolved = resolveMusicPlanForBooking(booking);
+    res.json({
+        music_plan: resolved.music_plan,
+        music_plan_summary: resolved.music_plan_summary
     });
 });
 

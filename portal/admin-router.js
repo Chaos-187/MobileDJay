@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { portalDb, uuid, normalizeEmail } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
-const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist } = require('./music-plan');
+const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist, normalizePlaylist } = require('./music-plan');
 const { getSiteSettings, putSiteSettings } = require('./site-settings-service');
 
 const router = express.Router();
@@ -409,6 +409,25 @@ router.patch('/bookings/:id', (req, res) => {
     const items = portalDb.getBookingLineItems(req.params.id);
     const quote = portalDb.summarizeBookingQuote(items);
     res.json({ ...updated, line_items: items, ...quote });
+});
+
+router.put('/bookings/:id/music-plan', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const { music_plan: musicPlanIn } = req.body || {};
+    if (musicPlanIn == null || typeof musicPlanIn !== 'object') {
+        return jsonError(res, 'validation_error', 'music_plan object is required', 422);
+    }
+    const normalized = normalizePlaylist(musicPlanIn);
+    portalDb.upsertMusicPlan(booking.customer_id, booking.id, normalized);
+    audit(req.portalUser.id, 'booking.music_plan', 'booking', req.params.id, {});
+    const resolved = resolveMusicPlanForBooking(booking);
+    res.json({
+        music_plan: resolved.music_plan,
+        music_plan_summary: resolved.music_plan_summary
+    });
 });
 
 router.post('/bookings/:id/assignments', (req, res) => {

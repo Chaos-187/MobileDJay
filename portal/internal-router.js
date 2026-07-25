@@ -226,12 +226,12 @@ function handleInternalCreateBooking(req, res) {
         if (Array.isArray(djEmails)) {
             djEmails.forEach((em) => {
                 const u = portalDb.getUserByEmail(em);
-                if (u && u.role === 'dj') assignIds.add(u.id);
+                if (portalDb.isCrewAssignableUser(u)) assignIds.add(u.id);
             });
         }
         for (const djId of assignIds) {
             const u = portalDb.getUserById(djId);
-            if (u && u.role === 'dj') {
+            if (portalDb.isCrewAssignableUser(u)) {
                 portalDb.assignDj(bookingId, djId);
             }
         }

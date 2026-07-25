@@ -4,6 +4,7 @@ const { portalDb, uuid, normalizeEmail } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
 const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist, normalizePlaylist } = require('./music-plan');
 const { getSiteSettings, putSiteSettings } = require('./site-settings-service');
+const { snapshotToCsv, csvToImportPayload } = require('./catalog-csv');
 
 const router = express.Router();
 
@@ -441,8 +442,13 @@ router.post('/bookings/:id/assignments', (req, res) => {
         return jsonError(res, 'validation_error', 'dj_user_id is required', 422);
     }
     const u = portalDb.getUserById(djUserId);
-    if (!u || u.role !== 'dj') {
-        return jsonError(res, 'validation_error', 'dj_user_id must be a crew (dj) user', 422);
+    if (!portalDb.isCrewAssignableUser(u)) {
+        return jsonError(
+            res,
+            'validation_error',
+            'dj_user_id must be a crew (dj) or admin user',
+            422
+        );
     }
     portalDb.upsertBookingAssignment(req.params.id, djUserId, {
         crew_role_label: crewRoleLabel,
@@ -481,17 +487,32 @@ router.get('/catalog/export', (req, res) => {
     audit(req.portalUser.id, 'catalog.export', 'catalog', null, {
         product_count: snapshot.products.length
     });
+    const format = req.query.format != null ? String(req.query.format).trim().toLowerCase() : '';
+    if (format === 'csv') {
+        res.set('Content-Type', 'text/csv; charset=utf-8');
+        res.set('Content-Disposition', 'attachment; filename="eyup-catalog.csv"');
+        res.send(snapshotToCsv(snapshot));
+        return;
+    }
     res.json(snapshot);
 });
 
 router.post('/catalog/import', (req, res) => {
     const body = req.body || {};
-    if (!body.products || !Array.isArray(body.products)) {
-        return jsonError(res, 'validation_error', 'products array is required', 422);
+    let payload = body;
+    if (typeof body.csv === 'string' && body.csv.trim()) {
+        try {
+            payload = csvToImportPayload(body.csv);
+        } catch (err) {
+            return jsonError(res, 'validation_error', err.message || 'Invalid CSV', 422);
+        }
+    }
+    if (!payload.products || !Array.isArray(payload.products)) {
+        return jsonError(res, 'validation_error', 'products array or csv field is required', 422);
     }
     try {
         const replaceAddonLinks = body.replace_addon_links !== false;
-        const stats = portalDb.importCatalogSnapshot(body, { replaceAddonLinks });
+        const stats = portalDb.importCatalogSnapshot(payload, { replaceAddonLinks });
         audit(req.portalUser.id, 'catalog.import', 'catalog', null, stats);
         res.json({ ok: true, ...stats });
     } catch (err) {

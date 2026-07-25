@@ -608,7 +608,9 @@ const portalDb = {
         if (pii.isEnabled() && qTrim) {
             let sql = baseSelect;
             const params = [];
-            if (role) {
+            if (role === 'crew') {
+                sql += " AND role IN ('dj', 'admin')";
+            } else if (role) {
                 sql += ' AND role = ?';
                 params.push(role);
             }
@@ -629,7 +631,9 @@ const portalDb = {
 
         let sql = baseSelect;
         const params = [];
-        if (role) {
+        if (role === 'crew') {
+            sql += " AND role IN ('dj', 'admin')";
+        } else if (role) {
             sql += ' AND role = ?';
             params.push(role);
         }
@@ -1079,7 +1083,8 @@ const portalDb = {
                 user_email: dj?.email ?? null,
                 user_first_name: dj?.first_name ?? null,
                 user_last_name: dj?.last_name ?? null,
-                user_phone: dj?.phone ?? null
+                user_phone: dj?.phone ?? null,
+                user_role: dj?.role ?? null
             };
         });
     },
@@ -1669,6 +1674,10 @@ const portalDb = {
         });
 
         return stats;
+    },
+
+    isCrewAssignableUser(u) {
+        return !!u && (u.role === 'dj' || u.role === 'admin');
     }
 };
 

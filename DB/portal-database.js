@@ -208,6 +208,95 @@ db.prepare(`
     VALUES ('default', '{}', datetime('now'))
 `).run();
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS catalog_products (
+        id TEXT PRIMARY KEY,
+        code TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        pricing_model TEXT NOT NULL DEFAULT 'hourly'
+            CHECK(pricing_model IN ('hourly','flat','unit')),
+        standalone_rate REAL NOT NULL DEFAULT 0,
+        currency TEXT NOT NULL DEFAULT 'GBP',
+        capability_code TEXT,
+        allows_addons INTEGER NOT NULL DEFAULT 1 CHECK(allows_addons IN (0,1)),
+        is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_catalog_products_active_sort ON catalog_products(is_active, sort_order, name);
+
+    CREATE TABLE IF NOT EXISTS catalog_product_addons (
+        parent_product_id TEXT NOT NULL REFERENCES catalog_products(id) ON DELETE CASCADE,
+        addon_product_id TEXT NOT NULL REFERENCES catalog_products(id) ON DELETE CASCADE,
+        addon_rate REAL NOT NULL DEFAULT 0,
+        addon_pricing_model TEXT CHECK(
+            addon_pricing_model IS NULL OR addon_pricing_model IN ('hourly','flat','unit')
+        ),
+        PRIMARY KEY (parent_product_id, addon_product_id),
+        CHECK (parent_product_id != addon_product_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS booking_line_items (
+        id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+        product_id TEXT NOT NULL REFERENCES catalog_products(id),
+        parent_line_item_id TEXT REFERENCES booking_line_items(id) ON DELETE CASCADE,
+        pricing_context TEXT NOT NULL DEFAULT 'standalone'
+            CHECK(pricing_context IN ('standalone','addon')),
+        quantity REAL NOT NULL DEFAULT 1,
+        hours REAL,
+        unit_rate REAL NOT NULL DEFAULT 0,
+        discount_type TEXT NOT NULL DEFAULT 'none'
+            CHECK(discount_type IN ('none','percent','fixed')),
+        discount_value REAL NOT NULL DEFAULT 0,
+        line_subtotal REAL NOT NULL DEFAULT 0,
+        label TEXT NOT NULL DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_booking_line_items_booking ON booking_line_items(booking_id, sort_order);
+`);
+
+function computeCatalogLineSubtotal({ pricing_model: pricingModel, quantity, hours, unit_rate: unitRate, discount_type: discountType, discount_value: discountValue }) {
+    const model = pricingModel || 'hourly';
+    const qty = Number(quantity);
+    const q = Number.isFinite(qty) && qty > 0 ? qty : 1;
+    const rate = Number(unitRate);
+    const r = Number.isFinite(rate) ? rate : 0;
+    let base;
+    if (model === 'hourly') {
+        const h = Number(hours);
+        base = r * (Number.isFinite(h) && h > 0 ? h : 0);
+    } else if (model === 'unit') {
+        base = r * q;
+    } else {
+        base = r * q;
+    }
+    const dt = discountType || 'none';
+    const dv = Number(discountValue);
+    let total = base;
+    if (dt === 'percent' && Number.isFinite(dv)) {
+        total = base * (1 - Math.min(Math.max(dv, 0), 100) / 100);
+    } else if (dt === 'fixed' && Number.isFinite(dv)) {
+        total = base - Math.max(dv, 0);
+    }
+    return Math.round(Math.max(0, total) * 100) / 100;
+}
+
+function materializeCatalogProduct(row, { addons = null } = {}) {
+    if (!row) return row;
+    const out = {
+        ...row,
+        allows_addons: row.allows_addons === 1,
+        is_active: row.is_active === 1
+    };
+    if (addons != null) out.addons = addons;
+    return out;
+}
+
 function nowIso() {
     return new Date().toISOString();
 }
@@ -1120,6 +1209,301 @@ const portalDb = {
             bookingPiiCipher,
             nowIso()
         );
+    },
+
+    listCatalogProducts({ activeOnly = false } = {}) {
+        let sql = 'SELECT * FROM catalog_products';
+        if (activeOnly) sql += ' WHERE is_active = 1';
+        sql += ' ORDER BY sort_order ASC, name ASC';
+        return db.prepare(sql).all().map((r) => materializeCatalogProduct(r));
+    },
+
+    getCatalogProductById(id) {
+        const row = db.prepare('SELECT * FROM catalog_products WHERE id = ?').get(id);
+        if (!row) return null;
+        const addons = db
+            .prepare(
+                `SELECT a.*, p.code AS addon_code, p.name AS addon_name, p.pricing_model AS addon_default_pricing_model
+                 FROM catalog_product_addons a
+                 INNER JOIN catalog_products p ON p.id = a.addon_product_id
+                 WHERE a.parent_product_id = ? AND p.is_active = 1
+                 ORDER BY p.sort_order ASC, p.name ASC`
+            )
+            .all(id)
+            .map((a) => ({
+                addon_product_id: a.addon_product_id,
+                addon_code: a.addon_code,
+                addon_name: a.addon_name,
+                addon_rate: a.addon_rate,
+                addon_pricing_model: a.addon_pricing_model,
+                addon_default_pricing_model: a.addon_default_pricing_model
+            }));
+        return materializeCatalogProduct(row, { addons });
+    },
+
+    getCatalogProductByCode(code) {
+        const row = db
+            .prepare('SELECT * FROM catalog_products WHERE code = ? COLLATE NOCASE')
+            .get(String(code || '').trim());
+        return row ? materializeCatalogProduct(row) : null;
+    },
+
+    insertCatalogProduct(row) {
+        const id = row.id || uuid();
+        const t = nowIso();
+        db.prepare(`
+            INSERT INTO catalog_products (
+                id, code, name, description, pricing_model, standalone_rate, currency,
+                capability_code, allows_addons, is_active, sort_order, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            id,
+            String(row.code).trim().toLowerCase(),
+            String(row.name).trim(),
+            row.description != null ? String(row.description) : '',
+            ['hourly', 'flat', 'unit'].includes(row.pricing_model) ? row.pricing_model : 'hourly',
+            Number.isFinite(Number(row.standalone_rate)) ? Number(row.standalone_rate) : 0,
+            row.currency != null && String(row.currency).trim()
+                ? String(row.currency).trim().toUpperCase()
+                : 'GBP',
+            row.capability_code != null && String(row.capability_code).trim()
+                ? String(row.capability_code).trim().toLowerCase()
+                : null,
+            row.allows_addons === false || row.allows_addons === 0 ? 0 : 1,
+            row.is_active === false || row.is_active === 0 ? 0 : 1,
+            Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
+            t,
+            t
+        );
+        return portalDb.getCatalogProductById(id);
+    },
+
+    updateCatalogProduct(productId, patch) {
+        const existing = db.prepare('SELECT id FROM catalog_products WHERE id = ?').get(productId);
+        if (!existing) return null;
+        const allowed = [
+            'code',
+            'name',
+            'description',
+            'pricing_model',
+            'standalone_rate',
+            'currency',
+            'capability_code',
+            'allows_addons',
+            'is_active',
+            'sort_order'
+        ];
+        const sets = [];
+        const params = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            let val = patch[key];
+            if (key === 'code') val = String(val).trim().toLowerCase();
+            else if (key === 'name') val = String(val).trim();
+            else if (key === 'description') val = String(val);
+            else if (key === 'pricing_model') {
+                if (!['hourly', 'flat', 'unit'].includes(val)) continue;
+            } else if (key === 'standalone_rate') val = Number(val);
+            else if (key === 'currency') val = String(val).trim().toUpperCase();
+            else if (key === 'capability_code') {
+                val =
+                    val != null && String(val).trim() ? String(val).trim().toLowerCase() : null;
+            } else if (key === 'allows_addons' || key === 'is_active') {
+                val = val ? 1 : 0;
+            } else if (key === 'sort_order') val = Number(val) || 0;
+            sets.push(`${key} = ?`);
+            params.push(val);
+        }
+        if (!sets.length) return portalDb.getCatalogProductById(productId);
+        sets.push('updated_at = ?');
+        params.push(nowIso());
+        params.push(productId);
+        db.prepare(`UPDATE catalog_products SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+        return portalDb.getCatalogProductById(productId);
+    },
+
+    deleteCatalogProduct(productId) {
+        const used = db
+            .prepare('SELECT 1 AS ok FROM booking_line_items WHERE product_id = ? LIMIT 1')
+            .get(productId);
+        if (used) {
+            db.prepare('UPDATE catalog_products SET is_active = 0, updated_at = ? WHERE id = ?').run(
+                nowIso(),
+                productId
+            );
+            return { deactivated: true };
+        }
+        db.prepare('DELETE FROM catalog_products WHERE id = ?').run(productId);
+        return { deleted: true };
+    },
+
+    upsertCatalogProductAddon(parentProductId, addonProductId, { addon_rate: addonRate, addon_pricing_model: addonPricingModel } = {}) {
+        const rate = Number.isFinite(Number(addonRate)) ? Number(addonRate) : 0;
+        const model =
+            addonPricingModel && ['hourly', 'flat', 'unit'].includes(addonPricingModel)
+                ? addonPricingModel
+                : null;
+        db.prepare(`
+            INSERT INTO catalog_product_addons (parent_product_id, addon_product_id, addon_rate, addon_pricing_model)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(parent_product_id, addon_product_id) DO UPDATE SET
+                addon_rate = excluded.addon_rate,
+                addon_pricing_model = excluded.addon_pricing_model
+        `).run(parentProductId, addonProductId, rate, model);
+    },
+
+    deleteCatalogProductAddon(parentProductId, addonProductId) {
+        db.prepare(
+            `DELETE FROM catalog_product_addons WHERE parent_product_id = ? AND addon_product_id = ?`
+        ).run(parentProductId, addonProductId);
+    },
+
+    getBookingLineItems(bookingId) {
+        const rows = db
+            .prepare(
+                `SELECT li.*, p.code AS product_code, p.pricing_model AS product_pricing_model, p.currency AS product_currency
+                 FROM booking_line_items li
+                 INNER JOIN catalog_products p ON p.id = li.product_id
+                 WHERE li.booking_id = ?
+                 ORDER BY li.sort_order ASC, li.created_at ASC`
+            )
+            .all(bookingId);
+        return rows.map((r) => ({
+            id: r.id,
+            booking_id: r.booking_id,
+            product_id: r.product_id,
+            product_code: r.product_code,
+            product_pricing_model: r.product_pricing_model,
+            product_currency: r.product_currency,
+            parent_line_item_id: r.parent_line_item_id,
+            pricing_context: r.pricing_context,
+            quantity: r.quantity,
+            hours: r.hours,
+            unit_rate: r.unit_rate,
+            discount_type: r.discount_type,
+            discount_value: r.discount_value,
+            line_subtotal: r.line_subtotal,
+            label: r.label,
+            sort_order: r.sort_order
+        }));
+    },
+
+    summarizeBookingQuote(lineItems) {
+        const items = lineItems || [];
+        const subtotal = items.reduce((s, li) => s + (Number(li.line_subtotal) || 0), 0);
+        return {
+            line_count: items.length,
+            quote_subtotal: Math.round(subtotal * 100) / 100,
+            quote_total: Math.round(subtotal * 100) / 100
+        };
+    },
+
+    /** Replace all line items on a booking (admin). Items may use client_key / parent_client_key for new trees. */
+    replaceBookingLineItems(bookingId, itemsIn) {
+        const items = Array.isArray(itemsIn) ? itemsIn : [];
+        const del = db.prepare('DELETE FROM booking_line_items WHERE booking_id = ?');
+        const ins = db.prepare(`
+            INSERT INTO booking_line_items (
+                id, booking_id, product_id, parent_line_item_id, pricing_context,
+                quantity, hours, unit_rate, discount_type, discount_value, line_subtotal,
+                label, sort_order, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        const keyToId = new Map();
+
+        db.transaction(() => {
+            del.run(bookingId);
+            items.forEach((raw, index) => {
+                const product = db.prepare('SELECT * FROM catalog_products WHERE id = ?').get(raw.product_id);
+                if (!product) {
+                    throw new Error(`Unknown product_id: ${raw.product_id}`);
+                }
+                const pricingContext =
+                    raw.pricing_context === 'addon' ? 'addon' : 'standalone';
+                let parentId = raw.parent_line_item_id || null;
+                if (!parentId && raw.parent_client_key && keyToId.has(String(raw.parent_client_key))) {
+                    parentId = keyToId.get(String(raw.parent_client_key));
+                }
+                if (pricingContext === 'addon' && !parentId) {
+                    throw new Error('Add-on line items require a parent line');
+                }
+
+                let unitRate = Number(raw.unit_rate);
+                if (!Number.isFinite(unitRate)) {
+                    if (pricingContext === 'addon' && parentId) {
+                        const parentLine = db
+                            .prepare('SELECT product_id FROM booking_line_items WHERE id = ?')
+                            .get(parentId);
+                        if (parentLine) {
+                            const link = db
+                                .prepare(
+                                    `SELECT addon_rate FROM catalog_product_addons
+                                     WHERE parent_product_id = ? AND addon_product_id = ?`
+                                )
+                                .get(parentLine.product_id, product.id);
+                            if (link) unitRate = Number(link.addon_rate);
+                        }
+                    }
+                    if (!Number.isFinite(unitRate)) unitRate = Number(product.standalone_rate) || 0;
+                }
+
+                const pricingModel =
+                    pricingContext === 'addon'
+                        ? (() => {
+                              if (parentId) {
+                                  const parentLine = db
+                                      .prepare('SELECT product_id FROM booking_line_items WHERE id = ?')
+                                      .get(parentId);
+                                  if (parentLine) {
+                                      const link = db
+                                          .prepare(
+                                              `SELECT addon_pricing_model FROM catalog_product_addons
+                                               WHERE parent_product_id = ? AND addon_product_id = ?`
+                                          )
+                                          .get(parentLine.product_id, product.id);
+                                      if (link && link.addon_pricing_model) return link.addon_pricing_model;
+                                  }
+                              }
+                              return product.pricing_model;
+                          })()
+                        : product.pricing_model;
+
+                const lineSubtotal = computeCatalogLineSubtotal({
+                    pricing_model: pricingModel,
+                    quantity: raw.quantity,
+                    hours: raw.hours,
+                    unit_rate: unitRate,
+                    discount_type: raw.discount_type,
+                    discount_value: raw.discount_value
+                });
+
+                const lineId = raw.id && String(raw.id).trim() ? String(raw.id).trim() : uuid();
+                const label =
+                    raw.label != null && String(raw.label).trim()
+                        ? String(raw.label).trim()
+                        : String(product.name);
+                ins.run(
+                    lineId,
+                    bookingId,
+                    product.id,
+                    parentId,
+                    pricingContext,
+                    Number.isFinite(Number(raw.quantity)) ? Number(raw.quantity) : 1,
+                    raw.hours != null && raw.hours !== '' ? Number(raw.hours) : null,
+                    unitRate,
+                    ['none', 'percent', 'fixed'].includes(raw.discount_type) ? raw.discount_type : 'none',
+                    Number.isFinite(Number(raw.discount_value)) ? Number(raw.discount_value) : 0,
+                    lineSubtotal,
+                    label,
+                    Number.isFinite(Number(raw.sort_order)) ? Number(raw.sort_order) : index,
+                    nowIso()
+                );
+                if (raw.client_key) keyToId.set(String(raw.client_key), lineId);
+            });
+        })();
+
+        return portalDb.getBookingLineItems(bookingId);
     }
 };
 

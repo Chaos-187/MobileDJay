@@ -71,6 +71,42 @@ async function main() {
         bookingId = booking.id;
     }
 
+    function ensureProduct(code, data) {
+        if (portalDb.getCatalogProductByCode(code)) return portalDb.getCatalogProductByCode(code);
+        return portalDb.insertCatalogProduct({ code, ...data });
+    }
+
+    const djHour = ensureProduct('mobile_dj_1hr', {
+        name: 'Mobile DJ (hourly)',
+        description: 'Professional mobile DJ — hourly rate',
+        pricing_model: 'hourly',
+        standalone_rate: 150,
+        capability_code: 'mobile_dj',
+        sort_order: 10
+    });
+    const karaoke = ensureProduct('karaoke', {
+        name: 'Karaoke',
+        description: 'Karaoke setup — standalone or add-on to DJ',
+        pricing_model: 'hourly',
+        standalone_rate: 120,
+        capability_code: 'karaoke',
+        sort_order: 20
+    });
+    ensureProduct('enhanced_lighting', {
+        name: 'Enhanced lighting',
+        description: 'DMX / enhanced lighting package',
+        pricing_model: 'hourly',
+        standalone_rate: 80,
+        capability_code: 'lighting',
+        sort_order: 30
+    });
+    if (djHour && karaoke) {
+        portalDb.upsertCatalogProductAddon(djHour.id, karaoke.id, {
+            addon_rate: 60,
+            addon_pricing_model: 'hourly'
+        });
+    }
+
     console.log('EYUP portal seed complete.');
     console.log(`  Customer login: ${DEMO_CUSTOMER_EMAIL} / ${DEMO_PASSWORD}`);
     console.log(`  DJ login:       ${DEMO_DJ_EMAIL} / ${DEMO_PASSWORD}`);

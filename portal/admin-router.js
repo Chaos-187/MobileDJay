@@ -321,9 +321,24 @@ router.post('/bookings', (req, res) => {
             deposit_paid_at: depositPaidAtIn,
             deposit_note: depositNoteIn
         });
+        if (Array.isArray(body.line_items) && body.line_items.length) {
+            try {
+                portalDb.replaceBookingLineItems(bookingId, body.line_items);
+            } catch (lineErr) {
+                portalDb.db.prepare('DELETE FROM bookings WHERE id = ?').run(bookingId);
+                return jsonError(
+                    res,
+                    'validation_error',
+                    lineErr.message || 'Invalid line_items',
+                    422
+                );
+            }
+        }
         audit(req.portalUser.id, 'booking.create', 'booking', bookingId, { reference });
         const booking = portalDb.getBookingById(bookingId);
-        res.status(201).json({ ...booking, assignments: [] });
+        const line_items = portalDb.getBookingLineItems(bookingId);
+        const quote = portalDb.summarizeBookingQuote(line_items);
+        res.status(201).json({ ...booking, assignments: [], line_items, ...quote });
     } catch (err) {
         console.error('[portal] admin/bookings POST', err);
         return jsonError(res, 'internal_error', 'Booking creation failed', 500);
@@ -347,7 +362,16 @@ router.get('/bookings/:id', (req, res) => {
         user_phone: a.user_phone
     }));
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
-    res.json({ ...booking, assignments: normalized, music_plan, music_plan_summary });
+    const line_items = portalDb.getBookingLineItems(req.params.id);
+    const quote = portalDb.summarizeBookingQuote(line_items);
+    res.json({
+        ...booking,
+        assignments: normalized,
+        music_plan,
+        music_plan_summary,
+        line_items,
+        ...quote
+    });
 });
 
 router.patch('/bookings/:id', (req, res) => {
@@ -357,12 +381,34 @@ router.patch('/bookings/:id', (req, res) => {
     }
     const patch = { ...req.body } || {};
     delete patch.id;
-    const ok = portalDb.updateBooking(req.params.id, patch, { admin: true });
-    if (!ok) {
+    const lineItems = patch.line_items;
+    delete patch.line_items;
+    const hasPatchFields = Object.keys(patch).length > 0;
+    if (hasPatchFields) {
+        const ok = portalDb.updateBooking(req.params.id, patch, { admin: true });
+        if (!ok) {
+            return jsonError(res, 'validation_error', 'No valid fields to update', 422);
+        }
+    } else if (lineItems === undefined) {
         return jsonError(res, 'validation_error', 'No valid fields to update', 422);
     }
-    audit(req.portalUser.id, 'booking.patch', 'booking', req.params.id, { keys: Object.keys(patch) });
-    res.json(portalDb.getBookingById(req.params.id));
+    if (lineItems !== undefined) {
+        try {
+            portalDb.replaceBookingLineItems(
+                req.params.id,
+                Array.isArray(lineItems) ? lineItems : []
+            );
+        } catch (lineErr) {
+            return jsonError(res, 'validation_error', lineErr.message || 'Invalid line_items', 422);
+        }
+    }
+    audit(req.portalUser.id, 'booking.patch', 'booking', req.params.id, {
+        keys: Object.keys(req.body || {})
+    });
+    const updated = portalDb.getBookingById(req.params.id);
+    const items = portalDb.getBookingLineItems(req.params.id);
+    const quote = portalDb.summarizeBookingQuote(items);
+    res.json({ ...updated, line_items: items, ...quote });
 });
 
 router.post('/bookings/:id/assignments', (req, res) => {
@@ -405,6 +451,99 @@ router.delete('/bookings/:id/assignments/:dj_user_id', (req, res) => {
     }
     audit(req.portalUser.id, 'assignment.delete', 'booking', req.params.id, {
         dj_user_id: req.params.dj_user_id
+    });
+    res.status(204).send();
+});
+
+// --- Catalog products & services ---
+
+router.get('/catalog/products', (req, res) => {
+    const activeOnly = req.query.active === '1' || req.query.active === 'true';
+    const products = portalDb.listCatalogProducts({ activeOnly });
+    res.json({ products });
+});
+
+router.post('/catalog/products', (req, res) => {
+    const body = req.body || {};
+    if (!body.code || !body.name) {
+        return jsonError(res, 'validation_error', 'code and name are required', 422);
+    }
+    if (portalDb.getCatalogProductByCode(body.code)) {
+        return jsonError(res, 'conflict', 'Product code already exists', 409);
+    }
+    try {
+        const product = portalDb.insertCatalogProduct(body);
+        audit(req.portalUser.id, 'catalog_product.create', 'catalog_product', product.id, {
+            code: product.code
+        });
+        res.status(201).json(product);
+    } catch (err) {
+        console.error('[portal] admin/catalog/products POST', err);
+        return jsonError(res, 'internal_error', 'Product creation failed', 500);
+    }
+});
+
+router.get('/catalog/products/:id', (req, res) => {
+    const product = portalDb.getCatalogProductById(req.params.id);
+    if (!product) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    res.json(product);
+});
+
+router.patch('/catalog/products/:id', (req, res) => {
+    const product = portalDb.updateCatalogProduct(req.params.id, req.body || {});
+    if (!product) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    audit(req.portalUser.id, 'catalog_product.patch', 'catalog_product', req.params.id, {
+        keys: Object.keys(req.body || {})
+    });
+    res.json(product);
+});
+
+router.delete('/catalog/products/:id', (req, res) => {
+    const existing = portalDb.getCatalogProductById(req.params.id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    const result = portalDb.deleteCatalogProduct(req.params.id);
+    audit(req.portalUser.id, 'catalog_product.delete', 'catalog_product', req.params.id, result);
+    res.json({ ok: true, ...result });
+});
+
+router.post('/catalog/products/:id/addons', (req, res) => {
+    const parent = portalDb.getCatalogProductById(req.params.id);
+    if (!parent) {
+        return jsonError(res, 'not_found', 'Parent product not found', 404);
+    }
+    const { addon_product_id: addonProductId, addon_rate: addonRate, addon_pricing_model: addonPricingModel } =
+        req.body || {};
+    if (!addonProductId) {
+        return jsonError(res, 'validation_error', 'addon_product_id is required', 422);
+    }
+    const addon = portalDb.getCatalogProductById(addonProductId);
+    if (!addon) {
+        return jsonError(res, 'not_found', 'Add-on product not found', 404);
+    }
+    portalDb.upsertCatalogProductAddon(req.params.id, addonProductId, {
+        addon_rate: addonRate,
+        addon_pricing_model: addonPricingModel
+    });
+    audit(req.portalUser.id, 'catalog_addon.upsert', 'catalog_product', req.params.id, {
+        addon_product_id: addonProductId
+    });
+    res.status(201).json(portalDb.getCatalogProductById(req.params.id));
+});
+
+router.delete('/catalog/products/:id/addons/:addonProductId', (req, res) => {
+    const parent = portalDb.getCatalogProductById(req.params.id);
+    if (!parent) {
+        return jsonError(res, 'not_found', 'Parent product not found', 404);
+    }
+    portalDb.deleteCatalogProductAddon(req.params.id, req.params.addonProductId);
+    audit(req.portalUser.id, 'catalog_addon.delete', 'catalog_product', req.params.id, {
+        addon_product_id: req.params.addonProductId
     });
     res.status(204).send();
 });

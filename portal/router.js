@@ -681,12 +681,17 @@ djBookingRouter.patch('/:id', (req, res) => {
     const updated = portalDb.getBookingById(booking.id);
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(updated);
     const crew = portalDb.getCrewNote(updated.id);
+    const line_items = portalDb.getBookingLineItems(updated.id);
+    const quote = portalDb.summarizeBookingQuote(line_items);
     res.json({
         ...djDetailPayload(updated, req.portalUser.id),
         music_plan,
         music_plan_summary,
         crew_notes: crew?.body ?? '',
-        crew_notes_updated_at: crew?.updated_at ?? null
+        crew_notes_updated_at: crew?.updated_at ?? null,
+        line_items,
+        quote_subtotal: quote.quote_subtotal,
+        quote_total: quote.quote_total
     });
 });
 
@@ -697,12 +702,17 @@ djBookingRouter.get('/:id', (req, res) => {
     }
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
     const crew = portalDb.getCrewNote(booking.id);
+    const line_items = portalDb.getBookingLineItems(booking.id);
+    const quote = portalDb.summarizeBookingQuote(line_items);
     res.json({
         ...djDetailPayload(booking, req.portalUser.id),
         music_plan,
         music_plan_summary,
         crew_notes: crew?.body ?? '',
-        crew_notes_updated_at: crew?.updated_at ?? null
+        crew_notes_updated_at: crew?.updated_at ?? null,
+        line_items,
+        quote_subtotal: quote.quote_subtotal,
+        quote_total: quote.quote_total
     });
 });
 

@@ -7,6 +7,7 @@ const adminRouter = require('./admin-router');
 const publicRouter = require('./public-router');
 const { verifyTurnstile } = require('./turnstile');
 const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
+const { getBookingPhotoGallery, photoGallerySummary } = require('./booking-event-photos');
 
 const router = express.Router();
 
@@ -435,8 +436,17 @@ customerBookingRouter.get('/:id', (req, res) => {
         notes_from_company: booking.notes_from_company || '',
         booking_customer_note: note?.body ?? '',
         music_plan,
-        music_plan_summary
+        music_plan_summary,
+        photo_gallery: photoGallerySummary(booking)
     });
+});
+
+customerBookingRouter.get('/:id/photos', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking || booking.customer_id !== req.portalUser.id) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    res.json(getBookingPhotoGallery(booking));
 });
 
 customerBookingRouter.put('/:id/music-plan', (req, res) => {

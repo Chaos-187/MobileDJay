@@ -161,6 +161,12 @@ for (const stmt of bookingExtCols) {
     }
 }
 
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN requests_event_slug TEXT`);
+} catch (e) {
+    /* exists */
+}
+
 /** Crew assignment labels (spec §4.3) */
 const assignExtCols = [
     'ALTER TABLE booking_assignments ADD COLUMN crew_role_label TEXT',
@@ -1023,7 +1029,8 @@ const portalDb = {
             'hear_about',
             'newsletter_opt_in',
             'lead_metadata',
-            'booking_pii_ciphertext'
+            'booking_pii_ciphertext',
+            'requests_event_slug'
         ];
         const normalized = { ...patch };
         if (normalized.services_required != null && typeof normalized.services_required !== 'string') {
@@ -1037,6 +1044,13 @@ const portalDb = {
         }
         if (normalized.deposit_paid !== undefined) {
             normalized.deposit_paid = normalized.deposit_paid ? 1 : 0;
+        }
+        if (Object.prototype.hasOwnProperty.call(normalized, 'requests_event_slug')) {
+            const slugIn = normalized.requests_event_slug;
+            normalized.requests_event_slug =
+                slugIn == null || String(slugIn).trim() === ''
+                    ? null
+                    : String(slugIn).trim().toLowerCase();
         }
 
         if (admin && pii.isEnabled()) {

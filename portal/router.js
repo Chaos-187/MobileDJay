@@ -510,14 +510,25 @@ router.use(
     customerBookingRouter
 );
 
-router.get('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {
-    const user = portalDb.getUserById(req.portalUser.id);
-    res.json({
+function permissionBoolFromDb(v) {
+    if (v === null || v === undefined) return null;
+    return v === 1 || v === true;
+}
+
+function customerDetailsJson(user) {
+    return {
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,
-        phone: user.phone || null
-    });
+        phone: user.phone || null,
+        allow_photos_social_media: permissionBoolFromDb(user.allow_photos_social_media),
+        allow_videos_social_media: permissionBoolFromDb(user.allow_videos_social_media),
+    };
+}
+
+router.get('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {
+    const user = portalDb.getUserById(req.portalUser.id);
+    res.json(customerDetailsJson(user));
 });
 
 router.patch('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {
@@ -529,20 +540,44 @@ router.patch('/customer/details', authMiddleware, requireRole('customer'), (req,
     if (Object.prototype.hasOwnProperty.call(body, 'first_name')) patch.first_name = body.first_name;
     if (Object.prototype.hasOwnProperty.call(body, 'last_name')) patch.last_name = body.last_name;
     if (Object.prototype.hasOwnProperty.call(body, 'phone')) patch.phone = body.phone;
+    if (Object.prototype.hasOwnProperty.call(body, 'allow_photos_social_media')) {
+        const v = body.allow_photos_social_media;
+        if (v !== null && typeof v !== 'boolean') {
+            return jsonError(
+                res,
+                'validation_error',
+                'allow_photos_social_media must be true, false, or null',
+                422
+            );
+        }
+        patch.allow_photos_social_media = v;
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'allow_videos_social_media')) {
+        const v = body.allow_videos_social_media;
+        if (v !== null && typeof v !== 'boolean') {
+            return jsonError(
+                res,
+                'validation_error',
+                'allow_videos_social_media must be true, false, or null',
+                422
+            );
+        }
+        patch.allow_videos_social_media = v;
+    }
     if (Object.keys(patch).length === 0) {
-        return jsonError(res, 'validation_error', 'Provide first_name, last_name, and/or phone', 422);
+        return jsonError(
+            res,
+            'validation_error',
+            'Provide first_name, last_name, phone, and/or media permission fields',
+            422
+        );
     }
     const ok = portalDb.updateUserPatch(req.portalUser.id, patch);
     if (!ok) {
         return jsonError(res, 'validation_error', 'No valid fields to update', 422);
     }
     const user = portalDb.getUserById(req.portalUser.id);
-    res.json({
-        first_name: user.first_name,
-        last_name: user.last_name,
-        email: user.email,
-        phone: user.phone || null
-    });
+    res.json(customerDetailsJson(user));
 });
 
 router.get('/customer/profile', authMiddleware, requireRole('customer'), (req, res) => {

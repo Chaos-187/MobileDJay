@@ -131,7 +131,9 @@ const userExtCols = [
     'ALTER TABLE users ADD COLUMN phone TEXT',
     'ALTER TABLE users ADD COLUMN capabilities TEXT',
     'ALTER TABLE users ADD COLUMN account_manager_user_id TEXT REFERENCES users(id)',
-    'ALTER TABLE users ADD COLUMN disabled_at TEXT'
+    'ALTER TABLE users ADD COLUMN disabled_at TEXT',
+    'ALTER TABLE users ADD COLUMN allow_photos_social_media INTEGER',
+    'ALTER TABLE users ADD COLUMN allow_videos_social_media INTEGER'
 ];
 for (const stmt of userExtCols) {
     try {
@@ -659,7 +661,9 @@ const portalDb = {
             'capabilities',
             'account_manager_user_id',
             'disabled_at',
-            'email_verified_at'
+            'email_verified_at',
+            'allow_photos_social_media',
+            'allow_videos_social_media'
         ];
         const keys = Object.keys(patch).filter((k) => allowed.includes(k));
         if (keys.length === 0) return false;
@@ -679,7 +683,17 @@ const portalDb = {
             for (const [key, value] of Object.entries(nextPatch)) {
                 if (!allowed.includes(key)) continue;
                 setClause.push(`${key} = ?`);
-                values.push(value === undefined ? null : value);
+                if (key === 'allow_photos_social_media' || key === 'allow_videos_social_media') {
+                    values.push(
+                        value === null || value === undefined
+                            ? null
+                            : value
+                              ? 1
+                              : 0
+                    );
+                } else {
+                    values.push(value === undefined ? null : value);
+                }
             }
             if (setClause.length === 0) return false;
             setClause.push('updated_at = ?');
@@ -699,6 +713,22 @@ const portalDb = {
                       : JSON.stringify(patch.capabilities)
                 : raw.capabilities;
         const nextEmail = patch.email !== undefined ? normalizeEmail(patch.email) : u.email;
+        const nextPhotos =
+            patch.allow_photos_social_media !== undefined
+                ? patch.allow_photos_social_media === null
+                    ? null
+                    : patch.allow_photos_social_media
+                      ? 1
+                      : 0
+                : raw.allow_photos_social_media ?? null;
+        const nextVideos =
+            patch.allow_videos_social_media !== undefined
+                ? patch.allow_videos_social_media === null
+                    ? null
+                    : patch.allow_videos_social_media
+                      ? 1
+                      : 0
+                : raw.allow_videos_social_media ?? null;
         const blob = pii.encryptUserBlob({
             email: nextEmail,
             first_name: patch.first_name !== undefined ? patch.first_name : u.first_name,
@@ -725,6 +755,8 @@ const portalDb = {
               first_name = NULL,
               last_name = NULL,
               phone = NULL,
+              allow_photos_social_media = ?,
+              allow_videos_social_media = ?,
               pii_ciphertext = ?,
               updated_at = ?
             WHERE id = ?
@@ -736,6 +768,8 @@ const portalDb = {
             patch.account_manager_user_id !== undefined ? patch.account_manager_user_id : raw.account_manager_user_id,
             patch.disabled_at !== undefined ? patch.disabled_at : raw.disabled_at,
             patch.email_verified_at !== undefined ? patch.email_verified_at : raw.email_verified_at,
+            nextPhotos,
+            nextVideos,
             blob,
             nowIso(),
             userId

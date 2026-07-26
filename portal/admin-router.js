@@ -5,6 +5,7 @@ const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
 const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist, normalizePlaylist } = require('./music-plan');
 const { getSiteSettings, putSiteSettings } = require('./site-settings-service');
 const { snapshotToCsv, csvToImportPayload } = require('./catalog-csv');
+const { getBookingPhotoGallery, photoGallerySummary } = require('./booking-event-photos');
 
 const router = express.Router();
 
@@ -373,8 +374,17 @@ router.get('/bookings/:id', (req, res) => {
         music_plan_summary,
         line_items,
         customer_media_permissions,
+        photo_gallery: photoGallerySummary(booking),
         ...quote
     });
+});
+
+router.get('/bookings/:id/photos', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    res.json(getBookingPhotoGallery(booking));
 });
 
 router.patch('/bookings/:id', (req, res) => {

@@ -6,7 +6,11 @@ const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist, normalizePlaylis
 const { getSiteSettings, putSiteSettings } = require('./site-settings-service');
 const { snapshotToCsv, csvToImportPayload } = require('./catalog-csv');
 const { getBookingPhotoGallery, photoGallerySummary } = require('./booking-event-photos');
-const { createRequestsEventForBooking } = require('./create-requests-event-for-booking');
+const {
+    createRequestsEventForBooking,
+    getRequestsEventAdminPayload,
+    updateRequestsEventFeatures
+} = require('./booking-requests-event');
 
 const router = express.Router();
 
@@ -392,6 +396,29 @@ router.get('/bookings/:id/photos', (req, res) => {
         return jsonError(res, 'not_found', 'Booking not found', 404);
     }
     res.json(getBookingPhotoGallery(booking));
+});
+
+router.get('/bookings/:id/requests-event', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    res.json(getRequestsEventAdminPayload(booking));
+});
+
+router.patch('/bookings/:id/requests-event', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const result = updateRequestsEventFeatures(booking, req.body || {});
+    if (result.error) {
+        return jsonError(res, 'validation_error', result.error, 422);
+    }
+    audit(req.portalUser.id, 'booking.requests_event', 'booking', req.params.id, {
+        keys: Object.keys(req.body || {})
+    });
+    res.json(result);
 });
 
 router.patch('/bookings/:id', (req, res) => {

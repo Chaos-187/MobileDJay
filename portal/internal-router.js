@@ -2,7 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { portalDb, uuid } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
-const { createRequestsEventForBooking } = require('./create-requests-event-for-booking');
+const { createRequestsEventForBooking } = require('./booking-requests-event');
 
 const router = express.Router();
 

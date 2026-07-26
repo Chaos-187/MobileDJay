@@ -7,7 +7,7 @@ const adminRouter = require('./admin-router');
 const publicRouter = require('./public-router');
 const { verifyTurnstile } = require('./turnstile');
 const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
-const { getBookingPhotoGallery, photoGallerySummary } = require('./booking-event-photos');
+const { getBookingPhotoGallery, photoGallerySummary, buildCustomerPhotoAlbums } = require('./booking-event-photos');
 
 const router = express.Router();
 
@@ -539,6 +539,17 @@ function customerDetailsJson(user) {
 router.get('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {
     const user = portalDb.getUserById(req.portalUser.id);
     res.json(customerDetailsJson(user));
+});
+
+router.get('/customer/photos', authMiddleware, requireRole('customer'), (req, res) => {
+    const upcoming = portalDb.getCustomerBookingsUpcoming(req.portalUser.id);
+    const past = portalDb.getCustomerBookingsPast(req.portalUser.id);
+    const byId = new Map();
+    for (const b of [...upcoming, ...past]) {
+        if (b && b.id) byId.set(b.id, b);
+    }
+    const albums = buildCustomerPhotoAlbums([...byId.values()]);
+    res.json({ albums });
 });
 
 router.patch('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {

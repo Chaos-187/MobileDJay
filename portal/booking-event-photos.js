@@ -87,9 +87,40 @@ function photoGallerySummary(booking) {
     };
 }
 
+/** Customer portal: one album per linked booking (dedupe by booking id). */
+function buildCustomerPhotoAlbums(bookings) {
+    const list = Array.isArray(bookings) ? bookings : [];
+    const albums = [];
+    for (const b of list) {
+        if (!b || !b.id) continue;
+        const gallery = getBookingPhotoGallery(b);
+        if (!gallery.linked) continue;
+        albums.push({
+            booking_id: b.id,
+            title: b.title || '',
+            reference: b.reference || null,
+            start_datetime: b.start_datetime || null,
+            end_datetime: b.end_datetime || null,
+            venue: b.venue || null,
+            photo_count: gallery.photo_count,
+            photos_enabled: gallery.photos_enabled,
+            photos: gallery.photos,
+            download_all_url: gallery.download_all_url,
+            external_gallery_url: gallery.external_gallery_url,
+        });
+    }
+    albums.sort((a, b) => {
+        const ta = Date.parse(a.start_datetime || '') || 0;
+        const tb = Date.parse(b.start_datetime || '') || 0;
+        return tb - ta;
+    });
+    return albums;
+}
+
 module.exports = {
     getBookingPhotoGallery,
     photoGallerySummary,
+    buildCustomerPhotoAlbums,
     resolveEventForBooking,
     requestsPublicOrigin,
 };

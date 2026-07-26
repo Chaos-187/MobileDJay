@@ -11,6 +11,7 @@ const {
     getRequestsEventAdminPayload,
     updateRequestsEventFeatures
 } = require('./booking-requests-event');
+const brevoMail = require('./brevo-mail');
 
 const router = express.Router();
 
@@ -218,9 +219,110 @@ router.patch('/users/:id', async (req, res) => {
     res.json(publicUser(portalDb.getUserById(userId)));
 });
 
+const CUSTOMER_EMAIL_TEMPLATES = new Set([
+    'account_created',
+    'account_created_temporary_password'
+]);
+
+async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite }) {
+    if (!brevoMail.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Brevo is not configured (set BREVO_API_KEY and template IDs)',
+            503
+        );
+    }
+    const user = portalDb.getUserById(userId);
+    if (!user) {
+        return jsonError(res, 'not_found', 'User not found', 404);
+    }
+    if (user.role !== 'customer') {
+        return jsonError(
+            res,
+            'validation_error',
+            'Portal welcome emails can only be sent to customer accounts',
+            422
+        );
+    }
+    if (!user.email) {
+        return jsonError(res, 'validation_error', 'Customer has no email address', 422);
+    }
+    if (!CUSTOMER_EMAIL_TEMPLATES.has(templateKey)) {
+        return jsonError(res, 'validation_error', 'Invalid or unsupported email template', 422);
+    }
+
+    const params = { login_link: brevoMail.portalLoginUrl() };
+    const out = { ok: true, template: templateKey, to: user.email };
+
+    if (templateKey === 'account_created_temporary_password') {
+        const plain = randomPassword();
+        const pv = validatePortalPasswordPlain(plain);
+        if (!pv.ok) {
+            return jsonError(res, 'internal_error', 'Could not generate a valid temporary password', 500);
+        }
+        const passwordHash = await hashPassword(plain);
+        portalDb.updateUserPatch(userId, { password_hash: passwordHash });
+        params.temp_password = plain;
+        out.password_reset = true;
+        out._warning =
+            'A new temporary password was set and included in the email. It is not shown again here.';
+    }
+
+    try {
+        const sent = await brevoMail.sendCustomerTemplateEmail({
+            templateKey,
+            user,
+            params,
+            tags: reinvite ? ['eyup-portal', templateKey, 'reinvite'] : ['eyup-portal', templateKey]
+        });
+        out.message_id = sent.messageId;
+        audit(req.portalUser.id, reinvite ? 'user.reinvite' : 'user.send_email', 'user', userId, {
+            template: templateKey,
+            email: user.email,
+            message_id: sent.messageId,
+            password_reset: !!out.password_reset
+        });
+        if (reinvite) {
+            return res.status(204).send();
+        }
+        return res.json(out);
+    } catch (err) {
+        console.error('[portal] send-email', err);
+        const status = err.code === 'template_not_configured' ? 503 : err.status === 400 ? 422 : 502;
+        return jsonError(
+            res,
+            err.code === 'template_not_configured' ? 'service_unavailable' : 'upstream_error',
+            err.message || 'Email could not be sent',
+            status,
+            err.details ? { brevo: err.details } : {}
+        );
+    }
+}
+
+router.get('/email-templates', (req, res) => {
+    res.json({
+        brevo_configured: brevoMail.isConfigured(),
+        templates: brevoMail.listConfiguredTemplates()
+    });
+});
+
+router.post('/users/:id/send-email', (req, res) => {
+    const templateKey =
+        req.body && req.body.template ? String(req.body.template).trim() : 'account_created';
+    return sendCustomerPortalEmail(req, res, {
+        userId: req.params.id,
+        templateKey,
+        reinvite: false
+    });
+});
+
 router.post('/users/:id/reinvite', (req, res) => {
-    audit(req.portalUser.id, 'user.reinvite', 'user', req.params.id, { stub: true });
-    res.status(204).send();
+    return sendCustomerPortalEmail(req, res, {
+        userId: req.params.id,
+        templateKey: 'account_created',
+        reinvite: true
+    });
 });
 
 // --- Bookings ---

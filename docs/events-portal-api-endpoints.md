@@ -768,7 +768,30 @@ Partial update. Allowed inputs include **`first_name`**, **`last_name`**, **`ema
 
 ### `POST /admin/users/:id/reinvite`
 
-Stub — **204** empty body; audit entry recorded (email integration later).
+Sends the **account created** Brevo template to an existing **customer** (same as **`POST /admin/users/:id/send-email`** with **`template`: `"account_created"`**). Requires **`BREVO_API_KEY`** and **`BREVO_TEMPLATE_ACCOUNT_CREATED`**.
+
+**Response `204`:** empty body on success.
+
+**Errors:** `503` if Brevo or template not configured; `404` user not found; `422` if not a customer or missing email; `502` upstream Brevo failure.
+
+---
+
+### `POST /admin/users/:id/send-email`
+
+**Body (JSON):** `{ "template": "account_created" | "account_created_temporary_password" }` — default **`account_created`**.
+
+- **`account_created`:** welcome email; passes **`login_link`** param ( **`PORTAL_PUBLIC_ORIGIN`** / CORS default + `/events/login` ).
+- **`account_created_temporary_password`:** resets the customer password, emails the new plaintext password in **`params.temp_password`**, and returns **`_warning`** in the JSON response (password not shown again).
+
+**Response `200`:** `{ "ok": true, "template", "to", "message_id", … }`
+
+**Auth:** Bearer **admin**.
+
+---
+
+### `GET /admin/email-templates`
+
+Lists template keys configured via env (numeric Brevo template IDs present). **`{ "brevo_configured": boolean, "templates": [ { "key", "label", "template_id" } ] }`**
 
 ---
 
@@ -897,6 +920,8 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | GET | `/api/v1/admin/users/:id` | Bearer | admin |
 | PATCH | `/api/v1/admin/users/:id` | Bearer | admin |
 | POST | `/api/v1/admin/users/:id/reinvite` | Bearer | admin |
+| POST | `/api/v1/admin/users/:id/send-email` | Bearer | admin |
+| GET | `/api/v1/admin/email-templates` | Bearer | admin |
 | GET | `/api/v1/admin/bookings` | Bearer | admin |
 | POST | `/api/v1/admin/bookings` | Bearer | admin |
 | GET | `/api/v1/admin/bookings/:id` | Bearer | admin |

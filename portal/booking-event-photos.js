@@ -16,10 +16,11 @@ function normalizeSlug(raw) {
     return String(raw).trim().toLowerCase();
 }
 
-function photoToPortalJson(row, origin) {
+function photoToPortalJson(row, origin, downloadUrl = null) {
     return {
         id: row.id,
         url: `${origin}/uploads/photos/${row.event_id}/${row.filename}`,
+        download_url: downloadUrl,
         caption: row.caption || null,
         customer_name: row.customer_name || null,
         created_at: row.created_at || null,
@@ -62,9 +63,15 @@ function getBookingPhotoGallery(booking) {
         };
     }
     const rows = photoDb.getByEvent(event.id, false);
-    const photos = rows.map((row) => photoToPortalJson(row, origin));
     const token = event.share_token ? String(event.share_token) : '';
     const galleryBase = token ? `${origin}/gallery/${event.slug}/${token}` : null;
+    const photos = rows.map((row) =>
+        photoToPortalJson(
+            row,
+            origin,
+            galleryBase ? `${galleryBase}/photo/${row.id}/download` : null
+        )
+    );
     return {
         linked: true,
         event_slug: event.slug,

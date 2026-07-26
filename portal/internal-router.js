@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { portalDb, uuid } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
+const { createRequestsEventForBooking } = require('./create-requests-event-for-booking');
 
 const router = express.Router();
 
@@ -237,34 +238,41 @@ function handleInternalCreateBooking(req, res) {
         }
 
         const booking = portalDb.getBookingById(bookingId);
+        try {
+            createRequestsEventForBooking(booking);
+        } catch (linkErr) {
+            console.error('[portal] internal/bookings requests event link', linkErr);
+        }
+        const linked = portalDb.getBookingById(bookingId);
         res.status(201).json({
-            id: booking.id,
-            customer_id: booking.customer_id,
-            title: booking.title,
-            start_datetime: booking.start_datetime,
-            end_datetime: booking.end_datetime,
-            venue: booking.venue,
-            service: booking.service,
-            status: booking.status,
-            reference: booking.reference,
-            contact_name: booking.contact_name,
-            notes_from_company: booking.notes_from_company || '',
-            dj_briefing: booking.dj_briefing || '',
-            deposit_paid: booking.deposit_paid === 1,
+            id: linked.id,
+            customer_id: linked.customer_id,
+            title: linked.title,
+            start_datetime: linked.start_datetime,
+            end_datetime: linked.end_datetime,
+            venue: linked.venue,
+            service: linked.service,
+            status: linked.status,
+            reference: linked.reference,
+            requests_event_slug: linked.requests_event_slug || null,
+            contact_name: linked.contact_name,
+            notes_from_company: linked.notes_from_company || '',
+            dj_briefing: linked.dj_briefing || '',
+            deposit_paid: linked.deposit_paid === 1,
             deposit_amount:
-                booking.deposit_amount != null && Number.isFinite(Number(booking.deposit_amount))
-                    ? Number(booking.deposit_amount)
+                linked.deposit_amount != null && Number.isFinite(Number(linked.deposit_amount))
+                    ? Number(linked.deposit_amount)
                     : null,
-            deposit_currency: booking.deposit_currency || 'GBP',
-            deposit_paid_at: booking.deposit_paid_at || null,
-            deposit_note: booking.deposit_note || null,
-            guest_count_range: booking.guest_count_range || null,
-            event_type: booking.event_type || null,
-            services_required: parseJsonMaybe(booking.services_required),
-            enquiry_message: booking.enquiry_message || null,
-            hear_about: booking.hear_about || null,
-            newsletter_opt_in: booking.newsletter_opt_in === 1,
-            lead_metadata: parseJsonMaybe(booking.lead_metadata),
+            deposit_currency: linked.deposit_currency || 'GBP',
+            deposit_paid_at: linked.deposit_paid_at || null,
+            deposit_note: linked.deposit_note || null,
+            guest_count_range: linked.guest_count_range || null,
+            event_type: linked.event_type || null,
+            services_required: parseJsonMaybe(linked.services_required),
+            enquiry_message: linked.enquiry_message || null,
+            hear_about: linked.hear_about || null,
+            newsletter_opt_in: linked.newsletter_opt_in === 1,
+            lead_metadata: parseJsonMaybe(linked.lead_metadata),
             assigned_dj_user_ids: [...assignIds]
         });
     } catch (err) {

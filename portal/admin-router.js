@@ -6,6 +6,7 @@ const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist, normalizePlaylis
 const { getSiteSettings, putSiteSettings } = require('./site-settings-service');
 const { snapshotToCsv, csvToImportPayload } = require('./catalog-csv');
 const { getBookingPhotoGallery, photoGallerySummary } = require('./booking-event-photos');
+const { createRequestsEventForBooking } = require('./create-requests-event-for-booking');
 
 const router = express.Router();
 
@@ -337,7 +338,13 @@ router.post('/bookings', (req, res) => {
             }
         }
         audit(req.portalUser.id, 'booking.create', 'booking', bookingId, { reference });
-        const booking = portalDb.getBookingById(bookingId);
+        let booking = portalDb.getBookingById(bookingId);
+        try {
+            createRequestsEventForBooking(booking);
+        } catch (linkErr) {
+            console.error('[portal] admin/bookings requests event link', linkErr);
+        }
+        booking = portalDb.getBookingById(bookingId);
         const line_items = portalDb.getBookingLineItems(bookingId);
         const quote = portalDb.summarizeBookingQuote(line_items);
         res.status(201).json({ ...booking, assignments: [], line_items, ...quote });

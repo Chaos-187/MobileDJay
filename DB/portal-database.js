@@ -332,6 +332,21 @@ function normalizeEmail(email) {
     return String(email || '').trim().toLowerCase();
 }
 
+function permissionBoolFromDb(v) {
+    if (v === null || v === undefined) return null;
+    return v === 1 || v === true;
+}
+
+function customerMediaPermissionsFromUser(user) {
+    if (!user) {
+        return { allow_photos_social_media: null, allow_videos_social_media: null };
+    }
+    return {
+        allow_photos_social_media: permissionBoolFromDb(user.allow_photos_social_media),
+        allow_videos_social_media: permissionBoolFromDb(user.allow_videos_social_media),
+    };
+}
+
 function getUserRawById(uid) {
     return db.prepare('SELECT * FROM users WHERE id = ?').get(uid);
 }
@@ -817,6 +832,10 @@ const portalDb = {
 
     getUserById(id) {
         return materializeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+    },
+
+    getCustomerMediaPermissions(customerId) {
+        return customerMediaPermissionsFromUser(portalDb.getUserById(customerId));
     },
 
     updateUserTimestamp(id) {

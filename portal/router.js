@@ -762,6 +762,7 @@ djBookingRouter.get('/:id', (req, res) => {
     const crew = portalDb.getCrewNote(booking.id);
     const line_items = portalDb.getBookingLineItems(booking.id);
     const quote = portalDb.summarizeBookingQuote(line_items);
+    const customer_media_permissions = portalDb.getCustomerMediaPermissions(booking.customer_id);
     res.json({
         ...djDetailPayload(booking, req.portalUser.id),
         music_plan,
@@ -769,6 +770,7 @@ djBookingRouter.get('/:id', (req, res) => {
         crew_notes: crew?.body ?? '',
         crew_notes_updated_at: crew?.updated_at ?? null,
         line_items,
+        customer_media_permissions,
         quote_subtotal: quote.quote_subtotal,
         quote_total: quote.quote_total
     });

@@ -365,12 +365,14 @@ router.get('/bookings/:id', (req, res) => {
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
     const line_items = portalDb.getBookingLineItems(req.params.id);
     const quote = portalDb.summarizeBookingQuote(line_items);
+    const customer_media_permissions = portalDb.getCustomerMediaPermissions(booking.customer_id);
     res.json({
         ...booking,
         assignments: normalized,
         music_plan,
         music_plan_summary,
         line_items,
+        customer_media_permissions,
         ...quote
     });
 });

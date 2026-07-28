@@ -147,6 +147,14 @@ const catalogueUpload = multer({
 
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
+
+const { handleStripeWebhook } = require('./portal/stripe-webhook');
+app.post(
+    '/api/v1/stripe/webhook',
+    express.raw({ type: 'application/json' }),
+    handleStripeWebhook
+);
+
 app.use(express.json());
 
 // ==================== Global App Settings ====================

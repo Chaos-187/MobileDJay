@@ -126,6 +126,27 @@ try {
     /* exists */
 }
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS booking_payments (
+        id TEXT PRIMARY KEY,
+        booking_id TEXT NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+        customer_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK(kind IN ('deposit','balance','full','other')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','processing','paid','failed','refunded','cancelled')),
+        amount REAL NOT NULL,
+        currency TEXT NOT NULL DEFAULT 'GBP',
+        stripe_checkout_session_id TEXT,
+        stripe_payment_intent_id TEXT,
+        stripe_payment_link_id TEXT,
+        paid_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        metadata TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_booking_payments_customer ON booking_payments(customer_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_booking_payments_booking ON booking_payments(booking_id, created_at DESC);
+`);
+
 /** Spec v1.1 — users (contact parity, roster, admins) */
 const userExtCols = [
     'ALTER TABLE users ADD COLUMN phone TEXT',
@@ -1745,6 +1766,209 @@ const portalDb = {
 
     isCrewAssignableUser(u) {
         return !!u && (u.role === 'dj' || u.role === 'admin');
+    },
+
+    materializeBookingPayment(row) {
+        if (!row) return null;
+        let metadata = null;
+        if (row.metadata != null && String(row.metadata).trim()) {
+            try {
+                metadata = JSON.parse(row.metadata);
+            } catch {
+                metadata = row.metadata;
+            }
+        }
+        return {
+            ...row,
+            amount: Number(row.amount),
+            metadata
+        };
+    },
+
+    listBookingPaymentsForCustomer(customerId, filters = {}) {
+        const limit = Math.min(Number(filters.limit) || 100, 500);
+        const offset = Number(filters.offset) || 0;
+        const rows = db
+            .prepare(
+                `SELECT * FROM booking_payments
+                 WHERE customer_id = ?
+                 ORDER BY COALESCE(paid_at, created_at) DESC, created_at DESC
+                 LIMIT ? OFFSET ?`
+            )
+            .all(customerId, limit, offset);
+        return rows.map((r) => portalDb.materializeBookingPayment(r));
+    },
+
+    listCustomerDepositSummaries(customerId) {
+        const bookings = portalDb.listBookingsAdmin({ customer_id: customerId, limit: 500, offset: 0 });
+        return bookings
+            .filter(
+                (b) =>
+                    b.deposit_amount != null &&
+                    Number.isFinite(Number(b.deposit_amount)) &&
+                    Number(b.deposit_amount) > 0
+            )
+            .map((b) => ({
+                source: 'booking_deposit',
+                booking_id: b.id,
+                reference: b.reference,
+                title: b.title,
+                deposit_amount: Number(b.deposit_amount),
+                deposit_currency: b.deposit_currency || 'GBP',
+                deposit_paid: !!b.deposit_paid,
+                deposit_paid_at: b.deposit_paid_at || null,
+                deposit_note: b.deposit_note || null
+            }));
+    },
+
+    insertBookingPayment(row) {
+        const meta =
+            row.metadata != null && typeof row.metadata === 'object'
+                ? JSON.stringify(row.metadata)
+                : row.metadata != null
+                  ? String(row.metadata)
+                  : null;
+        db.prepare(
+            `INSERT INTO booking_payments (
+                id, booking_id, customer_id, kind, status, amount, currency,
+                stripe_checkout_session_id, stripe_payment_intent_id, stripe_payment_link_id,
+                paid_at, created_at, updated_at, metadata
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+            row.id,
+            row.booking_id,
+            row.customer_id,
+            row.kind,
+            row.status || 'pending',
+            row.amount,
+            row.currency || 'GBP',
+            row.stripe_checkout_session_id || null,
+            row.stripe_payment_intent_id || null,
+            row.stripe_payment_link_id || null,
+            row.paid_at || null,
+            row.created_at || nowIso(),
+            row.updated_at || nowIso(),
+            meta
+        );
+        return portalDb.getBookingPaymentById(row.id);
+    },
+
+    getBookingPaymentById(id) {
+        const row = db.prepare('SELECT * FROM booking_payments WHERE id = ?').get(id);
+        return row ? portalDb.materializeBookingPayment(row) : null;
+    },
+
+    getBookingPaymentByCheckoutSessionId(sessionId) {
+        const row = db
+            .prepare('SELECT * FROM booking_payments WHERE stripe_checkout_session_id = ?')
+            .get(sessionId);
+        return row ? portalDb.materializeBookingPayment(row) : null;
+    },
+
+    updateBookingPayment(id, patch) {
+        const allowed = [
+            'status',
+            'amount',
+            'currency',
+            'stripe_checkout_session_id',
+            'stripe_payment_intent_id',
+            'stripe_payment_link_id',
+            'paid_at',
+            'metadata'
+        ];
+        const setClause = [];
+        const values = [];
+        for (const [key, value] of Object.entries(patch || {})) {
+            if (!allowed.includes(key)) continue;
+            if (key === 'metadata' && value != null && typeof value === 'object') {
+                setClause.push('metadata = ?');
+                values.push(JSON.stringify(value));
+                continue;
+            }
+            setClause.push(`${key} = ?`);
+            values.push(value === undefined ? null : value);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(id);
+        const r = db
+            .prepare(`UPDATE booking_payments SET ${setClause.join(', ')} WHERE id = ?`)
+            .run(...values);
+        return r.changes > 0;
+    },
+
+    listBookingPaymentsForBooking(bookingId, filters = {}) {
+        const limit = Math.min(Number(filters.limit) || 50, 200);
+        const rows = db
+            .prepare(
+                `SELECT * FROM booking_payments WHERE booking_id = ?
+                 ORDER BY created_at DESC LIMIT ?`
+            )
+            .all(bookingId, limit);
+        return rows.map((r) => portalDb.materializeBookingPayment(r));
+    },
+
+    sumPaidBookingPayments(bookingId, kinds) {
+        const list = Array.isArray(kinds) ? kinds : [kinds];
+        if (!list.length) return 0;
+        const placeholders = list.map(() => '?').join(',');
+        const row = db
+            .prepare(
+                `SELECT COALESCE(SUM(amount), 0) AS total FROM booking_payments
+                 WHERE booking_id = ? AND status = 'paid' AND kind IN (${placeholders})`
+            )
+            .get(bookingId, ...list);
+        return Math.round(Number(row && row.total ? row.total : 0) * 100) / 100;
+    },
+
+    completeBookingPayment(paymentId, patch) {
+        const payment = portalDb.getBookingPaymentById(paymentId);
+        if (!payment) return false;
+
+        const apply = db.transaction(() => {
+            portalDb.updateBookingPayment(paymentId, {
+                status: patch.status || 'paid',
+                paid_at: patch.paid_at || nowIso(),
+                stripe_payment_intent_id: patch.stripe_payment_intent_id || null,
+                stripe_checkout_session_id: patch.stripe_checkout_session_id || null
+            });
+
+            const updated = portalDb.getBookingPaymentById(paymentId);
+            if (!updated || updated.status !== 'paid') return updated;
+
+            const booking = portalDb.getBookingById(updated.booking_id);
+            if (!booking) return updated;
+
+            if (updated.kind === 'deposit') {
+                portalDb.updateBooking(
+                    updated.booking_id,
+                    {
+                        deposit_paid: 1,
+                        deposit_paid_at: updated.paid_at,
+                        deposit_amount: updated.amount,
+                        deposit_currency: updated.currency || booking.deposit_currency || 'GBP'
+                    },
+                    { admin: true }
+                );
+            } else if (updated.kind === 'full') {
+                const depAmt =
+                    booking.deposit_amount != null && Number(booking.deposit_amount) > 0
+                        ? Number(booking.deposit_amount)
+                        : null;
+                const depPatch = {
+                    deposit_paid: 1,
+                    deposit_paid_at: updated.paid_at
+                };
+                if (depAmt != null && !booking.deposit_paid) {
+                    depPatch.deposit_amount = depAmt;
+                }
+                portalDb.updateBooking(updated.booking_id, depPatch, { admin: true });
+            }
+            return updated;
+        });
+
+        return apply();
     }
 };
 

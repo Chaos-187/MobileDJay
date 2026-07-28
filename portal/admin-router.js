@@ -12,6 +12,8 @@ const {
     updateRequestsEventFeatures
 } = require('./booking-requests-event');
 const brevoMail = require('./brevo-mail');
+const stripePortal = require('./stripe-portal');
+const { createBookingPaymentCheckout } = require('./booking-checkout');
 
 const router = express.Router();
 
@@ -325,6 +327,62 @@ router.post('/users/:id/reinvite', (req, res) => {
     });
 });
 
+router.get('/users/:id/bookings', (req, res) => {
+    const user = portalDb.getUserById(req.params.id);
+    if (!user) {
+        return jsonError(res, 'not_found', 'User not found', 404);
+    }
+    if (user.role !== 'customer') {
+        return jsonError(res, 'validation_error', 'Bookings are listed for customer accounts only', 422);
+    }
+    const rows = portalDb.listBookingsAdmin({
+        customer_id: user.id,
+        status: req.query.status,
+        start_from: req.query.start_from,
+        start_to: req.query.start_to,
+        limit: req.query.limit,
+        offset: req.query.offset
+    });
+    const bookings = rows.map((b) => {
+        const quote = portalDb.summarizeBookingQuote(portalDb.getBookingLineItems(b.id));
+        return {
+            ...b,
+            quote_total: quote.quote_total,
+            stripe_configured: stripePortal.isConfigured()
+        };
+    });
+    res.json({ customer_id: user.id, bookings, stripe_configured: stripePortal.isConfigured() });
+});
+
+router.get('/users/:id/payments', (req, res) => {
+    const user = portalDb.getUserById(req.params.id);
+    if (!user) {
+        return jsonError(res, 'not_found', 'User not found', 404);
+    }
+    if (user.role !== 'customer') {
+        return jsonError(res, 'validation_error', 'Payment history is for customer accounts only', 422);
+    }
+    const payments = portalDb.listBookingPaymentsForCustomer(user.id, {
+        limit: req.query.limit,
+        offset: req.query.offset
+    });
+    const paymentsEnriched = payments.map((p) => {
+        const b = portalDb.getBookingById(p.booking_id);
+        return {
+            ...p,
+            booking_reference: b ? b.reference : null,
+            booking_title: b ? b.title : null
+        };
+    });
+    const booking_deposits = portalDb.listCustomerDepositSummaries(user.id);
+    res.json({
+        customer_id: user.id,
+        stripe_configured: stripePortal.isConfigured(),
+        payments: paymentsEnriched,
+        booking_deposits
+    });
+});
+
 // --- Bookings ---
 
 router.get('/bookings', (req, res) => {
@@ -506,6 +564,41 @@ router.get('/bookings/:id/requests-event', (req, res) => {
         return jsonError(res, 'not_found', 'Booking not found', 404);
     }
     res.json(getRequestsEventAdminPayload(booking));
+});
+
+router.get('/bookings/:id/payments', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const line_items = portalDb.getBookingLineItems(booking.id);
+    const quote = portalDb.summarizeBookingQuote(line_items);
+    res.json({
+        booking_id: booking.id,
+        stripe_configured: stripePortal.isConfigured(),
+        payments: portalDb.listBookingPaymentsForBooking(booking.id),
+        quote_total: quote.quote_total,
+        deposit_paid: !!(booking.deposit_paid === 1 || booking.deposit_paid === true),
+        deposit_amount: booking.deposit_amount
+    });
+});
+
+router.post('/bookings/:id/payments/checkout', async (req, res) => {
+    const result = await createBookingPaymentCheckout({
+        bookingId: req.params.id,
+        actor: 'admin',
+        actorUserId: req.portalUser.id,
+        body: req.body || {}
+    });
+    if (result.body) {
+        audit(req.portalUser.id, 'booking.checkout', 'booking', req.params.id, {
+            payment_id: result.body.payment_id,
+            kind: result.body.kind,
+            amount: result.body.amount
+        });
+        return res.status(result.status).json(result.body);
+    }
+    return jsonError(res, result.code, result.message, result.status, result.details || {});
 });
 
 router.patch('/bookings/:id/requests-event', (req, res) => {

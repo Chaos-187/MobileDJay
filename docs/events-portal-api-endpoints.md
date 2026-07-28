@@ -795,6 +795,28 @@ Lists template keys configured via env (numeric Brevo template IDs present). **`
 
 ---
 
+### Stripe payments
+
+Requires **`STRIPE_SECRET_KEY`** on the API server. Register webhook **`POST /api/v1/stripe/webhook`** (raw JSON body, **no** Bearer auth) with **`STRIPE_WEBHOOK_SECRET`**. Listen for **`checkout.session.completed`** and **`checkout.session.expired`**.
+
+**`POST /admin/bookings/:id/payments/checkout`** — admin creates a Checkout Session.
+
+**Body:** `{ "kind": "deposit" | "balance" | "full", "amount"?: number, "success_url"?, "cancel_url"? }`
+
+- **deposit** — uses booking **`deposit_amount`** (or **`amount`** override) unless deposit already paid.
+- **balance** — **`quote_total`** minus paid deposit and prior paid **`balance`/`full`** rows; deposit must be paid if **`deposit_amount` > 0**.
+- **full** — remaining quote total.
+
+**Response `201`:** `{ payment_id, checkout_url, stripe_checkout_session_id, amount, currency, kind, … }`
+
+**`GET /admin/bookings/:id/payments`** — `{ payments[], quote_total, stripe_configured, deposit_paid, deposit_amount }`
+
+**`POST /customer/bookings/:id/payments/checkout`** — same body/rules; customer must own the booking.
+
+On successful **`checkout.session.completed`**, the matching **`booking_payments`** row is **`paid`**; **deposit** payments set booking **`deposit_paid`**, **`deposit_paid_at`**, and **`deposit_amount`**.
+
+---
+
 ### `GET /admin/bookings`
 
 **Query (optional):** `customer_id`, `status`, `start_from`, `start_to`, `limit`, `offset`.
@@ -894,6 +916,7 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | GET | `/api/v1/customer/bookings` | Bearer | customer |
 | GET | `/api/v1/customer/bookings/:id` | Bearer | customer |
 | PATCH | `/api/v1/customer/bookings/:id/note` | Bearer | customer |
+| POST | `/api/v1/customer/bookings/:id/payments/checkout` | Bearer | customer |
 | POST | `/api/v1/customer/bookings/:id/hide` | Bearer | customer |
 | DELETE | `/api/v1/customer/bookings/:id/hide` | Bearer | customer |
 | GET | `/api/v1/customer/events` | Bearer | customer |
@@ -922,6 +945,11 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | POST | `/api/v1/admin/users/:id/reinvite` | Bearer | admin |
 | POST | `/api/v1/admin/users/:id/send-email` | Bearer | admin |
 | GET | `/api/v1/admin/email-templates` | Bearer | admin |
+| GET | `/api/v1/admin/users/:id/bookings` | Bearer | admin |
+| GET | `/api/v1/admin/users/:id/payments` | Bearer | admin |
+| GET | `/api/v1/admin/bookings/:id/payments` | Bearer | admin |
+| POST | `/api/v1/admin/bookings/:id/payments/checkout` | Bearer | admin |
+| POST | `/api/v1/stripe/webhook` | — | Stripe signature |
 | GET | `/api/v1/admin/bookings` | Bearer | admin |
 | POST | `/api/v1/admin/bookings` | Bearer | admin |
 | GET | `/api/v1/admin/bookings/:id` | Bearer | admin |

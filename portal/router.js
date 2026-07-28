@@ -8,6 +8,7 @@ const publicRouter = require('./public-router');
 const { verifyTurnstile } = require('./turnstile');
 const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
 const { getBookingPhotoGallery, photoGallerySummary, buildCustomerPhotoAlbums } = require('./booking-event-photos');
+const { createBookingPaymentCheckout } = require('./booking-checkout');
 
 const router = express.Router();
 
@@ -447,6 +448,19 @@ customerBookingRouter.get('/:id/photos', (req, res) => {
         return jsonError(res, 'not_found', 'Booking not found', 404);
     }
     res.json(getBookingPhotoGallery(booking));
+});
+
+customerBookingRouter.post('/:id/payments/checkout', async (req, res) => {
+    const result = await createBookingPaymentCheckout({
+        bookingId: req.params.id,
+        actor: 'customer',
+        actorUserId: req.portalUser.id,
+        body: req.body || {}
+    });
+    if (result.body) {
+        return res.status(result.status).json(result.body);
+    }
+    return jsonError(res, result.code, result.message, result.status, result.details || {});
 });
 
 customerBookingRouter.put('/:id/music-plan', (req, res) => {

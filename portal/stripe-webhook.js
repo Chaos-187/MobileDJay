@@ -3,61 +3,22 @@
  */
 
 const stripePortal = require('./stripe-portal');
-const { portalDb, nowIso } = require('../db/portal-database');
+const {
+    applyCheckoutCompleted,
+    applyCheckoutAbandoned,
+    resolvePaymentForSession
+} = require('./stripe-checkout-sync');
 
 function jsonError(res, code, message, status = 400) {
     res.status(status).json({ error: { code, message } });
 }
 
-function applyCheckoutCompleted(session) {
-    const paymentId =
-        (session.metadata && session.metadata.portal_payment_id) ||
-        session.client_reference_id;
-    if (!paymentId) {
-        console.warn('[stripe] checkout.session.completed without payment id');
-        return { ok: false, reason: 'missing_payment_id' };
-    }
-
-    let payment = portalDb.getBookingPaymentById(paymentId);
-    if (!payment && session.id) {
-        payment = portalDb.getBookingPaymentByCheckoutSessionId(session.id);
-    }
-    if (!payment) {
-        console.warn('[stripe] unknown payment', paymentId);
-        return { ok: false, reason: 'payment_not_found' };
-    }
-
-    if (payment.status === 'paid') {
-        return { ok: true, duplicate: true, payment_id: payment.id };
-    }
-
-    const paidAt = nowIso();
-    const intentId =
-        typeof session.payment_intent === 'string'
-            ? session.payment_intent
-            : session.payment_intent && session.payment_intent.id
-              ? session.payment_intent.id
-              : null;
-
-    portalDb.completeBookingPayment(payment.id, {
-        status: 'paid',
-        paid_at: paidAt,
-        stripe_payment_intent_id: intentId,
-        stripe_checkout_session_id: session.id
-    });
-
-    return { ok: true, payment_id: payment.id, booking_id: payment.booking_id };
-}
-
 function applyCheckoutExpired(session) {
-    const paymentId =
-        (session.metadata && session.metadata.portal_payment_id) ||
-        session.client_reference_id;
-    if (!paymentId) return { ok: false };
-    const payment = portalDb.getBookingPaymentById(paymentId);
-    if (!payment || payment.status === 'paid') return { ok: true, skipped: true };
+    const payment = resolvePaymentForSession(session);
+    if (!payment) return { ok: false };
+    if (payment.status === 'paid') return { ok: true, skipped: true };
     if (payment.status === 'cancelled') return { ok: true, skipped: true };
-    portalDb.updateBookingPayment(payment.id, { status: 'cancelled' });
+    applyCheckoutAbandoned(session, 'session_expired');
     return { ok: true, payment_id: payment.id };
 }
 

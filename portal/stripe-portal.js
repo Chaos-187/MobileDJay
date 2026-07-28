@@ -48,15 +48,40 @@ function publicOrigin() {
 }
 
 function defaultCheckoutUrls(bookingReference) {
+    return checkoutUrlsForActor('customer', bookingReference);
+}
+
+function withCheckoutSessionId(url) {
+    const u = String(url || '').trim();
+    if (!u) return u;
+    if (u.includes('{CHECKOUT_SESSION_ID}')) return u;
+    return u + (u.includes('?') ? '&' : '?') + 'session_id={CHECKOUT_SESSION_ID}';
+}
+
+/**
+ * Stripe replaces {CHECKOUT_SESSION_ID} on redirect.
+ * @param {'admin'|'customer'} actor
+ */
+function checkoutUrlsForActor(actor, bookingReference) {
     const ref = bookingReference ? encodeURIComponent(String(bookingReference)) : '';
     const base = publicOrigin();
-    const success =
-        process.env.STRIPE_CHECKOUT_SUCCESS_URL ||
-        `${base}/events/customer?payment=success${ref ? '&ref=' + ref : ''}`;
-    const cancel =
-        process.env.STRIPE_CHECKOUT_CANCEL_URL ||
-        `${base}/events/customer?payment=cancelled${ref ? '&ref=' + ref : ''}`;
-    return { success_url: success, cancel_url: cancel };
+    const ret = actor === 'admin' ? 'admin' : 'customer';
+    const refQ = ref ? `&ref=${ref}` : '';
+
+    if (process.env.STRIPE_CHECKOUT_SUCCESS_URL && actor === 'customer') {
+        return {
+            success_url: withCheckoutSessionId(process.env.STRIPE_CHECKOUT_SUCCESS_URL),
+            cancel_url: withCheckoutSessionId(
+                process.env.STRIPE_CHECKOUT_CANCEL_URL ||
+                    `${base}/events/payment-return?outcome=cancel&return=customer${refQ}`
+            )
+        };
+    }
+
+    return {
+        success_url: `${base}/events/payment-return?outcome=success&return=${ret}${refQ}&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${base}/events/payment-return?outcome=cancel&return=${ret}${refQ}&session_id={CHECKOUT_SESSION_ID}`
+    };
 }
 
 function toStripeCurrency(code) {
@@ -226,6 +251,7 @@ module.exports = {
     isWebhookConfigured,
     publicOrigin,
     defaultCheckoutUrls,
+    checkoutUrlsForActor,
     resolveCheckoutAmount,
     createCheckoutSession,
     constructWebhookEvent,

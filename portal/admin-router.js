@@ -14,6 +14,7 @@ const {
 const brevoMail = require('./brevo-mail');
 const stripePortal = require('./stripe-portal');
 const { createBookingPaymentCheckout } = require('./booking-checkout');
+const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 
 const router = express.Router();
 
@@ -416,6 +417,44 @@ router.get('/users/:id/audit', (req, res) => {
         };
     });
     res.json({ customer_id: user.id, entries });
+});
+
+router.post('/users/:id/payments/reconcile', async (req, res) => {
+    const user = portalDb.getUserById(req.params.id);
+    if (!user) {
+        return jsonError(res, 'not_found', 'User not found', 404);
+    }
+    if (user.role !== 'customer') {
+        return jsonError(res, 'validation_error', 'Payment reconcile is for customer accounts only', 422);
+    }
+    if (!stripePortal.isConfigured()) {
+        return jsonError(res, 'service_unavailable', 'Stripe is not configured', 503);
+    }
+    const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
+        .listBookingPaymentsForCustomer(user.id, { limit: 100 })
+        .filter(
+            (p) =>
+                (p.status === 'processing' || p.status === 'pending') &&
+                p.stripe_checkout_session_id
+        );
+    const results = [];
+    for (const p of payments) {
+        try {
+            const row = await syncCheckoutSessionFromStripe(p.stripe_checkout_session_id, {
+                outcome: 'auto'
+            });
+            results.push(row);
+        } catch (err) {
+            results.push({
+                payment_id: p.id,
+                error: err.message || 'sync_failed'
+            });
+        }
+    }
+    audit(req.portalUser.id, 'user.payments_reconcile', 'user', user.id, {
+        count: results.length
+    });
+    res.json({ customer_id: user.id, results });
 });
 
 // --- Bookings ---

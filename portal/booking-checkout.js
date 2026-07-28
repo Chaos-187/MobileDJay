@@ -64,7 +64,7 @@ async function createBookingPaymentCheckout(params) {
         };
     }
 
-    const urls = stripePortal.defaultCheckoutUrls(booking.reference);
+    const urls = stripePortal.checkoutUrlsForActor(actor, booking.reference);
     const successUrl =
         body && body.success_url && String(body.success_url).trim()
             ? String(body.success_url).trim()

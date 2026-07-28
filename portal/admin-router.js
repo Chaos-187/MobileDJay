@@ -378,6 +378,7 @@ router.get('/users/:id/payments', (req, res) => {
     res.json({
         customer_id: user.id,
         stripe_configured: stripePortal.isConfigured(),
+        stripe_webhook_configured: stripePortal.isWebhookConfigured(),
         payments: paymentsEnriched,
         booking_deposits
     });

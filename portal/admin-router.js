@@ -271,10 +271,23 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
         return jsonError(res, 'validation_error', 'Invalid or unsupported email template', 422);
     }
 
-    const params = { login_link: brevoMail.portalLoginUrl() };
-    const out = { ok: true, template: templateKey, to: user.email };
-
+    let brevoTemplateKey = templateKey;
+    let clearPassword =
+        req.body && (req.body.clear_password_login === true || req.body.clear_password_login === 'true');
     if (templateKey === 'account_created_temporary_password') {
+        clearPassword = true;
+        brevoTemplateKey = 'account_created';
+    }
+
+    const params = { login_link: brevoMail.portalLoginUrl() };
+    const out = {
+        ok: true,
+        template: brevoTemplateKey,
+        to: user.email,
+        ...(templateKey !== brevoTemplateKey ? { requested_template: templateKey } : {})
+    };
+
+    if (clearPassword) {
         portalDb.updateUserPatch(userId, { password_hash: null });
         out.password_cleared = true;
         out._hint =
@@ -292,14 +305,17 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
 
     try {
         const sent = await brevoMail.sendCustomerTemplateEmail({
-            templateKey,
+            templateKey: brevoTemplateKey,
             user,
             params,
-            tags: reinvite ? ['eyup-portal', templateKey, 'reinvite'] : ['eyup-portal', templateKey]
+            tags: reinvite
+                ? ['eyup-portal', brevoTemplateKey, 'reinvite']
+                : ['eyup-portal', brevoTemplateKey]
         });
         out.message_id = sent.messageId;
         audit(req.portalUser.id, reinvite ? 'user.reinvite' : 'user.send_email', 'user', userId, {
-            template: templateKey,
+            template: brevoTemplateKey,
+            requested_template: templateKey !== brevoTemplateKey ? templateKey : undefined,
             email: user.email,
             message_id: sent.messageId,
             password_cleared: !!out.password_cleared,

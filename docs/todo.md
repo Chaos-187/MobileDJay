@@ -33,4 +33,15 @@ Short list of planned work tracked outside the domain spec docs.
 
 ---
 
+## 5. Forgot password (magic reset link + email)
+
+- **API:** `POST /auth/forgot-password` (email, Turnstile) — rate-limited; always generic success response (no email enumeration). Issue one-time token (reuse or parallel **`portal_magic_login_tokens`** / dedicated **`portal_password_reset_tokens`** table); TTL via env (e.g. **`PORTAL_PASSWORD_RESET_TTL_MINUTES`**).
+- **API:** `POST /auth/password-reset/consume` `{ token, new_password }` — validate token, set **`password_hash`**, invalidate token; optional sign-in JWT or redirect to login.
+- **Email:** Brevo transactional template export under **`EYUP_EVENTS/email-templates/`** (e.g. **`brevo-password-reset.yml`**) with **`{{ params.reset_link }}`** (or **`login_link`** pattern: `/events/login?reset=…` or dedicated **`/events/reset-password`** page). Register **`BREVO_TEMPLATE_PASSWORD_RESET`** in **`brevo-mail.js`** and **`.env.example`**.
+- **Portal UI:** “Forgot password?” on **`/events/login`** and customer auth gate; reset page or modal to enter new password after link click.
+- **Docs:** **`docs/events-portal-api-endpoints.md`** §4 auth; admin note that this is separate from customer **welcome magic link** (§ account created / reinvite).
+- **Security:** Same hardening as magic sign-in (single-use, hashed token storage, disabled accounts rejected); do not revoke all JWTs on reset unless product requires it (document choice).
+
+---
+
 *Add completed items beneath each section or strike through when shipped.*

@@ -885,7 +885,8 @@ Sends the **account created** Brevo template to an existing **customer** (same a
 **Body (JSON):** `{ "template": "account_created" | "account_created_temporary_password" }` — default **`account_created`**.
 
 - **`account_created`:** welcome email; **`params.login_link`** is a **one-time magic URL** (`/events/login?magic=…`, valid **`PORTAL_MAGIC_LINK_TTL_MINUTES`**, default 4320).
-- **`account_created_temporary_password`:** legacy template key — **clears** the customer **`password_hash`**, then sends the same **magic **`login_link`** (no plaintext password in email). Response may include **`password_cleared`** and **`magic_link_expires_at`**.
+- Optional body flag **`clear_password_login`:** **`true`** — clears the customer **`password_hash`** before sending (same effect as the admin **New magic sign-in link** action). Does not change which Brevo template is used.
+- **`account_created_temporary_password`:** **deprecated** API alias — treated as **`account_created`** + **`clear_password_login`** (sends **`BREVO_TEMPLATE_ACCOUNT_CREATED`**, not the temp-password template ID).
 
 **Response `200`:** `{ "ok": true, "template", "to", "message_id", … }`
 

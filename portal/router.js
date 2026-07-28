@@ -15,6 +15,12 @@ const {
     customerBalanceBlockedMessage,
     balanceDueDaysBeforeEvent
 } = require('./customer-payment-schedule');
+const {
+    buildPaymentReceiptHtml,
+    resolveStripeReceiptUrl,
+    paymentReceiptAllowed,
+    enrichCustomerTransactionRow
+} = require('./payment-receipt');
 
 const router = express.Router();
 
@@ -637,18 +643,9 @@ router.get('/customer/transactions', authMiddleware, requireRole('customer'), (r
     bookings.sort((a, b) => String(a.start_datetime || '').localeCompare(String(b.start_datetime || '')));
 
     const paymentRows = portalDb.listBookingPaymentsForCustomer(userId, { limit: 200 });
-    const transactions = paymentRows
-        .map((p) => {
-            const b = portalDb.getBookingById(p.booking_id);
-            return {
-                ...customerPaymentRow(p),
-                booking_reference: b ? b.reference : null,
-                booking_title: b ? b.title : null
-            };
-        })
-        .sort((a, b) =>
-            String(b.paid_at || b.created_at || '').localeCompare(String(a.paid_at || a.created_at || ''))
-        );
+    const transactions = paymentRows.map((p) => enrichCustomerTransactionRow(p)).sort((a, b) =>
+        String(b.paid_at || b.created_at || '').localeCompare(String(a.paid_at || a.created_at || ''))
+    );
 
     let totalOutstanding = 0;
     let currency = 'GBP';
@@ -671,6 +668,54 @@ router.get('/customer/transactions', authMiddleware, requireRole('customer'), (r
         bookings,
         transactions
     });
+});
+
+router.get('/customer/payments/:id/receipt', authMiddleware, requireRole('customer'), (req, res) => {
+    const payment = portalDb.getBookingPaymentById(req.params.id);
+    if (!payment || payment.customer_id !== req.portalUser.id) {
+        return jsonError(res, 'not_found', 'Payment not found', 404);
+    }
+    if (!paymentReceiptAllowed(payment)) {
+        return jsonError(
+            res,
+            'validation_error',
+            'Receipt is only available for completed card payments',
+            422
+        );
+    }
+    const booking = portalDb.getBookingById(payment.booking_id);
+    const customer = portalDb.getUserById(req.portalUser.id);
+    const html = buildPaymentReceiptHtml({ payment, booking, customer });
+    const refSafe =
+        booking && booking.reference
+            ? String(booking.reference).replace(/[^\w-]+/g, '_').slice(0, 40)
+            : 'payment';
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="EYUP-receipt-${refSafe}-${String(payment.id).slice(0, 8)}.html"`
+    );
+    res.send(html);
+});
+
+router.get('/customer/payments/:id/stripe-receipt', authMiddleware, requireRole('customer'), async (req, res) => {
+    const payment = portalDb.getBookingPaymentById(req.params.id);
+    if (!payment || payment.customer_id !== req.portalUser.id) {
+        return jsonError(res, 'not_found', 'Payment not found', 404);
+    }
+    if (!paymentReceiptAllowed(payment)) {
+        return jsonError(res, 'validation_error', 'Receipt is not available for this payment', 422);
+    }
+    const url = await resolveStripeReceiptUrl(payment);
+    if (!url) {
+        return jsonError(
+            res,
+            'not_found',
+            'Stripe receipt is not available for this payment. Download the EYUP receipt instead.',
+            404
+        );
+    }
+    res.json({ url });
 });
 
 router.get('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {

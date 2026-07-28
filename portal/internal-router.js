@@ -74,13 +74,22 @@ router.post('/users', async (req, res) => {
         if (portalDb.getUserByEmail(email)) {
             return jsonError(res, 'conflict', 'An account with this email already exists', 409);
         }
-        const plain = password != null && String(password).length > 0 ? String(password) : randomPassword();
-        const passwordGenerated = password == null || String(password).length === 0;
-        const pv = validatePortalPasswordPlain(plain);
-        if (!pv.ok) {
-            return jsonError(res, 'validation_error', pv.message, 422);
+        let passwordHash = null;
+        let generatedPlain = null;
+        if (password != null && String(password).length > 0) {
+            const pv = validatePortalPasswordPlain(String(password));
+            if (!pv.ok) {
+                return jsonError(res, 'validation_error', pv.message, 422);
+            }
+            passwordHash = await hashPassword(String(password));
+        } else if (role !== 'customer') {
+            generatedPlain = randomPassword();
+            const pv = validatePortalPasswordPlain(generatedPlain);
+            if (!pv.ok) {
+                return jsonError(res, 'internal_error', 'Could not generate a valid temporary password', 500);
+            }
+            passwordHash = await hashPassword(generatedPlain);
         }
-        const passwordHash = await hashPassword(plain);
         const id = portalDb.createUser({
             email,
             passwordHash,
@@ -96,9 +105,12 @@ router.post('/users', async (req, res) => {
             first_name: user.first_name,
             last_name: user.last_name
         };
-        if (passwordGenerated) {
-            out.temporary_password = plain;
+        if (generatedPlain) {
+            out.temporary_password = generatedPlain;
             out._warning = 'Store or email this password now; it will not be shown again.';
+        } else if (role === 'customer' && passwordHash == null) {
+            out._hint =
+                'Customer created without a password. Send a Brevo welcome email with a magic sign-in link.';
         }
         res.status(201).json(out);
     } catch (err) {

@@ -290,22 +290,53 @@ No auth required.
 
 ### `POST /auth/change-password`
 
-**Auth:** Bearer required. Any role (**customer**, **dj**, **admin**) with a **`password_hash`** (password login enabled).
+**Auth:** Bearer required. Any role (**customer**, **dj**, **admin**).
+
+**Request body**
+
+- **Account already has a password:** **`current_password`** and **`new_password`** (required, min 8 characters).
+- **Account has no password yet** (e.g. after a magic-link sign-in): **`new_password`** only (min 8 characters). Omit **`current_password`**.
+
+**Response `204`:** empty body.
+
+**Errors:** `validation_error` (422; missing fields, same as current password), `invalid_credentials` (401 — wrong current password), `internal_error` (500).
+
+Issued JWTs are **unchanged**: clients may keep using existing tokens until they expire (**§1.2**).
+
+---
+
+### `POST /auth/magic-link/consume`
+
+Exchange a **one-time** token from a customer welcome / reinvite email (`login_link` query param **`magic`**).
+
+**Auth:** none.
 
 **Request body**
 
 ```json
+{ "token": "string (required)" }
+```
+
+**Response `200`** — same shape as **`POST /auth/login`**:
+
+```json
 {
-  "current_password": "string (required)",
-  "new_password": "string (required, min 8 characters)"
+  "access_token": "jwt",
+  "token_type": "Bearer",
+  "user": {
+    "id": "uuid",
+    "email": "string",
+    "role": "customer",
+    "first_name": "string | null",
+    "last_name": "string | null",
+    "must_set_password": true
+  }
 }
 ```
 
-**Response `204`:** empty body.
+**`must_set_password`:** **`true`** when the account has no **`password_hash`** yet — the portal should prompt for **`POST /auth/change-password`** with **`new_password`** only.
 
-**Errors:** `validation_error` (422; missing fields, same as current password, no password login on account), `invalid_credentials` (401 — wrong current password), `internal_error` (500).
-
-Issued JWTs are **unchanged**: clients may keep using existing tokens until they expire (**§1.2**).
+**Errors:** `validation_error` (422), `invalid_token` (401 — expired or already used), `forbidden` (403 — disabled account or non-customer), `internal_error` (500).
 
 ---
 
@@ -345,7 +376,8 @@ Issued JWTs are **unchanged**: clients may keep using existing tokens until they
   "role": "customer | dj | admin",
   "first_name": "string | null",
   "last_name": "string | null",
-  "phone": "string | null"
+  "phone": "string | null",
+  "must_set_password": "boolean — true when password login is not set yet"
 }
 ```
 
@@ -815,9 +847,12 @@ All routes require **Bearer** JWT and **`role === admin`**. Mutating actions app
 
 ### `POST /admin/users`
 
-Creates a user (same roles as internal automation). If **`password`** is omitted, a **`temporary_password`** is returned once (plus **`_warning`**), mirroring **`POST /internal/users`**.
+Creates a user (same roles as internal automation).
 
-**Response `201`:** user object (plus optional **`temporary_password`**).
+- **`role: customer`** and omitted **`password`:** account is created **passwordless**; response may include **`_hint`** to send a welcome email (magic link). No **`temporary_password`**.
+- **`role: dj` or `admin`** and omitted **`password`:** a random password is generated once and returned as **`temporary_password`** (plus **`_warning`**), mirroring **`POST /internal/users`**.
+
+**Response `201`:** user object (plus optional **`temporary_password`** or **`_hint`**).
 
 **Errors:** `validation_error` (422), `conflict` (409).
 
@@ -849,8 +884,8 @@ Sends the **account created** Brevo template to an existing **customer** (same a
 
 **Body (JSON):** `{ "template": "account_created" | "account_created_temporary_password" }` — default **`account_created`**.
 
-- **`account_created`:** welcome email; passes **`login_link`** param ( **`PORTAL_PUBLIC_ORIGIN`** / CORS default + `/events/login` ).
-- **`account_created_temporary_password`:** resets the customer password, emails the new plaintext password in **`params.temp_password`**, and returns **`_warning`** in the JSON response (password not shown again).
+- **`account_created`:** welcome email; **`params.login_link`** is a **one-time magic URL** (`/events/login?magic=…`, valid **`PORTAL_MAGIC_LINK_TTL_MINUTES`**, default 4320).
+- **`account_created_temporary_password`:** legacy template key — **clears** the customer **`password_hash`**, then sends the same **magic **`login_link`** (no plaintext password in email). Response may include **`password_cleared`** and **`magic_link_expires_at`**.
 
 **Response `200`:** `{ "ok": true, "template", "to", "message_id", … }`
 
@@ -975,7 +1010,7 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 
 | Spec idea | Status |
 |-----------|--------|
-| `POST /auth/magic-link` | Not implemented |
+| `POST /auth/magic-link/consume` | Implemented (§4) — customer welcome emails |
 | Refresh tokens / server-side session revocation | Not implemented (client drops JWT on logout) |
 | JWT customer / DJ / **admin** **browser** APIs | Implemented (§4–6.5); **`POST /auth/change-password`**, **`POST /auth/delete-account`** §4 |
 | **`GET/PATCH /customer/details`** | Implemented (§5) |
@@ -1082,7 +1117,10 @@ Creates a portal user with any allowed **`role`**. Use this instead of `POST /au
 }
 ```
 
-If **`password` is omitted or empty**, the server generates a random password and returns it **once** in **`temporary_password`** (use the next n8n step to email it via Brevo, etc.). Response also includes **`_warning`** reminding you not to log it insecurely.
+If **`password` is omitted or empty**:
+
+- **`role: customer`:** account is **passwordless**; response includes **`_hint`** (send Brevo welcome / magic link). No **`temporary_password`**.
+- **`role: dj` or `admin`:** server generates a random password and returns it **once** in **`temporary_password`** (plus **`_warning`**).
 
 **Response `201`**
 
@@ -1093,7 +1131,8 @@ If **`password` is omitted or empty**, the server generates a random password an
   "role": "customer",
   "first_name": "string | null",
   "last_name": "string | null",
-  "temporary_password": "only when password was auto-generated",
+  "temporary_password": "dj/admin only when password was auto-generated",
+  "_hint": "customer only — send welcome email with magic link",
   "_warning": "only when temporary_password is present"
 }
 ```
@@ -1190,7 +1229,7 @@ Alias for **`POST /internal/bookings`** (same JSON body and **`201`** response).
 
 ### n8n workflow hints
 
-1. **New enquiry → customer**: `POST …/internal/users` with `role: customer`; branch on `temporary_password` to send portal invite email.
+1. **New enquiry → customer**: `POST …/internal/users` with `role: customer` (no password); then `POST …/admin/users/:id/send-email` (or Brevo automation) for a **magic **`login_link`** invite.
 2. **Confirmed gig**: `POST …/internal/bookings` or **`POST …/internal/events`** with `customer_email` from CRM and `dj_emails` from roster.
 3. Run workflows against **`https://requests.eyupevents.uk`** (production) or your staging host; TLS protects the shared secret in transit.
 4. **Windows local dev:** Set `PORTAL_INTERNAL_API_KEY` in the **same** shell that starts Node (for example run `$env:PORTAL_INTERNAL_API_KEY='your-long-secret'; node server.js` in PowerShell **directly**, or `cmd /c "set PORTAL_INTERNAL_API_KEY=...&& node server.js"`). Nested commands often strip `$env:…`, so the internal API stays disabled (**503**) until the variable is applied correctly.

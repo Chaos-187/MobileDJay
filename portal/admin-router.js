@@ -12,6 +12,7 @@ const {
     updateRequestsEventFeatures
 } = require('./booking-requests-event');
 const brevoMail = require('./brevo-mail');
+const { issueCustomerMagicLoginLink } = require('./portal-magic-login');
 const stripePortal = require('./stripe-portal');
 const { createBookingPaymentCheckout } = require('./booking-checkout');
 const { refundBookingPayment } = require('./refund-booking-payment');
@@ -156,12 +157,22 @@ router.post('/users', async (req, res) => {
         if (portalDb.getUserByEmail(email)) {
             return jsonError(res, 'conflict', 'An account with this email already exists', 409);
         }
-        const plain = password != null && String(password).length > 0 ? String(password) : randomPassword();
-        const pv = validatePortalPasswordPlain(plain);
-        if (!pv.ok) {
-            return jsonError(res, 'validation_error', pv.message, 422);
+        let passwordHash = null;
+        let generatedPlain = null;
+        if (password != null && String(password).length > 0) {
+            const pv = validatePortalPasswordPlain(String(password));
+            if (!pv.ok) {
+                return jsonError(res, 'validation_error', pv.message, 422);
+            }
+            passwordHash = await hashPassword(String(password));
+        } else if (role !== 'customer') {
+            generatedPlain = randomPassword();
+            const pv = validatePortalPasswordPlain(generatedPlain);
+            if (!pv.ok) {
+                return jsonError(res, 'internal_error', 'Could not generate a valid temporary password', 500);
+            }
+            passwordHash = await hashPassword(generatedPlain);
         }
-        const passwordHash = await hashPassword(plain);
         const id = portalDb.createUser({
             email: normalizeEmail(email),
             passwordHash,
@@ -175,9 +186,12 @@ router.post('/users', async (req, res) => {
         audit(req.portalUser.id, 'user.create', 'user', id, { email: normalizeEmail(email), role });
         const user = portalDb.getUserById(id);
         const out = publicUser(user);
-        if (password == null || String(password).length === 0) {
-            out.temporary_password = plain;
+        if (generatedPlain) {
+            out.temporary_password = generatedPlain;
             out._warning = 'Store or email this password now; it will not be shown again.';
+        } else if (role === 'customer' && passwordHash == null) {
+            out._hint =
+                'Customer created without a password. Send a welcome email with a magic sign-in link from the Emails tab.';
         }
         res.status(201).json(out);
     } catch (err) {
@@ -261,17 +275,19 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
     const out = { ok: true, template: templateKey, to: user.email };
 
     if (templateKey === 'account_created_temporary_password') {
-        const plain = randomPassword();
-        const pv = validatePortalPasswordPlain(plain);
-        if (!pv.ok) {
-            return jsonError(res, 'internal_error', 'Could not generate a valid temporary password', 500);
-        }
-        const passwordHash = await hashPassword(plain);
-        portalDb.updateUserPatch(userId, { password_hash: passwordHash });
-        params.temp_password = plain;
-        out.password_reset = true;
-        out._warning =
-            'A new temporary password was set and included in the email. It is not shown again here.';
+        portalDb.updateUserPatch(userId, { password_hash: null });
+        out.password_cleared = true;
+        out._hint =
+            'Password login was cleared. The email contains a one-time magic link; the customer will set a new password after signing in.';
+    }
+
+    try {
+        const magic = issueCustomerMagicLoginLink(userId);
+        params.login_link = magic.url;
+        out.magic_link_expires_at = magic.expires_at;
+    } catch (magicErr) {
+        console.error('[portal] magic link', magicErr);
+        return jsonError(res, 'internal_error', 'Could not create magic sign-in link', 500);
     }
 
     try {
@@ -286,7 +302,8 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
             template: templateKey,
             email: user.email,
             message_id: sent.messageId,
-            password_reset: !!out.password_reset
+            password_cleared: !!out.password_cleared,
+            magic_link: true
         });
         if (reinvite) {
             return res.status(204).send();

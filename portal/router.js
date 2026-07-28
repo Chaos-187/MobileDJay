@@ -28,6 +28,21 @@ function jsonError(res, code, message, status = 400, details = {}) {
     res.status(status).json({ error: { code, message, details } });
 }
 
+function authUserPayload(user, options) {
+    if (!user) return null;
+    const opts = options || {};
+    const mustSet =
+        opts.promptSetPasswordIfMissing === true && !user.password_hash;
+    return {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        must_set_password: !!mustSet
+    };
+}
+
 function authMiddleware(req, res, next) {
     const h = req.headers.authorization;
     if (!h || !h.startsWith('Bearer ')) {
@@ -210,7 +225,7 @@ router.post('/auth/register', async (req, res) => {
         res.status(201).json({
             access_token,
             token_type: 'Bearer',
-            user: { id: user.id, email: user.email, role: user.role, first_name: user.first_name }
+            user: authUserPayload(user)
         });
     } catch (err) {
         console.error('[portal] register', err);
@@ -248,7 +263,7 @@ router.post('/auth/login', async (req, res) => {
         res.json({
             access_token,
             token_type: 'Bearer',
-            user: { id: user.id, email: user.email, role: user.role, first_name: user.first_name }
+            user: authUserPayload(user)
         });
     } catch (err) {
         console.error('[portal] login', err);
@@ -322,7 +337,7 @@ router.post('/auth/login/google', async (req, res) => {
         res.json({
             access_token,
             token_type: 'Bearer',
-            user: { id: user.id, email: user.email, role: user.role, first_name: user.first_name }
+            user: authUserPayload(user)
         });
     } catch (err) {
         console.error('[portal] login/google', err);
@@ -334,6 +349,48 @@ router.post('/auth/logout', (_req, res) => {
     res.status(204).send();
 });
 
+router.post('/auth/magic-link/consume', (req, res) => {
+    try {
+        const tokenRaw = req.body && req.body.token != null ? String(req.body.token).trim() : '';
+        if (!tokenRaw) {
+            return jsonError(res, 'validation_error', 'token is required', 422);
+        }
+        const consumed = portalDb.consumeMagicLoginToken(tokenRaw);
+        if (!consumed || !consumed.userId) {
+            return jsonError(
+                res,
+                'invalid_token',
+                'This sign-in link is invalid or has expired',
+                401
+            );
+        }
+        const user = portalDb.getUserById(consumed.userId);
+        if (!user) {
+            return jsonError(res, 'invalid_token', 'This sign-in link is invalid or has expired', 401);
+        }
+        if (user.role !== 'customer') {
+            return jsonError(
+                res,
+                'forbidden',
+                'This sign-in link is only valid for customer portal accounts',
+                403
+            );
+        }
+        if (user.disabled_at != null && String(user.disabled_at).trim() !== '') {
+            return jsonError(res, 'forbidden', 'Account disabled', 403);
+        }
+        const access_token = signAccessToken(user);
+        res.json({
+            access_token,
+            token_type: 'Bearer',
+            user: authUserPayload(user, { promptSetPasswordIfMissing: true })
+        });
+    } catch (err) {
+        console.error('[portal] magic-link/consume', err);
+        return jsonError(res, 'internal_error', 'Magic sign-in failed', 500);
+    }
+});
+
 router.post('/auth/change-password', authMiddleware, async (req, res) => {
     try {
         const { current_password: cur, new_password: next } = req.body || {};
@@ -342,7 +399,16 @@ router.post('/auth/change-password', authMiddleware, async (req, res) => {
             return jsonError(res, 'not_found', 'User not found', 404);
         }
         if (!user.password_hash) {
-            return jsonError(res, 'validation_error', 'Password login is not set for this account', 422);
+            if (next == null || String(next).length === 0) {
+                return jsonError(res, 'validation_error', 'new_password is required', 422);
+            }
+            const nextVal = validatePortalPasswordPlain(next);
+            if (!nextVal.ok) {
+                return jsonError(res, 'validation_error', nextVal.message, 422);
+            }
+            const passwordHash = await hashPassword(String(next));
+            portalDb.updateUserPatch(user.id, { password_hash: passwordHash });
+            return res.status(204).send();
         }
         if (cur == null || next == null) {
             return jsonError(res, 'validation_error', 'current_password and new_password are required', 422);

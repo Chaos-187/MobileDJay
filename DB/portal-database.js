@@ -224,6 +224,17 @@ db.exec(`
     );
     CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log(created_at);
 
+    CREATE TABLE IF NOT EXISTS portal_magic_login_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        used_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_magic_login_hash ON portal_magic_login_tokens(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_portal_magic_login_user ON portal_magic_login_tokens(user_id, created_at DESC);
+
     CREATE TABLE IF NOT EXISTS portal_site_settings (
         id TEXT PRIMARY KEY DEFAULT 'default' CHECK (id = 'default'),
         payload_json TEXT NOT NULL,
@@ -503,8 +514,45 @@ if (process.env.NODE_ENV === 'production' && !pii.isEnabled()) {
     );
 }
 
+function hashMagicLoginToken(plain) {
+    return crypto.createHash('sha256').update(String(plain), 'utf8').digest('hex');
+}
+
 const portalDb = {
     db,
+
+    createMagicLoginToken(userId, ttlMinutes) {
+        const uid = String(userId || '').trim();
+        if (!uid) return null;
+        const rawTtl = ttlMinutes != null ? Number(ttlMinutes) : NaN;
+        const envTtl = parseInt(process.env.PORTAL_MAGIC_LINK_TTL_MINUTES || '4320', 10);
+        const ttl = Number.isFinite(rawTtl) && rawTtl > 0 ? rawTtl : envTtl;
+        const plain = crypto.randomBytes(32).toString('base64url');
+        const id = uuid();
+        const expiresAt = new Date(Date.now() + ttl * 60 * 1000).toISOString();
+        db.prepare(
+            `INSERT INTO portal_magic_login_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)`
+        ).run(id, uid, hashMagicLoginToken(plain), expiresAt);
+        return { token: plain, expires_at: expiresAt };
+    },
+
+    consumeMagicLoginToken(plainToken) {
+        const plain = String(plainToken || '').trim();
+        if (!plain) return null;
+        const hash = hashMagicLoginToken(plain);
+        const row = db
+            .prepare(
+                `SELECT id, user_id, expires_at, used_at FROM portal_magic_login_tokens WHERE token_hash = ?`
+            )
+            .get(hash);
+        if (!row || row.used_at) return null;
+        if (new Date(row.expires_at).getTime() < Date.now()) return null;
+        db.prepare(`UPDATE portal_magic_login_tokens SET used_at = ? WHERE id = ?`).run(
+            nowIso(),
+            row.id
+        );
+        return { userId: row.user_id };
+    },
 
     createUser({ email, passwordHash, role, firstName, lastName, phone, capabilities, accountManagerUserId }) {
         const id = uuid();

@@ -288,10 +288,15 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
     };
 
     if (clearPassword) {
-        portalDb.updateUserPatch(userId, { password_hash: null });
+        portalDb.updateUserPatch(userId, {
+            password_hash: null,
+            require_password_setup: 1
+        });
         out.password_cleared = true;
         out._hint =
             'Password login was cleared. The email contains a one-time magic link; the customer will set a new password after signing in.';
+    } else if (!user.password_hash) {
+        portalDb.updateUserPatch(userId, { require_password_setup: 1 });
     }
 
     try {

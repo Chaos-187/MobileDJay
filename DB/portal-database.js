@@ -147,6 +147,12 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_booking_payments_booking ON booking_payments(booking_id, created_at DESC);
 `);
 
+try {
+    db.exec(`ALTER TABLE users ADD COLUMN require_password_setup INTEGER NOT NULL DEFAULT 0`);
+} catch (e) {
+    /* exists */
+}
+
 /** Spec v1.1 — users (contact parity, roster, admins) */
 const userExtCols = [
     'ALTER TABLE users ADD COLUMN phone TEXT',
@@ -753,7 +759,8 @@ const portalDb = {
             'disabled_at',
             'email_verified_at',
             'allow_photos_social_media',
-            'allow_videos_social_media'
+            'allow_videos_social_media',
+            'require_password_setup'
         ];
         const keys = Object.keys(patch).filter((k) => allowed.includes(k));
         if (keys.length === 0) return false;
@@ -781,6 +788,8 @@ const portalDb = {
                               ? 1
                               : 0
                     );
+                } else if (key === 'require_password_setup') {
+                    values.push(value ? 1 : 0);
                 } else {
                     values.push(value === undefined ? null : value);
                 }

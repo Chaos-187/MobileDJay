@@ -31,8 +31,11 @@ function jsonError(res, code, message, status = 400, details = {}) {
 function authUserPayload(user, options) {
     if (!user) return null;
     const opts = options || {};
-    const mustSet =
-        opts.promptSetPasswordIfMissing === true && !user.password_hash;
+    const needsSetup =
+        user.require_password_setup === 1 ||
+        user.require_password_setup === true ||
+        !user.password_hash;
+    const mustSet = opts.promptSetPasswordIfMissing === true && needsSetup;
     return {
         id: user.id,
         email: user.email,
@@ -406,9 +409,12 @@ router.post('/auth/change-password', authMiddleware, async (req, res) => {
             if (!nextVal.ok) {
                 return jsonError(res, 'validation_error', nextVal.message, 422);
             }
-            const passwordHash = await hashPassword(String(next));
-            portalDb.updateUserPatch(user.id, { password_hash: passwordHash });
-            return res.status(204).send();
+        const passwordHash = await hashPassword(String(next));
+        portalDb.updateUserPatch(user.id, {
+            password_hash: passwordHash,
+            require_password_setup: 0
+        });
+        return res.status(204).send();
         }
         if (cur == null || next == null) {
             return jsonError(res, 'validation_error', 'current_password and new_password are required', 422);
@@ -425,7 +431,10 @@ router.post('/auth/change-password', authMiddleware, async (req, res) => {
             return jsonError(res, 'validation_error', 'new_password must differ from current password', 422);
         }
         const passwordHash = await hashPassword(String(next));
-        portalDb.updateUserPatch(user.id, { password_hash: passwordHash });
+        portalDb.updateUserPatch(user.id, {
+            password_hash: passwordHash,
+            require_password_setup: 0
+        });
         res.status(204).send();
     } catch (err) {
         console.error('[portal] change-password', err);
@@ -499,6 +508,11 @@ router.get('/auth/me', authMiddleware, (req, res) => {
     };
     if (user.role === 'dj' || user.role === 'admin') {
         out.capabilities = parseCapabilitiesJson(user.capabilities);
+    }
+    if (user.role === 'customer') {
+        out.must_set_password =
+            user.require_password_setup === 1 ||
+            user.require_password_setup === true;
     }
     res.json(out);
 });

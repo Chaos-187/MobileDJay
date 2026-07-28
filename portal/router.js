@@ -9,6 +9,12 @@ const { verifyTurnstile } = require('./turnstile');
 const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
 const { getBookingPhotoGallery, photoGallerySummary, buildCustomerPhotoAlbums } = require('./booking-event-photos');
 const { createBookingPaymentCheckout } = require('./booking-checkout');
+const stripePortal = require('./stripe-portal');
+const {
+    customerPaymentOptions,
+    customerBalanceBlockedMessage,
+    balanceDueDaysBeforeEvent
+} = require('./customer-payment-schedule');
 
 const router = express.Router();
 
@@ -44,6 +50,36 @@ function requireRole(role) {
             return jsonError(res, 'forbidden', 'Insufficient permissions', 403);
         }
         next();
+    };
+}
+
+function customerPaymentRow(p) {
+    if (!p) return null;
+    return {
+        id: p.id,
+        booking_id: p.booking_id,
+        kind: p.kind,
+        status: p.status,
+        amount: p.amount,
+        currency: p.currency,
+        paid_at: p.paid_at || null,
+        created_at: p.created_at || null
+    };
+}
+
+function customerBookingFinancialPayload(booking) {
+    const settlement = portalDb.bookingSettlementSnapshot(booking);
+    const stripeConfigured = stripePortal.isConfigured();
+    const pay = customerPaymentOptions({ booking, settlement, stripeConfigured });
+    return {
+        ...settlement,
+        balance_due_at: pay.balance_due_at,
+        balance_due_days_before_event: pay.balance_due_days_before_event,
+        can_pay_deposit: pay.can_pay_deposit,
+        can_pay_balance: pay.can_pay_balance,
+        balance_block_reason: pay.balance_block_reason,
+        deposit_outstanding: pay.deposit_outstanding,
+        stripe_configured: stripeConfigured
     };
 }
 
@@ -434,6 +470,7 @@ customerBookingRouter.get('/:id', (req, res) => {
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
     res.json({
         ...bookingCard(booking),
+        ...customerBookingFinancialPayload(booking),
         notes_from_company: booking.notes_from_company || '',
         booking_customer_note: note?.body ?? '',
         music_plan,
@@ -549,6 +586,92 @@ function customerDetailsJson(user) {
         allow_videos_social_media: permissionBoolFromDb(user.allow_videos_social_media),
     };
 }
+
+router.get('/customer/transactions', authMiddleware, requireRole('customer'), (req, res) => {
+    const userId = req.portalUser.id;
+    const stripeConfigured = stripePortal.isConfigured();
+    const upcoming = portalDb.getCustomerBookingsUpcoming(userId);
+    const past = portalDb.getCustomerBookingsPast(userId);
+    const seen = new Set();
+    const bookings = [];
+
+    function pushBooking(row) {
+        if (!row || seen.has(row.id)) return;
+        seen.add(row.id);
+        const settlement = portalDb.bookingSettlementSnapshot(row);
+        const pay = customerPaymentOptions({ booking: row, settlement, stripeConfigured });
+        const hasMoney =
+            settlement.quote_total > 0 ||
+            (row.deposit_amount != null && Number(row.deposit_amount) > 0) ||
+            settlement.amount_paid > 0;
+        if (!hasMoney && row.status === 'cancelled') return;
+
+        const payments = portalDb
+            .listBookingPaymentsForBooking(row.id, { limit: 100 })
+            .map(customerPaymentRow)
+            .filter(Boolean);
+
+        bookings.push({
+            ...bookingCard(row),
+            quote_total: settlement.quote_total,
+            amount_paid: settlement.amount_paid,
+            balance_remaining: settlement.balance_remaining,
+            balance_due_at: pay.balance_due_at,
+            balance_due_days_before_event: pay.balance_due_days_before_event,
+            can_pay_deposit: pay.can_pay_deposit,
+            can_pay_balance: pay.can_pay_balance,
+            balance_block_reason: pay.balance_block_reason,
+            deposit_outstanding: pay.deposit_outstanding,
+            payments
+        });
+    }
+
+    upcoming.forEach(pushBooking);
+    past.forEach((row) => {
+        const settlement = portalDb.bookingSettlementSnapshot(row);
+        if (settlement.balance_remaining > 0.005 || settlement.amount_paid > 0) {
+            pushBooking(row);
+        }
+    });
+
+    bookings.sort((a, b) => String(a.start_datetime || '').localeCompare(String(b.start_datetime || '')));
+
+    const paymentRows = portalDb.listBookingPaymentsForCustomer(userId, { limit: 200 });
+    const transactions = paymentRows
+        .map((p) => {
+            const b = portalDb.getBookingById(p.booking_id);
+            return {
+                ...customerPaymentRow(p),
+                booking_reference: b ? b.reference : null,
+                booking_title: b ? b.title : null
+            };
+        })
+        .sort((a, b) =>
+            String(b.paid_at || b.created_at || '').localeCompare(String(a.paid_at || a.created_at || ''))
+        );
+
+    let totalOutstanding = 0;
+    let currency = 'GBP';
+    bookings.forEach((b) => {
+        if (b.status === 'cancelled') return;
+        if (b.balance_remaining > 0.005) {
+            totalOutstanding += b.balance_remaining;
+            if (b.deposit_currency) currency = String(b.deposit_currency).toUpperCase();
+        }
+    });
+    totalOutstanding = Math.round(totalOutstanding * 100) / 100;
+
+    res.json({
+        stripe_configured: stripeConfigured,
+        balance_due_days_before_event: balanceDueDaysBeforeEvent(),
+        summary: {
+            total_outstanding: totalOutstanding,
+            currency
+        },
+        bookings,
+        transactions
+    });
+});
 
 router.get('/customer/details', authMiddleware, requireRole('customer'), (req, res) => {
     const user = portalDb.getUserById(req.portalUser.id);

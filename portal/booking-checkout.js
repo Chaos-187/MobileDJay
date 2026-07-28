@@ -4,6 +4,10 @@
 
 const { portalDb, uuid, nowIso } = require('../db/portal-database');
 const stripePortal = require('./stripe-portal');
+const {
+    customerPaymentOptions,
+    customerBalanceBlockedMessage
+} = require('./customer-payment-schedule');
 
 const CHECKOUT_KINDS = new Set(['deposit', 'balance', 'full']);
 
@@ -42,6 +46,23 @@ async function createBookingPaymentCheckout(params) {
         };
     }
 
+    if (actor === 'customer') {
+        if (kind === 'full') {
+            return {
+                status: 422,
+                code: 'validation_error',
+                message: 'Pay the deposit first, then the remaining balance before your event'
+            };
+        }
+        if (body && body.amount != null && body.amount !== '') {
+            return {
+                status: 422,
+                code: 'validation_error',
+                message: 'Custom amounts are not available in the customer portal'
+            };
+        }
+    }
+
     const amountOverride =
         body && body.amount != null && body.amount !== '' ? Number(body.amount) : null;
 
@@ -53,6 +74,22 @@ async function createBookingPaymentCheckout(params) {
     });
     if (resolved.error) {
         return { status: 422, code: 'validation_error', message: resolved.error };
+    }
+
+    if (actor === 'customer' && kind === 'balance') {
+        const settlement = portalDb.bookingSettlementSnapshot(booking);
+        const payOpts = customerPaymentOptions({
+            booking,
+            settlement,
+            stripeConfigured: true
+        });
+        if (!payOpts.can_pay_balance) {
+            return {
+                status: 422,
+                code: 'validation_error',
+                message: customerBalanceBlockedMessage(payOpts)
+            };
+        }
     }
 
     const customer = portalDb.getUserById(booking.customer_id);

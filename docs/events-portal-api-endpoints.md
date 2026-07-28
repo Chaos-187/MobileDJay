@@ -404,6 +404,50 @@ Array items match **BookingCard** (§3.1).
 
 ---
 
+### `GET /customer/transactions`
+
+Payment overview for the signed-in customer: upcoming bookings with quote/settlement, pay eligibility, and Stripe payment history.
+
+**Response `200`**
+
+```json
+{
+  "stripe_configured": true,
+  "balance_due_days_before_event": 7,
+  "summary": { "total_outstanding": 0, "currency": "GBP" },
+  "bookings": [
+    {
+      "id": "uuid",
+      "title": "string",
+      "reference": "string",
+      "start_datetime": "ISO8601",
+      "status": "confirmed",
+      "deposit_paid": false,
+      "deposit_amount": 150,
+      "deposit_currency": "GBP",
+      "quote_total": 600,
+      "amount_paid": 0,
+      "balance_remaining": 600,
+      "balance_due_at": "ISO8601",
+      "can_pay_deposit": true,
+      "can_pay_balance": false,
+      "balance_block_reason": "deposit_first",
+      "deposit_outstanding": 150,
+      "payments": []
+    }
+  ],
+  "transactions": []
+}
+```
+
+**Rules (customer checkout):**
+
+- **Deposit** first when `deposit_amount > 0` and not yet paid.
+- **Balance** (remaining quote) only from **`balance_due_at`**: explicit `booking.balance_due_at`, else **event `start_datetime` minus `PORTAL_BALANCE_DUE_DAYS_BEFORE_EVENT`** (default **7**).
+- Customer **`kind: full`** and custom **`amount`** overrides are rejected (**422**).
+
+---
+
 ### `GET /customer/bookings/:id`
 
 **Response `200`:** **BookingCard** (§3.1), including **deposit** fields, plus customer-visible fields only:
@@ -425,7 +469,16 @@ Array items match **BookingCard** (§3.1).
   "deposit_paid_at": null,
   "deposit_note": null,
   "notes_from_company": "string",
-  "booking_customer_note": "string"
+  "booking_customer_note": "string",
+  "quote_total": 0,
+  "amount_paid": 0,
+  "balance_remaining": 0,
+  "balance_due_at": null,
+  "balance_due_days_before_event": 7,
+  "can_pay_deposit": false,
+  "can_pay_balance": false,
+  "balance_block_reason": null,
+  "stripe_configured": true
 }
 ```
 
@@ -819,7 +872,7 @@ Requires **`STRIPE_SECRET_KEY`** on the API server. Register webhook **`POST /ap
 
 **Auth:** Bearer **admin**. Audited as **`payment.refund`**.
 
-**`POST /customer/bookings/:id/payments/checkout`** — same body/rules; customer must own the booking.
+**`POST /customer/bookings/:id/payments/checkout`** — same body/rules; customer must own the booking. **`kind: full`** is not allowed for customers. **`balance`** is only accepted once the deposit is satisfied (if required) and the current time is on or after **`balance_due_at`** (see **`GET /customer/transactions`**). Custom **`amount`** is admin-only.
 
 On successful **`checkout.session.completed`**, the matching **`booking_payments`** row is **`paid`**; **deposit** payments set booking **`deposit_paid`**, **`deposit_paid_at`**, and **`deposit_amount`**.
 
@@ -930,6 +983,7 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | POST | `/api/v1/auth/delete-account` | Bearer | any |
 | GET | `/api/v1/auth/me` | Bearer | any |
 | GET | `/api/v1/customer/bookings` | Bearer | customer |
+| GET | `/api/v1/customer/transactions` | Bearer | customer |
 | GET | `/api/v1/customer/bookings/:id` | Bearer | customer |
 | PATCH | `/api/v1/customer/bookings/:id/note` | Bearer | customer |
 | POST | `/api/v1/customer/bookings/:id/payments/checkout` | Bearer | customer |

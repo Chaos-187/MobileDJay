@@ -16,6 +16,7 @@ const stripePortal = require('./stripe-portal');
 const { createBookingPaymentCheckout } = require('./booking-checkout');
 const { refundBookingPayment } = require('./refund-booking-payment');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
+const { balanceDueCalendarFields } = require('./customer-payment-schedule');
 
 const router = express.Router();
 
@@ -468,10 +469,14 @@ router.get('/bookings', (req, res) => {
         limit: req.query.limit,
         offset: req.query.offset
     });
-    const bookings = rows.map((b) => ({
-        ...b,
-        ...portalDb.bookingSettlementSnapshot(b)
-    }));
+    const bookings = rows.map((b) => {
+        const settlement = portalDb.bookingSettlementSnapshot(b);
+        return {
+            ...b,
+            ...settlement,
+            ...balanceDueCalendarFields(b, settlement)
+        };
+    });
     res.json({ bookings });
 });
 

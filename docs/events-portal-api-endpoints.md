@@ -811,6 +811,14 @@ Requires **`STRIPE_SECRET_KEY`** on the API server. Register webhook **`POST /ap
 
 **`GET /admin/bookings/:id/payments`** — `{ payments[], quote_total, stripe_configured, deposit_paid, deposit_amount }`
 
+**`POST /admin/payments/:id/refund`** — full refund of a **`paid`** **`booking_payments`** row via Stripe (PaymentIntent from stored id or Checkout session). Manual deposit-only rows without a Stripe charge return **422**.
+
+**Body (optional):** `{ "reason"?: string }` — stored in payment metadata (max 500 chars).
+
+**Response `200`:** `{ payment_id, booking_id, status: "refunded", stripe_refund_id, payment }` — updates row to **`refunded`**; may clear booking **`deposit_paid`** if this was the only paid deposit payment.
+
+**Auth:** Bearer **admin**. Audited as **`payment.refund`**.
+
 **`POST /customer/bookings/:id/payments/checkout`** — same body/rules; customer must own the booking.
 
 On successful **`checkout.session.completed`**, the matching **`booking_payments`** row is **`paid`**; **deposit** payments set booking **`deposit_paid`**, **`deposit_paid_at`**, and **`deposit_amount`**.
@@ -956,6 +964,7 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | GET | `/api/v1/admin/users/:id/bookings` | Bearer | admin |
 | GET | `/api/v1/admin/users/:id/payments` | Bearer | admin |
 | GET | `/api/v1/admin/users/:id/audit` | Bearer | admin |
+| POST | `/api/v1/admin/payments/:id/refund` | Bearer | admin |
 | GET | `/api/v1/admin/bookings/:id/payments` | Bearer | admin |
 | POST | `/api/v1/admin/bookings/:id/payments/checkout` | Bearer | admin |
 | POST | `/api/v1/stripe/webhook` | — | Stripe signature |

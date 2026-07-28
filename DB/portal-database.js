@@ -1922,6 +1922,40 @@ const portalDb = {
         return Math.round(Number(row && row.total ? row.total : 0) * 100) / 100;
     },
 
+    /** Quote total, recorded payments, and balance for admin/calendar UI. */
+    bookingSettlementSnapshot(booking) {
+        if (!booking || !booking.id) {
+            return {
+                quote_total: 0,
+                amount_paid: 0,
+                balance_remaining: 0
+            };
+        }
+        const lineItems = portalDb.getBookingLineItems(booking.id);
+        const quote = portalDb.summarizeBookingQuote(lineItems);
+        const quoteTotal = Math.round((Number(quote.quote_total) || 0) * 100) / 100;
+        let amountPaid = portalDb.sumPaidBookingPayments(booking.id, ['deposit', 'balance', 'full']);
+        const depositPaid = booking.deposit_paid === 1 || booking.deposit_paid === true;
+        const depositAmount =
+            booking.deposit_amount != null && Number.isFinite(Number(booking.deposit_amount))
+                ? Number(booking.deposit_amount)
+                : 0;
+        const paidDepositStripe = portalDb.sumPaidBookingPayments(booking.id, ['deposit']);
+        if (depositPaid && depositAmount > 0 && paidDepositStripe < depositAmount - 0.005) {
+            amountPaid = Math.round((amountPaid + depositAmount - paidDepositStripe) * 100) / 100;
+        }
+        amountPaid = Math.round(amountPaid * 100) / 100;
+        const balanceRemaining =
+            quoteTotal > 0
+                ? Math.max(0, Math.round((quoteTotal - amountPaid) * 100) / 100)
+                : 0;
+        return {
+            quote_total: quoteTotal,
+            amount_paid: amountPaid,
+            balance_remaining: balanceRemaining
+        };
+    },
+
     completeBookingPayment(paymentId, patch) {
         const payment = portalDb.getBookingPaymentById(paymentId);
         if (!payment) return false;
@@ -1965,6 +1999,49 @@ const portalDb = {
                 }
                 portalDb.updateBooking(updated.booking_id, depPatch, { admin: true });
             }
+            return updated;
+        });
+
+        return apply();
+    },
+
+    applyBookingPaymentRefund(paymentId, patch = {}) {
+        const payment = portalDb.getBookingPaymentById(paymentId);
+        if (!payment || payment.status !== 'paid') return null;
+
+        const apply = db.transaction(() => {
+            const meta = {
+                ...(payment.metadata && typeof payment.metadata === 'object' ? payment.metadata : {}),
+                refunded_at: patch.refunded_at || nowIso(),
+                stripe_refund_id: patch.stripe_refund_id || null,
+                refund_reason: patch.reason || null,
+                refunded_by_admin_id: patch.admin_user_id || null
+            };
+            portalDb.updateBookingPayment(paymentId, {
+                status: 'refunded',
+                metadata: meta
+            });
+
+            const updated = portalDb.getBookingPaymentById(paymentId);
+            const booking = portalDb.getBookingById(updated.booking_id);
+            if (!booking) return updated;
+
+            if (updated.kind === 'deposit') {
+                const stillPaidDeposit = portalDb
+                    .listBookingPaymentsForBooking(updated.booking_id, { limit: 50 })
+                    .some((p) => p.id !== paymentId && p.status === 'paid' && p.kind === 'deposit');
+                if (!stillPaidDeposit) {
+                    portalDb.updateBooking(
+                        updated.booking_id,
+                        {
+                            deposit_paid: 0,
+                            deposit_paid_at: null
+                        },
+                        { admin: true }
+                    );
+                }
+            }
+
             return updated;
         });
 

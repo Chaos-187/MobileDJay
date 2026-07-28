@@ -14,6 +14,7 @@ const {
 const brevoMail = require('./brevo-mail');
 const stripePortal = require('./stripe-portal');
 const { createBookingPaymentCheckout } = require('./booking-checkout');
+const { refundBookingPayment } = require('./refund-booking-payment');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 
 const router = express.Router();
@@ -349,6 +350,7 @@ router.get('/users/:id/bookings', (req, res) => {
         return {
             ...b,
             quote_total: quote.quote_total,
+            ...portalDb.bookingSettlementSnapshot(b),
             stripe_configured: stripePortal.isConfigured()
         };
     });
@@ -466,7 +468,11 @@ router.get('/bookings', (req, res) => {
         limit: req.query.limit,
         offset: req.query.offset
     });
-    res.json({ bookings: rows });
+    const bookings = rows.map((b) => ({
+        ...b,
+        ...portalDb.bookingSettlementSnapshot(b)
+    }));
+    res.json({ bookings });
 });
 
 router.post('/bookings', (req, res) => {
@@ -618,8 +624,158 @@ router.get('/bookings/:id', (req, res) => {
         line_items,
         customer_media_permissions,
         photo_gallery: photoGallerySummary(booking),
-        ...quote
+        ...quote,
+        ...portalDb.bookingSettlementSnapshot(booking),
+        stripe_configured: stripePortal.isConfigured()
     });
+});
+
+const BOOKING_EMAIL_TEMPLATES = new Set(['deposit_due', 'invoice_due']);
+
+function formatMoneyForEmail(amount, currency) {
+    const n = Number(amount);
+    if (!Number.isFinite(n)) return '';
+    try {
+        return new Intl.NumberFormat('en-GB', {
+            style: 'currency',
+            currency: (currency || 'GBP').toString().toUpperCase()
+        }).format(n);
+    } catch {
+        return `${n} ${currency || 'GBP'}`;
+    }
+}
+
+function formatEventDateForEmail(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+}
+
+async function payLinkForBookingEmail(bookingId, templateKey, adminUserId, includePayLink) {
+    if (!includePayLink || !stripePortal.isConfigured()) {
+        return brevoMail.portalLoginUrl();
+    }
+    const kind = templateKey === 'deposit_due' ? 'deposit' : 'balance';
+    const result = await createBookingPaymentCheckout({
+        bookingId,
+        actor: 'admin',
+        actorUserId: adminUserId,
+        body: { kind }
+    });
+    if (result.body && result.body.checkout_url) {
+        return result.body.checkout_url;
+    }
+    return brevoMail.portalLoginUrl();
+}
+
+router.post('/bookings/:id/send-email', async (req, res) => {
+    if (!brevoMail.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Brevo is not configured (set BREVO_API_KEY and template IDs)',
+            503
+        );
+    }
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const customer = portalDb.getUserById(booking.customer_id);
+    if (!customer || customer.role !== 'customer') {
+        return jsonError(res, 'validation_error', 'Booking has no customer account', 422);
+    }
+    if (!customer.email) {
+        return jsonError(res, 'validation_error', 'Customer has no email address', 422);
+    }
+    const templateKey =
+        req.body && req.body.template ? String(req.body.template).trim() : 'deposit_due';
+    if (!BOOKING_EMAIL_TEMPLATES.has(templateKey)) {
+        return jsonError(res, 'validation_error', 'Invalid or unsupported email template', 422);
+    }
+
+    const settlement = portalDb.bookingSettlementSnapshot(booking);
+    const eventDate = formatEventDateForEmail(booking.start_datetime);
+    const currency = booking.deposit_currency || 'GBP';
+    const includePayLink = !(req.body && req.body.include_pay_link === false);
+
+    let payLink;
+    try {
+        payLink = await payLinkForBookingEmail(
+            booking.id,
+            templateKey,
+            req.portalUser.id,
+            includePayLink
+        );
+    } catch (err) {
+        payLink = brevoMail.portalLoginUrl();
+    }
+
+    const params = {
+        login_link: brevoMail.portalLoginUrl(),
+        EVENT_TITLE: booking.title || 'Your event',
+        EVENT_DATE: eventDate,
+        PAY_LINK: payLink
+    };
+
+    if (templateKey === 'deposit_due') {
+        const depAmt =
+            booking.deposit_amount != null && Number.isFinite(Number(booking.deposit_amount))
+                ? Number(booking.deposit_amount)
+                : 0;
+        params.DEPOSIT_AMOUNT = depAmt > 0 ? formatMoneyForEmail(depAmt, currency) : '';
+        params.DUE_DATE = booking.deposit_due_at
+            ? formatEventDateForEmail(booking.deposit_due_at)
+            : eventDate;
+    } else {
+        params.INVOICE_REFERENCE = booking.reference || booking.id || '';
+        params.INVOICE_AMOUNT =
+            settlement.balance_remaining > 0
+                ? formatMoneyForEmail(settlement.balance_remaining, currency)
+                : settlement.quote_total > 0
+                  ? formatMoneyForEmail(settlement.quote_total, currency)
+                  : '';
+        params.DUE_DATE = booking.balance_due_at
+            ? formatEventDateForEmail(booking.balance_due_at)
+            : eventDate;
+    }
+
+    try {
+        const sent = await brevoMail.sendCustomerTemplateEmail({
+            templateKey,
+            user: customer,
+            params,
+            tags: ['eyup-portal', templateKey, 'booking', booking.id]
+        });
+        audit(req.portalUser.id, 'booking.send_email', 'booking', booking.id, {
+            template: templateKey,
+            email: customer.email,
+            message_id: sent.messageId
+        });
+        return res.json({
+            ok: true,
+            template: templateKey,
+            to: customer.email,
+            message_id: sent.messageId,
+            pay_link_included: includePayLink && !!payLink
+        });
+    } catch (err) {
+        console.error('[portal] booking send-email', err);
+        const status = err.code === 'template_not_configured' ? 503 : err.status === 400 ? 422 : 502;
+        return jsonError(
+            res,
+            err.code === 'template_not_configured' ? 'service_unavailable' : 'upstream_error',
+            err.message || 'Email could not be sent',
+            status,
+            err.details ? { brevo: err.details } : {}
+        );
+    }
 });
 
 router.get('/bookings/:id/photos', (req, res) => {
@@ -669,6 +825,22 @@ router.post('/bookings/:id/payments/checkout', async (req, res) => {
             amount: result.body.amount
         });
         return res.status(result.status).json(result.body);
+    }
+    return jsonError(res, result.code, result.message, result.status, result.details || {});
+});
+
+router.post('/payments/:id/refund', async (req, res) => {
+    const result = await refundBookingPayment(req.params.id, {
+        adminUserId: req.portalUser.id,
+        reason:
+            req.body && req.body.reason != null ? String(req.body.reason).trim().slice(0, 500) : null
+    });
+    if (result.body) {
+        audit(req.portalUser.id, 'payment.refund', 'booking', result.body.booking_id, {
+            payment_id: result.body.payment_id,
+            stripe_refund_id: result.body.stripe_refund_id
+        });
+        return res.json(result.body);
     }
     return jsonError(res, result.code, result.message, result.status, result.details || {});
 });

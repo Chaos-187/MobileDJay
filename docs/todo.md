@@ -44,4 +44,14 @@ Short list of planned work tracked outside the domain spec docs.
 
 ---
 
+## 6. Payment confirmation email (after Stripe paid)
+
+- **Trigger:** When a **`booking_payments`** row becomes **`paid`** (today: Stripe **`checkout.session.completed`** in **`portal/stripe-webhook.js`**; also cover admin/manual reconcile paths if any mark **`paid`** without webhook).
+- **Email:** New Brevo transactional template under **`EYUP_EVENTS/email-templates/`** (e.g. **`brevo-payment-received.yml`**) — event ref, amount, currency, payment kind (deposit / balance / other), link to customer portal (**`/events/customer`**, Transactions tab). Register **`BREVO_TEMPLATE_PAYMENT_RECEIVED`** (or separate deposit/balance IDs) in **`brevo-mail.js`** and **`.env.example`**.
+- **Idempotency:** Record send per **`booking_payments.id`** (metadata column or **`payment_email_sent_at`**) so webhook retries do not duplicate emails.
+- **Optional:** Attach/link to existing **`GET /customer/payments/:id/receipt`** HTML or Stripe receipt URL from **`payment-receipt.js`** params in template.
+- **Docs:** **`docs/events-portal-api-endpoints.md`** — Stripe webhook side effects + env template IDs.
+
+---
+
 *Add completed items beneath each section or strike through when shipped.*

@@ -1969,6 +1969,52 @@ const portalDb = {
         });
 
         return apply();
+    },
+
+    listAuditForCustomer(customerId, filters = {}) {
+        const limit = Math.min(Number(filters.limit) || 100, 300);
+        const offset = Number(filters.offset) || 0;
+        const bookings = portalDb.listBookingsAdmin({
+            customer_id: customerId,
+            limit: 500,
+            offset: 0
+        });
+        const bookingIds = bookings.map((b) => b.id).filter(Boolean);
+
+        let rows;
+        if (bookingIds.length === 0) {
+            rows = db
+                .prepare(
+                    `SELECT * FROM admin_audit_log
+                     WHERE entity_type = 'user' AND entity_id = ?
+                     ORDER BY datetime(created_at) DESC
+                     LIMIT ? OFFSET ?`
+                )
+                .all(customerId, limit, offset);
+        } else {
+            const placeholders = bookingIds.map(() => '?').join(',');
+            rows = db
+                .prepare(
+                    `SELECT * FROM admin_audit_log
+                     WHERE (entity_type = 'user' AND entity_id = ?)
+                        OR (entity_type = 'booking' AND entity_id IN (${placeholders}))
+                     ORDER BY datetime(created_at) DESC
+                     LIMIT ? OFFSET ?`
+                )
+                .all(customerId, ...bookingIds, limit, offset);
+        }
+
+        return rows.map((r) => {
+            let details = {};
+            if (r.details != null && String(r.details).trim()) {
+                try {
+                    details = JSON.parse(r.details);
+                } catch {
+                    details = { raw: r.details };
+                }
+            }
+            return { ...r, details };
+        });
     }
 };
 

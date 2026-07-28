@@ -384,6 +384,40 @@ router.get('/users/:id/payments', (req, res) => {
     });
 });
 
+router.get('/users/:id/audit', (req, res) => {
+    const user = portalDb.getUserById(req.params.id);
+    if (!user) {
+        return jsonError(res, 'not_found', 'User not found', 404);
+    }
+    if (user.role !== 'customer') {
+        return jsonError(res, 'validation_error', 'Audit history is for customer accounts only', 422);
+    }
+    const rows = portalDb.listAuditForCustomer(user.id, {
+        limit: req.query.limit,
+        offset: req.query.offset
+    });
+    const entries = rows.map((row) => {
+        const admin = portalDb.getUserById(row.admin_user_id);
+        const adminName = admin
+            ? [admin.first_name, admin.last_name].filter(Boolean).join(' ').trim() ||
+              admin.email ||
+              row.admin_user_id
+            : row.admin_user_id;
+        return {
+            id: row.id,
+            action: row.action,
+            entity_type: row.entity_type,
+            entity_id: row.entity_id,
+            details: row.details,
+            created_at: row.created_at,
+            admin_user_id: row.admin_user_id,
+            admin_email: admin ? admin.email : null,
+            admin_name: adminName
+        };
+    });
+    res.json({ customer_id: user.id, entries });
+});
+
 // --- Bookings ---
 
 router.get('/bookings', (req, res) => {

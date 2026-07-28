@@ -817,6 +817,14 @@ On successful **`checkout.session.completed`**, the matching **`booking_payments
 
 ---
 
+### `GET /admin/users/:id/audit`
+
+Customer-only. Returns **`admin_audit_log`** rows for **`entity_type = user`** with this customer’s id, plus **`entity_type = booking`** for any of their bookings. Each entry includes **`admin_name`**, **`admin_email`**, **`action`**, **`details`**, **`created_at`**.
+
+**Response `200`:** `{ "customer_id", "entries": [ … ] }`
+
+---
+
 ### `GET /admin/bookings`
 
 **Query (optional):** `customer_id`, `status`, `start_from`, `start_to`, `limit`, `offset`.
@@ -947,6 +955,7 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | GET | `/api/v1/admin/email-templates` | Bearer | admin |
 | GET | `/api/v1/admin/users/:id/bookings` | Bearer | admin |
 | GET | `/api/v1/admin/users/:id/payments` | Bearer | admin |
+| GET | `/api/v1/admin/users/:id/audit` | Bearer | admin |
 | GET | `/api/v1/admin/bookings/:id/payments` | Bearer | admin |
 | POST | `/api/v1/admin/bookings/:id/payments/checkout` | Bearer | admin |
 | POST | `/api/v1/stripe/webhook` | — | Stripe signature |

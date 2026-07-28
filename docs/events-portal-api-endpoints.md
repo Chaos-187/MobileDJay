@@ -443,7 +443,7 @@ Payment overview for the signed-in customer: upcoming bookings with quote/settle
 **Rules (customer checkout):**
 
 - **Deposit** first when `deposit_amount > 0` and not yet paid.
-- **Balance** (remaining quote) only from **`balance_due_at`**: explicit `booking.balance_due_at`, else **event `start_datetime` minus `PORTAL_BALANCE_DUE_DAYS_BEFORE_EVENT`** (default **7**).
+- **Balance** (remaining quote) may be paid **any time** after the deposit is satisfied. **`balance_due_at`** is the **deadline** (explicit `booking.balance_due_at`, else **event `start_datetime` minus `PORTAL_BALANCE_DUE_DAYS_BEFORE_EVENT`**, default **7**). Response includes **`balance_past_due`** when the deadline has passed but amount is still outstanding.
 - Customer **`kind: full`** and custom **`amount`** overrides are rejected (**422**).
 
 ---
@@ -888,7 +888,7 @@ Requires **`STRIPE_SECRET_KEY`** on the API server. Register webhook **`POST /ap
 
 **Auth:** Bearer **admin**. Audited as **`payment.refund`**.
 
-**`POST /customer/bookings/:id/payments/checkout`** — same body/rules; customer must own the booking. **`kind: full`** is not allowed for customers. **`balance`** is only accepted once the deposit is satisfied (if required) and the current time is on or after **`balance_due_at`** (see **`GET /customer/transactions`**). Custom **`amount`** is admin-only.
+**`POST /customer/bookings/:id/payments/checkout`** — same body/rules; customer must own the booking. **`kind: full`** is not allowed for customers. **`balance`** requires deposit satisfied when `deposit_amount > 0` (pay anytime before the event; **`balance_due_at`** is the deadline, not the earliest pay date). Custom **`amount`** is admin-only.
 
 On successful **`checkout.session.completed`**, the matching **`booking_payments`** row is **`paid`**; **deposit** payments set booking **`deposit_paid`**, **`deposit_paid_at`**, and **`deposit_amount`**.
 

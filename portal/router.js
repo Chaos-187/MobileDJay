@@ -84,6 +84,7 @@ function customerBookingFinancialPayload(booking) {
         can_pay_deposit: pay.can_pay_deposit,
         can_pay_balance: pay.can_pay_balance,
         balance_block_reason: pay.balance_block_reason,
+        balance_past_due: pay.balance_past_due,
         deposit_outstanding: pay.deposit_outstanding,
         stripe_configured: stripeConfigured
     };
@@ -627,6 +628,7 @@ router.get('/customer/transactions', authMiddleware, requireRole('customer'), (r
             can_pay_deposit: pay.can_pay_deposit,
             can_pay_balance: pay.can_pay_balance,
             balance_block_reason: pay.balance_block_reason,
+            balance_past_due: pay.balance_past_due,
             deposit_outstanding: pay.deposit_outstanding,
             payments
         });

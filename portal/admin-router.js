@@ -430,7 +430,7 @@ router.post('/users/:id/payments/reconcile', async (req, res) => {
     if (!stripePortal.isConfigured()) {
         return jsonError(res, 'service_unavailable', 'Stripe is not configured', 503);
     }
-    const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
+    const payments = portalDb
         .listBookingPaymentsForCustomer(user.id, { limit: 100 })
         .filter(
             (p) =>

@@ -225,6 +225,7 @@ router.patch('/users/:id', async (req, res) => {
                 return jsonError(res, 'validation_error', pv.message, 422);
             }
             patch.password_hash = await hashPassword(String(p));
+            patch.require_password_setup = 0;
         }
     }
     if (blocksLastAdminRemoval(userId, patch)) {

@@ -430,13 +430,11 @@ router.post('/users/:id/payments/reconcile', async (req, res) => {
     if (!stripePortal.isConfigured()) {
         return jsonError(res, 'service_unavailable', 'Stripe is not configured', 503);
     }
-    const payments = portalDb
-        .listBookingPaymentsForCustomer(user.id, { limit: 100 })
-        .filter(
-            (p) =>
-                (p.status === 'processing' || p.status === 'pending') &&
-                p.stripe_checkout_session_id
-        );
+    const payments = portalDb.listBookingPaymentsForCustomer(user.id, { limit: 100 }).filter(
+        (p) =>
+            (p.status === 'processing' || p.status === 'pending') &&
+            p.stripe_checkout_session_id
+    );
     const results = [];
     for (const p of payments) {
         try {

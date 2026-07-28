@@ -448,6 +448,22 @@ Payment overview for the signed-in customer: upcoming bookings with quote/settle
 
 ---
 
+### `GET /customer/payments/:id/receipt`
+
+Download an **HTML receipt** for a **`paid`** or **`refunded`** payment owned by the customer. Response is **`text/html`** with **`Content-Disposition: attachment`**.
+
+**Auth:** Bearer **customer**.
+
+---
+
+### `GET /customer/payments/:id/stripe-receipt`
+
+Returns **`{ "url": "https://pay.stripe.com/…" }`** when Stripe has a hosted card receipt for the payment. **404** if unavailable (use EYUP HTML receipt).
+
+**Auth:** Bearer **customer**.
+
+---
+
 ### `GET /customer/bookings/:id`
 
 **Response `200`:** **BookingCard** (§3.1), including **deposit** fields, plus customer-visible fields only:
@@ -984,6 +1000,8 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | GET | `/api/v1/auth/me` | Bearer | any |
 | GET | `/api/v1/customer/bookings` | Bearer | customer |
 | GET | `/api/v1/customer/transactions` | Bearer | customer |
+| GET | `/api/v1/customer/payments/:id/receipt` | Bearer | customer |
+| GET | `/api/v1/customer/payments/:id/stripe-receipt` | Bearer | customer |
 | GET | `/api/v1/customer/bookings/:id` | Bearer | customer |
 | PATCH | `/api/v1/customer/bookings/:id/note` | Bearer | customer |
 | POST | `/api/v1/customer/bookings/:id/payments/checkout` | Bearer | customer |

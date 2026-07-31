@@ -149,11 +149,10 @@ const catalogueUpload = multer({
 app.use(express.urlencoded({ extended: true }));
 
 const { handleStripeWebhook } = require('./portal/stripe-webhook');
-app.post(
-    '/api/v1/stripe/webhook',
-    express.raw({ type: 'application/json' }),
-    handleStripeWebhook
-);
+const stripeWebhookRaw = express.raw({ type: 'application/json' });
+app.post('/api/v1/stripe/webhook', stripeWebhookRaw, handleStripeWebhook);
+/** Legacy/alternate Stripe Dashboard URL (must still be POST + raw JSON). Prefer /stripe/webhook. */
+app.post('/api/v1/stripe', stripeWebhookRaw, handleStripeWebhook);
 
 app.use(express.json());
 

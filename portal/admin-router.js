@@ -13,6 +13,7 @@ const {
 } = require('./booking-requests-event');
 const brevoMail = require('./brevo-mail');
 const { issueCustomerMagicLoginLink } = require('./portal-magic-login');
+const { sendPasswordResetEmail } = require('./portal-password-reset');
 const stripePortal = require('./stripe-portal');
 const { createBookingPaymentCheckout } = require('./booking-checkout');
 const { refundBookingPayment } = require('./refund-booking-payment');
@@ -268,6 +269,51 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
     if (!user.email) {
         return jsonError(res, 'validation_error', 'Customer has no email address', 422);
     }
+
+    if (templateKey === 'password_reset') {
+        if (!brevoMail.getTemplateId('password_reset')) {
+            return jsonError(
+                res,
+                'service_unavailable',
+                'Password reset template is not configured (set BREVO_TEMPLATE_PASSWORD_RESET)',
+                503
+            );
+        }
+        try {
+            const issued = portalDb.createPasswordResetToken(userId);
+            if (!issued || !issued.token) {
+                return jsonError(res, 'internal_error', 'Could not create password reset link', 500);
+            }
+            const sent = await sendPasswordResetEmail(user, issued);
+            audit(req.portalUser.id, 'user.send_email', 'user', userId, {
+                template: 'password_reset',
+                email: user.email,
+                message_id: sent.messageId,
+                password_reset: true,
+                reset_link_expires_at: issued.expires_at
+            });
+            return res.json({
+                ok: true,
+                template: 'password_reset',
+                to: user.email,
+                message_id: sent.messageId,
+                reset_link_expires_at: issued.expires_at,
+                _hint:
+                    'Customer can set a new password via the link; their current password stays valid until the link is used.'
+            });
+        } catch (err) {
+            console.error('[portal] send-password-reset', err);
+            const status = err.code === 'template_not_configured' ? 503 : err.status === 400 ? 422 : 502;
+            return jsonError(
+                res,
+                err.code === 'template_not_configured' ? 'service_unavailable' : 'upstream_error',
+                err.message || 'Password reset email could not be sent',
+                status,
+                err.details ? { brevo: err.details } : {}
+            );
+        }
+    }
+
     if (!CUSTOMER_EMAIL_TEMPLATES.has(templateKey)) {
         return jsonError(res, 'validation_error', 'Invalid or unsupported email template', 422);
     }

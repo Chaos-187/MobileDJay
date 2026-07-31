@@ -936,13 +936,14 @@ Sends the **account created** Brevo template to an existing **customer** (same a
 
 ### `POST /admin/users/:id/send-email`
 
-**Body (JSON):** `{ "template": "account_created" | "account_created_temporary_password" }` — default **`account_created`**.
+**Body (JSON):** `{ "template": "account_created" | "account_created_temporary_password" | "password_reset" }` — default **`account_created`**.
 
 - **`account_created`:** welcome email; **`params.login_link`** is a **one-time magic URL** (`/events/login?magic=…`, valid **`PORTAL_MAGIC_LINK_TTL_MINUTES`**, default 4320).
 - Optional body flag **`clear_password_login`:** **`true`** — clears the customer **`password_hash`** before sending (same effect as the admin **New magic sign-in link** action). Does not change which Brevo template is used.
 - **`account_created_temporary_password`:** **deprecated** API alias — treated as **`account_created`** + **`clear_password_login`** (sends **`BREVO_TEMPLATE_ACCOUNT_CREATED`**, not the temp-password template ID).
+- **`password_reset`:** sends **`BREVO_TEMPLATE_PASSWORD_RESET`** with **`params.reset_link`** (`/events/login?reset=…`, TTL **`PORTAL_PASSWORD_RESET_TTL_MINUTES`**, default 60). Does **not** clear the existing password until the customer completes the reset. Invalidates any prior unused reset tokens for that user when issuing a new link.
 
-**Response `200`:** `{ "ok": true, "template", "to", "message_id", … }`
+**Response `200`:** `{ "ok": true, "template", "to", "message_id", … }` — **`password_reset`** responses may include **`reset_link_expires_at`**.
 
 **Auth:** Bearer **admin**.
 

@@ -4,6 +4,7 @@
 
 const stripePortal = require('./stripe-portal');
 const { portalDb, nowIso } = require('../db/portal-database');
+const { schedulePaymentReceivedEmail } = require('./payment-received-email');
 
 function paymentIdFromSession(session) {
     return (
@@ -29,6 +30,7 @@ function applyCheckoutCompleted(session) {
         return { ok: false, reason: 'payment_not_found' };
     }
     if (payment.status === 'paid') {
+        schedulePaymentReceivedEmail(payment.id);
         return { ok: true, duplicate: true, payment_id: payment.id };
     }
 
@@ -47,6 +49,7 @@ function applyCheckoutCompleted(session) {
         stripe_checkout_session_id: session.id
     });
 
+    schedulePaymentReceivedEmail(payment.id);
     return { ok: true, payment_id: payment.id, booking_id: payment.booking_id, status: 'paid' };
 }
 

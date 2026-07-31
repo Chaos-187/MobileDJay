@@ -45,13 +45,14 @@ Short list of planned work tracked outside the domain spec docs.
 
 ---
 
-## 6. Payment confirmation email (after Stripe paid)
+## 6. Payment confirmation email (after Stripe paid) ✅
 
-- **Trigger:** When a **`booking_payments`** row becomes **`paid`** (today: Stripe **`checkout.session.completed`** in **`portal/stripe-webhook.js`**; also cover admin/manual reconcile paths if any mark **`paid`** without webhook).
-- **Email:** New Brevo transactional template under **`EYUP_EVENTS/email-templates/`** (e.g. **`brevo-payment-received.yml`**) — event ref, amount, currency, payment kind (deposit / balance / other), link to customer portal (**`/events/customer`**, Transactions tab). Register **`BREVO_TEMPLATE_PAYMENT_RECEIVED`** (or separate deposit/balance IDs) in **`brevo-mail.js`** and **`.env.example`**.
-- **Idempotency:** Record send per **`booking_payments.id`** (metadata column or **`payment_email_sent_at`**) so webhook retries do not duplicate emails.
-- **Optional:** Attach/link to existing **`GET /customer/payments/:id/receipt`** HTML or Stripe receipt URL from **`payment-receipt.js`** params in template.
-- **Docs:** **`docs/events-portal-api-endpoints.md`** — Stripe webhook side effects + env template IDs.
+- **Shipped:** When **`booking_payments`** → **`paid`** via **`portal/stripe-checkout-sync.js`** (`checkout.session.completed` webhook or checkout sync), sends Brevo template **`payment_received`** if **`BREVO_TEMPLATE_PAYMENT_RECEIVED`** is set.
+- **Shipped:** Idempotency — **`booking_payments.payment_email_sent_at`**; retries and duplicate webhooks skip (or retry after a failed send clears the claim).
+- **Shipped:** **`EYUP_EVENTS/email-templates/brevo-payment-received.yml`** — event ref, amount, kind, **`params.PORTAL_LINK`** (`/events/customer?tab=transactions`), optional **`params.RECEIPT_LINK`** (Stripe hosted receipt).
+- **Shipped:** **`portal/payment-received-email.js`**, **`brevo-mail.js`** registry + **`portalCustomerUrl()`**.
+- **Shipped:** **`docs/events-portal-api-endpoints.md`** — Stripe webhook side effects.
+- **Ops:** Import template in Brevo and set **`BREVO_TEMPLATE_PAYMENT_RECEIVED`** on the API server.
 
 ---
 

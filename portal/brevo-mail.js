@@ -34,6 +34,10 @@ const TEMPLATE_REGISTRY = {
     password_reset: {
         env: 'BREVO_TEMPLATE_PASSWORD_RESET',
         label: 'Password reset'
+    },
+    payment_received: {
+        env: 'BREVO_TEMPLATE_PAYMENT_RECEIVED',
+        label: 'Payment received'
     }
 };
 
@@ -77,6 +81,16 @@ function portalLoginUrl() {
         return `${first.replace(/\/$/, '')}/events/login`;
     }
     return 'https://eyupevents.uk/events/login';
+}
+
+function portalCustomerUrl(query) {
+    const login = portalLoginUrl();
+    const base = login.replace(/\/login\/?$/i, '/customer');
+    if (query != null && String(query).trim()) {
+        const q = String(query).trim().replace(/^\?/, '');
+        return `${base}?${q}`;
+    }
+    return base;
 }
 
 function recipientName(user) {
@@ -200,5 +214,6 @@ module.exports = {
     getTemplateId,
     listConfiguredTemplates,
     portalLoginUrl,
+    portalCustomerUrl,
     sendCustomerTemplateEmail
 };

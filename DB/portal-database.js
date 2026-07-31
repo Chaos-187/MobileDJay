@@ -148,6 +148,12 @@ db.exec(`
 `);
 
 try {
+    db.exec(`ALTER TABLE booking_payments ADD COLUMN payment_email_sent_at TEXT`);
+} catch (e) {
+    /* exists */
+}
+
+try {
     db.exec(`ALTER TABLE users ADD COLUMN require_password_setup INTEGER NOT NULL DEFAULT 0`);
 } catch (e) {
     /* exists */
@@ -1979,6 +1985,7 @@ const portalDb = {
             'stripe_payment_intent_id',
             'stripe_payment_link_id',
             'paid_at',
+            'payment_email_sent_at',
             'metadata'
         ];
         const setClause = [];
@@ -2108,6 +2115,39 @@ const portalDb = {
         });
 
         return apply();
+    },
+
+    markBookingPaymentEmailSent(paymentId, sentAt) {
+        const at = sentAt || nowIso();
+        const r = db
+            .prepare(
+                `UPDATE booking_payments SET payment_email_sent_at = ?, updated_at = ?
+                 WHERE id = ? AND status = 'paid'
+                   AND (payment_email_sent_at IS NULL OR payment_email_sent_at LIKE 'claim:%')`
+            )
+            .run(at, nowIso(), paymentId);
+        return r.changes > 0;
+    },
+
+    tryClaimBookingPaymentEmailSend(paymentId) {
+        const claimAt = `claim:${nowIso()}`;
+        const r = db
+            .prepare(
+                `UPDATE booking_payments SET payment_email_sent_at = ?, updated_at = ?
+                 WHERE id = ? AND status = 'paid' AND payment_email_sent_at IS NULL`
+            )
+            .run(claimAt, nowIso(), paymentId);
+        return r.changes > 0;
+    },
+
+    releaseBookingPaymentEmailClaim(paymentId) {
+        const r = db
+            .prepare(
+                `UPDATE booking_payments SET payment_email_sent_at = NULL, updated_at = ?
+                 WHERE id = ? AND payment_email_sent_at LIKE 'claim:%'`
+            )
+            .run(nowIso(), paymentId);
+        return r.changes > 0;
     },
 
     applyBookingPaymentRefund(paymentId, patch = {}) {

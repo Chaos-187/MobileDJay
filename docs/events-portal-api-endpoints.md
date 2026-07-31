@@ -983,6 +983,8 @@ Requires **`STRIPE_SECRET_KEY`** on the API server. Register webhook **`POST /ap
 
 On successful **`checkout.session.completed`**, the matching **`booking_payments`** row is **`paid`**; **deposit** payments set booking **`deposit_paid`**, **`deposit_paid_at`**, and **`deposit_amount`**.
 
+**Side effect (email):** If **`BREVO_API_KEY`** and **`BREVO_TEMPLATE_PAYMENT_RECEIVED`** are configured, the API sends the Brevo **`payment_received`** template to the booking customer (async, after the webhook/sync handler returns). Idempotent per payment via **`booking_payments.payment_email_sent_at`**. Template params include event title/reference, amount, payment kind, paid time, **`PORTAL_LINK`** (`/events/customer?tab=transactions`), and optional Stripe **`RECEIPT_LINK`**. YAML: **`EYUP_EVENTS/email-templates/brevo-payment-received.yml`**.
+
 ---
 
 ### `GET /admin/users/:id/audit`

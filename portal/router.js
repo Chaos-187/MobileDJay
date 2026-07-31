@@ -7,6 +7,9 @@ const adminRouter = require('./admin-router');
 const publicRouter = require('./public-router');
 const { verifyTurnstile } = require('./turnstile');
 const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
+const { allowForgotPasswordAttempt } = require('./forgot-password-rate');
+const { sendPasswordResetEmail } = require('./portal-password-reset');
+const brevoMail = require('./brevo-mail');
 const { getBookingPhotoGallery, photoGallerySummary, buildCustomerPhotoAlbums } = require('./booking-event-photos');
 const { createBookingPaymentCheckout } = require('./booking-checkout');
 const stripePortal = require('./stripe-portal');
@@ -391,6 +394,98 @@ router.post('/auth/magic-link/consume', (req, res) => {
     } catch (err) {
         console.error('[portal] magic-link/consume', err);
         return jsonError(res, 'internal_error', 'Magic sign-in failed', 500);
+    }
+});
+
+const FORGOT_PASSWORD_OK = {
+    message:
+        'If an account exists for that email, we sent a password reset link. Check your inbox and spam folder.'
+};
+
+router.post('/auth/forgot-password', async (req, res) => {
+    try {
+        const { email: emailRaw, cf_turnstile_response: cfTurnstile } = req.body || {};
+        const ts = await verifyTurnstile(req, cfTurnstile);
+        if (!ts.skipped && !ts.ok) {
+            return jsonError(res, 'turnstile_failed', 'Turnstile verification failed', 400, {
+                error_codes: ts.errorCodes || []
+            });
+        }
+        const email = emailRaw != null ? String(emailRaw).trim().toLowerCase() : '';
+        if (!email) {
+            return jsonError(res, 'validation_error', 'email is required', 422);
+        }
+        if (!allowForgotPasswordAttempt(req, email)) {
+            return res.json(FORGOT_PASSWORD_OK);
+        }
+        const user = portalDb.getUserByEmail(email);
+        if (
+            user &&
+            (user.disabled_at == null || String(user.disabled_at).trim() === '') &&
+            brevoMail.isConfigured() &&
+            brevoMail.getTemplateId('password_reset')
+        ) {
+            try {
+                const issued = portalDb.createPasswordResetToken(user.id);
+                if (issued) {
+                    await sendPasswordResetEmail(user, issued);
+                }
+            } catch (mailErr) {
+                console.error('[portal] forgot-password email', mailErr);
+            }
+        }
+        return res.json(FORGOT_PASSWORD_OK);
+    } catch (err) {
+        console.error('[portal] forgot-password', err);
+        return jsonError(res, 'internal_error', 'Request failed', 500);
+    }
+});
+
+router.post('/auth/password-reset/consume', async (req, res) => {
+    try {
+        const tokenRaw = req.body && req.body.token != null ? String(req.body.token).trim() : '';
+        const { new_password: newPassword } = req.body || {};
+        if (!tokenRaw) {
+            return jsonError(res, 'validation_error', 'token is required', 422);
+        }
+        if (newPassword == null || String(newPassword).length === 0) {
+            return jsonError(res, 'validation_error', 'new_password is required', 422);
+        }
+        const nextVal = validatePortalPasswordPlain(newPassword);
+        if (!nextVal.ok) {
+            return jsonError(res, 'validation_error', nextVal.message, 422);
+        }
+        const consumed = portalDb.consumePasswordResetToken(tokenRaw);
+        if (!consumed || !consumed.userId) {
+            return jsonError(
+                res,
+                'invalid_token',
+                'This reset link is invalid or has expired',
+                401
+            );
+        }
+        const user = portalDb.getUserById(consumed.userId);
+        if (!user) {
+            return jsonError(res, 'invalid_token', 'This reset link is invalid or has expired', 401);
+        }
+        if (user.disabled_at != null && String(user.disabled_at).trim() !== '') {
+            return jsonError(res, 'forbidden', 'Account disabled', 403);
+        }
+        const passwordHash = await hashPassword(String(newPassword));
+        portalDb.updateUserPatch(user.id, {
+            password_hash: passwordHash,
+            require_password_setup: 0
+        });
+        const refreshed = portalDb.getUserById(user.id);
+        const access_token = signAccessToken(refreshed);
+        res.json({
+            access_token,
+            token_type: 'Bearer',
+            user: authUserPayload(refreshed)
+        });
+    } catch (err) {
+        console.error('[portal] password-reset/consume', err);
+        return jsonError(res, 'internal_error', 'Password reset failed', 500);
     }
 });
 

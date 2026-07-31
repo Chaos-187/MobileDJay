@@ -20,6 +20,7 @@ Short list of planned work tracked outside the domain spec docs.
 
 - **Shipped (PM2 path):** Self-hosted GitHub Actions workflow — [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), [`docs/deploy-self-hosted.md`](deploy-self-hosted.md), [`ecosystem.config.cjs`](../ecosystem.config.cjs). Deploy target: `/home/kyle/Documents/MobileDJay-main/`.
 - **Future:** Dockerfile / compose for containerised deploys.
+- **Shipped:** Server-side **`scripts/deploy.sh`** + deploy-key docs — see [§8](#8-deploysh-server-deploy-via-github-deploy-key-).
 
 ---
 
@@ -33,14 +34,14 @@ Short list of planned work tracked outside the domain spec docs.
 
 ---
 
-## 5. Forgot password (magic reset link + email)
+## 5. Forgot password (magic reset link + email) ✅
 
-- **API:** `POST /auth/forgot-password` (email, Turnstile) — rate-limited; always generic success response (no email enumeration). Issue one-time token (reuse or parallel **`portal_magic_login_tokens`** / dedicated **`portal_password_reset_tokens`** table); TTL via env (e.g. **`PORTAL_PASSWORD_RESET_TTL_MINUTES`**).
-- **API:** `POST /auth/password-reset/consume` `{ token, new_password }` — validate token, set **`password_hash`**, invalidate token; optional sign-in JWT or redirect to login.
-- **Email:** Brevo transactional template export under **`EYUP_EVENTS/email-templates/`** (e.g. **`brevo-password-reset.yml`**) with **`{{ params.reset_link }}`** (or **`login_link`** pattern: `/events/login?reset=…` or dedicated **`/events/reset-password`** page). Register **`BREVO_TEMPLATE_PASSWORD_RESET`** in **`brevo-mail.js`** and **`.env.example`**.
-- **Portal UI:** “Forgot password?” on **`/events/login`** and customer auth gate; reset page or modal to enter new password after link click.
-- **Docs:** **`docs/events-portal-api-endpoints.md`** §4 auth; admin note that this is separate from customer **welcome magic link** (§ account created / reinvite).
-- **Security:** Same hardening as magic sign-in (single-use, hashed token storage, disabled accounts rejected); do not revoke all JWTs on reset unless product requires it (document choice).
+- **Shipped:** **`POST /auth/forgot-password`** (email + Turnstile) — generic **`200`** message; rate limit **`portal/forgot-password-rate.js`**; **`portal_password_reset_tokens`** table + **`portal-password-reset.js`**.
+- **Shipped:** **`POST /auth/password-reset/consume`** — sets **`password_hash`**, returns JWT (same shape as login); all roles.
+- **Shipped:** Brevo template **`EYUP_EVENTS/email-templates/brevo-password-reset.yml`** — **`{{ params.reset_link }}`**; **`BREVO_TEMPLATE_PASSWORD_RESET`** in **`brevo-mail.js`** and **`.env.example`**.
+- **Shipped:** Portal UI — **`/events/forgot-password`**, **`/events/login?reset=…`**, links on login + customer gate.
+- **Shipped:** **`docs/events-portal-api-endpoints.md`** §4.
+- **Ops:** Import template in Brevo and set **`BREVO_TEMPLATE_PASSWORD_RESET`** on the server before emails send.
 
 ---
 
@@ -51,6 +52,28 @@ Short list of planned work tracked outside the domain spec docs.
 - **Idempotency:** Record send per **`booking_payments.id`** (metadata column or **`payment_email_sent_at`**) so webhook retries do not duplicate emails.
 - **Optional:** Attach/link to existing **`GET /customer/payments/:id/receipt`** HTML or Stripe receipt URL from **`payment-receipt.js`** params in template.
 - **Docs:** **`docs/events-portal-api-endpoints.md`** — Stripe webhook side effects + env template IDs.
+
+---
+
+## 7. Zoho Books integration (invoices & customers)
+
+- **Goal:** Sync portal customers and booking billing with **Zoho Books** — create/update **contacts (customers)**, raise **invoices** (deposit, balance, or full quote), and optionally record **payments** when Stripe marks a booking payment paid.
+- **Auth:** Zoho OAuth2 (organization-scoped refresh token) — env: **`ZOHO_BOOKS_CLIENT_ID`**, **`ZOHO_BOOKS_CLIENT_SECRET`**, **`ZOHO_BOOKS_REFRESH_TOKEN`**, **`ZOHO_BOOKS_ORGANIZATION_ID`**, **`ZOHO_BOOKS_REGION`** (`com` / `eu` / `in` / etc. for API base URL).
+- **Customer sync:** On portal user create/update (customer role) — map name, email, phone, billing address if stored; persist **`zoho_contact_id`** on **`portal_users`** (or PII extension table). Admin “Sync to Zoho” / retry on failure.
+- **Invoice creation:** From admin booking (Payments tab or post-booking action) — line items from quote/catalog; currency GBP; due dates aligned with **`deposit_due_at`** / **`balance_due_at`**; store **`zoho_invoice_id`** on booking or **`booking_payments`** row.
+- **Payment sync (optional phase 2):** When **`booking_payments.status`** → **`paid`**, create Zoho **customer payment** applied to invoice; idempotency key per payment id.
+- **Webhooks / polling:** Handle Zoho invoice status changes if staff edit in Books; or periodic reconcile job — document source of truth (portal vs Zoho).
+- **Admin UI:** Connection status, last sync error, manual “Create invoice in Zoho” / “Push customer”.
+- **Docs:** New **`docs/zoho-books-integration.md`** (scopes, env, flows); cross-links in **`events-portal-api-endpoints.md`** for any admin endpoints.
+
+---
+
+## 8. `deploy.sh` (server deploy via GitHub deploy key) ✅
+
+- **Shipped:** [`scripts/deploy.sh`](../scripts/deploy.sh) — git fetch/ff-only (or **`--force`** reset), **`npm ci --omit=dev`**, PM2 reload, health check; **`--install-only`** for git-less runs.
+- **Shipped:** [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) calls **`bash scripts/deploy.sh --install-only`** after rsync so PM2/health logic is shared.
+- **Shipped:** [`docs/deploy-self-hosted.md`](deploy-self-hosted.md) — deploy key setup, clone, env vars, git vs Actions rsync table.
+- **Optional later:** Cron example; wire **`DEPLOY_GIT_REMOTE`** in server profile.
 
 ---
 

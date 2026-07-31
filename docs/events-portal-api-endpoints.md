@@ -338,6 +338,60 @@ Exchange a **one-time** token from a customer welcome / reinvite email (`login_l
 
 **Errors:** `validation_error` (422), `invalid_token` (401 — expired or already used), `forbidden` (403 — disabled account or non-customer), `internal_error` (500).
 
+**Note:** Separate from **welcome / reinvite magic links** (`magic` query param) and from **`POST /auth/forgot-password`** reset links (`reset` query param).
+
+---
+
+### `POST /auth/forgot-password`
+
+Request a **password reset email**. Always returns the same success message when the request is accepted (no email enumeration).
+
+**Auth:** none.
+
+**Request body**
+
+```json
+{
+  "email": "user@example.com",
+  "cf_turnstile_response": "optional when Turnstile configured"
+}
+```
+
+**Response `200`**
+
+```json
+{
+  "message": "If an account exists for that email, we sent a password reset link. Check your inbox and spam folder."
+}
+```
+
+**Behaviour:** Rate-limited per IP + email (**`PORTAL_FORGOT_PASSWORD_RATE_MAX`**, default 5 per hour). Sends Brevo template **`password_reset`** when the user exists, is not disabled, and **`BREVO_TEMPLATE_PASSWORD_RESET`** is configured. Reset link TTL: **`PORTAL_PASSWORD_RESET_TTL_MINUTES`** (default 60).
+
+**Errors:** `validation_error` (422), `turnstile_failed` (400), `internal_error` (500).
+
+---
+
+### `POST /auth/password-reset/consume`
+
+Exchange a **one-time** token from the reset email (`reset_link` query param **`reset`**) for a new password and a fresh JWT.
+
+**Auth:** none.
+
+**Request body**
+
+```json
+{
+  "token": "string (required)",
+  "new_password": "string (required, min 8 characters)"
+}
+```
+
+**Response `200`** — same shape as **`POST /auth/login`** (`access_token`, `token_type`, `user`).
+
+**Errors:** `validation_error` (422), `invalid_token` (401), `forbidden` (403 — disabled account), `internal_error` (500).
+
+Issued JWTs from prior sessions remain valid until expiry (**§1.2**).
+
 ---
 
 ### `POST /auth/delete-account`
@@ -1012,6 +1066,8 @@ SQLite tables: **`catalog_products`**, **`catalog_product_addons`** (parent → 
 | Spec idea | Status |
 |-----------|--------|
 | `POST /auth/magic-link/consume` | Implemented (§4) — customer welcome emails |
+| `POST /auth/forgot-password` | Implemented (§4) — Brevo **`password_reset`** template |
+| `POST /auth/password-reset/consume` | Implemented (§4) |
 | Refresh tokens / server-side session revocation | Not implemented (client drops JWT on logout) |
 | JWT customer / DJ / **admin** **browser** APIs | Implemented (§4–6.5); **`POST /auth/change-password`**, **`POST /auth/delete-account`** §4 |
 | **`GET/PATCH /customer/details`** | Implemented (§5) |

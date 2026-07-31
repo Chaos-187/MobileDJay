@@ -90,9 +90,99 @@ pm2 reload mobiledjay
 
 ## Manual deploy
 
-GitHub → **Actions → Deploy → Run workflow**.
+**GitHub Actions:** GitHub → **Actions → Deploy → Run workflow**.
 
-## Troubleshooting
+**On the server (git clone + deploy key):** see [§ Deploy with `scripts/deploy.sh`](#deploy-with-scriptsdeploysh-github-deploy-key) below.
+
+## Deploy with `scripts/deploy.sh` (GitHub deploy key)
+
+Use this when you want to update production **without** the Actions runner — e.g. SSH in and run one command, or a cron job.
+
+The script lives at [`scripts/deploy.sh`](../scripts/deploy.sh). It:
+
+1. **`git fetch`** and fast-forward **`main`** (or **`DEPLOY_BRANCH`**) — or **`--force`** to `git reset --hard origin/main`
+2. Refuses to run if the working tree is dirty (unless **`--force`**) so local edits are not lost silently
+3. **`npm ci --omit=dev`**
+4. **`pm2 reload`** (or **`pm2 start`** on first run) via **`ecosystem.config.cjs`**
+5. **Health check** on `http://127.0.0.1:$PORT/` (reads **`PORT`** from **`.env`** when set)
+
+**`--install-only`** skips git (npm + PM2 + health only). The GitHub Actions workflow uses this after **rsync**, so install/reload logic stays in one place.
+
+### One-time: deploy key + clone
+
+On the server, as the user that runs PM2:
+
+```bash
+# 1) SSH key used only for GitHub read access
+ssh-keygen -t ed25519 -f ~/.ssh/mobiledjay_deploy -N ""
+chmod 600 ~/.ssh/mobiledjay_deploy
+cat ~/.ssh/mobiledjay_deploy.pub
+```
+
+Add the public key in GitHub → **repo → Settings → Deploy keys → Add deploy key** (read-only, no write access).
+
+```bash
+# 2) Clone into the live path (adjust ORG/repo)
+export GIT_SSH_COMMAND='ssh -i ~/.ssh/mobiledjay_deploy -o IdentitiesOnly=yes'
+git clone git@github.com:YOUR_ORG/MobileDJay.git /home/kyle/Documents/MobileDJay-main
+cd /home/kyle/Documents/MobileDJay-main
+
+# 3) Production secrets and data (if migrating from rsync-only layout)
+cp /path/to/backup/.env .env
+# copy db/*.db and uploads/ as needed
+
+npm ci --omit=dev
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
+Optional: add to `~/.ssh/config`:
+
+```
+Host github.com-mobiledjay
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/mobiledjay_deploy
+  IdentitiesOnly yes
+```
+
+Then set **`DEPLOY_GIT_REMOTE`** / clone URL to `git@github.com-mobiledjay:YOUR_ORG/MobileDJay.git`, or export **`GIT_SSH_COMMAND`** when running deploy.
+
+### Run a deploy
+
+```bash
+cd /home/kyle/Documents/MobileDJay-main
+chmod +x scripts/deploy.sh   # once
+export GIT_SSH_COMMAND='ssh -i ~/.ssh/mobiledjay_deploy -o IdentitiesOnly=yes'   # if not in ssh config
+
+./scripts/deploy.sh
+```
+
+Environment overrides:
+
+| Variable | Default |
+|----------|---------|
+| `DEPLOY_PATH` | Repo root (parent of `scripts/`) |
+| `DEPLOY_BRANCH` | `main` |
+| `DEPLOY_GIT_REMOTE` | `origin` |
+| `PM2_APP_NAME` | `mobiledjay` |
+
+If the tree has local changes you intend to discard (e.g. accidental edit on server):
+
+```bash
+./scripts/deploy.sh --force
+```
+
+### Git vs Actions rsync
+
+| Method | `.git` in live dir? | Update command |
+|--------|---------------------|----------------|
+| **Self-hosted Actions** | No (rsync excludes `.git`) | Push to `main` or run workflow; uses **`deploy.sh --install-only`** after sync |
+| **Deploy key + clone** | Yes | **`./scripts/deploy.sh`** on the server |
+
+If production was created only via Actions, either keep using the workflow or migrate once to a git clone (copy `.env`, `db/`, `uploads/` into a fresh clone).
+
+---
 
 | Issue | Check |
 |-------|--------|
@@ -104,4 +194,4 @@ GitHub → **Actions → Deploy → Run workflow**.
 
 ---
 
-*See also [`todo.md`](todo.md) §3 for future Docker-based deployment.*
+*See also [`todo.md`](todo.md) §3 (Docker) and §8 (`deploy.sh`).*

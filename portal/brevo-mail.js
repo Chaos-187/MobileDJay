@@ -30,6 +30,10 @@ const TEMPLATE_REGISTRY = {
     contact_autoresponder: {
         env: 'BREVO_TEMPLATE_CONTACT_AUTORESPONDER',
         label: 'Contact autoresponder'
+    },
+    password_reset: {
+        env: 'BREVO_TEMPLATE_PASSWORD_RESET',
+        label: 'Password reset'
     }
 };
 

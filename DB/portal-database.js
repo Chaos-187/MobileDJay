@@ -375,7 +375,10 @@ const {
     labelForProductType,
     sortOrderForProductType,
     listKnownProductTypes,
-    resolveCatalogImageUrl
+    resolveCatalogImageUrl,
+    normalizeCatalogImageStorage,
+    inferProductType,
+    publicCatalogImageUrl
 } = require('../portal/catalog-product-types');
 
 function clampHoursToProductMinimum(product, hours) {
@@ -420,11 +423,20 @@ function computeCatalogLineSubtotal({ pricing_model: pricingModel, quantity, hou
 
 function materializeCatalogProduct(row, { addons = null, resolveImage = false } = {}) {
     if (!row) return row;
-    const productType = normalizeProductType(row.product_type);
+    const storedType = normalizeProductType(row.product_type);
+    const effectiveType = inferProductType({
+        product_type: row.product_type,
+        capability_code: row.capability_code,
+        code: row.code,
+        name: row.name
+    });
     const out = {
         ...row,
-        product_type: productType,
-        product_type_label: labelForProductType(productType),
+        product_type: storedType,
+        product_type_effective: effectiveType,
+        product_type_label: labelForProductType(
+            storedType !== 'general' ? storedType : effectiveType
+        ),
         allows_addons: row.allows_addons === 1,
         is_active: row.is_active === 1,
         image_url: row.image_url != null ? String(row.image_url) : null
@@ -1557,7 +1569,7 @@ const portalDb = {
             row.is_active === false || row.is_active === 0 ? 0 : 1,
             Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
             normalizeProductType(row.product_type),
-            row.image_url != null && String(row.image_url).trim() ? String(row.image_url).trim() : null,
+            normalizeCatalogImageStorage(row.image_url),
             t,
             t
         );
@@ -1605,7 +1617,7 @@ const portalDb = {
             } else if (key === 'sort_order') val = Number(val) || 0;
             else if (key === 'product_type') val = normalizeProductType(val);
             else if (key === 'image_url') {
-                val = val != null && String(val).trim() ? String(val).trim() : null;
+                val = normalizeCatalogImageStorage(val);
             }
             sets.push(`${key} = ?`);
             params.push(val);
@@ -2618,7 +2630,7 @@ const portalDb = {
     materializePublicQuoteProduct(productId) {
         const full = portalDb.getCatalogProductById(productId);
         if (!full) return null;
-        const productType = normalizeProductType(full.product_type);
+        const productType = inferProductType(full);
         return {
             id: full.id,
             name: full.name,
@@ -2633,7 +2645,7 @@ const portalDb = {
                     : null,
             currency: full.currency || 'GBP',
             allows_addons: !!full.allows_addons,
-            image_url: full.image_url ? resolveCatalogImageUrl(full.image_url) : null,
+            image_url: publicCatalogImageUrl(full),
             addons: (full.addons || []).map((a) => ({
                 addon_product_id: a.addon_product_id,
                 addon_name: a.addon_name,

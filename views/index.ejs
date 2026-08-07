@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
-    <link href="/css/guest-hub.css?v=1" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=3" rel="stylesheet">
     
     <% if (event) { %>
     <script id="eventThemeCss" type="text/plain">
@@ -68,25 +68,13 @@ a { color: <%= event.accent_color %>; }
 <body class="mdj-eyup-brand mdj-guest-hub-page">
     <div class="mdj-scanlines" aria-hidden="true"></div>
 
-    <nav class="mdj-site-navbar mdj-site-navbar--minimal mdj-guest-hub-nav" aria-label="Event">
-        <div class="nav-container">
-            <div class="logo" role="img" aria-label="EYUP EVENTS">
-                <span class="logo-text">EYUP</span>
-                <span class="logo-accent">EVENTS</span>
-                <span class="logo-subtitle"><% if (event && event.name) { %><%= event.name %><% } else if (typeof eventSlug === 'string' && eventSlug) { %>Guest requests<% } else { %>MobileDJay<% } %></span>
-            </div>
-        </div>
-    </nav>
-
     <span id="welcomeName" class="visually-hidden"></span>
-
-    <!-- Store eventSlug + DJ name for JavaScript -->
     <script>
         window.eventSlug = '<%= eventSlug || "" %>';
         window.djName = '<%= typeof djName !== "undefined" && djName ? djName : "DJ" %>';
     </script>
 
-    <main class="container mt-4">
+    <main class="container mdj-guest-hub-main">
         <div class="index-page">
             <div class="guest-hub-top" aria-hidden="false">
                 <button id="repliesBellBtn" type="button" class="nav-msg-btn guest-hub-messages-btn position-relative" title="Messages" aria-pressed="false" aria-label="Messages">

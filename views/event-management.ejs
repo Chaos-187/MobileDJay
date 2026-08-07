@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=3" rel="stylesheet">
     <style>
         .event-card {
             transition: all 0.3s ease;
@@ -156,27 +157,62 @@
         .photo-preview.pp-style-minimal .pp-frame { background: #141a22; border: 1px solid rgba(255,255,255,0.25); }
         .photo-preview.pp-style-minimal .pp-caption { color: #c9d4e0; }
 
-        /* Guest page preview */
-        .guest-preview {
-            border-radius: 10px;
-            border: 1px solid rgba(128, 128, 128, 0.35);
-            overflow: hidden;
-            padding: 1.1rem 1rem;
-            text-align: center;
-            background: #fff;
-            background-size: cover;
-            background-position: center;
+        /* Guest hub phone preview (theme tab) */
+        .guest-theme-preview-col {
+            position: sticky;
+            top: 0.5rem;
         }
-        .guest-preview .gp-logo img { max-height: 44px; max-width: 60%; margin-bottom: 0.5rem; }
-        .guest-preview .gp-heading { font-weight: 800; font-size: 1.05rem; margin-bottom: 0.25rem; }
-        .guest-preview .gp-text { font-size: 0.8rem; margin-bottom: 0.7rem; }
-        .guest-preview .gp-btn {
-            display: inline-block;
-            padding: 0.4rem 1.2rem;
-            border-radius: 0.5rem;
-            color: #fff;
-            font-weight: 700;
-            font-size: 0.8rem;
+        .guest-phone-device {
+            margin: 0 auto;
+            width: min(100%, 300px);
+            padding: 10px;
+            border-radius: 34px;
+            background: linear-gradient(160deg, #3d3d42 0%, #1c1c1f 45%, #0f0f11 100%);
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.45),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+                inset 0 2px 4px rgba(255, 255, 255, 0.06);
+        }
+        .guest-phone-device__shell {
+            position: relative;
+            border-radius: 26px;
+            overflow: hidden;
+            height: min(620px, 62vh);
+            min-height: 480px;
+            background: #0a0a0a;
+            box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.85);
+        }
+        .guest-phone-device__notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 38%;
+            max-width: 120px;
+            height: 22px;
+            background: #0a0a0a;
+            border-radius: 0 0 14px 14px;
+            z-index: 20;
+            pointer-events: none;
+        }
+        .guest-phone-screen {
+            height: 100%;
+            overflow: hidden;
+            font-size: 14px;
+        }
+        .guest-phone-screen .name-input-group .form-control,
+        .guest-phone-screen .name-input-group .btn {
+            pointer-events: none;
+        }
+        .guest-phone-screen .option-card {
+            pointer-events: none;
+            cursor: default;
+        }
+        #editTabTheme .guest-theme-preview-hint {
+            font-size: 0.72rem;
+            opacity: 0.65;
+            margin-top: 0.35rem;
+            text-align: center;
         }
         .event-url {
             font-family: monospace;
@@ -876,82 +912,172 @@
 
                             <!-- ── Tab 2: Guest Page Theme ── -->
                             <div class="tab-pane fade" id="editTabTheme" role="tabpanel">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
+                                <div class="row g-4 align-items-start">
+                                    <div class="col-lg-7">
                                         <div class="row">
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventHeadingColor" class="form-label">Heading Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#007bff">
-                                                    <input type="text" class="form-control" id="editEventHeadingColorText" value="#007bff" maxlength="7">
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventHeadingColor" class="form-label">Heading Color</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#007bff">
+                                                            <input type="text" class="form-control" id="editEventHeadingColorText" value="#007bff" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventTextColor" class="form-label">Text Color</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#212529">
+                                                            <input type="text" class="form-control" id="editEventTextColorText" value="#212529" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventBgColor" class="form-label">Background Color</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#ffffff">
+                                                            <input type="text" class="form-control" id="editEventBgColorText" value="#ffffff" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventAccentColor" class="form-label">Accent/Button Color</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#0d6efd">
+                                                            <input type="text" class="form-control" id="editEventAccentColorText" value="#0d6efd" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="editEventCustomCss" class="form-label">Custom CSS <span class="badge bg-secondary">Advanced</span></label>
+                                                    <textarea class="form-control font-monospace" id="editEventCustomCss" rows="5" placeholder=".hero-title { letter-spacing: 0.05em; }"></textarea>
+                                                    <div class="form-text">Same rules as the live guest hub. Use <code>body</code> for page-wide styles — the preview maps that automatically.</div>
                                                 </div>
                                             </div>
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventTextColor" class="form-label">Text Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#212529">
-                                                    <input type="text" class="form-control" id="editEventTextColorText" value="#212529" maxlength="7">
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-3"><i class="fas fa-images me-2"></i>Images</h6>
+                                                <div class="mb-3">
+                                                    <label for="editEventBgImage" class="form-label">Background Image</label>
+                                                    <div class="img-upload-row mb-1">
+                                                        <img id="editBgImageThumb" class="img-thumb" src="" alt="" style="display: none;">
+                                                        <input type="url" class="form-control" id="editEventBgImage" placeholder="https://... or upload →">
+                                                        <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="bg" data-target="editEventBgImage" data-thumb="editBgImageThumb" title="Upload image">
+                                                            <i class="fas fa-upload"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="form-text">Shown behind the guest hub and request pages. Leave empty for solid color.</div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventBgColor" class="form-label">Background Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#ffffff">
-                                                    <input type="text" class="form-control" id="editEventBgColorText" value="#ffffff" maxlength="7">
+                                                <div class="mb-3">
+                                                    <label for="editEventLogoImage" class="form-label">Event Logo</label>
+                                                    <div class="img-upload-row mb-1">
+                                                        <img id="editLogoImageThumb" class="img-thumb" src="" alt="" style="display: none;">
+                                                        <input type="url" class="form-control" id="editEventLogoImage" placeholder="https://... or upload →">
+                                                        <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="logo" data-target="editEventLogoImage" data-thumb="editLogoImageThumb" title="Upload logo">
+                                                            <i class="fas fa-upload"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="form-text">Hero logo on the guest landing page (PNG/SVG with transparency works best).</div>
                                                 </div>
+                                                <div id="themeUploadStatus" class="small" aria-live="polite"></div>
+                                                <p class="small text-muted mb-0 mt-2"><i class="fas fa-info-circle me-1"></i>Enabled features on the <strong>Details &amp; Features</strong> tab appear in the preview options list.</p>
                                             </div>
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventAccentColor" class="form-label">Accent/Button Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#0d6efd">
-                                                    <input type="text" class="form-control" id="editEventAccentColorText" value="#0d6efd" maxlength="7">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editEventCustomCss" class="form-label">Custom CSS <span class="badge bg-secondary">Advanced</span></label>
-                                            <textarea class="form-control font-monospace" id="editEventCustomCss" rows="4" placeholder=".navbar { ... }"></textarea>
-                                            <div class="form-text">Add custom CSS rules for advanced styling</div>
                                         </div>
                                     </div>
-                                    <div class="col-md-6">
-                                        <h6 class="text-muted mb-3"><i class="fas fa-images me-2"></i>Images</h6>
-                                        <div class="mb-3">
-                                            <label for="editEventBgImage" class="form-label">Background Image</label>
-                                            <div class="img-upload-row mb-1">
-                                                <img id="editBgImageThumb" class="img-thumb" src="" alt="" style="display: none;">
-                                                <input type="url" class="form-control" id="editEventBgImage" placeholder="https://... or upload →">
-                                                <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="bg" data-target="editEventBgImage" data-thumb="editBgImageThumb" title="Upload image">
-                                                    <i class="fas fa-upload"></i>
-                                                </button>
+                                    <div class="col-lg-5 guest-theme-preview-col">
+                                        <div class="screen-preview-label text-center"><i class="fas fa-mobile-alt me-1"></i>Live preview — guest hub</div>
+                                        <div class="guest-phone-device" aria-hidden="false">
+                                            <div class="guest-phone-device__shell">
+                                                <div class="guest-phone-device__notch" aria-hidden="true"></div>
+                                                <div class="guest-phone-screen mdj-eyup-brand mdj-guest-hub-page" id="guestPreviewScreen">
+                                                    <style id="guestPreviewThemeStyle"></style>
+                                                    <main class="container mdj-guest-hub-main">
+                                                        <div class="index-page">
+                                                            <div class="guest-hub-top">
+                                                                <button type="button" class="nav-msg-btn guest-hub-messages-btn" tabindex="-1" aria-hidden="true">
+                                                                    <i class="fas fa-comment-dots"></i>
+                                                                    <span class="guest-hub-messages-label">Messages</span>
+                                                                </button>
+                                                            </div>
+                                                            <header class="hero-section">
+                                                                <div class="hero-event-logo" id="gpLogoWrap" style="display: none;">
+                                                                    <img id="gpLogoImg" src="" alt="">
+                                                                </div>
+                                                                <div class="hero-icon" id="gpHeroIcon">
+                                                                    <i class="fas fa-headphones-alt"></i>
+                                                                </div>
+                                                                <h1 class="hero-title" id="gpHeading">Your Event Name</h1>
+                                                                <p class="hero-subtitle" id="gpSubtitle">Make your requests and send messages to the DJ!</p>
+                                                            </header>
+                                                            <div class="name-card" id="gpNameCard">
+                                                                <div class="name-card-inner">
+                                                                    <div class="name-card-icon"><i class="fas fa-user-circle"></i></div>
+                                                                    <h2 class="name-card-title">What's your name?</h2>
+                                                                    <div class="name-input-group">
+                                                                        <input type="text" class="form-control form-control-lg" value="Alex" readonly tabindex="-1" aria-hidden="true">
+                                                                        <button type="button" class="btn btn-primary btn-lg name-submit-btn" tabindex="-1" aria-hidden="true"><i class="fas fa-arrow-right"></i></button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div id="gpOptionsSection">
+                                                                <p class="options-prompt">What would you like to do?</p>
+                                                                <div class="options-grid">
+                                                                    <div class="option-card" data-gp-feature="song">
+                                                                        <div class="option-card-icon option-card-icon--songs"><i class="fas fa-music"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Song Request</h3>
+                                                                            <p class="option-card-desc">Browse and request songs</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="karaoke">
+                                                                        <div class="option-card-icon option-card-icon--karaoke"><i class="fas fa-microphone"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Karaoke Request</h3>
+                                                                            <p class="option-card-desc">Find karaoke songs to sing</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="message">
+                                                                        <div class="option-card-icon option-card-icon--message"><i class="fas fa-paper-plane"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Send Message</h3>
+                                                                            <p class="option-card-desc">Send a message to the DJ</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="photo" style="display: none;">
+                                                                        <div class="option-card-icon option-card-icon--photo"><i class="fas fa-camera"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Event Cam</h3>
+                                                                            <p class="option-card-desc">Snap a photo for the album</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="tip" style="display: none;">
+                                                                        <div class="option-card-icon option-card-icon--tip"><i class="fas fa-hand-holding-dollar"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Tip the DJ</h3>
+                                                                            <p class="option-card-desc">Show your appreciation</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-hidden="true">
+                                                            <div class="mdj-footer-container">
+                                                                <div class="mdj-company-foot">
+                                                                    <p class="mdj-company-foot__legal">&copy; EYUP EVENTS UK LTD</p>
+                                                                </div>
+                                                            </div>
+                                                        </footer>
+                                                    </main>
+                                                </div>
                                             </div>
-                                            <div class="form-text">Shown behind the guest request pages. Leave empty for solid color.</div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="editEventLogoImage" class="form-label">Event Logo</label>
-                                            <div class="img-upload-row mb-1">
-                                                <img id="editLogoImageThumb" class="img-thumb" src="" alt="" style="display: none;">
-                                                <input type="url" class="form-control" id="editEventLogoImage" placeholder="https://... or upload →">
-                                                <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="logo" data-target="editEventLogoImage" data-thumb="editLogoImageThumb" title="Upload logo">
-                                                    <i class="fas fa-upload"></i>
-                                                </button>
-                                            </div>
-                                            <div class="form-text">Displayed at the top of the guest landing page (PNG/SVG with transparency works best).</div>
-                                        </div>
-                                        <div id="themeUploadStatus" class="small" aria-live="polite"></div>
+                                        <p class="guest-theme-preview-hint">Scroll inside the phone to see the full guest screen.</p>
                                     </div>
-                                </div>
-
-                                <hr class="my-3">
-                                <div class="screen-preview-label"><i class="fas fa-eye me-1"></i>Live example — guest landing page</div>
-                                <div class="guest-preview" id="guestPreview">
-                                    <div class="gp-logo" id="gpLogo" style="display: none;"><img id="gpLogoImg" src="" alt="Event logo"></div>
-                                    <div class="gp-heading" id="gpHeading">Your Event Name</div>
-                                    <div class="gp-text" id="gpText">Welcome! Pick an option below to get involved.</div>
-                                    <span class="gp-btn" id="gpBtn"><i class="fas fa-music me-1"></i>Request a Song</span>
                                 </div>
                             </div>
 
@@ -1292,19 +1418,90 @@
         });
 
         // ── Live example previews ──
+        function escapeCssUrl(url) {
+            return String(url).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
         function updateGuestPreview() {
-            const preview = document.getElementById('guestPreview');
+            const screen = document.getElementById('guestPreviewScreen');
+            const themeStyle = document.getElementById('guestPreviewThemeStyle');
+            if (!screen || !themeStyle) return;
+
+            const headingColor = document.getElementById('editEventHeadingColorText').value || '#007bff';
+            const textColor = document.getElementById('editEventTextColorText').value || '#212529';
             const bgColor = document.getElementById('editEventBgColorText').value || '#ffffff';
+            const accentColor = document.getElementById('editEventAccentColorText').value || '#0d6efd';
             const bgImage = document.getElementById('editEventBgImage').value.trim();
-            preview.style.backgroundColor = bgColor;
-            preview.style.backgroundImage = bgImage ? `linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url('${bgImage}')` : 'none';
-            document.getElementById('gpHeading').style.color = document.getElementById('editEventHeadingColorText').value || '#007bff';
-            document.getElementById('gpHeading').textContent = document.getElementById('editEventName').value.trim() || 'Your Event Name';
-            document.getElementById('gpText').style.color = document.getElementById('editEventTextColorText').value || '#212529';
-            document.getElementById('gpBtn').style.background = document.getElementById('editEventAccentColorText').value || '#0d6efd';
+            let customCss = (document.getElementById('editEventCustomCss').value || '').trim();
+            if (customCss) {
+                customCss = customCss.replace(/\bbody\b/g, '#guestPreviewScreen');
+            }
+
+            const eventName = document.getElementById('editEventName').value.trim() || 'Your Event Name';
+            document.getElementById('gpHeading').textContent = eventName;
+
+            const desc = document.getElementById('editEventDescription').value.trim();
+            document.getElementById('gpSubtitle').textContent = desc || 'Make your requests and send messages to the DJ!';
+
             const logo = document.getElementById('editEventLogoImage').value.trim();
-            document.getElementById('gpLogo').style.display = logo ? '' : 'none';
-            if (logo) document.getElementById('gpLogoImg').src = logo;
+            document.getElementById('gpLogoWrap').style.display = logo ? '' : 'none';
+            document.getElementById('gpHeroIcon').style.display = logo ? 'none' : '';
+            if (logo) {
+                document.getElementById('gpLogoImg').src = logo;
+                document.getElementById('gpLogoImg').alt = eventName + ' logo';
+            }
+
+            const featureMap = {
+                song: document.getElementById('editEventEnableSongRequests').checked,
+                karaoke: document.getElementById('editEventEnableKaraokeRequests').checked,
+                message: document.getElementById('editEventEnableMessages').checked,
+                photo: document.getElementById('editEventEnablePhotos').checked,
+                tip: document.getElementById('editEventEnableTips').checked
+            };
+            document.querySelectorAll('#guestPreviewScreen [data-gp-feature]').forEach(el => {
+                const on = featureMap[el.dataset.gpFeature];
+                el.style.display = on ? '' : 'none';
+            });
+
+            const bgBlock = [];
+            if (bgColor) bgBlock.push(`background-color: ${bgColor};`);
+            if (bgImage) {
+                bgBlock.push(`background-image: url('${escapeCssUrl(bgImage)}');`);
+                bgBlock.push('background-size: cover;');
+                bgBlock.push('background-position: center;');
+            }
+
+            themeStyle.textContent = `
+:root {
+  --event-heading-color: ${headingColor};
+  --event-text-color: ${textColor};
+  --event-bg-color: ${bgColor};
+  --event-accent-color: ${accentColor};
+}
+#guestPreviewScreen {
+  ${bgBlock.join('\n  ')}
+}
+#guestPreviewScreen,
+#guestPreviewScreen .hero-subtitle,
+#guestPreviewScreen .option-card-desc,
+#guestPreviewScreen .name-card-title {
+  color: ${textColor};
+}
+#guestPreviewScreen h1, #guestPreviewScreen h2, #guestPreviewScreen h3,
+#guestPreviewScreen .hero-title, #guestPreviewScreen .option-card-title {
+  color: ${headingColor} !important;
+  -webkit-text-fill-color: ${headingColor};
+  background: none;
+  background-clip: border-box;
+}
+#guestPreviewScreen .btn-primary {
+  background-color: ${accentColor};
+  border-color: ${accentColor};
+}
+#guestPreviewScreen .text-primary { color: ${accentColor} !important; }
+#guestPreviewScreen a { color: ${accentColor}; }
+${customCss}
+`;
         }
 
         function updateDisplayPreview() {
@@ -1327,9 +1524,11 @@
         }
 
         // Any relevant field updates its preview as you type/pick
-        ['editEventName', 'editEventHeadingColor', 'editEventHeadingColorText', 'editEventTextColor', 'editEventTextColorText',
+        ['editEventName', 'editEventDescription', 'editEventHeadingColor', 'editEventHeadingColorText', 'editEventTextColor', 'editEventTextColorText',
          'editEventBgColor', 'editEventBgColorText', 'editEventAccentColor', 'editEventAccentColorText',
-         'editEventBgImage', 'editEventLogoImage'].forEach(id => {
+         'editEventBgImage', 'editEventLogoImage', 'editEventCustomCss',
+         'editEventEnableSongRequests', 'editEventEnableKaraokeRequests', 'editEventEnableMessages',
+         'editEventEnablePhotos', 'editEventEnableTips'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('input', updateGuestPreview);
             el.addEventListener('change', updateGuestPreview);

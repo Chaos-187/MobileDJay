@@ -1,35 +1,79 @@
-/* Guest event hub (index) — mobile-first layout without top bar */
+/* Guest event hub (index) — no top bar; messages on canvas; footer pinned */
 
-body.mdj-guest-hub-page {
+body.mdj-guest-hub-page,
+.guest-phone-screen.mdj-guest-hub-page {
     padding-top: 0 !important;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
 }
 
-body.mdj-guest-hub-page main.container {
-    max-height: 100vh;
-    max-height: 100dvh;
-    margin-top: 0 !important;
-    padding-top: max(0.75rem, env(safe-area-inset-top));
+body.mdj-guest-hub-page main.container.mdj-guest-hub-main,
+.guest-phone-screen.mdj-guest-hub-page main.container.mdj-guest-hub-main {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-height: none;
+    margin: 0 auto !important;
+    padding: max(0.5rem, env(safe-area-inset-top)) clamp(0.75rem, 3vw, 1.25rem)
+        max(0.35rem, env(safe-area-inset-bottom));
+    overflow: hidden;
 }
 
-body.mdj-guest-hub-page .mdj-guest-hub-nav {
-    display: none;
-}
-
-body.mdj-guest-hub-page .index-page {
+body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
+.guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     position: relative;
     max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 0.15rem 0.5rem;
 }
 
-body.mdj-guest-hub-page .guest-hub-top {
+body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,
+.guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact {
+    flex-shrink: 0;
+    margin-top: auto;
+    width: 100%;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+}
+
+body.mdj-guest-hub-page .guest-hub-top,
+.guest-phone-screen.mdj-guest-hub-page .guest-hub-top {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    min-height: 2.75rem;
-    margin-bottom: 0.25rem;
-    padding: 0 0.15rem;
+    min-height: 2.25rem;
+    margin-bottom: 0.15rem;
+    padding: 0;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: linear-gradient(
+        180deg,
+        rgba(10, 10, 10, 0.92) 0%,
+        rgba(10, 10, 10, 0.75) 70%,
+        transparent 100%
+    );
+    padding-bottom: 0.35rem;
 }
 
-body.mdj-guest-hub-page .guest-hub-messages-btn {
+body.mdj-guest-hub-page .guest-hub-messages-btn,
+.guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
@@ -47,73 +91,211 @@ body.mdj-guest-hub-page .guest-hub-messages-btn {
     transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-body.mdj-guest-hub-page .guest-hub-messages-btn:hover {
+body.mdj-guest-hub-page .guest-hub-messages-btn:hover,
+.guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-btn:hover {
     background: rgba(255, 107, 0, 0.22);
     transform: translateY(-1px);
 }
 
-body.mdj-guest-hub-page .guest-hub-messages-btn i {
+body.mdj-guest-hub-page .guest-hub-messages-btn i,
+.guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-btn i {
     font-size: 1.05rem;
 }
 
-body.mdj-guest-hub-page .guest-hub-messages-label {
+body.mdj-guest-hub-page .guest-hub-messages-label,
+.guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-label {
     line-height: 1;
 }
 
-body.mdj-guest-hub-page .guest-hub-messages-btn .nav-msg-badge {
+body.mdj-guest-hub-page .guest-hub-messages-btn .nav-msg-badge,
+.guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-btn .nav-msg-badge {
     top: -4px;
     right: -4px;
 }
 
-/* Ambient glow behind hero */
-body.mdj-guest-hub-page .hero-section {
+body.mdj-guest-hub-page .hero-section,
+.guest-phone-screen.mdj-guest-hub-page .hero-section {
     position: relative;
+    padding: 0.35rem 0 1rem;
 }
 
-body.mdj-guest-hub-page .hero-section::before {
+body.mdj-guest-hub-page .hero-section::before,
+.guest-phone-screen.mdj-guest-hub-page .hero-section::before {
     content: '';
     position: absolute;
     left: 50%;
-    top: 20%;
+    top: 15%;
     transform: translate(-50%, -50%);
     width: min(320px, 90vw);
-    height: 200px;
+    height: 180px;
     background: radial-gradient(ellipse, rgba(255, 107, 0, 0.18), transparent 70%);
     pointer-events: none;
     z-index: 0;
 }
 
-body.mdj-guest-hub-page .hero-section > * {
+body.mdj-guest-hub-page .hero-section > *,
+.guest-phone-screen.mdj-guest-hub-page .hero-section > * {
     position: relative;
     z-index: 1;
 }
 
-body.mdj-guest-hub-page .name-card-inner {
+body.mdj-guest-hub-page .hero-icon,
+.guest-phone-screen.mdj-guest-hub-page .hero-icon {
+    margin-bottom: 0.65rem;
+}
+
+body.mdj-guest-hub-page .hero-event-logo,
+.guest-phone-screen.mdj-guest-hub-page .hero-event-logo {
+    margin-bottom: 0.65rem;
+}
+
+body.mdj-guest-hub-page .name-card-inner,
+.guest-phone-screen.mdj-guest-hub-page .name-card-inner {
     border-color: rgba(255, 107, 0, 0.12);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
-@media (min-width: 768px) {
-    body.mdj-guest-hub-page {
-        padding-top: var(--mdj-eyup-nav-h, 74px) !important;
-    }
+/* Theme editor phone frame — compact mobile layout always */
+.guest-phone-device .guest-phone-screen.mdj-guest-hub-page {
+    min-height: 0;
+    height: 100%;
+}
 
-    body.mdj-guest-hub-page .mdj-guest-hub-nav {
-        display: block;
-    }
+.guest-phone-device .guest-phone-screen.mdj-guest-hub-page main.container.mdj-guest-hub-main {
+    min-height: 0;
+    height: 100%;
+    padding: 0.35rem 0.65rem 0.25rem;
+}
 
-    body.mdj-guest-hub-page main.container {
-        margin-top: 1rem !important;
-        max-height: calc(100vh - var(--mdj-eyup-nav-h, 74px));
-    }
+.guest-phone-device .guest-phone-screen .guest-hub-top {
+    min-height: 2rem;
+    margin-bottom: 0;
+}
 
-    body.mdj-guest-hub-page .guest-hub-top {
-        margin-bottom: 0.5rem;
-    }
+.guest-phone-device .guest-phone-screen .hero-section {
+    padding: 0.15rem 0 0.65rem;
+}
+
+.guest-phone-device .guest-phone-screen .hero-icon {
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+    border-radius: 16px;
+    margin-bottom: 0.5rem;
+}
+
+.guest-phone-device .guest-phone-screen .hero-event-logo img {
+    max-height: 72px !important;
+    max-width: min(220px, 70%) !important;
+}
+
+.guest-phone-device .guest-phone-screen .hero-title {
+    font-size: 1.35rem;
+    margin-bottom: 0.35rem;
+}
+
+.guest-phone-device .guest-phone-screen .hero-subtitle {
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.guest-phone-device .guest-phone-screen .guest-hub-messages-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.guest-phone-device .guest-phone-screen .guest-hub-messages-btn {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.guest-phone-device .guest-phone-screen .name-card-inner {
+    padding: 1.15rem 1rem;
+}
+
+.guest-phone-device .guest-phone-screen .name-card-title {
+    font-size: 1.05rem;
+    margin-bottom: 0.85rem;
+}
+
+.guest-phone-device .guest-phone-screen .option-card {
+    padding: 0.85rem 0.9rem;
+}
+
+.guest-phone-device .guest-phone-screen .option-card-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+}
+
+.guest-phone-device .guest-phone-screen .option-card-title {
+    font-size: 0.95rem;
+}
+
+.guest-phone-device .guest-phone-screen .option-card-desc {
+    font-size: 0.75rem;
+}
+
+.guest-phone-device .guest-phone-screen .mdj-eyup-footer--compact .mdj-company-foot__legal {
+    font-size: 0.55rem;
+    line-height: 1.3;
 }
 
 @media (max-width: 767.98px) {
-    body.mdj-guest-hub-page .guest-hub-messages-label {
+    body.mdj-guest-hub-page main.mdj-guest-hub-main,
+    .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main {
+        padding-top: max(0.35rem, env(safe-area-inset-top));
+    }
+
+    body.mdj-guest-hub-page .guest-hub-top,
+    .guest-phone-screen.mdj-guest-hub-page .guest-hub-top {
+        min-height: 2rem;
+        margin-bottom: 0;
+    }
+
+    body.mdj-guest-hub-page .hero-section,
+    .guest-phone-screen.mdj-guest-hub-page .hero-section {
+        padding: 0.15rem 0 0.65rem;
+    }
+
+    body.mdj-guest-hub-page .hero-icon,
+    .guest-phone-screen.mdj-guest-hub-page .hero-icon {
+        width: 56px;
+        height: 56px;
+        font-size: 1.5rem;
+        border-radius: 16px;
+        margin-bottom: 0.5rem;
+    }
+
+    body.mdj-guest-hub-page .hero-event-logo img,
+    .guest-phone-screen.mdj-guest-hub-page .hero-event-logo img {
+        max-height: 100px !important;
+    }
+
+    body.mdj-guest-hub-page .hero-title,
+    .guest-phone-screen.mdj-guest-hub-page .hero-title {
+        font-size: 1.55rem;
+        margin-bottom: 0.35rem;
+    }
+
+    body.mdj-guest-hub-page .hero-subtitle,
+    .guest-phone-screen.mdj-guest-hub-page .hero-subtitle {
+        font-size: 0.88rem;
+        line-height: 1.4;
+    }
+
+    body.mdj-guest-hub-page .guest-hub-messages-label,
+    .guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-label {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -125,11 +307,46 @@ body.mdj-guest-hub-page .name-card-inner {
         border: 0;
     }
 
-    body.mdj-guest-hub-page .guest-hub-messages-btn {
-        width: 48px;
-        height: 48px;
+    body.mdj-guest-hub-page .guest-hub-messages-btn,
+    .guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-btn {
+        width: 46px;
+        height: 46px;
         padding: 0;
         justify-content: center;
         border-radius: 50%;
+    }
+
+    body.mdj-guest-hub-page .options-prompt,
+    .guest-phone-screen.mdj-guest-hub-page .options-prompt {
+        margin-bottom: 0.65rem;
+    }
+}
+
+@media (min-width: 768px) {
+    body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
+    .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page {
+        max-width: 640px;
+    }
+
+    body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,
+    .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact {
+        max-width: 640px;
+    }
+
+    body.mdj-guest-hub-page .hero-section,
+    .guest-phone-screen.mdj-guest-hub-page .hero-section {
+        padding: 0.5rem 0 1.25rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
+    .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page {
+        max-width: 720px;
+    }
+
+    body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,
+    .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact {
+        max-width: 720px;
     }
 }

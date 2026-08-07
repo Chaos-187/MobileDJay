@@ -228,8 +228,23 @@ body.mdj-guest-hub-page .name-card-inner,
     margin-bottom: 0.85rem;
 }
 
+.guest-phone-device .guest-phone-screen .options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
 .guest-phone-device .guest-phone-screen .option-card {
     padding: 0.85rem 0.9rem;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+}
+
+.guest-phone-device .guest-phone-screen .option-card-content {
+    flex: 1;
+    min-width: 0;
 }
 
 .guest-phone-device .guest-phone-screen .option-card-icon {

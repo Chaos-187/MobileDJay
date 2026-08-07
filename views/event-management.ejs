@@ -933,36 +933,62 @@
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
-                                                <p class="form-text mb-3">Clear a hex field to use the standard EYUP dark guest hub. The event title keeps the orange gradient; heading color applies to menu titles and section headings.</p>
+                                                <p class="form-text mb-3">Each control maps to the same element on the live guest hub. Clear a hex field to use the EYUP default for that element.</p>
                                                 <div class="row">
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventHeadingColor" class="form-label">Menu / section headings</label>
+                                                        <label for="editEventHeroTitleColor" class="form-label">Event title</label>
                                                         <div class="input-group">
-                                                            <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#007bff">
-                                                            <input type="text" class="form-control" id="editEventHeadingColorText" value="" placeholder="#007bff" maxlength="7">
+                                                            <input type="color" class="form-control form-control-color" id="editEventHeroTitleColor" value="#ff6b00">
+                                                            <input type="text" class="form-control" id="editEventHeroTitleColorText" value="" placeholder="Default (orange gradient)" maxlength="7">
                                                         </div>
                                                     </div>
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventTextColor" class="form-label">Body text</label>
+                                                        <label for="editEventHeadingColor" class="form-label">Menu option titles</label>
                                                         <div class="input-group">
-                                                            <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#f0f0f5">
-                                                            <input type="text" class="form-control" id="editEventTextColorText" value="" placeholder="Default" maxlength="7">
+                                                            <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#f0f0f5">
+                                                            <input type="text" class="form-control" id="editEventHeadingColorText" value="" placeholder="Default" maxlength="7">
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="row">
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventBgColor" class="form-label">Background</label>
+                                                        <label for="editEventTextColor" class="form-label">Subtitles &amp; descriptions</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#f0f0f5">
+                                                            <input type="text" class="form-control" id="editEventTextColorText" value="" placeholder="Default" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventAccentColor" class="form-label">Icons &amp; buttons</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#ff6b00">
+                                                            <input type="text" class="form-control" id="editEventAccentColorText" value="" placeholder="Default" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventBgColor" class="form-label">Page background</label>
                                                         <div class="input-group">
                                                             <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#0a0a0a">
                                                             <input type="text" class="form-control" id="editEventBgColorText" value="" placeholder="Default" maxlength="7">
                                                         </div>
                                                     </div>
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventAccentColor" class="form-label">Buttons &amp; links</label>
+                                                        <label for="editEventGuestCardColor" class="form-label">Menu card panels</label>
                                                         <div class="input-group">
-                                                            <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#ff6b00">
-                                                            <input type="text" class="form-control" id="editEventAccentColorText" value="" placeholder="Default" maxlength="7">
+                                                            <input type="color" class="form-control form-control-color" id="editEventGuestCardColor" value="#1a1a1a">
+                                                            <input type="text" class="form-control" id="editEventGuestCardColorText" value="" placeholder="Default (glass)" maxlength="22">
+                                                        </div>
+                                                        <div class="form-text">Hex or rgba, e.g. <code>rgba(0,0,0,0.45)</code></div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventGuestCardShadowColor" class="form-label">Menu card shadow</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventGuestCardShadowColor" value="#000000">
+                                                            <input type="text" class="form-control" id="editEventGuestCardShadowColorText" value="" placeholder="Default" maxlength="7">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1333,6 +1359,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/display-slideshow-admin.js"></script>
+    <script src="/js/guest-event-theme.js?v=1"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1411,10 +1438,13 @@
         setupColorSync('eventAccentColor', 'eventAccentColorText');
         
         // Setup color sync for edit modal
+        setupColorSync('editEventHeroTitleColor', 'editEventHeroTitleColorText');
         setupColorSync('editEventHeadingColor', 'editEventHeadingColorText');
         setupColorSync('editEventTextColor', 'editEventTextColorText');
         setupColorSync('editEventBgColor', 'editEventBgColorText');
         setupColorSync('editEventAccentColor', 'editEventAccentColorText');
+        setupColorSync('editEventGuestCardColor', 'editEventGuestCardColorText');
+        setupColorSync('editEventGuestCardShadowColor', 'editEventGuestCardShadowColorText');
         setupColorSync('editDisplayBgColor1', 'editDisplayBgColor1Text');
         setupColorSync('editDisplayBgColor2', 'editDisplayBgColor2Text');
         setupColorSync('editDisplayCardColor', 'editDisplayCardColorText');
@@ -1446,7 +1476,7 @@
 
         // Guest theme — same rules as index.ejs (scoped for preview)
         const GUEST_THEME_LEGACY = { text: '#212529', bg: '#ffffff', accent: '#0d6efd' };
-        const GUEST_THEME_PICKER = { heading: '#007bff', text: '#f0f0f5', bg: '#0a0a0a', accent: '#ff6b00' };
+        const GUEST_THEME_PICKER = { text: '#f0f0f5', bg: '#0a0a0a', accent: '#ff6b00' };
 
         function normalizeGuestThemeStored(value, key) {
             const v = (value || '').trim();
@@ -1455,57 +1485,12 @@
             return v;
         }
 
-        function readGuestThemeField(textId, pickerKey) {
+        function readGuestThemeField(textId) {
             const raw = (document.getElementById(textId).value || '').trim();
             if (!raw) return null;
             if (/^#[0-9A-Fa-f]{6}$/.test(raw)) return raw;
+            if (/^rgba?\(/i.test(raw)) return raw;
             return null;
-        }
-
-        function buildGuestEventThemeCss(scope, theme) {
-            const parts = [];
-            const vars = [];
-            const defaultHubBg = 'linear-gradient(145deg, #0a0a0a 0%, #111111 50%, #0d0d0d 100%)';
-
-            if (theme.heading_color) vars.push(`--event-heading-color: ${theme.heading_color};`);
-            if (theme.text_color) vars.push(`--event-text-color: ${theme.text_color};`);
-            if (theme.bg_color) vars.push(`--event-bg-color: ${theme.bg_color};`);
-            if (theme.accent_color) vars.push(`--event-accent-color: ${theme.accent_color};`);
-            if (vars.length) parts.push(`:root { ${vars.join(' ')} }`);
-
-            if (theme.bg_image) {
-                let block = `${scope} {\n`;
-                block += `  background-image: url('${escapeCssUrl(theme.bg_image)}') !important;\n`;
-                block += '  background-size: cover !important;\n';
-                block += '  background-position: center !important;\n';
-                block += '  background-repeat: no-repeat !important;\n';
-                block += `  background-color: ${theme.bg_color || '#0a0a0a'} !important;\n`;
-                block += '}';
-                parts.push(block);
-            } else if (theme.bg_color) {
-                parts.push(`${scope} {\n  background: ${theme.bg_color} !important;\n}`);
-            } else {
-                parts.push(`${scope} {\n  background: ${defaultHubBg};\n}`);
-            }
-
-            parts.push(`${scope} main.container.mdj-guest-hub-main {\n  background: transparent !important;\n}`);
-
-            if (theme.text_color) {
-                parts.push(`${scope}, ${scope} .card-text, ${scope} p, ${scope} .lead { color: ${theme.text_color}; }`);
-                parts.push(`${scope} .hero-subtitle, ${scope} .option-card-desc, ${scope} .options-prompt { color: ${theme.text_color}; opacity: 0.85; }`);
-            }
-            if (theme.heading_color) {
-                parts.push(`${scope} h2, ${scope} h3, ${scope} h4, ${scope} h5, ${scope} h6, ${scope} .card-title, ${scope} .display-4 { color: ${theme.heading_color} !important; }`);
-            }
-            if (theme.accent_color) {
-                parts.push(`${scope} .btn-primary { background-color: ${theme.accent_color}; border-color: ${theme.accent_color}; }`);
-                parts.push(`${scope} .btn-primary:hover { background-color: color-mix(in srgb, ${theme.accent_color} 85%, black); border-color: color-mix(in srgb, ${theme.accent_color} 85%, black); }`);
-                parts.push(`${scope} .text-primary { color: ${theme.accent_color} !important; }`);
-                parts.push(`${scope} a { color: ${theme.accent_color}; }`);
-                parts.push(`${scope} .hero-icon { background: ${theme.accent_color} !important; box-shadow: 0 8px 32px color-mix(in srgb, ${theme.accent_color} 40%, transparent); }`);
-            }
-            if (theme.custom_css) parts.push(theme.custom_css);
-            return parts.join('\n');
         }
 
         function loadGuestThemeEditorFields(event) {
@@ -1513,39 +1498,52 @@
             const text = normalizeGuestThemeStored(event.text_color, 'text');
             const bg = normalizeGuestThemeStored(event.bg_color, 'bg');
             const accent = normalizeGuestThemeStored(event.accent_color, 'accent');
+            const heroTitle = (event.hero_title_color || '').trim();
+            const cardColor = (event.guest_card_color || '').trim();
+            const cardShadow = (event.guest_card_shadow_color || '').trim();
 
+            document.getElementById('editEventHeroTitleColorText').value = heroTitle;
+            document.getElementById('editEventHeroTitleColor').value = heroTitle || GUEST_THEME_PICKER.accent;
             document.getElementById('editEventHeadingColorText').value = heading;
-            document.getElementById('editEventHeadingColor').value = heading || GUEST_THEME_PICKER.heading;
+            document.getElementById('editEventHeadingColor').value = heading || GUEST_THEME_PICKER.text;
             document.getElementById('editEventTextColorText').value = text;
             document.getElementById('editEventTextColor').value = text || GUEST_THEME_PICKER.text;
             document.getElementById('editEventBgColorText').value = bg;
             document.getElementById('editEventBgColor').value = bg || GUEST_THEME_PICKER.bg;
             document.getElementById('editEventAccentColorText').value = accent;
             document.getElementById('editEventAccentColor').value = accent || GUEST_THEME_PICKER.accent;
+            document.getElementById('editEventGuestCardColorText').value = cardColor;
+            const cardPicker = /^#[0-9A-Fa-f]{6}$/.test(cardColor) ? cardColor : '#1a1a1a';
+            document.getElementById('editEventGuestCardColor').value = cardPicker;
+            document.getElementById('editEventGuestCardShadowColorText').value = cardShadow;
+            document.getElementById('editEventGuestCardShadowColor').value = cardShadow || '#000000';
         }
 
         // ── Live example previews ──
         function escapeCssUrl(url) {
-            return String(url).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return window.escapeGuestThemeCssUrl ? window.escapeGuestThemeCssUrl(url) : String(url);
         }
 
         function updateGuestPreview() {
             const themeStyle = document.getElementById('guestPreviewThemeStyle');
-            if (!themeStyle) return;
+            if (!themeStyle || typeof window.buildGuestEventThemeCss !== 'function') return;
 
             let customCss = (document.getElementById('editEventCustomCss').value || '').trim();
             if (customCss) customCss = customCss.replace(/\bbody\b/g, '#guestPreviewScreen');
 
             const theme = {
-                heading_color: readGuestThemeField('editEventHeadingColorText', 'heading'),
-                text_color: readGuestThemeField('editEventTextColorText', 'text'),
-                bg_color: readGuestThemeField('editEventBgColorText', 'bg'),
-                accent_color: readGuestThemeField('editEventAccentColorText', 'accent'),
+                hero_title_color: readGuestThemeField('editEventHeroTitleColorText'),
+                heading_color: readGuestThemeField('editEventHeadingColorText'),
+                text_color: readGuestThemeField('editEventTextColorText'),
+                bg_color: readGuestThemeField('editEventBgColorText'),
+                accent_color: readGuestThemeField('editEventAccentColorText'),
+                guest_card_color: readGuestThemeField('editEventGuestCardColorText'),
+                guest_card_shadow_color: readGuestThemeField('editEventGuestCardShadowColorText'),
                 bg_image: document.getElementById('editEventBgImage').value.trim() || null,
                 custom_css: customCss
             };
 
-            themeStyle.textContent = buildGuestEventThemeCss('#guestPreviewScreen', theme);
+            themeStyle.textContent = window.buildGuestEventThemeCss('#guestPreviewScreen', theme);
 
             const eventName = document.getElementById('editEventName').value.trim() || 'Your Event Name';
             document.getElementById('gpHeading').textContent = eventName;
@@ -1598,8 +1596,11 @@
         document.getElementById('editTabThemeBtn')?.addEventListener('shown.bs.tab', updateGuestPreview);
 
         // Any relevant field updates its preview as you type/pick
-        ['editEventName', 'editEventDescription', 'editEventHeadingColor', 'editEventHeadingColorText', 'editEventTextColor', 'editEventTextColorText',
+        ['editEventName', 'editEventDescription', 'editEventHeroTitleColor', 'editEventHeroTitleColorText',
+         'editEventHeadingColor', 'editEventHeadingColorText', 'editEventTextColor', 'editEventTextColorText',
          'editEventBgColor', 'editEventBgColorText', 'editEventAccentColor', 'editEventAccentColorText',
+         'editEventGuestCardColor', 'editEventGuestCardColorText',
+         'editEventGuestCardShadowColor', 'editEventGuestCardShadowColorText',
          'editEventBgImage', 'editEventLogoImage', 'editEventCustomCss',
          'editEventEnableSongRequests', 'editEventEnableKaraokeRequests', 'editEventEnableMessages',
          'editEventEnablePhotos', 'editEventEnableTips', 'editGuestPreviewShowNameCard'].forEach(id => {
@@ -1896,10 +1897,13 @@
                 description: document.getElementById('editEventDescription').value.trim(),
                 venue: document.getElementById('editEventVenue').value.trim(),
                 event_date: document.getElementById('editEventDate').value || null,
-                heading_color: document.getElementById('editEventHeadingColorText').value || null,
-                text_color: document.getElementById('editEventTextColorText').value || null,
-                bg_color: document.getElementById('editEventBgColorText').value || null,
-                accent_color: document.getElementById('editEventAccentColorText').value || null,
+                heading_color: document.getElementById('editEventHeadingColorText').value.trim() || null,
+                text_color: document.getElementById('editEventTextColorText').value.trim() || null,
+                bg_color: document.getElementById('editEventBgColorText').value.trim() || null,
+                accent_color: document.getElementById('editEventAccentColorText').value.trim() || null,
+                hero_title_color: document.getElementById('editEventHeroTitleColorText').value.trim() || null,
+                guest_card_color: document.getElementById('editEventGuestCardColorText').value.trim() || null,
+                guest_card_shadow_color: document.getElementById('editEventGuestCardShadowColorText').value.trim() || null,
                 bg_image: document.getElementById('editEventBgImage').value.trim() || null,
                 logo_image: document.getElementById('editEventLogoImage').value.trim() || null,
                 custom_css: document.getElementById('editEventCustomCss').value.trim() || null,

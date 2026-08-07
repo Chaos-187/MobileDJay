@@ -16,62 +16,7 @@
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     
     <% if (event) { %>
-    <script id="eventThemeCss" type="text/plain">
-:root {
-<% if (event.heading_color) { %>--event-heading-color: <%= event.heading_color %>;<% } %>
-<% if (event.text_color) { %>--event-text-color: <%= event.text_color %>;<% } %>
-<% if (event.bg_color) { %>--event-bg-color: <%= event.bg_color %>;<% } %>
-<% if (event.accent_color) { %>--event-accent-color: <%= event.accent_color %>;<% } %>
-}
-<% if (event.bg_color || event.bg_image) { %>
-body {
-<% if (event.bg_image) { %>
-background-image: url('<%= event.bg_image %>') !important;
-background-size: cover !important;
-background-position: center !important;
-background-attachment: fixed !important;
-background-repeat: no-repeat !important;
-<% if (event.bg_color) { %>background-color: <%= event.bg_color %> !important;<% } else { %>background-color: #0a0a0a !important;<% } %>
-<% } else if (event.bg_color) { %>
-background: <%= event.bg_color %> !important;
-<% } %>
-}
-<% } %>
-<% if (event.text_color) { %>
-body, .card-text, p, .lead, .form-label, .form-text { color: <%= event.text_color %>; }
-<% } %>
-<% if (event.heading_color) { %>
-h2, h3, h4, h5, h6, .card-title, .display-4 { color: <%= event.heading_color %> !important; }
-<% } %>
-<% if (event.accent_color) { %>
-body.mdj-eyup-brand .mdj-site-navbar { background-color: <%= event.accent_color %> !important; border-bottom-color: <%= event.accent_color %> !important; }
-.btn-primary, .btn-warning {
-    background-color: <%= event.accent_color %>;
-    border-color: <%= event.accent_color %>;
-    color: #fff;
-}
-.btn-primary:hover, .btn-warning:hover,
-.btn-primary:focus, .btn-warning:focus {
-    background-color: color-mix(in srgb, <%= event.accent_color %> 85%, black);
-    border-color: color-mix(in srgb, <%= event.accent_color %> 85%, black);
-    color: #fff;
-}
-.text-primary { color: <%= event.accent_color %> !important; }
-.border-primary { border-color: <%= event.accent_color %> !important; }
-a:not(.btn):not(.mdj-nav-back) { color: <%= event.accent_color %>; }
-a.btn-outline-light, a.btn-outline-light i { color: #fff; }
-<% } %>
-<%- event.custom_css || '' %>
-    </script>
-    <script>
-        (function() {
-            const themeCss = document.getElementById('eventThemeCss');
-            if (!themeCss) return;
-            const style = document.createElement('style');
-            style.textContent = themeCss.textContent;
-            document.head.appendChild(style);
-        })();
-    </script>
+    <%- include('partials/guest-event-theme', { event }) %>
     <% } %>
 </head>
 <body class="mdj-eyup-brand">

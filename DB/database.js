@@ -187,6 +187,15 @@ try {
 try {
     db.exec(`ALTER TABLE events ADD COLUMN logo_image TEXT`);
 } catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN hero_title_color TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_card_color TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_card_shadow_color TEXT`);
+} catch (e) { /* Column already exists */ }
 // Per-event photo popup banner style (NULL = use global setting)
 try {
     db.exec(`ALTER TABLE events ADD COLUMN photo_banner_style TEXT`);
@@ -442,6 +451,7 @@ const eventDb = {
     update: function(id, updates) {
         const allowedFields = ['name', 'description', 'venue', 'event_date', 'is_active', 
                                'heading_color', 'text_color', 'bg_color', 'bg_image', 'accent_color', 'custom_css', 'logo_image',
+                               'hero_title_color', 'guest_card_color', 'guest_card_shadow_color',
                                'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',
                                'enable_tips', 'enable_photos', 'tip_provider', 'tip_payment_link', 'tip_links',
                                'display_show_qr', 'display_qr_position', 'display_qr_size', 'display_qr_label',

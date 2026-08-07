@@ -924,6 +924,12 @@
                                                 title="Reply">
                                             <i class="fas fa-reply"></i>
                                         </button>
+                                        <% } else { %>
+                                        <button class="btn btn-outline-secondary btn-sm remove-spinner-message" 
+                                                data-message-id="<%= message.id %>"
+                                                title="Remove this result">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
                                         <% } %>
                                     </div>
                                 </div>
@@ -1709,6 +1715,17 @@
             return data;
         }
 
+        async function removeGuestFromEvent(eventId, customerName) {
+            const res = await fetch(`/api/events/${eventId}/guests/remove`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customerName })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Could not remove guest');
+            return data;
+        }
+
         function renderGuestRow(guest, eventId, showEventName) {
             const card = document.createElement('div');
             card.className = 'card guest-row guest-row-clickable mb-2' + (guest.status === 'silenced' ? ' guest-row--silenced' : guest.status === 'banned' ? ' guest-row--banned' : '');
@@ -1846,6 +1863,26 @@
                 });
                 actions.prepend(unmuteBtn);
             }
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-outline-secondary btn-sm';
+            removeBtn.title = 'Remove from guest list';
+            removeBtn.innerHTML = '<i class="fas fa-user-minus"></i>';
+            removeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const msg =
+                    `Remove ${guest.customerName} from this event's guest list?\n\n` +
+                    'Their past requests and messages stay in the system; they can appear again if they interact with the event.';
+                if (!confirm(msg)) return;
+                try {
+                    await removeGuestFromEvent(eventId, guest.customerName);
+                    loadGuests();
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+            actions.appendChild(removeBtn);
 
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.guest-actions') || e.target.closest('.guest-silence-panel')) return;

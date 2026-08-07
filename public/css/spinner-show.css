@@ -360,27 +360,55 @@
 }
 
 .winner-display--yesno {
+    background: linear-gradient(160deg, #1a1a2e, #16213e);
+}
+
+.winner-display--yesno.winner-result--yes.show {
     background:
-        radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.2), transparent 45%),
-        linear-gradient(135deg, rgba(0, 150, 136, 0.95), rgba(198, 40, 40, 0.92));
+        radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.28), transparent 48%),
+        radial-gradient(ellipse 90% 60% at 50% 100%, rgba(129, 199, 132, 0.35), transparent 55%),
+        linear-gradient(165deg, #1b5e20 0%, #2e7d32 40%, #66bb6a 100%);
+}
+
+.winner-display--yesno.winner-result--no.show {
+    background:
+        radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.12), transparent 48%),
+        radial-gradient(ellipse 90% 60% at 50% 100%, rgba(255, 82, 82, 0.25), transparent 55%),
+        linear-gradient(165deg, #7f0000 0%, #c62828 42%, #ef5350 100%);
 }
 
 .winner-display--yesno.winner-result--yes .winner-icon {
-    color: #b9f6ca;
+    color: #fff;
+    filter: drop-shadow(0 0 28px rgba(200, 255, 200, 0.75));
 }
 
 .winner-display--yesno.winner-result--no .winner-icon {
-    color: #ff8a80;
+    color: #fff;
+    filter: drop-shadow(0 0 28px rgba(255, 200, 200, 0.65));
+}
+
+.winner-display--yesno.winner-result--yes .winner-label {
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.winner-display--yesno.winner-result--no .winner-label {
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .winner-display--yesno.winner-result--yes .winner-title-text,
 .winner-display--yesno.winner-result--yes .winner-title {
-    color: #e8f5e9;
+    color: #fff;
+    text-shadow:
+        0 0 40px rgba(255, 255, 255, 0.45),
+        0 4px 24px rgba(0, 0, 0, 0.35);
 }
 
 .winner-display--yesno.winner-result--no .winner-title-text,
 .winner-display--yesno.winner-result--no .winner-title {
-    color: #ffcdd2;
+    color: #fff;
+    text-shadow:
+        0 0 40px rgba(255, 255, 255, 0.35),
+        0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 body.spinner-page.spinner-theme-coin {

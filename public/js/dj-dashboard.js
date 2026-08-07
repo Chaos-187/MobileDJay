@@ -251,7 +251,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     title="Reply">
                                 <i class="fas fa-reply"></i>
                             </button>
-                            ` : ''}
+                            ` : `
+                            <button class="btn btn-outline-secondary btn-sm remove-spinner-message" 
+                                    data-message-id="${message.id}"
+                                    title="Remove this result">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            `}
                         </div>
                     </div>
                     <div class="message-text small">${message.message}</div>
@@ -342,6 +348,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const messageId = button.dataset.messageId;
             markMessageDisplayed(messageId);
         }
+        if (e.target.classList.contains('remove-spinner-message') || e.target.closest('.remove-spinner-message')) {
+            const button = e.target.classList.contains('remove-spinner-message')
+                ? e.target
+                : e.target.closest('.remove-spinner-message');
+            removeSpinnerMessage(button.dataset.messageId);
+        }
     });
 
     // Mark all messages as displayed
@@ -427,6 +439,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 showAlert('Failed to mark message', 'danger');
             }
         });
+    }
+
+    function removeSpinnerMessage(messageId) {
+        if (!messageId) return;
+        fetch(`/api/dj/message/${messageId}`, { method: 'DELETE' })
+            .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) {
+                    throw new Error(data.error || 'Failed to remove message');
+                }
+                const messageCard = document.querySelector(
+                    `#messagesList > .card[data-message-id="${messageId}"]`
+                );
+                if (messageCard) {
+                    messageCard.style.transition = 'all 0.3s ease';
+                    messageCard.style.transform = 'translateX(100%)';
+                    messageCard.style.opacity = '0';
+                    setTimeout(() => {
+                        messageCard.remove();
+                    }, 300);
+                }
+            })
+            .catch((error) => {
+                console.error('Error removing spinner message:', error);
+                showAlert(error.message || 'Failed to remove message', 'danger');
+            });
     }
 
     // Open reply modal

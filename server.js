@@ -528,7 +528,12 @@ function triggerYesNoSpinForEvent(eventSlug) {
 function getEligibleGuestsForEvent(event) {
     return guestDb
         .getByEvent(event.id)
-        .filter((g) => g.status !== 'banned' && g.customerName);
+        .filter(
+            (g) =>
+                g.status !== 'banned' &&
+                g.customerName &&
+                !guestDb.isSyntheticName(g.customerName)
+        );
 }
 
 // Photo showcase trigger — DJ pushes a guest photo to the event display screen.
@@ -1266,6 +1271,27 @@ app.put('/api/events/:id/guests/moderate', (req, res) => {
     res.json({ success: true, guest: updated || null });
 });
 
+// DJ: remove a guest from the event list (does not delete their requests/messages)
+app.post('/api/events/:id/guests/remove', (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const customerName = (req.body.customerName || '').toString().trim();
+    if (!customerName) {
+        return res.status(400).json({ error: 'customerName is required' });
+    }
+    if (guestDb.isSyntheticName(customerName)) {
+        guestDb.deleteFromEvent(event.id, customerName);
+        return res.json({ success: true });
+    }
+    const removed = guestDb.deleteFromEvent(event.id, customerName);
+    if (!removed) {
+        return res.status(404).json({ error: 'Guest not found on this event' });
+    }
+    res.json({ success: true });
+});
+
 // ==================== Photos API ====================
 
 function photoToJson(row) {
@@ -1943,6 +1969,28 @@ app.post('/api/dj/message/:id/mark-displayed', (req, res) => {
         message.displayed = true;
     }
     messageDb.markDisplayed(messageId);
+    res.json({ success: true });
+});
+
+app.delete('/api/dj/message/:id', (req, res) => {
+    const messageId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(messageId)) {
+        return res.status(400).json({ error: 'Invalid message id' });
+    }
+    const message = djMessages.find((msg) => msg.id === messageId);
+    if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+    }
+    if (message.type !== 'spinner-result') {
+        return res.status(400).json({ error: 'Only spinner result notes can be removed here' });
+    }
+    if (!messageDb.delete(messageId)) {
+        return res.status(404).json({ error: 'Message not found' });
+    }
+    const idx = djMessages.findIndex((msg) => msg.id === messageId);
+    if (idx !== -1) {
+        djMessages.splice(idx, 1);
+    }
     res.json({ success: true });
 });
 

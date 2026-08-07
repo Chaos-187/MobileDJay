@@ -230,6 +230,49 @@
             margin-top: 0.35rem;
             text-align: center;
         }
+        .guest-theme-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .guest-theme-preset {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+            padding: 0.45rem 0.55rem 0.5rem;
+            min-width: 5.5rem;
+            border: 2px solid rgba(128, 128, 128, 0.35);
+            border-radius: 0.55rem;
+            background: rgba(128, 128, 128, 0.06);
+            cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+            text-align: center;
+        }
+        .guest-theme-preset:hover {
+            border-color: rgba(255, 107, 0, 0.55);
+            transform: translateY(-1px);
+        }
+        .guest-theme-preset.selected {
+            border-color: #ff6b00;
+            background: rgba(255, 107, 0, 0.1);
+        }
+        .guest-theme-preset__swatches {
+            display: flex;
+            height: 1.25rem;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+        .guest-theme-preset__swatches span {
+            flex: 1;
+        }
+        .guest-theme-preset__name {
+            font-size: 0.72rem;
+            font-weight: 600;
+            line-height: 1.2;
+            opacity: 0.9;
+        }
         .event-url {
             font-family: monospace;
             font-size: 0.85rem;
@@ -930,6 +973,16 @@
                             <div class="tab-pane fade" id="editTabTheme" role="tabpanel">
                                 <div class="row g-4 align-items-start">
                                     <div class="col-lg-7">
+                                        <div class="guest-theme-toolbar mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                                <h6 class="text-muted mb-0"><i class="fas fa-swatchbook me-2"></i>Built-in themes</h6>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="guestThemeRestoreBtn" title="Clear custom colors, background image, and CSS">
+                                                    <i class="fas fa-undo me-1"></i>Restore EYUP defaults
+                                                </button>
+                                            </div>
+                                            <div class="guest-theme-presets" id="guestThemePresets" role="list" aria-label="Built-in guest page themes"></div>
+                                            <p class="form-text mb-0 mt-2">Click a theme to fill the controls below. Save Changes to publish. Logo is kept when restoring defaults.</p>
+                                        </div>
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
@@ -1359,7 +1412,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/display-slideshow-admin.js"></script>
-    <script src="/js/guest-event-theme.js?v=1"></script>
+    <script src="/js/guest-event-theme.js?v=2"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1494,30 +1547,115 @@
         }
 
         function loadGuestThemeEditorFields(event) {
-            const heading = (event.heading_color || '').trim();
-            const text = normalizeGuestThemeStored(event.text_color, 'text');
-            const bg = normalizeGuestThemeStored(event.bg_color, 'bg');
-            const accent = normalizeGuestThemeStored(event.accent_color, 'accent');
-            const heroTitle = (event.hero_title_color || '').trim();
-            const cardColor = (event.guest_card_color || '').trim();
-            const cardShadow = (event.guest_card_shadow_color || '').trim();
-
-            document.getElementById('editEventHeroTitleColorText').value = heroTitle;
-            document.getElementById('editEventHeroTitleColor').value = heroTitle || GUEST_THEME_PICKER.accent;
-            document.getElementById('editEventHeadingColorText').value = heading;
-            document.getElementById('editEventHeadingColor').value = heading || GUEST_THEME_PICKER.text;
-            document.getElementById('editEventTextColorText').value = text;
-            document.getElementById('editEventTextColor').value = text || GUEST_THEME_PICKER.text;
-            document.getElementById('editEventBgColorText').value = bg;
-            document.getElementById('editEventBgColor').value = bg || GUEST_THEME_PICKER.bg;
-            document.getElementById('editEventAccentColorText').value = accent;
-            document.getElementById('editEventAccentColor').value = accent || GUEST_THEME_PICKER.accent;
-            document.getElementById('editEventGuestCardColorText').value = cardColor;
-            const cardPicker = /^#[0-9A-Fa-f]{6}$/.test(cardColor) ? cardColor : '#1a1a1a';
-            document.getElementById('editEventGuestCardColor').value = cardPicker;
-            document.getElementById('editEventGuestCardShadowColorText').value = cardShadow;
-            document.getElementById('editEventGuestCardShadowColor').value = cardShadow || '#000000';
+            applyGuestThemeValues({
+                hero_title_color: (event.hero_title_color || '').trim(),
+                heading_color: (event.heading_color || '').trim(),
+                text_color: normalizeGuestThemeStored(event.text_color, 'text'),
+                bg_color: normalizeGuestThemeStored(event.bg_color, 'bg'),
+                accent_color: normalizeGuestThemeStored(event.accent_color, 'accent'),
+                guest_card_color: (event.guest_card_color || '').trim(),
+                guest_card_shadow_color: (event.guest_card_shadow_color || '').trim()
+            });
         }
+
+        const GUEST_THEME_FIELD_MAP = [
+            { key: 'hero_title_color', colorId: 'editEventHeroTitleColor', textId: 'editEventHeroTitleColorText', picker: 'accent' },
+            { key: 'heading_color', colorId: 'editEventHeadingColor', textId: 'editEventHeadingColorText', picker: 'text' },
+            { key: 'text_color', colorId: 'editEventTextColor', textId: 'editEventTextColorText', picker: 'text' },
+            { key: 'bg_color', colorId: 'editEventBgColor', textId: 'editEventBgColorText', picker: 'bg' },
+            { key: 'accent_color', colorId: 'editEventAccentColor', textId: 'editEventAccentColorText', picker: 'accent' },
+            { key: 'guest_card_color', colorId: 'editEventGuestCardColor', textId: 'editEventGuestCardColorText', picker: 'bg' },
+            { key: 'guest_card_shadow_color', colorId: 'editEventGuestCardShadowColor', textId: 'editEventGuestCardShadowColorText', picker: 'bg' }
+        ];
+
+        function applyGuestThemeValues(theme) {
+            const t = theme || {};
+            GUEST_THEME_FIELD_MAP.forEach(({ key, colorId, textId, picker }) => {
+                const val = (t[key] || '').trim();
+                document.getElementById(textId).value = val;
+                const colorEl = document.getElementById(colorId);
+                if (val && /^#[0-9A-Fa-f]{6}$/.test(val)) {
+                    colorEl.value = val;
+                } else {
+                    colorEl.value = GUEST_THEME_PICKER[picker] || GUEST_THEME_PICKER.text;
+                }
+            });
+            updateGuestPreview();
+        }
+
+        function restoreGuestThemeDefaults() {
+            applyGuestThemeValues({});
+            document.getElementById('editEventCustomCss').value = '';
+            document.getElementById('editEventBgImage').value = '';
+            document.getElementById('editEventBgImage').dispatchEvent(new Event('change'));
+            highlightGuestThemePreset('eyup');
+        }
+
+        function highlightGuestThemePreset(presetId) {
+            document.querySelectorAll('.guest-theme-preset').forEach(btn => {
+                btn.classList.toggle('selected', presetId && btn.dataset.presetId === presetId);
+            });
+        }
+
+        function guestThemeValuesMatchPreset(presetTheme) {
+            const pt = presetTheme || {};
+            return GUEST_THEME_FIELD_MAP.every(({ key, textId }) => {
+                const current = (document.getElementById(textId).value || '').trim();
+                const expected = (pt[key] || '').trim();
+                return current.toLowerCase() === expected.toLowerCase();
+            });
+        }
+
+        function syncGuestThemePresetHighlight() {
+            const presets = window.GUEST_THEME_PRESETS || [];
+            let matched = null;
+            for (const p of presets) {
+                if (guestThemeValuesMatchPreset(p.theme)) {
+                    matched = p.id;
+                    break;
+                }
+            }
+            highlightGuestThemePreset(matched);
+        }
+
+        function renderGuestThemePresets() {
+            const container = document.getElementById('guestThemePresets');
+            if (!container || !window.GUEST_THEME_PRESETS) return;
+            container.innerHTML = '';
+            window.GUEST_THEME_PRESETS.forEach(preset => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'guest-theme-preset';
+                btn.dataset.presetId = preset.id;
+                btn.setAttribute('role', 'listitem');
+                btn.title = 'Apply ' + preset.name + ' theme';
+                const sw = document.createElement('span');
+                sw.className = 'guest-theme-preset__swatches';
+                (preset.swatch || ['#0a0a0a', '#ff6b00', '#fff']).forEach(hex => {
+                    const s = document.createElement('span');
+                    s.style.background = hex;
+                    sw.appendChild(s);
+                });
+                const label = document.createElement('span');
+                label.className = 'guest-theme-preset__name';
+                label.textContent = preset.name;
+                btn.appendChild(sw);
+                btn.appendChild(label);
+                btn.addEventListener('click', () => {
+                    applyGuestThemeValues(preset.theme || {});
+                    highlightGuestThemePreset(preset.id);
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        document.getElementById('guestThemeRestoreBtn')?.addEventListener('click', () => {
+            if (confirm('Reset theme colors, background image, and custom CSS to EYUP defaults?\n\nYour event logo is kept. Click Save Changes to update the live guest page.')) {
+                restoreGuestThemeDefaults();
+            }
+        });
+
+        renderGuestThemePresets();
 
         // ── Live example previews ──
         function escapeCssUrl(url) {
@@ -1572,6 +1710,7 @@
                 const on = featureMap[el.dataset.gpFeature];
                 el.style.display = on ? '' : 'none';
             });
+            syncGuestThemePresetHighlight();
         }
 
         function updateDisplayPreview() {

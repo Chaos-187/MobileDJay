@@ -121,4 +121,98 @@
 
     global.buildGuestEventThemeCss = buildGuestEventThemeCss;
     global.escapeGuestThemeCssUrl = escapeCssUrl;
+
+    /** Built-in guest hub themes (null/ omitted color = EYUP default for that slot) */
+    global.GUEST_THEME_PRESETS = [
+        {
+            id: 'eyup',
+            name: 'EYUP Dark',
+            swatch: ['#0a0a0a', '#ff6b00', '#f0f0f5'],
+            theme: {}
+        },
+        {
+            id: 'midnight',
+            name: 'Midnight',
+            swatch: ['#0a0a12', '#6366f1', '#c7d2fe'],
+            theme: {
+                bg_color: '#0a0a12',
+                accent_color: '#6366f1',
+                hero_title_color: '#a5b4fc',
+                heading_color: '#e0e7ff',
+                text_color: '#94a3b8',
+                guest_card_color: 'rgba(99,102,241,0.12)',
+                guest_card_shadow_color: '#1e1b4b'
+            }
+        },
+        {
+            id: 'ocean',
+            name: 'Ocean',
+            swatch: ['#041824', '#00cec9', '#7dd3fc'],
+            theme: {
+                bg_color: '#041824',
+                accent_color: '#00cec9',
+                hero_title_color: '#22d3ee',
+                heading_color: '#7dd3fc',
+                text_color: '#94a3b8',
+                guest_card_color: 'rgba(0,206,201,0.12)',
+                guest_card_shadow_color: '#004e92'
+            }
+        },
+        {
+            id: 'neon',
+            name: 'Neon',
+            swatch: ['#0b0b14', '#ff00e6', '#9fe8ff'],
+            theme: {
+                bg_color: '#0b0b14',
+                accent_color: '#ff00e6',
+                hero_title_color: '#ff9df3',
+                heading_color: '#9fe8ff',
+                text_color: '#c9d4e0',
+                guest_card_color: 'rgba(255,0,230,0.1)',
+                guest_card_shadow_color: '#ff00e6'
+            }
+        },
+        {
+            id: 'wedding',
+            name: 'Elegant',
+            swatch: ['#faf7f2', '#d4af37', '#5c534a'],
+            theme: {
+                bg_color: '#faf7f2',
+                accent_color: '#d4af37',
+                hero_title_color: '#8a6d1d',
+                heading_color: '#6b5b1e',
+                text_color: '#5c534a',
+                guest_card_color: 'rgba(255,255,255,0.92)',
+                guest_card_shadow_color: '#d4af37'
+            }
+        },
+        {
+            id: 'forest',
+            name: 'Forest',
+            swatch: ['#0d1a0f', '#22c55e', '#bbf7d0'],
+            theme: {
+                bg_color: '#0d1a0f',
+                accent_color: '#22c55e',
+                hero_title_color: '#4ade80',
+                heading_color: '#bbf7d0',
+                text_color: '#86efac',
+                guest_card_color: 'rgba(34,197,94,0.1)',
+                guest_card_shadow_color: '#14532d'
+            }
+        },
+        {
+            id: 'ruby',
+            name: 'Ruby',
+            swatch: ['#1a0808', '#e11d48', '#fecdd3'],
+            theme: {
+                bg_color: '#1a0808',
+                accent_color: '#e11d48',
+                hero_title_color: '#fb7185',
+                heading_color: '#fecdd3',
+                text_color: '#fda4af',
+                guest_card_color: 'rgba(225,29,72,0.12)',
+                guest_card_shadow_color: '#881337'
+            }
+        }
+    ];
 })(typeof window !== 'undefined' ? window : globalThis);

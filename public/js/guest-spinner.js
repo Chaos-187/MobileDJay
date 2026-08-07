@@ -84,8 +84,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const parts = [];
         if (g.requestCount) parts.push(g.requestCount + ' request' + (g.requestCount === 1 ? '' : 's'));
         if (g.messageCount) parts.push(g.messageCount + ' message' + (g.messageCount === 1 ? '' : 's'));
-        if (g.photoCount) parts.push(g.photoCount + ' photo' + (g.photoCount === 1 ? '' : 's'));
-        return parts.length ? parts.join(' · ') : 'Guest at this event';
+        return parts.join(' · ');
     }
 
     function startSpin(targetGuest) {
@@ -115,13 +114,14 @@ document.addEventListener('DOMContentLoaded', function () {
         displayGuests.splice(targetIndex, 0, targetGuest);
 
         guestsList.innerHTML = displayGuests
-            .map(
-                (g, i) => `
+            .map((g, i) => {
+                const stats = guestStatsLine(g);
+                return `
             <div class="guest-item" data-guest-index="${i}">
                 <div class="guest-name">${escapeHtml(g.customerName)}</div>
-                <div class="guest-stats">${escapeHtml(guestStatsLine(g))}</div>
-            </div>`
-            )
+                ${stats ? `<div class="guest-stats">${escapeHtml(stats)}</div>` : ''}
+            </div>`;
+            })
             .join('');
         guestsList.style.transform = 'translateY(0)';
         return targetIndex;
@@ -164,7 +164,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showWinner(guest) {
         winnerTitle.textContent = guest.customerName;
-        winnerArtist.textContent = guestStatsLine(guest);
+        const sub = guestStatsLine(guest);
+        winnerArtist.textContent = sub;
+        winnerArtist.style.display = sub ? '' : 'none';
         winnerDisplay.classList.add('show');
         updateStatus('Guest selected!');
         createConfetti();

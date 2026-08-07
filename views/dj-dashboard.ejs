@@ -343,6 +343,16 @@
             color: #fff;
             border-color: rgba(255, 213, 79, 0.45);
         }
+        .prompt-trigger-btn.prompt-coin-spinner {
+            background: linear-gradient(135deg, #5d4037, #ffb300);
+            color: #fff;
+            border-color: rgba(255, 236, 179, 0.5);
+        }
+        .prompt-trigger-btn.prompt-yesno-spinner {
+            background: linear-gradient(135deg, #1b5e20, #c62828);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
+        }
         .prompt-trigger-btn.triggered .prompt-btn-icon i::before {
             content: "\f00c";
             font-family: "Font Awesome 6 Free";
@@ -824,7 +834,7 @@
                 </h5>
                 <p class="text-muted small mb-3">
                     Karaoke spinner runs on the event display and adds the winning track to this event's request queue.
-                    Guest spinner uses the same wheel animation and picks from guests who have already interacted with this event.
+                    Guest spinner picks a random guest. Coin and Yes/No use the same wheel on the display for quick crowd decisions.
                 </p>
                 <div id="spinnerBtnGrid" class="prompt-btn-grid">
                     <button type="button" id="screenKaraokeSpinBtn" class="btn prompt-trigger-btn prompt-karaoke-spinner" disabled>
@@ -836,6 +846,16 @@
                         <span class="prompt-btn-icon"><i class="fas fa-user-check"></i></span>
                         <span class="prompt-btn-label">Guest spinner</span>
                         <span class="prompt-btn-sub">Random guest on screen</span>
+                    </button>
+                    <button type="button" id="screenCoinSpinBtn" class="btn prompt-trigger-btn prompt-coin-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-coins"></i></span>
+                        <span class="prompt-btn-label">Heads or tails</span>
+                        <span class="prompt-btn-sub">Flip on the display</span>
+                    </button>
+                    <button type="button" id="screenYesNoSpinBtn" class="btn prompt-trigger-btn prompt-yesno-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-circle-question"></i></span>
+                        <span class="prompt-btn-label">Yes or no</span>
+                        <span class="prompt-btn-sub">Quick answer on screen</span>
                     </button>
                 </div>
             </div>
@@ -1301,7 +1321,9 @@
 
             const karaokeSpinBtn = document.getElementById('screenKaraokeSpinBtn');
             const guestSpinBtn = document.getElementById('screenGuestSpinBtn');
-            [karaokeSpinBtn, guestSpinBtn].forEach(btn => {
+            const coinSpinBtn = document.getElementById('screenCoinSpinBtn');
+            const yesNoSpinBtn = document.getElementById('screenYesNoSpinBtn');
+            [karaokeSpinBtn, guestSpinBtn, coinSpinBtn, yesNoSpinBtn].forEach(btn => {
                 if (!btn) return;
                 btn.disabled = !hasEvent;
                 btn.title = hasEvent
@@ -1427,6 +1449,73 @@
         if (screenGuestSpinBtn) {
             screenGuestSpinBtn.addEventListener('click', () =>
                 triggerScreenGuestSpin(screenGuestSpinBtn)
+            );
+        }
+
+        async function triggerScreenCoinSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await fetch(
+                    `/api/display/${encodeURIComponent(slug)}/coin-spinner/trigger`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                } else {
+                    alert(data.error || 'Could not flip coin');
+                }
+            } catch (err) {
+                console.error('Coin spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        async function triggerScreenYesNoSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await fetch(
+                    `/api/display/${encodeURIComponent(slug)}/yesno-spinner/trigger`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                } else {
+                    alert(data.error || 'Could not spin yes/no');
+                }
+            } catch (err) {
+                console.error('Yes/No spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        const screenCoinSpinBtn = document.getElementById('screenCoinSpinBtn');
+        const screenYesNoSpinBtn = document.getElementById('screenYesNoSpinBtn');
+        if (screenCoinSpinBtn) {
+            screenCoinSpinBtn.addEventListener('click', () =>
+                triggerScreenCoinSpin(screenCoinSpinBtn)
+            );
+        }
+        if (screenYesNoSpinBtn) {
+            screenYesNoSpinBtn.addEventListener('click', () =>
+                triggerScreenYesNoSpin(screenYesNoSpinBtn)
             );
         }
 

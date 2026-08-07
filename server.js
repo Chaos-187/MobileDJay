@@ -432,6 +432,62 @@ function clearGuestSpinState(slug) {
     if (slug) delete guestSpinStateBySlug[slug];
 }
 
+// Coin (heads/tails) and yes/no binary spinners
+const coinSpinStateBySlug = {};
+const yesNoSpinStateBySlug = {};
+
+function emptyBinarySpinState() {
+    return { shouldSpin: false, result: null, timestamp: null };
+}
+
+function getCoinSpinState(slug) {
+    if (!slug) return emptyBinarySpinState();
+    return coinSpinStateBySlug[slug] || emptyBinarySpinState();
+}
+
+function clearCoinSpinState(slug) {
+    if (slug) delete coinSpinStateBySlug[slug];
+}
+
+function getYesNoSpinState(slug) {
+    if (!slug) return emptyBinarySpinState();
+    return yesNoSpinStateBySlug[slug] || emptyBinarySpinState();
+}
+
+function clearYesNoSpinState(slug) {
+    if (slug) delete yesNoSpinStateBySlug[slug];
+}
+
+function triggerCoinSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) return { error: 'eventSlug is required' };
+    const event = eventDb.getBySlug(slug);
+    if (!event) return { error: 'Event not found' };
+    const result = Math.random() < 0.5 ? 'heads' : 'tails';
+    coinSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        result,
+        timestamp: Date.now()
+    };
+    console.log('Coin spin triggered for event', slug, ':', result);
+    return { success: true, result, eventSlug: slug, eventId: event.id };
+}
+
+function triggerYesNoSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) return { error: 'eventSlug is required' };
+    const event = eventDb.getBySlug(slug);
+    if (!event) return { error: 'Event not found' };
+    const result = Math.random() < 0.5 ? 'yes' : 'no';
+    yesNoSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        result,
+        timestamp: Date.now()
+    };
+    console.log('Yes/No spin triggered for event', slug, ':', result);
+    return { success: true, result, eventSlug: slug, eventId: event.id };
+}
+
 function getEligibleGuestsForEvent(event) {
     return guestDb
         .getByEvent(event.id)
@@ -1514,6 +1570,42 @@ app.post('/api/display/:eventSlug/guest-spinner/clear-spin', (req, res) => {
     res.json({ success: true });
 });
 
+app.post('/api/display/:eventSlug/coin-spinner/trigger', (req, res) => {
+    const result = triggerCoinSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code = result.error === 'Event not found' ? 404 : 400;
+        return res.status(code).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/coin-spinner/spin-status', (req, res) => {
+    res.json(getCoinSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/coin-spinner/clear-spin', (req, res) => {
+    clearCoinSpinState(req.params.eventSlug);
+    res.json({ success: true });
+});
+
+app.post('/api/display/:eventSlug/yesno-spinner/trigger', (req, res) => {
+    const result = triggerYesNoSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code = result.error === 'Event not found' ? 404 : 400;
+        return res.status(code).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/yesno-spinner/spin-status', (req, res) => {
+    res.json(getYesNoSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/yesno-spinner/clear-spin', (req, res) => {
+    clearYesNoSpinState(req.params.eventSlug);
+    res.json({ success: true });
+});
+
 // ==================== Tracks Played ====================
 
 function maybeLogTrackFromNowPlaying(eventId, { title, artist, album }) {
@@ -1764,6 +1856,14 @@ app.get('/karaoke-spinner', (req, res) => {
 
 app.get('/guest-spinner', (req, res) => {
     res.render('guest-spinner');
+});
+
+app.get('/coin-spinner', (req, res) => {
+    res.render('coin-spinner');
+});
+
+app.get('/yesno-spinner', (req, res) => {
+    res.render('yesno-spinner');
 });
 
 // New API endpoint for dashboard data (for background refresh)

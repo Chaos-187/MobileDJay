@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', function() {
         startSpinnerPolling();
         loadEventGuestsForSpinner();
         startGuestSpinnerPolling();
+        startCoinSpinnerPolling();
+        startYesNoSpinnerPolling();
         
         // Show control panel briefly on load
         setTimeout(() => {
@@ -297,11 +299,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof guestSpinPollInterval !== 'undefined' && guestSpinPollInterval) {
                 clearInterval(guestSpinPollInterval);
             }
+            if (typeof coinSpinPollInterval !== 'undefined' && coinSpinPollInterval) {
+                clearInterval(coinSpinPollInterval);
+            }
+            if (typeof yesNoSpinPollInterval !== 'undefined' && yesNoSpinPollInterval) {
+                clearInterval(yesNoSpinPollInterval);
+            }
         } else {
             startMessagePolling();
             startSpinnerPolling();
             if (typeof startGuestSpinnerPolling === 'function') {
                 startGuestSpinnerPolling();
+            }
+            if (typeof startCoinSpinnerPolling === 'function') {
+                startCoinSpinnerPolling();
+            }
+            if (typeof startYesNoSpinnerPolling === 'function') {
+                startYesNoSpinnerPolling();
             }
         }
     });
@@ -312,6 +326,12 @@ document.addEventListener('DOMContentLoaded', function() {
         clearInterval(spinPollInterval);
         if (typeof guestSpinPollInterval !== 'undefined' && guestSpinPollInterval) {
             clearInterval(guestSpinPollInterval);
+        }
+        if (typeof coinSpinPollInterval !== 'undefined' && coinSpinPollInterval) {
+            clearInterval(coinSpinPollInterval);
+        }
+        if (typeof yesNoSpinPollInterval !== 'undefined' && yesNoSpinPollInterval) {
+            clearInterval(yesNoSpinPollInterval);
         }
     });
 
@@ -580,8 +600,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const parts = [];
         if (g.requestCount) parts.push(g.requestCount + ' request' + (g.requestCount === 1 ? '' : 's'));
         if (g.messageCount) parts.push(g.messageCount + ' message' + (g.messageCount === 1 ? '' : 's'));
-        if (g.photoCount) parts.push(g.photoCount + ' photo' + (g.photoCount === 1 ? '' : 's'));
-        return parts.length ? parts.join(' · ') : 'Guest at this event';
+        return parts.join(' · ');
     }
 
     function startGuestSpin(targetGuest) {
@@ -618,13 +637,14 @@ document.addEventListener('DOMContentLoaded', function() {
         displayGuests.splice(targetIndex, 0, targetGuest);
 
         guestsList.innerHTML = displayGuests
-            .map(
-                (g, i) => `
+            .map((g, i) => {
+                const stats = guestStatsLine(g);
+                return `
             <div class="guest-item" data-guest-index="${i}">
                 <div class="guest-item-name">${escapeHtml(g.customerName)}</div>
-                <div class="guest-item-stats">${escapeHtml(guestStatsLine(g))}</div>
-            </div>`
-            )
+                ${stats ? `<div class="guest-item-stats">${escapeHtml(stats)}</div>` : ''}
+            </div>`;
+            })
             .join('');
         guestsList.style.transform = 'translateY(0)';
         return targetIndex;
@@ -669,7 +689,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showGuestWinner(guest) {
         if (guestWinnerName) guestWinnerName.textContent = guest.customerName;
-        if (guestWinnerSub) guestWinnerSub.textContent = guestStatsLine(guest);
+        if (guestWinnerSub) {
+            const sub = guestStatsLine(guest);
+            guestWinnerSub.textContent = sub;
+            guestWinnerSub.style.display = sub ? '' : 'none';
+        }
         if (guestWinnerDisplay) guestWinnerDisplay.classList.add('show');
         createConfetti();
         setTimeout(() => resetGuestSpinner(), CONFIG.winnerDisplayDuration);
@@ -685,6 +709,165 @@ document.addEventListener('DOMContentLoaded', function() {
         if (guestSpinnerWaiting) guestSpinnerWaiting.style.display = 'flex';
         isGuestSpinning = false;
         loadEventGuestsForSpinner();
+    }
+
+    // ============================================
+    // BINARY SPINNERS (coin + yes/no)
+    // ============================================
+    const COIN_SPINNER_OPTIONS = [
+        { key: 'heads', label: 'Heads', icon: 'fa-face-smile', modifier: 'heads' },
+        { key: 'tails', label: 'Tails', icon: 'fa-feather', modifier: 'tails' }
+    ];
+    const YESNO_SPINNER_OPTIONS = [
+        { key: 'yes', label: 'Yes', icon: 'fa-thumbs-up', modifier: 'yes' },
+        { key: 'no', label: 'No', icon: 'fa-thumbs-down', modifier: 'no' }
+    ];
+
+    function renderBinaryItemHtml(opt) {
+        const mod = opt.modifier ? ' binary-item--' + opt.modifier : '';
+        const icon = opt.icon
+            ? `<i class="fas ${opt.icon} binary-item-icon"></i>`
+            : '';
+        return `<div class="binary-item${mod}" data-key="${escapeHtml(opt.key)}">${icon}<div class="binary-item-label">${escapeHtml(opt.label)}</div></div>`;
+    }
+
+    function binaryOptionByKey(options, key) {
+        return options.find((o) => o.key === key);
+    }
+
+    function createBinarySpinnerController(cfg) {
+        let isActive = false;
+        let pollInterval;
+
+        function startPolling() {
+            if (!cfg.overlay) return null;
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = setInterval(checkTrigger, CONFIG.spinPollInterval);
+            return pollInterval;
+        }
+
+        function checkTrigger() {
+            if (isActive) return;
+            const slug = window.displayEventSlug;
+            if (!slug) return;
+
+            fetch(
+                '/api/display/' +
+                    encodeURIComponent(slug) +
+                    '/' +
+                    cfg.apiSegment +
+                    '/spin-status'
+            )
+                .then((r) => r.json())
+                .then((data) => {
+                    if (data.shouldSpin && data.result) {
+                        runSpin(data.result);
+                        fetch(
+                            '/api/display/' +
+                                encodeURIComponent(slug) +
+                                '/' +
+                                cfg.apiSegment +
+                                '/clear-spin',
+                            { method: 'POST' }
+                        );
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function runSpin(resultKey) {
+            if (isActive || !cfg.overlay || !cfg.listEl || !MdjBinarySpinner) return;
+            isActive = true;
+
+            if (spinSound) {
+                spinSound.currentTime = 0;
+                spinSound.play().catch(() => {});
+            }
+
+            cfg.overlay.classList.add('active');
+            cfg.waitingEl.style.display = 'none';
+            cfg.listEl.style.display = 'block';
+
+            const targetIndex = MdjBinarySpinner.prepareBinaryList(
+                cfg.options,
+                resultKey,
+                cfg.listEl,
+                renderBinaryItemHtml
+            );
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    MdjBinarySpinner.animateBinarySpin({
+                        listEl: cfg.listEl,
+                        slotEl: cfg.slotEl,
+                        targetIndex,
+                        spinDuration: CONFIG.spinDuration,
+                        onComplete: () => {
+                            setTimeout(() => showWinner(resultKey), 800);
+                        }
+                    });
+                });
+            });
+        }
+
+        function showWinner(resultKey) {
+            const opt = binaryOptionByKey(cfg.options, resultKey);
+            if (!opt || !cfg.winnerEl) return;
+            if (cfg.winnerTitleEl) cfg.winnerTitleEl.textContent = opt.label;
+            cfg.winnerEl.classList.add('show');
+            createConfetti();
+            setTimeout(reset, CONFIG.winnerDisplayDuration);
+        }
+
+        function reset() {
+            if (cfg.winnerEl) cfg.winnerEl.classList.remove('show');
+            if (cfg.overlay) cfg.overlay.classList.remove('active');
+            if (cfg.listEl) {
+                cfg.listEl.style.display = 'none';
+                cfg.listEl.style.transition = '';
+            }
+            if (cfg.waitingEl) cfg.waitingEl.style.display = 'flex';
+            isActive = false;
+        }
+
+        return { startPolling, reset };
+    }
+
+    const coinSpinner = createBinarySpinnerController({
+        apiSegment: 'coin-spinner',
+        options: COIN_SPINNER_OPTIONS,
+        overlay: document.getElementById('coinSpinnerOverlay'),
+        slotEl: document.getElementById('coinSpinnerSlot'),
+        waitingEl: document.getElementById('coinSpinnerWaiting'),
+        listEl: document.getElementById('coinOptionsList'),
+        winnerEl: document.getElementById('coinWinnerDisplay'),
+        winnerTitleEl: document.getElementById('coinWinnerTitle')
+    });
+
+    const yesNoSpinner = createBinarySpinnerController({
+        apiSegment: 'yesno-spinner',
+        options: YESNO_SPINNER_OPTIONS,
+        overlay: document.getElementById('yesNoSpinnerOverlay'),
+        slotEl: document.getElementById('yesNoSpinnerSlot'),
+        waitingEl: document.getElementById('yesNoSpinnerWaiting'),
+        listEl: document.getElementById('yesNoOptionsList'),
+        winnerEl: document.getElementById('yesNoWinnerDisplay'),
+        winnerTitleEl: document.getElementById('yesNoWinnerTitle')
+    });
+
+    let coinSpinPollInterval;
+    let yesNoSpinPollInterval;
+
+    function startCoinSpinnerPolling() {
+        if (coinSpinner && coinSpinner.startPolling) {
+            coinSpinPollInterval = coinSpinner.startPolling();
+        }
+    }
+
+    function startYesNoSpinnerPolling() {
+        if (yesNoSpinner && yesNoSpinner.startPolling) {
+            yesNoSpinPollInterval = yesNoSpinner.startPolling();
+        }
     }
 
     // ============================================

@@ -294,9 +294,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (document.hidden) {
             clearInterval(refreshInterval);
             clearInterval(spinPollInterval);
+            if (typeof guestSpinPollInterval !== 'undefined' && guestSpinPollInterval) {
+                clearInterval(guestSpinPollInterval);
+            }
         } else {
             startMessagePolling();
             startSpinnerPolling();
+            if (typeof startGuestSpinnerPolling === 'function') {
+                startGuestSpinnerPolling();
+            }
         }
     });
 
@@ -304,16 +310,12 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('beforeunload', function() {
         clearInterval(refreshInterval);
         clearInterval(spinPollInterval);
+        if (typeof guestSpinPollInterval !== 'undefined' && guestSpinPollInterval) {
+            clearInterval(guestSpinPollInterval);
+        }
     });
 
-    // Initialize the display
-    init();
-    animateFloatingIcons();
-
-    // Add welcome message for testing
-    setTimeout(() => {
-        updateStatus('DJ Message Display ready');
-    }, 2000);
+    // (init runs after spinner modules — see bottom of file)
 
     // ============================================
     // KARAOKE SPINNER FUNCTIONALITY
@@ -553,6 +555,13 @@ document.addEventListener('DOMContentLoaded', function() {
             .then((response) => response.json())
             .then((data) => {
                 if (data.shouldSpin && data.selectedGuest) {
+                    if (
+                        !allEventGuests.some(
+                            (g) => g.id === data.selectedGuest.id
+                        )
+                    ) {
+                        allEventGuests = allEventGuests.concat([data.selectedGuest]);
+                    }
                     startGuestSpin(data.selectedGuest);
                     fetch('/api/display/' + encodeURIComponent(slug) + '/guest-spinner/clear-spin', {
                         method: 'POST'
@@ -571,7 +580,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function startGuestSpin(targetGuest) {
-        if (isGuestSpinning || !guestSpinnerOverlay) return;
+        if (isGuestSpinning || !guestSpinnerOverlay || !guestsList) return;
         isGuestSpinning = true;
 
         if (spinSound) {
@@ -584,7 +593,12 @@ document.addEventListener('DOMContentLoaded', function() {
         guestsList.style.display = 'block';
 
         const targetIndex = prepareGuestsList(targetGuest);
-        animateGuestSpin(targetGuest, targetIndex);
+        // Allow layout before measuring scroll positions (same tick as karaoke)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                animateGuestSpin(targetGuest, targetIndex);
+            });
+        });
     }
 
     function prepareGuestsList(targetGuest) {
@@ -985,4 +999,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     startScreenPromptPolling();
+
+    // Initialize after karaoke + guest spinner modules are registered
+    init();
+    animateFloatingIcons();
+    setTimeout(() => {
+        updateStatus('DJ Message Display ready');
+    }, 2000);
 });

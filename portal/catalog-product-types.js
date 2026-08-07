@@ -62,16 +62,23 @@ function listKnownProductTypes() {
 }
 
 function catalogPublicOrigin() {
+    // Catalog files live on the requests/API host — never the marketing site origin.
     const explicit =
         process.env.PORTAL_API_PUBLIC_ORIGIN ||
         process.env.PORTAL_ASSET_ORIGIN ||
-        process.env.PORTAL_PUBLIC_ORIGIN ||
-        process.env.EYUP_PORTAL_PUBLIC_ORIGIN ||
-        process.env.PORTAL_EVENTS_PUBLIC_ORIGIN;
+        process.env.PORTAL_REQUESTS_PUBLIC_ORIGIN;
     if (explicit && String(explicit).trim()) {
         return String(explicit).trim().replace(/\/$/, '');
     }
     return 'https://requests.eyupevents.uk';
+}
+
+function catalogImageFilename(url) {
+    const rel = normalizeCatalogImageStorage(url);
+    if (!rel) return null;
+    const name = rel.replace(/^\/uploads\/catalog\//i, '');
+    if (!name || name.includes('..') || name.includes('/')) return null;
+    return name;
 }
 
 function normalizeCatalogImageStorage(url) {
@@ -140,6 +147,7 @@ module.exports = {
     sortOrderForProductType,
     listKnownProductTypes,
     catalogPublicOrigin,
+    catalogImageFilename,
     normalizeCatalogImageStorage,
     resolveCatalogImageUrl,
     inferProductType,

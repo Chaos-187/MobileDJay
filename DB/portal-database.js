@@ -381,6 +381,32 @@ const {
     publicCatalogImageUrl
 } = require('../portal/catalog-product-types');
 
+function repairStoredCatalogImageUrls() {
+    try {
+        const rows = db
+            .prepare(
+                `SELECT id, image_url FROM catalog_products WHERE image_url IS NOT NULL AND trim(image_url) != ''`
+            )
+            .all();
+        const fix = db.prepare(`UPDATE catalog_products SET image_url = ? WHERE id = ?`);
+        let changed = 0;
+        for (const row of rows) {
+            const normalized = normalizeCatalogImageStorage(row.image_url);
+            if (normalized && normalized !== row.image_url) {
+                fix.run(normalized, row.id);
+                changed += 1;
+            }
+        }
+        if (changed > 0) {
+            console.log(`[portal] Normalized ${changed} catalog product image_url value(s) to /uploads/catalog/…`);
+        }
+    } catch (e) {
+        console.warn('[portal] catalog image_url repair skipped', e.message);
+    }
+}
+
+repairStoredCatalogImageUrls();
+
 function clampHoursToProductMinimum(product, hours) {
     const min =
         product && product.minimum_hours != null && Number.isFinite(Number(product.minimum_hours))
@@ -439,7 +465,7 @@ function materializeCatalogProduct(row, { addons = null, resolveImage = false } 
         ),
         allows_addons: row.allows_addons === 1,
         is_active: row.is_active === 1,
-        image_url: row.image_url != null ? String(row.image_url) : null,
+        image_url: normalizeCatalogImageStorage(row.image_url),
         image_url_public: row.image_url ? resolveCatalogImageUrl(row.image_url) : null
     };
     if (resolveImage && out.image_url) {

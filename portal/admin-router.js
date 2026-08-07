@@ -22,7 +22,11 @@ const { refundBookingPayment } = require('./refund-booking-payment');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 const { balanceDueCalendarFields } = require('./customer-payment-schedule');
 const { catalogImageUpload, catalogRoot } = require('./catalog-image-upload');
-const { resolveCatalogImageUrl } = require('./catalog-product-types');
+const {
+    resolveCatalogImageUrl,
+    normalizeCatalogImageStorage,
+    catalogImageFilename
+} = require('./catalog-product-types');
 
 const router = express.Router();
 
@@ -1196,8 +1200,8 @@ router.delete('/catalog/products/:id/addons/:addonProductId', (req, res) => {
 });
 
 function unlinkCatalogImageFile(imageUrl) {
-    if (!imageUrl || !String(imageUrl).startsWith('/uploads/catalog/')) return;
-    const filename = path.basename(String(imageUrl));
+    const filename = catalogImageFilename(imageUrl);
+    if (!filename) return;
     const filePath = path.join(catalogRoot, filename);
     try {
         if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -1226,9 +1230,11 @@ router.post('/catalog/products/:id/image', (req, res) => {
         audit(req.portalUser.id, 'catalog_product.image', 'catalog_product', req.params.id, {
             image_url: imageUrl
         });
+        const storedImageUrl = normalizeCatalogImageStorage(product.image_url);
         res.json({
             ...product,
-            image_url_public: resolveCatalogImageUrl(product.image_url)
+            image_url: storedImageUrl,
+            image_url_public: resolveCatalogImageUrl(storedImageUrl)
         });
     });
 });

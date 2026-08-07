@@ -18,20 +18,21 @@ function normalizeUKPhone(phone) {
 
 function validateEnquiryBody(body) {
     const details = {};
+    const enquiryType =
+        body.enquiry_type === 'booking' || body.enquiryType === 'booking' ? 'booking' : 'message';
     const firstName = body.first_name != null ? String(body.first_name).trim() : '';
     const lastName = body.last_name != null ? String(body.last_name).trim() : '';
     const email = body.email != null ? String(body.email).trim() : '';
     const phone = body.phone != null ? String(body.phone).trim() : '';
     const eventType = body.event_type != null ? String(body.event_type).trim() : '';
     const eventDate = body.event_date != null ? String(body.event_date).trim() : '';
+    const message = body.message != null ? String(body.message).trim() : '';
 
     if (!firstName) details.first_name = 'is required';
     if (!lastName) details.last_name = 'is required';
     if (!email) details.email = 'is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) details.email = 'must be a valid email';
     if (!phone) details.phone = 'is required';
-    if (!eventType) details.event_type = 'is required';
-    if (!eventDate) details.event_date = 'is required';
 
     const services = Array.isArray(body.services_required)
         ? body.services_required.filter(Boolean)
@@ -41,8 +42,15 @@ function validateEnquiryBody(body) {
               : [body.services]
           : [];
     const quoteItems = Array.isArray(body.quote_line_items) ? body.quote_line_items : [];
-    if (!services.length && !quoteItems.length) {
-        details.services = 'Select at least one service or add items to your quote';
+
+    if (enquiryType === 'message') {
+        if (!message) details.message = 'is required';
+    } else {
+        if (!eventType) details.event_type = 'is required';
+        if (!eventDate) details.event_date = 'is required';
+        if (!services.length && !quoteItems.length) {
+            details.services = 'Select at least one service or add items to your quote';
+        }
     }
 
     if (Object.keys(details).length) {
@@ -52,24 +60,33 @@ function validateEnquiryBody(body) {
         throw err;
     }
 
+    const leadMetadata =
+        body.lead_metadata && typeof body.lead_metadata === 'object' ? { ...body.lead_metadata } : {};
+    leadMetadata.form_source = leadMetadata.form_source || body.form_source || 'eyup_events_website';
+    leadMetadata.form_timestamp =
+        leadMetadata.form_timestamp || body.form_timestamp || new Date().toISOString();
+    leadMetadata.enquiry_type = enquiryType;
+
     return {
+        enquiryType,
         firstName,
         lastName,
         email,
         phone: normalizeUKPhone(phone),
-        eventType,
-        eventDate,
-        guestCountRange: body.guest_count_range != null ? String(body.guest_count_range) : null,
-        venue: body.venue != null ? String(body.venue).trim() : null,
-        message: body.message != null ? String(body.message).trim() : null,
+        eventType: enquiryType === 'booking' ? eventType : null,
+        eventDate: enquiryType === 'booking' ? eventDate : null,
+        guestCountRange:
+            enquiryType === 'booking' && body.guest_count_range != null
+                ? String(body.guest_count_range)
+                : null,
+        venue:
+            enquiryType === 'booking' && body.venue != null ? String(body.venue).trim() : null,
+        message: message || null,
         hearAbout: body.hear_about != null ? String(body.hear_about) : null,
         newsletterOptIn: !!body.newsletter_opt_in || body.newsletter === 'yes',
-        servicesRequired: services,
-        quoteLineItems: quoteItems,
-        leadMetadata: body.lead_metadata || {
-            form_source: body.form_source || 'eyup_events_website',
-            form_timestamp: body.form_timestamp || new Date().toISOString()
-        }
+        servicesRequired: enquiryType === 'booking' ? services : [],
+        quoteLineItems: enquiryType === 'booking' ? quoteItems : [],
+        leadMetadata
     };
 }
 

@@ -1035,6 +1035,23 @@ djBookingRouter.patch('/:id/crew-notes', (req, res) => {
     res.json({ crew_notes: crew.body, updated_at: crew.updated_at });
 });
 
+/** DJ planned tracks for a gig (assigned DJ only). Body: { tracks: string[] } */
+djBookingRouter.put('/:id/dj-tracks', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking || !portalDb.isDjAssigned(req.portalUser.id, booking.id)) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const tracksIn = req.body?.tracks;
+    if (!Array.isArray(tracksIn)) {
+        return jsonError(res, 'validation_error', 'tracks must be an array of strings', 422);
+    }
+    const saved = portalDb.upsertDjTracks(booking.id, req.portalUser.id, tracksIn);
+    res.json({
+        dj_tracks: saved.tracks,
+        dj_tracks_updated_at: saved.updated_at
+    });
+});
+
 /** Deposit + DJ-cancel-only status update (assigned DJ only). */
 djBookingRouter.patch('/:id', (req, res) => {
     const booking = portalDb.getBookingById(req.params.id);
@@ -1119,6 +1136,7 @@ djBookingRouter.patch('/:id', (req, res) => {
     const updated = portalDb.getBookingById(booking.id);
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(updated);
     const crew = portalDb.getCrewNote(updated.id);
+    const djTracks = portalDb.getDjTracks(updated.id);
     const line_items = portalDb.getBookingLineItems(updated.id);
     const quote = portalDb.summarizeBookingQuote(line_items);
     res.json({
@@ -1127,6 +1145,8 @@ djBookingRouter.patch('/:id', (req, res) => {
         music_plan_summary,
         crew_notes: crew?.body ?? '',
         crew_notes_updated_at: crew?.updated_at ?? null,
+        dj_tracks: djTracks.tracks,
+        dj_tracks_updated_at: djTracks.updated_at,
         line_items,
         quote_subtotal: quote.quote_subtotal,
         quote_total: quote.quote_total
@@ -1140,6 +1160,7 @@ djBookingRouter.get('/:id', (req, res) => {
     }
     const { music_plan, music_plan_summary } = resolveMusicPlanForBooking(booking);
     const crew = portalDb.getCrewNote(booking.id);
+    const djTracks = portalDb.getDjTracks(booking.id);
     const line_items = portalDb.getBookingLineItems(booking.id);
     const quote = portalDb.summarizeBookingQuote(line_items);
     const customer_media_permissions = portalDb.getCustomerMediaPermissions(booking.customer_id);
@@ -1149,6 +1170,8 @@ djBookingRouter.get('/:id', (req, res) => {
         music_plan_summary,
         crew_notes: crew?.body ?? '',
         crew_notes_updated_at: crew?.updated_at ?? null,
+        dj_tracks: djTracks.tracks,
+        dj_tracks_updated_at: djTracks.updated_at,
         line_items,
         customer_media_permissions,
         quote_subtotal: quote.quote_subtotal,

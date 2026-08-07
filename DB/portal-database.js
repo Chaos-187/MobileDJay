@@ -85,6 +85,13 @@ db.exec(`
         body TEXT NOT NULL DEFAULT '',
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS booking_dj_tracks (
+        booking_id TEXT PRIMARY KEY REFERENCES bookings(id) ON DELETE CASCADE,
+        author_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        tracks TEXT NOT NULL DEFAULT '[]',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 `);
 
 // Partial uniques for music_plans (one default + one per booking)
@@ -1438,6 +1445,52 @@ const portalDb = {
                 VALUES (?, ?, ?, ?)
             `).run(bookingId, authorUserId, body, t);
         }
+    },
+
+    getDjTracks(bookingId) {
+        const row = db.prepare('SELECT * FROM booking_dj_tracks WHERE booking_id = ?').get(bookingId);
+        if (!row) {
+            return { tracks: [], updated_at: null, author_user_id: null };
+        }
+        let tracks = [];
+        try {
+            const parsed = JSON.parse(row.tracks || '[]');
+            if (Array.isArray(parsed)) {
+                tracks = parsed
+                    .map((t) => (t == null ? '' : String(t).trim()))
+                    .filter(Boolean);
+            }
+        } catch {
+            tracks = [];
+        }
+        return {
+            tracks,
+            updated_at: row.updated_at || null,
+            author_user_id: row.author_user_id || null
+        };
+    },
+
+    upsertDjTracks(bookingId, authorUserId, tracksIn) {
+        const tracks = Array.isArray(tracksIn)
+            ? tracksIn
+                  .map((t) => (t == null ? '' : String(t).trim()))
+                  .filter(Boolean)
+                  .slice(0, 200)
+            : [];
+        const payload = JSON.stringify(tracks);
+        const t = nowIso();
+        const row = db.prepare('SELECT booking_id FROM booking_dj_tracks WHERE booking_id = ?').get(bookingId);
+        if (row) {
+            db.prepare(
+                'UPDATE booking_dj_tracks SET tracks = ?, author_user_id = ?, updated_at = ? WHERE booking_id = ?'
+            ).run(payload, authorUserId, t, bookingId);
+        } else {
+            db.prepare(`
+                INSERT INTO booking_dj_tracks (booking_id, author_user_id, tracks, updated_at)
+                VALUES (?, ?, ?, ?)
+            `).run(bookingId, authorUserId, payload, t);
+        }
+        return this.getDjTracks(bookingId);
     },
 
     /** Admin/seed: create booking — contact-form parity fields optional */

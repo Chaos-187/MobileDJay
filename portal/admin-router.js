@@ -1,5 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { portalDb, uuid, normalizeEmail } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
 const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist, normalizePlaylist } = require('./music-plan');
@@ -19,6 +21,8 @@ const { createBookingPaymentCheckout } = require('./booking-checkout');
 const { refundBookingPayment } = require('./refund-booking-payment');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 const { balanceDueCalendarFields } = require('./customer-payment-schedule');
+const { catalogImageUpload, catalogRoot } = require('./catalog-image-upload');
+const { resolveCatalogImageUrl } = require('./catalog-product-types');
 
 const router = express.Router();
 
@@ -1102,6 +1106,10 @@ router.get('/catalog/products', (req, res) => {
     res.json({ products });
 });
 
+router.get('/catalog/product-types', (req, res) => {
+    res.json({ product_types: portalDb.listCatalogProductTypes() });
+});
+
 router.post('/catalog/products', (req, res) => {
     const body = req.body || {};
     if (!body.code || !body.name) {
@@ -1185,6 +1193,55 @@ router.delete('/catalog/products/:id/addons/:addonProductId', (req, res) => {
         addon_product_id: req.params.addonProductId
     });
     res.status(204).send();
+});
+
+function unlinkCatalogImageFile(imageUrl) {
+    if (!imageUrl || !String(imageUrl).startsWith('/uploads/catalog/')) return;
+    const filename = path.basename(String(imageUrl));
+    const filePath = path.join(catalogRoot, filename);
+    try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (e) {
+        console.warn('[portal] catalog image unlink', filePath, e.message);
+    }
+}
+
+router.post('/catalog/products/:id/image', (req, res) => {
+    const existing = portalDb.getCatalogProductById(req.params.id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    catalogImageUpload.single('image')(req, res, (err) => {
+        if (err) {
+            return jsonError(res, 'validation_error', err.message || 'Image upload failed', 422);
+        }
+        if (!req.file) {
+            return jsonError(res, 'validation_error', 'image file is required', 422);
+        }
+        const imageUrl = `/uploads/catalog/${req.file.filename}`;
+        if (existing.image_url && existing.image_url !== imageUrl) {
+            unlinkCatalogImageFile(existing.image_url);
+        }
+        const product = portalDb.updateCatalogProduct(req.params.id, { image_url: imageUrl });
+        audit(req.portalUser.id, 'catalog_product.image', 'catalog_product', req.params.id, {
+            image_url: imageUrl
+        });
+        res.json({
+            ...product,
+            image_url: resolveCatalogImageUrl(product.image_url)
+        });
+    });
+});
+
+router.delete('/catalog/products/:id/image', (req, res) => {
+    const existing = portalDb.getCatalogProductById(req.params.id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    if (existing.image_url) unlinkCatalogImageFile(existing.image_url);
+    const product = portalDb.updateCatalogProduct(req.params.id, { image_url: null });
+    audit(req.portalUser.id, 'catalog_product.image_clear', 'catalog_product', req.params.id, {});
+    res.json(product);
 });
 
 // --- Enquiries (contact form leads) ---

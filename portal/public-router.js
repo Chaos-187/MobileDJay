@@ -56,9 +56,13 @@ router.get('/site-settings', (req, res, next) => {
 
 router.get('/catalog/quote-products', (req, res, next) => {
     try {
-        const products = portalDb.listPublicQuoteCatalogProducts();
+        const payload = portalDb.listPublicQuoteCatalogGrouped();
         res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
-        res.json({ products });
+        res.json({
+            products: payload.products,
+            groups: payload.groups,
+            product_types: portalDb.listCatalogProductTypes()
+        });
     } catch (e) {
         next(e);
     }

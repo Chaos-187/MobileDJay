@@ -286,6 +286,8 @@ db.exec(`
         allows_addons INTEGER NOT NULL DEFAULT 1 CHECK(allows_addons IN (0,1)),
         is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
         sort_order INTEGER NOT NULL DEFAULT 0,
+        product_type TEXT NOT NULL DEFAULT 'general',
+        image_url TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -357,6 +359,24 @@ try {
 } catch (e) {
     /* exists */
 }
+try {
+    db.exec(`ALTER TABLE catalog_products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'general'`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE catalog_products ADD COLUMN image_url TEXT`);
+} catch (e) {
+    /* exists */
+}
+
+const {
+    normalizeProductType,
+    labelForProductType,
+    sortOrderForProductType,
+    listKnownProductTypes,
+    resolveCatalogImageUrl
+} = require('../portal/catalog-product-types');
 
 function clampHoursToProductMinimum(product, hours) {
     const min =
@@ -398,13 +418,20 @@ function computeCatalogLineSubtotal({ pricing_model: pricingModel, quantity, hou
     return Math.round(Math.max(0, total) * 100) / 100;
 }
 
-function materializeCatalogProduct(row, { addons = null } = {}) {
+function materializeCatalogProduct(row, { addons = null, resolveImage = false } = {}) {
     if (!row) return row;
+    const productType = normalizeProductType(row.product_type);
     const out = {
         ...row,
+        product_type: productType,
+        product_type_label: labelForProductType(productType),
         allows_addons: row.allows_addons === 1,
-        is_active: row.is_active === 1
+        is_active: row.is_active === 1,
+        image_url: row.image_url != null ? String(row.image_url) : null
     };
+    if (resolveImage && out.image_url) {
+        out.image_url = resolveCatalogImageUrl(out.image_url);
+    }
     if (addons != null) out.addons = addons;
     return out;
 }
@@ -1507,8 +1534,9 @@ const portalDb = {
         db.prepare(`
             INSERT INTO catalog_products (
                 id, code, name, description, pricing_model, standalone_rate, minimum_hours, currency,
-                capability_code, allows_addons, is_active, sort_order, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                capability_code, allows_addons, is_active, sort_order, product_type, image_url,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             id,
             String(row.code).trim().toLowerCase(),
@@ -1528,6 +1556,8 @@ const portalDb = {
             row.allows_addons === false || row.allows_addons === 0 ? 0 : 1,
             row.is_active === false || row.is_active === 0 ? 0 : 1,
             Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
+            normalizeProductType(row.product_type),
+            row.image_url != null && String(row.image_url).trim() ? String(row.image_url).trim() : null,
             t,
             t
         );
@@ -1548,7 +1578,9 @@ const portalDb = {
             'capability_code',
             'allows_addons',
             'is_active',
-            'sort_order'
+            'sort_order',
+            'product_type',
+            'image_url'
         ];
         const sets = [];
         const params = [];
@@ -1571,6 +1603,10 @@ const portalDb = {
             } else if (key === 'allows_addons' || key === 'is_active') {
                 val = val ? 1 : 0;
             } else if (key === 'sort_order') val = Number(val) || 0;
+            else if (key === 'product_type') val = normalizeProductType(val);
+            else if (key === 'image_url') {
+                val = val != null && String(val).trim() ? String(val).trim() : null;
+            }
             sets.push(`${key} = ?`);
             params.push(val);
         }
@@ -1791,6 +1827,8 @@ const portalDb = {
                 minimum_hours: full.minimum_hours != null ? full.minimum_hours : null,
                 currency: full.currency || 'GBP',
                 capability_code: full.capability_code || null,
+                product_type: full.product_type || 'general',
+                image_url: full.image_url || null,
                 allows_addons: full.allows_addons !== false,
                 is_active: full.is_active !== false,
                 sort_order: full.sort_order != null ? full.sort_order : 0,
@@ -1837,6 +1875,11 @@ const portalDb = {
                 capability_code:
                     row.capability_code != null && String(row.capability_code).trim()
                         ? String(row.capability_code).trim().toLowerCase()
+                        : null,
+                product_type: normalizeProductType(row.product_type),
+                image_url:
+                    row.image_url != null && String(row.image_url).trim()
+                        ? String(row.image_url).trim()
                         : null,
                 allows_addons: !(row.allows_addons === false || row.allows_addons === 0),
                 is_active: !(row.is_active === false || row.is_active === 0),
@@ -2569,28 +2612,87 @@ const portalDb = {
 
     listPublicQuoteCatalogProducts() {
         const products = portalDb.listCatalogProducts({ activeOnly: true });
-        return products.map((p) => {
-            const full = portalDb.getCatalogProductById(p.id);
-            return {
-                id: full.id,
-                name: full.name,
-                description: full.description || '',
-                pricing_model: full.pricing_model,
-                standalone_rate: Number(full.standalone_rate) || 0,
-                minimum_hours:
-                    full.minimum_hours != null && Number.isFinite(Number(full.minimum_hours))
-                        ? Number(full.minimum_hours)
-                        : null,
-                currency: full.currency || 'GBP',
-                allows_addons: !!full.allows_addons,
-                addons: (full.addons || []).map((a) => ({
-                    addon_product_id: a.addon_product_id,
-                    addon_name: a.addon_name,
-                    addon_rate: Number(a.addon_rate) || 0,
-                    addon_pricing_model: a.addon_pricing_model || a.addon_default_pricing_model || null
-                }))
-            };
+        return products.map((p) => portalDb.materializePublicQuoteProduct(p.id));
+    },
+
+    materializePublicQuoteProduct(productId) {
+        const full = portalDb.getCatalogProductById(productId);
+        if (!full) return null;
+        const productType = normalizeProductType(full.product_type);
+        return {
+            id: full.id,
+            name: full.name,
+            description: full.description || '',
+            product_type: productType,
+            product_type_label: labelForProductType(productType),
+            pricing_model: full.pricing_model,
+            standalone_rate: Number(full.standalone_rate) || 0,
+            minimum_hours:
+                full.minimum_hours != null && Number.isFinite(Number(full.minimum_hours))
+                    ? Number(full.minimum_hours)
+                    : null,
+            currency: full.currency || 'GBP',
+            allows_addons: !!full.allows_addons,
+            image_url: full.image_url ? resolveCatalogImageUrl(full.image_url) : null,
+            addons: (full.addons || []).map((a) => ({
+                addon_product_id: a.addon_product_id,
+                addon_name: a.addon_name,
+                addon_rate: Number(a.addon_rate) || 0,
+                addon_pricing_model: a.addon_pricing_model || a.addon_default_pricing_model || null
+            }))
+        };
+    },
+
+    listPublicQuoteCatalogGrouped() {
+        const products = portalDb
+            .listPublicQuoteCatalogProducts()
+            .filter(Boolean)
+            .sort((a, b) => {
+                const typeDiff = sortOrderForProductType(a.product_type) - sortOrderForProductType(b.product_type);
+                if (typeDiff !== 0) return typeDiff;
+                return String(a.name).localeCompare(String(b.name));
+            });
+        const groupMap = new Map();
+        products.forEach((p) => {
+            const code = p.product_type || 'general';
+            if (!groupMap.has(code)) {
+                groupMap.set(code, {
+                    code,
+                    label: labelForProductType(code),
+                    sort_order: sortOrderForProductType(code),
+                    products: []
+                });
+            }
+            groupMap.get(code).products.push(p);
         });
+        const groups = [...groupMap.values()].sort((a, b) => a.sort_order - b.sort_order);
+        return { products, groups };
+    },
+
+    listCatalogProductTypes() {
+        const rows = db
+            .prepare(
+                `SELECT DISTINCT product_type FROM catalog_products
+                 WHERE product_type IS NOT NULL AND TRIM(product_type) != ''`
+            )
+            .all();
+        const seen = new Set();
+        const out = [];
+        listKnownProductTypes().forEach((t) => {
+            seen.add(t.code);
+            out.push({ ...t });
+        });
+        rows.forEach((r) => {
+            const code = normalizeProductType(r.product_type);
+            if (seen.has(code)) return;
+            seen.add(code);
+            out.push({
+                code,
+                label: labelForProductType(code),
+                sort_order: sortOrderForProductType(code)
+            });
+        });
+        return out.sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
     }
 };
 

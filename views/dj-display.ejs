@@ -6,6 +6,7 @@
     <title>DJ Message Display - MobileDJay</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="/css/spinner-show.css?v=1" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -583,241 +584,7 @@
         .photo-showcase-overlay.style-minimal .photo-showcase-caption { color: #c9d4e0; }
         .photo-showcase-overlay.style-minimal .photo-showcase-caption .who { color: #6be7ff; }
 
-        /* ============================================
-           KARAOKE SPINNER STYLES
-           ============================================ */
-        .spinner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .spinner-overlay.active {
-            display: flex;
-        }
-
-        .spinner-container {
-            width: 100%;
-            max-width: 1200px;
-            padding: 2rem;
-            position: relative;
-        }
-
-        .spinner-title {
-            text-align: center;
-            color: white;
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 2rem;
-            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            animation: spinnerPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes spinnerPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.9; transform: scale(1.02); }
-        }
-
-        .spinner-window {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            border: 3px solid #ffc107;
-            box-shadow: 0 0 40px rgba(255, 193, 7, 0.3);
-            position: relative;
-            overflow: hidden;
-            min-height: 400px;
-        }
-
-        .spinner-slot {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 15px;
-            padding: 2rem;
-            margin: 1rem 0;
-            position: relative;
-            overflow: hidden;
-            height: 300px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid rgba(255, 193, 7, 0.3);
-        }
-
-        .spinner-slot::before,
-        .spinner-slot::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #ffc107;
-            box-shadow: 0 0 10px #ffc107;
-            z-index: 10;
-        }
-
-        .spinner-slot::before { top: calc(50% - 150px); }
-        .spinner-slot::after { bottom: calc(50% - 150px); }
-
-        .songs-list {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            transition: transform 0.1s linear;
-        }
-
-        .song-item {
-            padding: 2rem;
-            text-align: center;
-            color: white;
-            height: 300px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .song-title {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .song-artist {
-            font-size: 1.8rem;
-            color: #ffc107;
-            margin-bottom: 0.5rem;
-        }
-
-        .song-difficulty {
-            display: inline-block;
-            padding: 0.5rem 1.5rem;
-            background: #ff6b6b;
-            border-radius: 20px;
-            font-size: 1.2rem;
-            margin-top: 0.5rem;
-        }
-
-        .spinner-waiting {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-
-        .spinner-waiting i {
-            font-size: 5rem;
-            margin-bottom: 2rem;
-            animation: spinnerPulse 2s ease-in-out infinite;
-        }
-
-        /* Winner display - fullscreen overlay */
-        .winner-display {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.97), rgba(255, 107, 107, 0.97));
-            backdrop-filter: blur(30px);
-            padding: 4rem;
-            text-align: center;
-            z-index: 3000;
-            transform: scale(0.5);
-            opacity: 0;
-        }
-
-        .winner-display.show {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            animation: winnerFullscreen 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-
-        @keyframes winnerFullscreen {
-            0% { transform: scale(0.3); opacity: 0; }
-            60% { transform: scale(1.08); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .winner-icon {
-            font-size: 10rem;
-            color: white;
-            margin-bottom: 3rem;
-            animation: iconBounce 1s ease-in-out infinite;
-            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
-        }
-
-        @keyframes iconBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .winner-title-text {
-            font-size: 7rem;
-            font-weight: bold;
-            color: white;
-            margin-bottom: 2rem;
-            text-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-            animation: titlePulse 2s ease-in-out infinite;
-            line-height: 1.2;
-        }
-
-        @keyframes titlePulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .winner-artist {
-            font-size: 4.5rem;
-            color: rgba(255, 255, 255, 0.95);
-            margin-bottom: 2rem;
-            text-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .winner-difficulty {
-            display: inline-block;
-            padding: 1.5rem 3rem;
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 50px;
-            font-size: 2.5rem;
-            color: white;
-            margin-top: 2rem;
-            border: 3px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .confetti {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            position: absolute;
-            animation: confettiFall 3s linear forwards;
-            opacity: 0;
-        }
-
-        @keyframes confettiFall {
-            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
+        /* Karaoke + guest spinner chrome: /css/spinner-show.css */
 
         /* ============================================
            DJ SCREEN PROMPTS — animated announcements
@@ -1104,120 +871,6 @@
         .screen-prompt-overlay.style-selfie .screen-prompt-title { color: #111; }
         .screen-prompt-overlay.style-selfie .screen-prompt-sub { color: #555; }
 
-        /* Guest spinner — mirrors karaoke wheel (blue accent) */
-        .guest-spinner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2001;
-        }
-        .guest-spinner-overlay.active { display: flex; }
-        .guest-spinner-window {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            border: 3px solid #7986cb;
-            box-shadow: 0 0 40px rgba(121, 134, 203, 0.35);
-            position: relative;
-            overflow: hidden;
-            min-height: 400px;
-        }
-        .guest-spinner-slot {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 15px;
-            padding: 2rem;
-            margin: 1rem 0;
-            position: relative;
-            overflow: hidden;
-            height: 300px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid rgba(121, 134, 203, 0.35);
-        }
-        .guest-spinner-slot::before,
-        .guest-spinner-slot::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #7986cb;
-            box-shadow: 0 0 10px #7986cb;
-            z-index: 10;
-        }
-        .guest-spinner-slot::before { top: calc(50% - 150px); }
-        .guest-spinner-slot::after { bottom: calc(50% - 150px); }
-        .guests-list {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            transition: transform 0.1s linear;
-        }
-        .guest-item {
-            padding: 2rem;
-            text-align: center;
-            color: white;
-            height: 300px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-        }
-        .guest-item-name {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 0.75rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
-        .guest-item-stats {
-            font-size: 1.1rem;
-            color: #c5cae9;
-        }
-        .guest-winner-display {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, rgba(57, 73, 171, 0.97), rgba(92, 107, 192, 0.97));
-            backdrop-filter: blur(30px);
-            padding: 4rem;
-            text-align: center;
-            z-index: 3100;
-            transform: scale(0.5);
-            opacity: 0;
-        }
-        .guest-winner-display.show {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            animation: winnerFullscreen 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        .guest-winner-display .guest-winner-name {
-            font-size: clamp(2.5rem, 8vw, 4.5rem);
-            font-weight: 800;
-            color: #fff9c4;
-            text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
-        }
-        .guest-winner-display .guest-winner-sub {
-            font-size: 1.35rem;
-            color: rgba(255, 255, 255, 0.9);
-            margin-top: 1rem;
-        }
         .prompt-camera-flash {
             position: absolute;
             inset: 0;
@@ -1315,7 +968,8 @@
     </div>
 
     <!-- Karaoke Spinner Overlay -->
-    <div class="spinner-overlay" id="spinnerOverlay">
+    <div class="spinner-overlay mdj-spinner-root spinner-theme-karaoke" id="spinnerOverlay">
+        <div class="mdj-spinner-rays" aria-hidden="true"></div>
         <div class="spinner-container">
             <h1 class="spinner-title">
                 <i class="fas fa-microphone-alt me-3"></i>
@@ -1325,6 +979,8 @@
 
             <div class="spinner-window">
                 <div class="spinner-slot" id="spinnerSlot">
+                    <div class="mdj-slot-vignette" aria-hidden="true"></div>
+                    <div class="mdj-slot-highlight" aria-hidden="true"></div>
                     <div class="spinner-waiting" id="spinnerWaiting">
                         <i class="fas fa-dice"></i>
                         <div>Spinning...</div>
@@ -1337,6 +993,7 @@
 
     <!-- Winner Display -->
     <div class="winner-display" id="winnerDisplay">
+        <div class="winner-label">It&apos;s karaoke time</div>
         <div class="winner-icon">
             <i class="fas fa-trophy"></i>
         </div>
@@ -1346,7 +1003,8 @@
     </div>
 
     <!-- Guest Spinner Overlay -->
-    <div class="guest-spinner-overlay" id="guestSpinnerOverlay">
+    <div class="guest-spinner-overlay mdj-spinner-root spinner-theme-guest" id="guestSpinnerOverlay">
+        <div class="mdj-spinner-rays" aria-hidden="true"></div>
         <div class="spinner-container">
             <h1 class="spinner-title">
                 <i class="fas fa-users me-3"></i>
@@ -1355,6 +1013,8 @@
             </h1>
             <div class="guest-spinner-window">
                 <div class="guest-spinner-slot" id="guestSpinnerSlot">
+                    <div class="mdj-slot-vignette" aria-hidden="true"></div>
+                    <div class="mdj-slot-highlight" aria-hidden="true"></div>
                     <div class="spinner-waiting" id="guestSpinnerWaiting">
                         <i class="fas fa-dice"></i>
                         <div>Spinning...</div>
@@ -1366,6 +1026,7 @@
     </div>
 
     <div class="guest-winner-display" id="guestWinnerDisplay">
+        <div class="winner-label">Selected guest</div>
         <div class="winner-icon">
             <i class="fas fa-user-check"></i>
         </div>
@@ -1494,6 +1155,6 @@
         });
     })();
     </script>
-    <script src="/js/dj-display.js?v=2"></script>
+    <script src="/js/dj-display.js?v=3"></script>
 </body>
 </html>

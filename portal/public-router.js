@@ -2,6 +2,8 @@ const express = require('express');
 const { getSiteSettings } = require('./site-settings-service');
 const stripePortal = require('./stripe-portal');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
+const { portalDb } = require('../db/portal-database');
+const { createPublicEnquiry } = require('./enquiries-public');
 
 const router = express.Router();
 
@@ -51,5 +53,17 @@ router.get('/site-settings', (req, res, next) => {
         next(e);
     }
 });
+
+router.get('/catalog/quote-products', (req, res, next) => {
+    try {
+        const products = portalDb.listPublicQuoteCatalogProducts();
+        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.json({ products });
+    } catch (e) {
+        next(e);
+    }
+});
+
+router.post('/enquiries', createPublicEnquiry);
 
 module.exports = router;

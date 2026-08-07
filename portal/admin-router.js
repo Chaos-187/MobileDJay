@@ -1187,4 +1187,169 @@ router.delete('/catalog/products/:id/addons/:addonProductId', (req, res) => {
     res.status(204).send();
 });
 
+// --- Enquiries (contact form leads) ---
+
+router.get('/enquiries', (req, res) => {
+    const status = req.query.status || null;
+    const q = req.query.q || null;
+    const limit = req.query.limit;
+    const offset = req.query.offset;
+    const enquiries = portalDb.listEnquiries({ status, q, limit, offset });
+    res.json({ enquiries });
+});
+
+router.get('/enquiries/:id', (req, res) => {
+    const enquiry = portalDb.getEnquiryById(req.params.id);
+    if (!enquiry) {
+        return jsonError(res, 'not_found', 'Enquiry not found', 404);
+    }
+    res.json(enquiry);
+});
+
+router.patch('/enquiries/:id', (req, res) => {
+    const existing = portalDb.getEnquiryById(req.params.id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Enquiry not found', 404);
+    }
+    const patch = req.body || {};
+    const allowedPatch = {};
+    if (patch.status !== undefined) allowedPatch.status = patch.status;
+    if (patch.admin_notes !== undefined) allowedPatch.admin_notes = patch.admin_notes;
+    const updated = portalDb.updateEnquiry(req.params.id, allowedPatch);
+    audit(req.portalUser.id, 'enquiry.patch', 'enquiry', req.params.id, {
+        keys: Object.keys(allowedPatch)
+    });
+    res.json(updated);
+});
+
+router.post('/enquiries/:id/convert-to-booking', (req, res) => {
+    try {
+        const enquiry = portalDb.getEnquiryById(req.params.id);
+        if (!enquiry) {
+            return jsonError(res, 'not_found', 'Enquiry not found', 404);
+        }
+        if (enquiry.booking_id) {
+            return jsonError(res, 'conflict', 'Enquiry already converted to a booking', 409, {
+                booking_id: enquiry.booking_id
+            });
+        }
+
+        const body = req.body || {};
+        const r = portalDb.upsertCustomerForBooking({
+            email: enquiry.email,
+            first_name: enquiry.first_name,
+            last_name: enquiry.last_name,
+            phone: enquiry.phone
+        });
+        if (r.error) {
+            return jsonError(
+                res,
+                'validation_error',
+                'Email is already in use by a non-customer account',
+                422,
+                { code: r.error }
+            );
+        }
+        const customerId = r.user.id;
+
+        const eventDate = enquiry.event_date || '';
+        const defaultStart = eventDate ? `${eventDate}T18:00:00.000Z` : new Date().toISOString();
+        const defaultEnd = eventDate ? `${eventDate}T23:59:00.000Z` : defaultStart;
+        const title =
+            body.title && String(body.title).trim()
+                ? String(body.title).trim()
+                : `${enquiry.event_type || 'Event'} — ${enquiry.first_name} ${enquiry.last_name}`.trim();
+        const startDatetime =
+            body.start_datetime && String(body.start_datetime).trim()
+                ? String(body.start_datetime).trim()
+                : defaultStart;
+        const endDatetime =
+            body.end_datetime && String(body.end_datetime).trim()
+                ? String(body.end_datetime).trim()
+                : defaultEnd;
+        const reference =
+            body.reference && String(body.reference).trim()
+                ? String(body.reference).trim()
+                : generateUniqueReference();
+        const existingRef = portalDb.db.prepare('SELECT 1 AS ok FROM bookings WHERE reference = ?').get(reference);
+        if (existingRef) {
+            return jsonError(res, 'conflict', 'reference already in use', 409);
+        }
+
+        const bookingId = uuid();
+        const contactName = `${enquiry.first_name} ${enquiry.last_name}`.trim();
+        portalDb.insertBooking({
+            id: bookingId,
+            customer_id: customerId,
+            title,
+            start_datetime: startDatetime,
+            end_datetime: endDatetime,
+            venue: enquiry.venue || '',
+            service: Array.isArray(enquiry.services_required)
+                ? enquiry.services_required.join(', ')
+                : '',
+            status: 'pending',
+            reference,
+            contact_name: contactName,
+            guest_count_range: enquiry.guest_count_range,
+            event_type: enquiry.event_type,
+            services_required: enquiry.services_required,
+            enquiry_message: enquiry.message,
+            hear_about: enquiry.hear_about,
+            newsletter_opt_in: enquiry.newsletter_opt_in,
+            lead_metadata: enquiry.lead_metadata
+        });
+
+        if (Array.isArray(enquiry.quote_line_items) && enquiry.quote_line_items.length) {
+            const lineItems = enquiry.quote_line_items.map((line, index) => ({
+                client_key: line.client_key || `eq-${index}`,
+                parent_client_key: line.parent_client_key || undefined,
+                product_id: line.product_id,
+                pricing_context: line.pricing_context || 'standalone',
+                quantity: line.quantity,
+                hours: line.hours,
+                unit_rate: line.unit_rate,
+                discount_type: line.discount_type,
+                discount_value: line.discount_value,
+                label: line.label,
+                sort_order: index
+            }));
+            portalDb.replaceBookingLineItems(bookingId, lineItems);
+        }
+
+        audit(req.portalUser.id, 'booking.create', 'booking', bookingId, {
+            reference,
+            from_enquiry_id: enquiry.id
+        });
+
+        let booking = portalDb.getBookingById(bookingId);
+        try {
+            createRequestsEventForBooking(booking);
+        } catch (linkErr) {
+            console.error('[portal] admin/enquiries convert requests event link', linkErr);
+        }
+        booking = portalDb.getBookingById(bookingId);
+        const lineItems = portalDb.getBookingLineItems(bookingId);
+        const quote = portalDb.summarizeBookingQuote(lineItems);
+
+        portalDb.updateEnquiry(enquiry.id, {
+            status: 'converted',
+            booking_id: bookingId
+        });
+
+        audit(req.portalUser.id, 'enquiry.convert', 'enquiry', enquiry.id, {
+            booking_id: bookingId,
+            reference
+        });
+
+        res.status(201).json({
+            enquiry_id: enquiry.id,
+            booking: { ...booking, line_items: lineItems, ...quote }
+        });
+    } catch (err) {
+        console.error('[portal] admin/enquiries/convert-to-booking', err);
+        return jsonError(res, 'internal_error', 'Could not convert enquiry to booking', 500);
+    }
+});
+
 module.exports = router;

@@ -322,6 +322,34 @@ db.exec(`
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_booking_line_items_booking ON booking_line_items(booking_id, sort_order);
+
+    CREATE TABLE IF NOT EXISTS enquiries (
+        id TEXT PRIMARY KEY,
+        status TEXT NOT NULL DEFAULT 'new'
+            CHECK(status IN ('new','read','quoted','converted','archived')),
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        email TEXT NOT NULL COLLATE NOCASE,
+        phone TEXT,
+        event_type TEXT,
+        event_date TEXT,
+        guest_count_range TEXT,
+        venue TEXT,
+        message TEXT,
+        hear_about TEXT,
+        newsletter_opt_in INTEGER NOT NULL DEFAULT 0 CHECK(newsletter_opt_in IN (0,1)),
+        services_required TEXT,
+        quote_line_items TEXT,
+        quote_subtotal REAL,
+        quote_total REAL,
+        lead_metadata TEXT,
+        admin_notes TEXT,
+        booking_id TEXT REFERENCES bookings(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_enquiries_status_created ON enquiries(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_enquiries_email ON enquiries(email);
 `);
 
 try {
@@ -2236,6 +2264,332 @@ const portalDb = {
                 }
             }
             return { ...r, details };
+        });
+    },
+
+    normalizeEnquiryQuoteLineItems(itemsIn) {
+        const items = Array.isArray(itemsIn) ? itemsIn : [];
+        const normalized = [];
+        const keyToIndex = new Map();
+
+        items.forEach((raw, index) => {
+            const productId = raw && raw.product_id != null ? String(raw.product_id).trim() : '';
+            if (!productId) return;
+            const product = db.prepare('SELECT * FROM catalog_products WHERE id = ? AND is_active = 1').get(productId);
+            if (!product) {
+                throw new Error(`Unknown or inactive product: ${productId}`);
+            }
+            const pricingContext = raw.pricing_context === 'addon' ? 'addon' : 'standalone';
+            const clientKey =
+                raw.client_key != null && String(raw.client_key).trim()
+                    ? String(raw.client_key).trim()
+                    : `eq-${index}`;
+            let parentClientKey =
+                raw.parent_client_key != null && String(raw.parent_client_key).trim()
+                    ? String(raw.parent_client_key).trim()
+                    : null;
+            if (pricingContext === 'addon' && !parentClientKey) {
+                throw new Error('Add-on line items require a parent line');
+            }
+            if (pricingContext === 'addon' && parentClientKey && !keyToIndex.has(parentClientKey)) {
+                throw new Error('Add-on parent line not found');
+            }
+
+            let unitRate = Number(raw.unit_rate);
+            if (!Number.isFinite(unitRate)) {
+                if (pricingContext === 'addon' && parentClientKey) {
+                    const parentIdx = keyToIndex.get(parentClientKey);
+                    const parentLine = normalized[parentIdx];
+                    if (parentLine) {
+                        const link = db
+                            .prepare(
+                                `SELECT addon_rate FROM catalog_product_addons
+                                 WHERE parent_product_id = ? AND addon_product_id = ?`
+                            )
+                            .get(parentLine.product_id, product.id);
+                        if (link) unitRate = Number(link.addon_rate);
+                    }
+                }
+                if (!Number.isFinite(unitRate)) unitRate = Number(product.standalone_rate) || 0;
+            }
+
+            const pricingModel =
+                pricingContext === 'addon'
+                    ? (() => {
+                          if (parentClientKey) {
+                              const parentIdx = keyToIndex.get(parentClientKey);
+                              const parentLine = normalized[parentIdx];
+                              if (parentLine) {
+                                  const link = db
+                                      .prepare(
+                                          `SELECT addon_pricing_model FROM catalog_product_addons
+                                           WHERE parent_product_id = ? AND addon_product_id = ?`
+                                      )
+                                      .get(parentLine.product_id, product.id);
+                                  if (link && link.addon_pricing_model) return link.addon_pricing_model;
+                              }
+                          }
+                          return product.pricing_model;
+                      })()
+                    : product.pricing_model;
+
+            let hoursOut = raw.hours != null && raw.hours !== '' ? Number(raw.hours) : null;
+            if (pricingModel === 'hourly') {
+                hoursOut = clampHoursToProductMinimum(product, hoursOut);
+                if (!Number.isFinite(hoursOut) || hoursOut <= 0) hoursOut = null;
+            } else {
+                hoursOut = null;
+            }
+
+            const lineSubtotal = computeCatalogLineSubtotal({
+                pricing_model: pricingModel,
+                quantity: raw.quantity,
+                hours: hoursOut,
+                unit_rate: unitRate,
+                discount_type: raw.discount_type,
+                discount_value: raw.discount_value
+            });
+
+            const line = {
+                client_key: clientKey,
+                parent_client_key: parentClientKey,
+                product_id: product.id,
+                product_name: product.name,
+                pricing_context: pricingContext,
+                pricing_model: pricingModel,
+                quantity: Number.isFinite(Number(raw.quantity)) ? Number(raw.quantity) : 1,
+                hours: hoursOut,
+                unit_rate: unitRate,
+                discount_type: ['none', 'percent', 'fixed'].includes(raw.discount_type)
+                    ? raw.discount_type
+                    : 'none',
+                discount_value: Number.isFinite(Number(raw.discount_value)) ? Number(raw.discount_value) : 0,
+                line_subtotal: lineSubtotal,
+                label:
+                    raw.label != null && String(raw.label).trim()
+                        ? String(raw.label).trim()
+                        : String(product.name),
+                sort_order: Number.isFinite(Number(raw.sort_order)) ? Number(raw.sort_order) : index
+            };
+            keyToIndex.set(clientKey, normalized.length);
+            normalized.push(line);
+        });
+
+        const quote = portalDb.summarizeBookingQuote(
+            normalized.map((l) => ({ line_subtotal: l.line_subtotal }))
+        );
+        return {
+            quote_line_items: normalized,
+            quote_subtotal: quote.quote_subtotal,
+            quote_total: quote.quote_total
+        };
+    },
+
+    materializeEnquiry(row) {
+        if (!row) return null;
+        let servicesRequired = null;
+        if (row.services_required != null && String(row.services_required).trim()) {
+            try {
+                servicesRequired = JSON.parse(row.services_required);
+            } catch {
+                servicesRequired = row.services_required;
+            }
+        }
+        let quoteLineItems = null;
+        if (row.quote_line_items != null && String(row.quote_line_items).trim()) {
+            try {
+                quoteLineItems = JSON.parse(row.quote_line_items);
+            } catch {
+                quoteLineItems = null;
+            }
+        }
+        let leadMetadata = null;
+        if (row.lead_metadata != null && String(row.lead_metadata).trim()) {
+            try {
+                leadMetadata = JSON.parse(row.lead_metadata);
+            } catch {
+                leadMetadata = null;
+            }
+        }
+        return {
+            id: row.id,
+            status: row.status || 'new',
+            first_name: row.first_name,
+            last_name: row.last_name,
+            email: row.email,
+            phone: row.phone || null,
+            event_type: row.event_type || null,
+            event_date: row.event_date || null,
+            guest_count_range: row.guest_count_range || null,
+            venue: row.venue || null,
+            message: row.message || null,
+            hear_about: row.hear_about || null,
+            newsletter_opt_in: row.newsletter_opt_in === 1,
+            services_required: servicesRequired,
+            quote_line_items: quoteLineItems,
+            quote_subtotal:
+                row.quote_subtotal != null && Number.isFinite(Number(row.quote_subtotal))
+                    ? Number(row.quote_subtotal)
+                    : null,
+            quote_total:
+                row.quote_total != null && Number.isFinite(Number(row.quote_total))
+                    ? Number(row.quote_total)
+                    : null,
+            lead_metadata: leadMetadata,
+            admin_notes: row.admin_notes || null,
+            booking_id: row.booking_id || null,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        };
+    },
+
+    insertEnquiry(row) {
+        const id = row.id || uuid();
+        const t = nowIso();
+        const servicesJson =
+            row.services_required != null
+                ? JSON.stringify(
+                      Array.isArray(row.services_required)
+                          ? row.services_required
+                          : row.services_required
+                  )
+                : null;
+        const quoteItemsJson =
+            row.quote_line_items != null ? JSON.stringify(row.quote_line_items) : null;
+        const leadJson = row.lead_metadata != null ? JSON.stringify(row.lead_metadata) : null;
+        db.prepare(`
+            INSERT INTO enquiries (
+                id, status, first_name, last_name, email, phone, event_type, event_date,
+                guest_count_range, venue, message, hear_about, newsletter_opt_in,
+                services_required, quote_line_items, quote_subtotal, quote_total,
+                lead_metadata, admin_notes, booking_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            id,
+            row.status && ['new', 'read', 'quoted', 'converted', 'archived'].includes(row.status)
+                ? row.status
+                : 'new',
+            String(row.first_name || '').trim(),
+            String(row.last_name || '').trim(),
+            normalizeEmail(row.email),
+            row.phone != null ? String(row.phone) : null,
+            row.event_type != null ? String(row.event_type) : null,
+            row.event_date != null ? String(row.event_date) : null,
+            row.guest_count_range != null ? String(row.guest_count_range) : null,
+            row.venue != null ? String(row.venue) : null,
+            row.message != null ? String(row.message) : null,
+            row.hear_about != null ? String(row.hear_about) : null,
+            row.newsletter_opt_in ? 1 : 0,
+            servicesJson,
+            quoteItemsJson,
+            row.quote_subtotal != null && Number.isFinite(Number(row.quote_subtotal))
+                ? Number(row.quote_subtotal)
+                : null,
+            row.quote_total != null && Number.isFinite(Number(row.quote_total))
+                ? Number(row.quote_total)
+                : null,
+            leadJson,
+            row.admin_notes != null ? String(row.admin_notes) : null,
+            row.booking_id != null ? String(row.booking_id) : null,
+            t,
+            t
+        );
+        return portalDb.getEnquiryById(id);
+    },
+
+    getEnquiryById(id) {
+        const row = db.prepare('SELECT * FROM enquiries WHERE id = ?').get(id);
+        return row ? portalDb.materializeEnquiry(row) : null;
+    },
+
+    listEnquiries({ status, q, limit = 100, offset = 0 } = {}) {
+        const clauses = [];
+        const params = [];
+        if (status && ['new', 'read', 'quoted', 'converted', 'archived'].includes(status)) {
+            clauses.push('status = ?');
+            params.push(status);
+        }
+        if (q && String(q).trim()) {
+            const like = `%${String(q).trim()}%`;
+            clauses.push(
+                `(first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR venue LIKE ? OR message LIKE ?)`
+            );
+            params.push(like, like, like, like, like);
+        }
+        let sql = 'SELECT * FROM enquiries';
+        if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
+        sql += ' ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?';
+        params.push(Number(limit) || 100, Number(offset) || 0);
+        return db.prepare(sql).all(...params).map((r) => portalDb.materializeEnquiry(r));
+    },
+
+    updateEnquiry(id, patch) {
+        const existing = db.prepare('SELECT id FROM enquiries WHERE id = ?').get(id);
+        if (!existing) return null;
+        const allowed = [
+            'status',
+            'admin_notes',
+            'booking_id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'event_type',
+            'event_date',
+            'guest_count_range',
+            'venue',
+            'message',
+            'hear_about',
+            'newsletter_opt_in'
+        ];
+        const sets = [];
+        const params = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            let val = patch[key];
+            if (key === 'status') {
+                if (!['new', 'read', 'quoted', 'converted', 'archived'].includes(val)) continue;
+            } else if (key === 'newsletter_opt_in') {
+                val = val ? 1 : 0;
+            } else if (key === 'email') {
+                val = normalizeEmail(val);
+            } else if (val != null) {
+                val = String(val);
+            }
+            sets.push(`${key} = ?`);
+            params.push(val);
+        }
+        if (!sets.length) return portalDb.getEnquiryById(id);
+        sets.push('updated_at = ?');
+        params.push(nowIso());
+        params.push(id);
+        db.prepare(`UPDATE enquiries SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+        return portalDb.getEnquiryById(id);
+    },
+
+    listPublicQuoteCatalogProducts() {
+        const products = portalDb.listCatalogProducts({ activeOnly: true });
+        return products.map((p) => {
+            const full = portalDb.getCatalogProductById(p.id);
+            return {
+                id: full.id,
+                name: full.name,
+                description: full.description || '',
+                pricing_model: full.pricing_model,
+                standalone_rate: Number(full.standalone_rate) || 0,
+                minimum_hours:
+                    full.minimum_hours != null && Number.isFinite(Number(full.minimum_hours))
+                        ? Number(full.minimum_hours)
+                        : null,
+                currency: full.currency || 'GBP',
+                allows_addons: !!full.allows_addons,
+                addons: (full.addons || []).map((a) => ({
+                    addon_product_id: a.addon_product_id,
+                    addon_name: a.addon_name,
+                    addon_rate: Number(a.addon_rate) || 0,
+                    addon_pricing_model: a.addon_pricing_model || a.addon_default_pricing_model || null
+                }))
+            };
         });
     }
 };

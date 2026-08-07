@@ -365,6 +365,24 @@
         linear-gradient(135deg, rgba(0, 150, 136, 0.95), rgba(198, 40, 40, 0.92));
 }
 
+.winner-display--yesno.winner-result--yes .winner-icon {
+    color: #b9f6ca;
+}
+
+.winner-display--yesno.winner-result--no .winner-icon {
+    color: #ff8a80;
+}
+
+.winner-display--yesno.winner-result--yes .winner-title-text,
+.winner-display--yesno.winner-result--yes .winner-title {
+    color: #e8f5e9;
+}
+
+.winner-display--yesno.winner-result--no .winner-title-text,
+.winner-display--yesno.winner-result--no .winner-title {
+    color: #ffcdd2;
+}
+
 body.spinner-page.spinner-theme-coin {
     --spin-accent: #ffd54f;
     --spin-accent-2: #b0bec5;

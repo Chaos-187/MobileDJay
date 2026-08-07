@@ -214,17 +214,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // (needed for messages with inline media).
     function createMessageCard(message) {
         const needsReply = !!message.needsReply;
+        const isSpinnerResult = message.type === 'spinner-result';
         const name = escapeHtml(message.customerName);
         const nameAttr = escapeAttr(message.customerName);
         
         return `
-            <div class="card mb-2${needsReply ? ' message-needs-reply' : (!message.displayed ? '' : ' bg-light')}" data-message-id="${message.id}" data-event-id="${message.eventId || ''}" data-needs-reply="${needsReply ? '1' : '0'}">
+            <div class="card mb-2${needsReply ? ' message-needs-reply' : (!message.displayed ? '' : ' bg-light')}${isSpinnerResult ? ' message-spinner-result' : ''}" data-message-id="${message.id}" data-event-id="${message.eventId || ''}" data-needs-reply="${needsReply ? '1' : '0'}">
                 <div class="card-body py-2 message-card-body">
                     <div class="message-card-top">
                         <div class="message-card-meta">
                             <div class="d-flex align-items-center mb-1 flex-wrap gap-1">
                                 <strong class="me-1">${name}</strong>
                                 ${message.eventName ? `<span class="badge bg-dark" title="Event">${escapeHtml(message.eventName)}</span>` : ''}
+                                ${isSpinnerResult ? '<span class="badge bg-info text-dark" title="Spinner result"><i class="fas fa-dice me-1"></i>Spinner</span>' : ''}
                                 ${needsReply ? '<span class="badge bg-primary">Awaiting reply</span>' : ''}
                                 ${message.private ? '<span class="badge bg-purple-pill" title="Not shown on the display screen"><i class="fas fa-user-lock me-1"></i>DJ Only</span>' : ''}
                             </div>
@@ -234,13 +236,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             </small>
                         </div>
                         <div class="message-card-actions">
-                            ${!message.displayed ? `
+                            ${!isSpinnerResult && !message.displayed ? `
                                 <button class="btn btn-outline-primary btn-sm mark-displayed" 
                                         data-message-id="${message.id}"
                                         title="Mark displayed">
                                     <i class="fas fa-check"></i>
                                 </button>
                             ` : ''}
+                            ${!isSpinnerResult ? `
                             <button class="btn btn-success btn-sm reply-message" 
                                     data-customer-name="${nameAttr}"
                                     data-message-id="${message.id}"
@@ -248,9 +251,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     title="Reply">
                                 <i class="fas fa-reply"></i>
                             </button>
+                            ` : ''}
                         </div>
                     </div>
                     <div class="message-text small">${message.message}</div>
+                    ${!isSpinnerResult ? `
                     <div class="message-card-actions-bottom">
                         <button class="btn btn-success btn-sm reply-message" 
                                 data-customer-name="${nameAttr}"
@@ -259,6 +264,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fas fa-reply me-1"></i>Reply to ${name}
                         </button>
                     </div>
+                    ` : ''}
                 </div>
             </div>
         `;

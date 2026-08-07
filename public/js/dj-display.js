@@ -814,13 +814,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const opt = binaryOptionByKey(cfg.options, resultKey);
             if (!opt || !cfg.winnerEl) return;
             if (cfg.winnerTitleEl) cfg.winnerTitleEl.textContent = opt.label;
+            if (cfg.winnerIconEl && opt.icon) {
+                cfg.winnerIconEl.innerHTML = `<i class="fas ${opt.icon}"></i>`;
+            }
+            if (cfg.winnerEl) {
+                cfg.winnerEl.classList.remove('winner-result--yes', 'winner-result--no');
+                if (resultKey === 'yes') cfg.winnerEl.classList.add('winner-result--yes');
+                if (resultKey === 'no') cfg.winnerEl.classList.add('winner-result--no');
+            }
             cfg.winnerEl.classList.add('show');
             createConfetti();
             setTimeout(reset, CONFIG.winnerDisplayDuration);
         }
 
         function reset() {
-            if (cfg.winnerEl) cfg.winnerEl.classList.remove('show');
+            if (cfg.winnerEl) {
+                cfg.winnerEl.classList.remove('show', 'winner-result--yes', 'winner-result--no');
+            }
             if (cfg.overlay) cfg.overlay.classList.remove('active');
             if (cfg.listEl) {
                 cfg.listEl.style.display = 'none';
@@ -841,7 +851,8 @@ document.addEventListener('DOMContentLoaded', function() {
         waitingEl: document.getElementById('coinSpinnerWaiting'),
         listEl: document.getElementById('coinOptionsList'),
         winnerEl: document.getElementById('coinWinnerDisplay'),
-        winnerTitleEl: document.getElementById('coinWinnerTitle')
+        winnerTitleEl: document.getElementById('coinWinnerTitle'),
+        winnerIconEl: document.getElementById('coinWinnerIcon')
     });
 
     const yesNoSpinner = createBinarySpinnerController({
@@ -852,7 +863,8 @@ document.addEventListener('DOMContentLoaded', function() {
         waitingEl: document.getElementById('yesNoSpinnerWaiting'),
         listEl: document.getElementById('yesNoOptionsList'),
         winnerEl: document.getElementById('yesNoWinnerDisplay'),
-        winnerTitleEl: document.getElementById('yesNoWinnerTitle')
+        winnerTitleEl: document.getElementById('yesNoWinnerTitle'),
+        winnerIconEl: document.getElementById('yesNoWinnerIcon')
     });
 
     let coinSpinPollInterval;

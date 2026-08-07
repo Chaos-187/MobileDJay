@@ -305,11 +305,44 @@ function getEventFromSlugJson(req, res, next) {
 }
 
 function isGuestMessageForReply(m) {
-    return !m.isReply && m.type !== 'song-request' && m.type !== 'karaoke-request';
+    return (
+        !m.isReply &&
+        m.type !== 'song-request' &&
+        m.type !== 'karaoke-request' &&
+        m.type !== 'spinner-result'
+    );
+}
+
+function isDjInboxMessage(m) {
+    return isGuestMessageForReply(m) || m.type === 'spinner-result';
 }
 
 function filterDjInboxMessages(messages) {
-    return messages.filter(isGuestMessageForReply);
+    return messages.filter(isDjInboxMessage);
+}
+
+/** DJ-only inbox note when a spinner runs — never queued for the public message screen. */
+function queueSpinnerResultForDj(event, spinnerKind, messageText) {
+    const titles = {
+        karaoke: '🎤 Karaoke spinner',
+        guest: '👤 Guest spinner',
+        coin: '🪙 Heads or tails',
+        yesno: '❓ Yes or No'
+    };
+    const djDisplayMessage = {
+        customerName: titles[spinnerKind] || '🎲 Spinner',
+        message: messageText,
+        textMessage: messageText,
+        timestamp: new Date().toISOString(),
+        displayed: true,
+        private: true,
+        type: 'spinner-result',
+        eventId: event.id,
+        eventSlug: event.slug,
+        eventName: event.name
+    };
+    djDisplayMessage.id = messageDb.add(djDisplayMessage);
+    djMessages.push(djDisplayMessage);
 }
 
 function getDjInboxMessages() {
@@ -470,6 +503,8 @@ function triggerCoinSpinForEvent(eventSlug) {
         timestamp: Date.now()
     };
     console.log('Coin spin triggered for event', slug, ':', result);
+    const label = result === 'heads' ? 'Heads' : 'Tails';
+    queueSpinnerResultForDj(event, 'coin', `Result: ${label}`);
     return { success: true, result, eventSlug: slug, eventId: event.id };
 }
 
@@ -485,6 +520,8 @@ function triggerYesNoSpinForEvent(eventSlug) {
         timestamp: Date.now()
     };
     console.log('Yes/No spin triggered for event', slug, ':', result);
+    const label = result === 'yes' ? 'Yes' : 'No';
+    queueSpinnerResultForDj(event, 'yesno', `Result: ${label}`);
     return { success: true, result, eventSlug: slug, eventId: event.id };
 }
 
@@ -1478,6 +1515,13 @@ function triggerKaraokeSpinForEvent(eventSlug) {
     request.id = requestDb.add(request);
     djRequests.push(request);
 
+    const diff = selectedSong.difficulty ? ` (${selectedSong.difficulty})` : '';
+    queueSpinnerResultForDj(
+        event,
+        'karaoke',
+        `Winning track: "${selectedSong.title}" by ${selectedSong.artist || 'Unknown'}${diff}. Added to the request queue.`
+    );
+
     console.log('Karaoke spin triggered for event', slug, ':', selectedSong.title);
     return { success: true, song: selectedSong, eventSlug: slug, eventId: event.id };
 }
@@ -1528,6 +1572,7 @@ function triggerGuestSpinForEvent(eventSlug) {
         selectedGuest,
         timestamp: Date.now()
     };
+    queueSpinnerResultForDj(event, 'guest', `Selected guest: ${selectedGuest.customerName}`);
     console.log('Guest spin triggered for event', slug, ':', selectedGuest.customerName);
     return { success: true, guest: selectedGuest, eventSlug: slug, eventId: event.id };
 }

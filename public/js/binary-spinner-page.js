@@ -127,6 +127,13 @@
         const opt = optionByKey(resultKey);
         if (!opt) return;
         winnerTitle.textContent = opt.label;
+        const winnerIconEl = document.querySelector('#winnerDisplay .winner-icon');
+        if (winnerIconEl && opt.icon) {
+            winnerIconEl.innerHTML = '<i class="fas ' + opt.icon + '"></i>';
+        }
+        winnerDisplay.classList.remove('winner-result--yes', 'winner-result--no');
+        if (resultKey === 'yes') winnerDisplay.classList.add('winner-result--yes');
+        if (resultKey === 'no') winnerDisplay.classList.add('winner-result--no');
         if (winnerSub) {
             winnerSub.textContent = cfg.winnerSub || '';
             winnerSub.style.display = cfg.winnerSub ? '' : 'none';
@@ -138,7 +145,7 @@
     }
 
     function resetSpinner() {
-        winnerDisplay.classList.remove('show');
+        winnerDisplay.classList.remove('show', 'winner-result--yes', 'winner-result--no');
         optionsList.style.display = 'none';
         optionsList.style.transition = '';
         waitingMessage.style.display = 'flex';

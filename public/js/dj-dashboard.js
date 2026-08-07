@@ -32,21 +32,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Trigger karaoke spin
+    // Trigger karaoke spin (header — uses same event target as Screen tab)
     function triggerKaraokeSpin() {
         const btn = triggerSpinBtn;
         const originalContent = btn.innerHTML;
-        
-        // Show loading state
+        const slug =
+            typeof window.mdjGetPromptTargetSlug === 'function'
+                ? window.mdjGetPromptTargetSlug()
+                : null;
+
+        if (!slug) {
+            showAlert('Select an event (or create one) before triggering the spinner.', 'warning');
+            return;
+        }
+
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Spinning...';
-        
-        fetch('/api/karaoke/trigger-spin', { method: 'POST' })
+
+        fetch('/api/karaoke/trigger-spin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ eventSlug: slug })
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showAlert(`Spin triggered! Selected: "${data.song.title}" by ${data.song.artist}`, 'success');
-                    // Refresh to show the new request
+                    showAlert(
+                        `Spin triggered for this event! Selected: "${data.song.title}" by ${data.song.artist}`,
+                        'success'
+                    );
                     setTimeout(() => refreshData(false), 1000);
                 } else {
                     showAlert(data.error || 'Failed to trigger spin', 'danger');
@@ -577,19 +591,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // Spin Karaoke button handler
     if (spinKaraokeBtn) {
         spinKaraokeBtn.addEventListener('click', function() {
+            const slug =
+                typeof window.mdjGetPromptTargetSlug === 'function'
+                    ? window.mdjGetPromptTargetSlug()
+                    : null;
+            if (!slug) {
+                showAlert('Select an event before triggering the spinner.', 'warning');
+                return;
+            }
             const originalHtml = spinKaraokeBtn.innerHTML;
             spinKaraokeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Spinning...';
             spinKaraokeBtn.disabled = true;
-            
+
             fetch('/api/karaoke/trigger-spin', {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ eventSlug: slug })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showAlert(`Karaoke spinner triggered! Selected: "${data.song.title}" by ${data.song.artist}`, 'success');
                 } else {
-                    showAlert('Error triggering karaoke spinner', 'danger');
+                    showAlert(data.error || 'Error triggering karaoke spinner', 'danger');
                 }
             })
             .catch(error => {

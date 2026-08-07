@@ -339,14 +339,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if DJ triggered a spin
     function checkForSpinTrigger() {
         if (isSpinning) return;
+        const slug = window.displayEventSlug;
+        if (!slug) return;
 
-        fetch('/api/karaoke/spin-status')
+        fetch('/api/display/' + encodeURIComponent(slug) + '/karaoke/spin-status')
             .then(response => response.json())
             .then(data => {
                 if (data.shouldSpin && data.selectedSong) {
                     startSpin(data.selectedSong);
-                    // Clear the trigger
-                    fetch('/api/karaoke/clear-spin', { method: 'POST' });
+                    fetch('/api/display/' + encodeURIComponent(slug) + '/karaoke/clear-spin', {
+                        method: 'POST'
+                    });
                 }
             })
             .catch(error => {

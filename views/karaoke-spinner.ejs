@@ -315,6 +315,13 @@
         <div class="winner-difficulty" id="winnerDifficulty"></div>
     </div>
 
+    <script>
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            var slug = params.get('event') || params.get('eventSlug');
+            if (slug) window.displayEventSlug = String(slug).trim();
+        })();
+    </script>
     <script src="/js/karaoke-spinner.js"></script>
 </body>
 </html>

@@ -400,12 +400,21 @@ function rejectGuestIfModerated(event, customerName, res, { json = false, eventS
     return false;
 }
 
-// Storage for karaoke spinner
-let karaokeSpinState = {
-    shouldSpin: false,
-    selectedSong: null,
-    timestamp: null
-};
+// Storage for karaoke spinner (per event slug — display + requests stay scoped to the gig)
+const karaokeSpinStateBySlug = {};
+
+function emptyKaraokeSpinState() {
+    return { shouldSpin: false, selectedSong: null, timestamp: null };
+}
+
+function getKaraokeSpinState(slug) {
+    if (!slug) return emptyKaraokeSpinState();
+    return karaokeSpinStateBySlug[slug] || emptyKaraokeSpinState();
+}
+
+function clearKaraokeSpinState(slug) {
+    if (slug) delete karaokeSpinStateBySlug[slug];
+}
 
 // Photo showcase trigger — DJ pushes a guest photo to the event display screen.
 // Keyed by event slug; the display polls and clears it after showing.
@@ -1354,6 +1363,95 @@ app.post('/api/display/:eventSlug/prompt/clear', (req, res) => {
     res.json({ success: true });
 });
 
+// Karaoke spinner — scoped to event display + request queue for that event
+function triggerKaraokeSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) {
+        return { error: 'eventSlug is required' };
+    }
+    const event = eventDb.getBySlug(slug);
+    if (!event) {
+        return { error: 'Event not found' };
+    }
+    if (karaokeCatalogue.length === 0) {
+        return { error: 'No karaoke songs available' };
+    }
+
+    const randomIndex = Math.floor(Math.random() * karaokeCatalogue.length);
+    const selectedSong = karaokeCatalogue[randomIndex];
+
+    karaokeSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        selectedSong,
+        timestamp: Date.now()
+    };
+
+    const request = {
+        type: 'karaoke',
+        customerName: '🎲 Random Spinner',
+        song: selectedSong,
+        message: 'Randomly selected by DJ karaoke spinner',
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+        eventId: event.id,
+        eventSlug: event.slug,
+        eventName: event.name
+    };
+    request.id = requestDb.add(request);
+    djRequests.push(request);
+
+    console.log('Karaoke spin triggered for event', slug, ':', selectedSong.title);
+    return { success: true, song: selectedSong, eventSlug: slug, eventId: event.id };
+}
+
+app.post('/api/display/:eventSlug/karaoke/trigger-spin', (req, res) => {
+    const result = triggerKaraokeSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code = result.error === 'Event not found' ? 404 : 400;
+        return res.status(code).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/karaoke/spin-status', (req, res) => {
+    res.json(getKaraokeSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/karaoke/clear-spin', (req, res) => {
+    clearKaraokeSpinState(req.params.eventSlug);
+    res.json({ success: true });
+});
+
+// Random guest — shows on the event display via the screen-prompt overlay
+app.post('/api/display/:eventSlug/guest-spinner/trigger', (req, res) => {
+    const slug = req.params.eventSlug;
+    const event = eventDb.getBySlug(slug);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const guests = guestDb
+        .getByEvent(event.id)
+        .filter((g) => g.status !== 'banned' && g.customerName);
+    if (!guests.length) {
+        return res.status(400).json({
+            error: 'No guests on file for this event yet — guests appear after they request or message.'
+        });
+    }
+    const pick = guests[Math.floor(Math.random() * guests.length)];
+    const name = pick.customerName;
+    displayPromptState[slug] = {
+        prompt: {
+            id: 'guest-spinner',
+            label: name,
+            subtext: 'Random guest — step into the spotlight!',
+            icon: 'fa-user-check',
+            style: 'guest-spinner'
+        },
+        timestamp: Date.now()
+    };
+    res.json({ success: true, guestName: name });
+});
+
 // ==================== Tracks Played ====================
 
 function maybeLogTrackFromNowPlaying(eventId, { title, artist, album }) {
@@ -1726,65 +1824,56 @@ app.get('/api/karaoke/all', (req, res) => {
     res.json(karaokeCatalogue);
 });
 
-// Shared function to trigger karaoke spin
-function triggerKaraokeSpin() {
-    // Select a random karaoke song
-    if (karaokeCatalogue.length === 0) {
-        return { error: 'No karaoke songs available' };
-    }
-    
-    const randomIndex = Math.floor(Math.random() * karaokeCatalogue.length);
-    const selectedSong = karaokeCatalogue[randomIndex];
-    
-    karaokeSpinState = {
-        shouldSpin: true,
-        selectedSong: selectedSong,
-        timestamp: Date.now()
-    };
-    
-    // Add the randomly selected song to DJ requests
-    const request = {
-        type: 'karaoke',
-        customerName: '🎲 Random Spinner',
-        song: selectedSong,
-        message: 'Randomly selected by DJ spinner',
-        timestamp: new Date().toISOString(),
-        status: 'pending'
-    };
-    request.id = requestDb.add(request);
-    djRequests.push(request);
-    
-    console.log('Karaoke spin triggered:', selectedSong.title);
-    return { success: true, song: selectedSong };
+// Shared function to trigger karaoke spin (legacy + dashboard header — requires eventSlug)
+function triggerKaraokeSpin(eventSlug) {
+    return triggerKaraokeSpinForEvent(eventSlug);
 }
 
 app.post('/api/karaoke/trigger-spin', (req, res) => {
-    const result = triggerKaraokeSpin();
+    const slug = req.body?.eventSlug != null ? String(req.body.eventSlug).trim() : '';
+    const result = triggerKaraokeSpin(slug);
     if (result.error) {
-        return res.status(400).json(result);
+        const status =
+            result.error === 'Event not found'
+                ? 404
+                : result.error === 'eventSlug is required'
+                  ? 422
+                  : 400;
+        return res.status(status).json(result);
     }
     res.json(result);
 });
 
 // GET endpoint for external devices (e.g., Stream Deck, automation)
 app.get('/api/karaoke/trigger-spin', (req, res) => {
-    const result = triggerKaraokeSpin();
+    const slug = req.query.eventSlug != null ? String(req.query.eventSlug).trim() : '';
+    const result = triggerKaraokeSpin(slug);
     if (result.error) {
-        return res.status(400).json(result);
+        const status =
+            result.error === 'Event not found'
+                ? 404
+                : result.error === 'eventSlug is required'
+                  ? 422
+                  : 400;
+        return res.status(status).json(result);
     }
     res.json(result);
 });
 
 app.get('/api/karaoke/spin-status', (req, res) => {
-    res.json(karaokeSpinState);
+    const slug = req.query.eventSlug != null ? String(req.query.eventSlug).trim() : '';
+    if (!slug) {
+        return res.status(422).json({ error: 'eventSlug query parameter is required' });
+    }
+    res.json(getKaraokeSpinState(slug));
 });
 
 app.post('/api/karaoke/clear-spin', (req, res) => {
-    karaokeSpinState = {
-        shouldSpin: false,
-        selectedSong: null,
-        timestamp: null
-    };
+    const slug = req.body?.eventSlug != null ? String(req.body.eventSlug).trim() : '';
+    if (!slug) {
+        return res.status(422).json({ error: 'eventSlug is required' });
+    }
+    clearKaraokeSpinState(slug);
     res.json({ success: true });
 });
 

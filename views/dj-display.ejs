@@ -1103,6 +1103,27 @@
         }
         .screen-prompt-overlay.style-selfie .screen-prompt-title { color: #111; }
         .screen-prompt-overlay.style-selfie .screen-prompt-sub { color: #555; }
+
+        .screen-prompt-overlay.style-guest-spinner {
+            background: radial-gradient(circle at 50% 30%, rgba(255, 193, 7, 0.35), rgba(0, 0, 0, 0.85));
+        }
+        .screen-prompt-overlay.style-guest-spinner .screen-prompt-card {
+            background: linear-gradient(145deg, #1a237e, #3949ab);
+            border: 3px solid #ffd54f;
+            box-shadow: 0 0 60px rgba(255, 213, 79, 0.45);
+        }
+        .screen-prompt-overlay.style-guest-spinner .screen-prompt-title {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            color: #fff9c4;
+            text-shadow: 0 0 24px rgba(255, 213, 79, 0.6);
+        }
+        .screen-prompt-overlay.style-guest-spinner .screen-prompt-sub {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .screen-prompt-overlay.style-guest-spinner .screen-prompt-icon i {
+            color: #ffd54f;
+            font-size: 3rem;
+        }
         .prompt-camera-flash {
             position: absolute;
             inset: 0;

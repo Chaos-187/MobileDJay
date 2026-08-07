@@ -61,18 +61,33 @@ document.addEventListener('DOMContentLoaded', function() {
     function checkForSpinTrigger() {
         if (isSpinning) return;
 
-        fetch('/api/karaoke/spin-status')
+        const slug = getEventSlugFromPage();
+        if (!slug) return;
+
+        fetch('/api/display/' + encodeURIComponent(slug) + '/karaoke/spin-status')
             .then(response => response.json())
             .then(data => {
                 if (data.shouldSpin && data.selectedSong) {
                     startSpin(data.selectedSong);
-                    // Clear the trigger
-                    fetch('/api/karaoke/clear-spin', { method: 'POST' });
+                    fetch('/api/display/' + encodeURIComponent(slug) + '/karaoke/clear-spin', {
+                        method: 'POST'
+                    });
                 }
             })
             .catch(error => {
                 console.error('Error checking spin status:', error);
             });
+    }
+
+    function getEventSlugFromPage() {
+        if (window.displayEventSlug) return window.displayEventSlug;
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const q = params.get('event') || params.get('eventSlug');
+            return q ? String(q).trim() : null;
+        } catch {
+            return null;
+        }
     }
 
     // Start the spinning animation

@@ -333,6 +333,16 @@
             border-color: #ddd;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
+        .prompt-trigger-btn.prompt-karaoke-spinner {
+            background: linear-gradient(135deg, #5c2d00, #ff9500);
+            color: #fff;
+            border-color: rgba(255, 200, 100, 0.5);
+        }
+        .prompt-trigger-btn.prompt-guest-spinner {
+            background: linear-gradient(135deg, #1a237e, #5c6bc0);
+            color: #fff;
+            border-color: rgba(255, 213, 79, 0.45);
+        }
         .prompt-trigger-btn.triggered .prompt-btn-icon i::before {
             content: "\f00c";
             font-family: "Font Awesome 6 Free";
@@ -803,6 +813,28 @@
                 <div id="promptBtnGrid" class="prompt-btn-grid">
                     <span class="text-muted small">Loading prompts…</span>
                 </div>
+
+                <hr class="my-4 opacity-25">
+
+                <h5 class="h6 text-uppercase text-muted mb-2">
+                    <i class="fas fa-dice me-1"></i>Spinners
+                </h5>
+                <p class="text-muted small mb-3">
+                    Karaoke spinner runs on the event display and adds the winning track to this event's request queue.
+                    Guest spinner picks someone who has already interacted with the event.
+                </p>
+                <div id="spinnerBtnGrid" class="prompt-btn-grid">
+                    <button type="button" id="screenKaraokeSpinBtn" class="btn prompt-trigger-btn prompt-karaoke-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-microphone-lines"></i></span>
+                        <span class="prompt-btn-label">Karaoke spinner</span>
+                        <span class="prompt-btn-sub">Random track on display</span>
+                    </button>
+                    <button type="button" id="screenGuestSpinBtn" class="btn prompt-trigger-btn prompt-guest-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-user-check"></i></span>
+                        <span class="prompt-btn-label">Guest spinner</span>
+                        <span class="prompt-btn-sub">Random guest on screen</span>
+                    </button>
+                </div>
             </div>
         </div>
         </div>
@@ -1096,14 +1128,31 @@
             return allEventOptions[0] ? eventNames[allEventOptions[0].value] : null;
         }
 
+        function getPromptTargetEventId() {
+            const id = eventSelect.value;
+            if (id !== 'all') return id;
+            if (firstActiveOption) return firstActiveOption.value;
+            return allEventOptions[0] ? allEventOptions[0].value : null;
+        }
+
+        window.mdjGetPromptTargetSlug = getPromptTargetSlug;
+        window.mdjGetPromptTargetEventId = getPromptTargetEventId;
+        window.mdjGetPromptTargetName = getPromptTargetName;
+
         function updateDisplayLink() {
             const link = document.getElementById('openDisplayLink');
-            const slug = getSelectedEventSlug();
+            const slug = getSelectedEventSlug() || getPromptTargetSlug();
+            const spinnerLink = document.querySelector('a[href="/karaoke-spinner"]');
             if (slug) {
                 link.href = '/dj/display/' + slug;
                 link.style.display = '';
+                if (spinnerLink) {
+                    spinnerLink.href =
+                        '/karaoke-spinner?event=' + encodeURIComponent(slug);
+                }
             } else {
                 link.style.display = 'none';
+                if (spinnerLink) spinnerLink.href = '/karaoke-spinner';
             }
         }
 
@@ -1240,6 +1289,16 @@
                 btn.disabled = !hasEvent;
                 btn.title = hasEvent ? 'Show on display screen' : 'Create an event first';
             });
+
+            const karaokeSpinBtn = document.getElementById('screenKaraokeSpinBtn');
+            const guestSpinBtn = document.getElementById('screenGuestSpinBtn');
+            [karaokeSpinBtn, guestSpinBtn].forEach(btn => {
+                if (!btn) return;
+                btn.disabled = !hasEvent;
+                btn.title = hasEvent
+                    ? 'Trigger on event display'
+                    : 'Select or create an event first';
+            });
         }
 
         async function loadPromptButtons() {
@@ -1294,6 +1353,73 @@
 
         loadPromptButtons();
         updateDisplayLink();
+
+        async function triggerScreenKaraokeSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await fetch(
+                    `/api/display/${encodeURIComponent(slug)}/karaoke/trigger-spin`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success && data.song) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                } else {
+                    alert(data.error || 'Could not trigger karaoke spinner');
+                }
+            } catch (err) {
+                console.error('Karaoke spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        async function triggerScreenGuestSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await fetch(
+                    `/api/display/${encodeURIComponent(slug)}/guest-spinner/trigger`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                } else {
+                    alert(data.error || 'Could not pick a guest');
+                }
+            } catch (err) {
+                console.error('Guest spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        const screenKaraokeSpinBtn = document.getElementById('screenKaraokeSpinBtn');
+        const screenGuestSpinBtn = document.getElementById('screenGuestSpinBtn');
+        if (screenKaraokeSpinBtn) {
+            screenKaraokeSpinBtn.addEventListener('click', () =>
+                triggerScreenKaraokeSpin(screenKaraokeSpinBtn)
+            );
+        }
+        if (screenGuestSpinBtn) {
+            screenGuestSpinBtn.addEventListener('click', () =>
+                triggerScreenGuestSpin(screenGuestSpinBtn)
+            );
+        }
 
         // ── Tracks played tab ──────────────────────────────────────────
         const tracksList = document.getElementById('tracksList');

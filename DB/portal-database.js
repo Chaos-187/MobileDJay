@@ -439,10 +439,11 @@ function materializeCatalogProduct(row, { addons = null, resolveImage = false } 
         ),
         allows_addons: row.allows_addons === 1,
         is_active: row.is_active === 1,
-        image_url: row.image_url != null ? String(row.image_url) : null
+        image_url: row.image_url != null ? String(row.image_url) : null,
+        image_url_public: row.image_url ? resolveCatalogImageUrl(row.image_url) : null
     };
     if (resolveImage && out.image_url) {
-        out.image_url = resolveCatalogImageUrl(out.image_url);
+        out.image_url = out.image_url_public;
     }
     if (addons != null) out.addons = addons;
     return out;

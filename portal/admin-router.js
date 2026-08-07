@@ -1228,7 +1228,7 @@ router.post('/catalog/products/:id/image', (req, res) => {
         });
         res.json({
             ...product,
-            image_url: resolveCatalogImageUrl(product.image_url)
+            image_url_public: resolveCatalogImageUrl(product.image_url)
         });
     });
 });

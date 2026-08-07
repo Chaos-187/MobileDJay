@@ -199,6 +199,23 @@
             height: 100%;
             overflow: hidden;
             font-size: 14px;
+            background: linear-gradient(145deg, #0a0a0a 0%, #111111 50%, #0d0d0d 100%);
+            color: var(--text-primary, #f0f0f5);
+            position: relative;
+        }
+        .guest-phone-screen .mdj-scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 40;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            opacity: 0.28;
         }
         .guest-phone-screen .name-input-group .form-control,
         .guest-phone-screen .name-input-group .btn {
@@ -917,35 +934,36 @@
                                         <div class="row">
                                             <div class="col-md-6">
                                                 <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
+                                                <p class="form-text mb-3">Clear a hex field to use the standard EYUP dark guest hub. The event title keeps the orange gradient; heading color applies to menu titles and section headings.</p>
                                                 <div class="row">
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventHeadingColor" class="form-label">Heading Color</label>
+                                                        <label for="editEventHeadingColor" class="form-label">Menu / section headings</label>
                                                         <div class="input-group">
                                                             <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#007bff">
-                                                            <input type="text" class="form-control" id="editEventHeadingColorText" value="#007bff" maxlength="7">
+                                                            <input type="text" class="form-control" id="editEventHeadingColorText" value="" placeholder="#007bff" maxlength="7">
                                                         </div>
                                                     </div>
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventTextColor" class="form-label">Text Color</label>
+                                                        <label for="editEventTextColor" class="form-label">Body text</label>
                                                         <div class="input-group">
-                                                            <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#212529">
-                                                            <input type="text" class="form-control" id="editEventTextColorText" value="#212529" maxlength="7">
+                                                            <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#f0f0f5">
+                                                            <input type="text" class="form-control" id="editEventTextColorText" value="" placeholder="Default" maxlength="7">
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="row">
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventBgColor" class="form-label">Background Color</label>
+                                                        <label for="editEventBgColor" class="form-label">Background</label>
                                                         <div class="input-group">
-                                                            <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#ffffff">
-                                                            <input type="text" class="form-control" id="editEventBgColorText" value="#ffffff" maxlength="7">
+                                                            <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#0a0a0a">
+                                                            <input type="text" class="form-control" id="editEventBgColorText" value="" placeholder="Default" maxlength="7">
                                                         </div>
                                                     </div>
                                                     <div class="col-6 mb-3">
-                                                        <label for="editEventAccentColor" class="form-label">Accent/Button Color</label>
+                                                        <label for="editEventAccentColor" class="form-label">Buttons &amp; links</label>
                                                         <div class="input-group">
-                                                            <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#0d6efd">
-                                                            <input type="text" class="form-control" id="editEventAccentColorText" value="#0d6efd" maxlength="7">
+                                                            <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#ff6b00">
+                                                            <input type="text" class="form-control" id="editEventAccentColorText" value="" placeholder="Default" maxlength="7">
                                                         </div>
                                                     </div>
                                                 </div>
@@ -980,7 +998,13 @@
                                                     <div class="form-text">Hero logo on the guest landing page (PNG/SVG with transparency works best).</div>
                                                 </div>
                                                 <div id="themeUploadStatus" class="small" aria-live="polite"></div>
-                                                <p class="small text-muted mb-0 mt-2"><i class="fas fa-info-circle me-1"></i>Enabled features on the <strong>Details &amp; Features</strong> tab appear in the preview options list.</p>
+                                                <div class="mb-0 mt-2">
+                                                    <label class="form-label d-flex align-items-center gap-2">
+                                                        <input type="checkbox" class="form-check-input mt-0" id="editGuestPreviewShowNameCard">
+                                                        Preview name step
+                                                    </label>
+                                                    <div class="form-text">Off shows the options menu (same as after a guest enters their name).</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -990,6 +1014,7 @@
                                             <div class="guest-phone-device__shell">
                                                 <div class="guest-phone-device__notch" aria-hidden="true"></div>
                                                 <div class="guest-phone-screen mdj-eyup-brand mdj-guest-hub-page" id="guestPreviewScreen">
+                                                    <div class="mdj-scanlines" aria-hidden="true"></div>
                                                     <style id="guestPreviewThemeStyle"></style>
                                                     <main class="container mdj-guest-hub-main">
                                                         <div class="index-page">
@@ -1009,7 +1034,7 @@
                                                                 <h1 class="hero-title" id="gpHeading">Your Event Name</h1>
                                                                 <p class="hero-subtitle" id="gpSubtitle">Make your requests and send messages to the DJ!</p>
                                                             </header>
-                                                            <div class="name-card" id="gpNameCard">
+                                                            <div class="name-card" id="gpNameCard" style="display: none;">
                                                                 <div class="name-card-inner">
                                                                     <div class="name-card-icon"><i class="fas fa-user-circle"></i></div>
                                                                     <h2 class="name-card-title">What's your name?</h2>
@@ -1026,7 +1051,7 @@
                                                                         <div class="option-card-icon option-card-icon--songs"><i class="fas fa-music"></i></div>
                                                                         <div class="option-card-content">
                                                                             <h3 class="option-card-title">Song Request</h3>
-                                                                            <p class="option-card-desc">Browse and request songs</p>
+                                                                            <p class="option-card-desc">Browse and request songs from our music library</p>
                                                                         </div>
                                                                         <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
                                                                     </div>
@@ -1034,7 +1059,7 @@
                                                                         <div class="option-card-icon option-card-icon--karaoke"><i class="fas fa-microphone"></i></div>
                                                                         <div class="option-card-content">
                                                                             <h3 class="option-card-title">Karaoke Request</h3>
-                                                                            <p class="option-card-desc">Find karaoke songs to sing</p>
+                                                                            <p class="option-card-desc">Find your favorite karaoke songs to sing along</p>
                                                                         </div>
                                                                         <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
                                                                     </div>
@@ -1042,7 +1067,7 @@
                                                                         <div class="option-card-icon option-card-icon--message"><i class="fas fa-paper-plane"></i></div>
                                                                         <div class="option-card-content">
                                                                             <h3 class="option-card-title">Send Message</h3>
-                                                                            <p class="option-card-desc">Send a message to the DJ</p>
+                                                                            <p class="option-card-desc">Send a custom message or special request to the DJ</p>
                                                                         </div>
                                                                         <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
                                                                     </div>
@@ -1050,7 +1075,7 @@
                                                                         <div class="option-card-icon option-card-icon--photo"><i class="fas fa-camera"></i></div>
                                                                         <div class="option-card-content">
                                                                             <h3 class="option-card-title">Event Cam</h3>
-                                                                            <p class="option-card-desc">Snap a photo for the album</p>
+                                                                            <p class="option-card-desc">Open the camera and snap a photo for the event album</p>
                                                                         </div>
                                                                         <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
                                                                     </div>
@@ -1058,7 +1083,7 @@
                                                                         <div class="option-card-icon option-card-icon--tip"><i class="fas fa-hand-holding-dollar"></i></div>
                                                                         <div class="option-card-content">
                                                                             <h3 class="option-card-title">Tip the DJ</h3>
-                                                                            <p class="option-card-desc">Show your appreciation</p>
+                                                                            <p class="option-card-desc">Show your appreciation with a tip!</p>
                                                                         </div>
                                                                         <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
                                                                     </div>
@@ -1068,7 +1093,7 @@
                                                         <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-hidden="true">
                                                             <div class="mdj-footer-container">
                                                                 <div class="mdj-company-foot">
-                                                                    <p class="mdj-company-foot__legal">&copy; EYUP EVENTS UK LTD</p>
+                                                                    <p class="mdj-company-foot__legal">&copy; 2026 EYUP EVENTS UK LTD · Co. no. 17186451 · All rights reserved</p>
                                                                 </div>
                                                             </div>
                                                         </footer>
@@ -1417,31 +1442,102 @@
             opt.addEventListener('click', () => selectEditBannerStyle(opt.dataset.value));
         });
 
+        // Guest theme — same rules as index.ejs (scoped for preview)
+        const GUEST_THEME_LEGACY = { text: '#212529', bg: '#ffffff', accent: '#0d6efd' };
+        const GUEST_THEME_PICKER = { heading: '#007bff', text: '#f0f0f5', bg: '#0a0a0a', accent: '#ff6b00' };
+
+        function normalizeGuestThemeStored(value, key) {
+            const v = (value || '').trim();
+            if (!v) return '';
+            if (GUEST_THEME_LEGACY[key] && v.toLowerCase() === GUEST_THEME_LEGACY[key].toLowerCase()) return '';
+            return v;
+        }
+
+        function readGuestThemeField(textId, pickerKey) {
+            const raw = (document.getElementById(textId).value || '').trim();
+            if (!raw) return null;
+            if (/^#[0-9A-Fa-f]{6}$/.test(raw)) return raw;
+            return null;
+        }
+
+        function buildGuestEventThemeCss(scope, theme) {
+            const parts = [];
+            const vars = [];
+            if (theme.heading_color) vars.push(`--event-heading-color: ${theme.heading_color};`);
+            if (theme.text_color) vars.push(`--event-text-color: ${theme.text_color};`);
+            if (theme.bg_color) vars.push(`--event-bg-color: ${theme.bg_color};`);
+            if (theme.accent_color) vars.push(`--event-accent-color: ${theme.accent_color};`);
+            if (vars.length) parts.push(`:root { ${vars.join(' ')} }`);
+
+            if (theme.bg_color || theme.bg_image) {
+                let block = `${scope} {\n`;
+                if (theme.bg_color) block += `  background-color: ${theme.bg_color};\n`;
+                if (theme.bg_image) {
+                    block += `  background-image: url('${escapeCssUrl(theme.bg_image)}');\n`;
+                    block += '  background-size: cover;\n  background-position: center;\n';
+                }
+                block += '}';
+                parts.push(block);
+            }
+
+            if (theme.text_color) {
+                parts.push(`${scope}, ${scope} .card-text, ${scope} p, ${scope} .lead { color: ${theme.text_color}; }`);
+            }
+            if (theme.heading_color) {
+                parts.push(`${scope} h2, ${scope} h3, ${scope} h4, ${scope} h5, ${scope} h6, ${scope} .card-title, ${scope} .display-4 { color: ${theme.heading_color} !important; }`);
+            }
+            if (theme.accent_color) {
+                parts.push(`${scope} .btn-primary { background-color: ${theme.accent_color}; border-color: ${theme.accent_color}; }`);
+                parts.push(`${scope} .btn-primary:hover { background-color: color-mix(in srgb, ${theme.accent_color} 85%, black); border-color: color-mix(in srgb, ${theme.accent_color} 85%, black); }`);
+                parts.push(`${scope} .text-primary { color: ${theme.accent_color} !important; }`);
+                parts.push(`${scope} a { color: ${theme.accent_color}; }`);
+            }
+            if (theme.custom_css) parts.push(theme.custom_css);
+            return parts.join('\n');
+        }
+
+        function loadGuestThemeEditorFields(event) {
+            const heading = (event.heading_color || '').trim();
+            const text = normalizeGuestThemeStored(event.text_color, 'text');
+            const bg = normalizeGuestThemeStored(event.bg_color, 'bg');
+            const accent = normalizeGuestThemeStored(event.accent_color, 'accent');
+
+            document.getElementById('editEventHeadingColorText').value = heading;
+            document.getElementById('editEventHeadingColor').value = heading || GUEST_THEME_PICKER.heading;
+            document.getElementById('editEventTextColorText').value = text;
+            document.getElementById('editEventTextColor').value = text || GUEST_THEME_PICKER.text;
+            document.getElementById('editEventBgColorText').value = bg;
+            document.getElementById('editEventBgColor').value = bg || GUEST_THEME_PICKER.bg;
+            document.getElementById('editEventAccentColorText').value = accent;
+            document.getElementById('editEventAccentColor').value = accent || GUEST_THEME_PICKER.accent;
+        }
+
         // ── Live example previews ──
         function escapeCssUrl(url) {
             return String(url).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         }
 
         function updateGuestPreview() {
-            const screen = document.getElementById('guestPreviewScreen');
             const themeStyle = document.getElementById('guestPreviewThemeStyle');
-            if (!screen || !themeStyle) return;
+            if (!themeStyle) return;
 
-            const headingColor = document.getElementById('editEventHeadingColorText').value || '#007bff';
-            const textColor = document.getElementById('editEventTextColorText').value || '#212529';
-            const bgColor = document.getElementById('editEventBgColorText').value || '#ffffff';
-            const accentColor = document.getElementById('editEventAccentColorText').value || '#0d6efd';
-            const bgImage = document.getElementById('editEventBgImage').value.trim();
             let customCss = (document.getElementById('editEventCustomCss').value || '').trim();
-            if (customCss) {
-                customCss = customCss.replace(/\bbody\b/g, '#guestPreviewScreen');
-            }
+            if (customCss) customCss = customCss.replace(/\bbody\b/g, '#guestPreviewScreen');
+
+            const theme = {
+                heading_color: readGuestThemeField('editEventHeadingColorText', 'heading'),
+                text_color: readGuestThemeField('editEventTextColorText', 'text'),
+                bg_color: readGuestThemeField('editEventBgColorText', 'bg'),
+                accent_color: readGuestThemeField('editEventAccentColorText', 'accent'),
+                bg_image: document.getElementById('editEventBgImage').value.trim() || null,
+                custom_css: customCss
+            };
+
+            themeStyle.textContent = buildGuestEventThemeCss('#guestPreviewScreen', theme);
 
             const eventName = document.getElementById('editEventName').value.trim() || 'Your Event Name';
             document.getElementById('gpHeading').textContent = eventName;
-
-            const desc = document.getElementById('editEventDescription').value.trim();
-            document.getElementById('gpSubtitle').textContent = desc || 'Make your requests and send messages to the DJ!';
+            document.getElementById('gpSubtitle').textContent = 'Make your requests and send messages to the DJ!';
 
             const logo = document.getElementById('editEventLogoImage').value.trim();
             document.getElementById('gpLogoWrap').style.display = logo ? '' : 'none';
@@ -1450,6 +1546,10 @@
                 document.getElementById('gpLogoImg').src = logo;
                 document.getElementById('gpLogoImg').alt = eventName + ' logo';
             }
+
+            const showName = document.getElementById('editGuestPreviewShowNameCard').checked;
+            document.getElementById('gpNameCard').style.display = showName ? '' : 'none';
+            document.getElementById('gpOptionsSection').style.display = showName ? 'none' : '';
 
             const featureMap = {
                 song: document.getElementById('editEventEnableSongRequests').checked,
@@ -1462,46 +1562,6 @@
                 const on = featureMap[el.dataset.gpFeature];
                 el.style.display = on ? '' : 'none';
             });
-
-            const bgBlock = [];
-            if (bgColor) bgBlock.push(`background-color: ${bgColor};`);
-            if (bgImage) {
-                bgBlock.push(`background-image: url('${escapeCssUrl(bgImage)}');`);
-                bgBlock.push('background-size: cover;');
-                bgBlock.push('background-position: center;');
-            }
-
-            themeStyle.textContent = `
-:root {
-  --event-heading-color: ${headingColor};
-  --event-text-color: ${textColor};
-  --event-bg-color: ${bgColor};
-  --event-accent-color: ${accentColor};
-}
-#guestPreviewScreen {
-  ${bgBlock.join('\n  ')}
-}
-#guestPreviewScreen,
-#guestPreviewScreen .hero-subtitle,
-#guestPreviewScreen .option-card-desc,
-#guestPreviewScreen .name-card-title {
-  color: ${textColor};
-}
-#guestPreviewScreen h1, #guestPreviewScreen h2, #guestPreviewScreen h3,
-#guestPreviewScreen .hero-title, #guestPreviewScreen .option-card-title {
-  color: ${headingColor} !important;
-  -webkit-text-fill-color: ${headingColor};
-  background: none;
-  background-clip: border-box;
-}
-#guestPreviewScreen .btn-primary {
-  background-color: ${accentColor};
-  border-color: ${accentColor};
-}
-#guestPreviewScreen .text-primary { color: ${accentColor} !important; }
-#guestPreviewScreen a { color: ${accentColor}; }
-${customCss}
-`;
         }
 
         function updateDisplayPreview() {
@@ -1528,7 +1588,7 @@ ${customCss}
          'editEventBgColor', 'editEventBgColorText', 'editEventAccentColor', 'editEventAccentColorText',
          'editEventBgImage', 'editEventLogoImage', 'editEventCustomCss',
          'editEventEnableSongRequests', 'editEventEnableKaraokeRequests', 'editEventEnableMessages',
-         'editEventEnablePhotos', 'editEventEnableTips'].forEach(id => {
+         'editEventEnablePhotos', 'editEventEnableTips', 'editGuestPreviewShowNameCard'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('input', updateGuestPreview);
             el.addEventListener('change', updateGuestPreview);
@@ -1730,20 +1790,7 @@ ${customCss}
                         document.getElementById('editEventVenue').value = event.venue || '';
                         document.getElementById('editEventDate').value = event.event_date ? event.event_date.split('T')[0] : '';
                         
-                        // Load CSS fields
-                        const headingColor = event.heading_color || '#007bff';
-                        const textColor = event.text_color || '#212529';
-                        const bgColor = event.bg_color || '#ffffff';
-                        const accentColor = event.accent_color || '#0d6efd';
-                        
-                        document.getElementById('editEventHeadingColor').value = headingColor;
-                        document.getElementById('editEventHeadingColorText').value = headingColor;
-                        document.getElementById('editEventTextColor').value = textColor;
-                        document.getElementById('editEventTextColorText').value = textColor;
-                        document.getElementById('editEventBgColor').value = bgColor;
-                        document.getElementById('editEventBgColorText').value = bgColor;
-                        document.getElementById('editEventAccentColor').value = accentColor;
-                        document.getElementById('editEventAccentColorText').value = accentColor;
+                        loadGuestThemeEditorFields(event);
                         document.getElementById('editEventBgImage').value = event.bg_image || '';
                         document.getElementById('editEventBgImage').dispatchEvent(new Event('change'));
                         document.getElementById('editEventLogoImage').value = event.logo_image || '';

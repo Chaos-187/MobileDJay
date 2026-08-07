@@ -601,8 +601,11 @@
                 <button id="triggerSpinBtn" class="btn btn-warning btn-sm" title="Trigger Karaoke Spin">
                     <i class="fas fa-dice me-1"></i><span class="d-none d-md-inline">Spin!</span>
                 </button>
-                <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" target="_blank" title="Open Spinner Display">
+                <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" id="karaokeSpinnerDisplayLink" target="_blank" title="Open Karaoke Spinner Display">
                     <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">Spinner</span>
+                </a>
+                <a href="/guest-spinner" class="btn btn-outline-primary btn-sm" id="guestSpinnerDisplayLink" target="_blank" title="Open Guest Spinner Display">
+                    <i class="fas fa-users me-1"></i><span class="d-none d-md-inline">Guests</span>
                 </a>
                 <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
                     <i class="fas fa-gear me-1"></i><span class="d-none d-md-inline">Settings</span>
@@ -821,7 +824,7 @@
                 </h5>
                 <p class="text-muted small mb-3">
                     Karaoke spinner runs on the event display and adds the winning track to this event's request queue.
-                    Guest spinner picks someone who has already interacted with the event.
+                    Guest spinner uses the same wheel animation and picks from guests who have already interacted with this event.
                 </p>
                 <div id="spinnerBtnGrid" class="prompt-btn-grid">
                     <button type="button" id="screenKaraokeSpinBtn" class="btn prompt-trigger-btn prompt-karaoke-spinner" disabled>
@@ -1142,7 +1145,8 @@
         function updateDisplayLink() {
             const link = document.getElementById('openDisplayLink');
             const slug = getSelectedEventSlug() || getPromptTargetSlug();
-            const spinnerLink = document.querySelector('a[href="/karaoke-spinner"]');
+            const spinnerLink = document.getElementById('karaokeSpinnerDisplayLink');
+            const guestSpinnerLink = document.getElementById('guestSpinnerDisplayLink');
             if (slug) {
                 link.href = '/dj/display/' + slug;
                 link.style.display = '';
@@ -1150,9 +1154,14 @@
                     spinnerLink.href =
                         '/karaoke-spinner?event=' + encodeURIComponent(slug);
                 }
+                if (guestSpinnerLink) {
+                    guestSpinnerLink.href =
+                        '/guest-spinner?event=' + encodeURIComponent(slug);
+                }
             } else {
                 link.style.display = 'none';
                 if (spinnerLink) spinnerLink.href = '/karaoke-spinner';
+                if (guestSpinnerLink) guestSpinnerLink.href = '/guest-spinner';
             }
         }
 

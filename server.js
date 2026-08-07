@@ -416,6 +416,28 @@ function clearKaraokeSpinState(slug) {
     if (slug) delete karaokeSpinStateBySlug[slug];
 }
 
+// Guest spinner (per event slug — same trigger / poll / animate pattern as karaoke)
+const guestSpinStateBySlug = {};
+
+function emptyGuestSpinState() {
+    return { shouldSpin: false, selectedGuest: null, timestamp: null };
+}
+
+function getGuestSpinState(slug) {
+    if (!slug) return emptyGuestSpinState();
+    return guestSpinStateBySlug[slug] || emptyGuestSpinState();
+}
+
+function clearGuestSpinState(slug) {
+    if (slug) delete guestSpinStateBySlug[slug];
+}
+
+function getEligibleGuestsForEvent(event) {
+    return guestDb
+        .getByEvent(event.id)
+        .filter((g) => g.status !== 'banned' && g.customerName);
+}
+
 // Photo showcase trigger — DJ pushes a guest photo to the event display screen.
 // Keyed by event slug; the display polls and clears it after showing.
 const photoShowcaseState = {};
@@ -1422,34 +1444,74 @@ app.post('/api/display/:eventSlug/karaoke/clear-spin', (req, res) => {
     res.json({ success: true });
 });
 
-// Random guest — shows on the event display via the screen-prompt overlay
-app.post('/api/display/:eventSlug/guest-spinner/trigger', (req, res) => {
-    const slug = req.params.eventSlug;
+function triggerGuestSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) {
+        return { error: 'eventSlug is required' };
+    }
     const event = eventDb.getBySlug(slug);
+    if (!event) {
+        return { error: 'Event not found' };
+    }
+    const guests = getEligibleGuestsForEvent(event);
+    if (!guests.length) {
+        return {
+            error: 'No guests on file for this event yet — guests appear after they request or message.'
+        };
+    }
+    const pick = guests[Math.floor(Math.random() * guests.length)];
+    const selectedGuest = {
+        id: pick.id,
+        customerName: pick.customerName,
+        requestCount: pick.requestCount || 0,
+        messageCount: pick.messageCount || 0,
+        photoCount: pick.photoCount || 0
+    };
+    guestSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        selectedGuest,
+        timestamp: Date.now()
+    };
+    console.log('Guest spin triggered for event', slug, ':', selectedGuest.customerName);
+    return { success: true, guest: selectedGuest, eventSlug: slug, eventId: event.id };
+}
+
+app.get('/api/display/:eventSlug/guest-spinner/guests', (req, res) => {
+    const event = eventDb.getBySlug(req.params.eventSlug);
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
     }
-    const guests = guestDb
-        .getByEvent(event.id)
-        .filter((g) => g.status !== 'banned' && g.customerName);
-    if (!guests.length) {
-        return res.status(400).json({
-            error: 'No guests on file for this event yet — guests appear after they request or message.'
-        });
+    const guests = getEligibleGuestsForEvent(event).map((g) => ({
+        id: g.id,
+        customerName: g.customerName,
+        requestCount: g.requestCount || 0,
+        messageCount: g.messageCount || 0,
+        photoCount: g.photoCount || 0
+    }));
+    res.json({ guests });
+});
+
+app.post('/api/display/:eventSlug/guest-spinner/trigger', (req, res) => {
+    const result = triggerGuestSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code =
+            result.error === 'Event not found'
+                ? 404
+                : result.error.includes('No guests')
+                  ? 400
+                  : 400;
+        return res.status(code).json(result);
     }
-    const pick = guests[Math.floor(Math.random() * guests.length)];
-    const name = pick.customerName;
-    displayPromptState[slug] = {
-        prompt: {
-            id: 'guest-spinner',
-            label: name,
-            subtext: 'Random guest — step into the spotlight!',
-            icon: 'fa-user-check',
-            style: 'guest-spinner'
-        },
-        timestamp: Date.now()
-    };
-    res.json({ success: true, guestName: name });
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/guest-spinner/spin-status', (req, res) => {
+    res.json(getGuestSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/guest-spinner/clear-spin', (req, res) => {
+    clearGuestSpinState(req.params.eventSlug);
+    res.json({ success: true });
 });
 
 // ==================== Tracks Played ====================
@@ -1698,6 +1760,10 @@ app.delete('/api/events/:id/display-slideshow/:slideId', (req, res) => {
 
 app.get('/karaoke-spinner', (req, res) => {
     res.render('karaoke-spinner');
+});
+
+app.get('/guest-spinner', (req, res) => {
+    res.render('guest-spinner');
 });
 
 // New API endpoint for dashboard data (for background refresh)

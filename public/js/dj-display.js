@@ -59,6 +59,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize spinner
         loadKaraokeSongs();
         startSpinnerPolling();
+        loadEventGuestsForSpinner();
+        startGuestSpinnerPolling();
         
         // Show control panel briefly on load
         setTimeout(() => {
@@ -509,6 +511,161 @@ document.addEventListener('DOMContentLoaded', function() {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ============================================
+    // GUEST SPINNER (same wheel UX as karaoke)
+    // ============================================
+    const guestSpinnerOverlay = document.getElementById('guestSpinnerOverlay');
+    const guestSpinnerSlot = document.getElementById('guestSpinnerSlot');
+    const guestSpinnerWaiting = document.getElementById('guestSpinnerWaiting');
+    const guestsList = document.getElementById('guestsList');
+    const guestWinnerDisplay = document.getElementById('guestWinnerDisplay');
+    const guestWinnerName = document.getElementById('guestWinnerName');
+    const guestWinnerSub = document.getElementById('guestWinnerSub');
+
+    let isGuestSpinning = false;
+    let guestSpinPollInterval;
+    let allEventGuests = [];
+
+    function loadEventGuestsForSpinner() {
+        const slug = window.displayEventSlug;
+        if (!slug) return;
+        fetch('/api/display/' + encodeURIComponent(slug) + '/guest-spinner/guests')
+            .then((response) => response.json())
+            .then((data) => {
+                allEventGuests = Array.isArray(data.guests) ? data.guests : [];
+            })
+            .catch((err) => console.error('Error loading event guests:', err));
+    }
+
+    function startGuestSpinnerPolling() {
+        if (!guestSpinnerOverlay) return;
+        guestSpinPollInterval = setInterval(checkForGuestSpinTrigger, CONFIG.spinPollInterval);
+    }
+
+    function checkForGuestSpinTrigger() {
+        if (isGuestSpinning) return;
+        const slug = window.displayEventSlug;
+        if (!slug) return;
+
+        fetch('/api/display/' + encodeURIComponent(slug) + '/guest-spinner/spin-status')
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.shouldSpin && data.selectedGuest) {
+                    startGuestSpin(data.selectedGuest);
+                    fetch('/api/display/' + encodeURIComponent(slug) + '/guest-spinner/clear-spin', {
+                        method: 'POST'
+                    });
+                }
+            })
+            .catch(() => {});
+    }
+
+    function guestStatsLine(g) {
+        const parts = [];
+        if (g.requestCount) parts.push(g.requestCount + ' request' + (g.requestCount === 1 ? '' : 's'));
+        if (g.messageCount) parts.push(g.messageCount + ' message' + (g.messageCount === 1 ? '' : 's'));
+        if (g.photoCount) parts.push(g.photoCount + ' photo' + (g.photoCount === 1 ? '' : 's'));
+        return parts.length ? parts.join(' · ') : 'Guest at this event';
+    }
+
+    function startGuestSpin(targetGuest) {
+        if (isGuestSpinning || !guestSpinnerOverlay) return;
+        isGuestSpinning = true;
+
+        if (spinSound) {
+            spinSound.currentTime = 0;
+            spinSound.play().catch(() => {});
+        }
+
+        guestSpinnerOverlay.classList.add('active');
+        guestSpinnerWaiting.style.display = 'none';
+        guestsList.style.display = 'block';
+
+        const targetIndex = prepareGuestsList(targetGuest);
+        animateGuestSpin(targetGuest, targetIndex);
+    }
+
+    function prepareGuestsList(targetGuest) {
+        const pool = allEventGuests.length ? [...allEventGuests] : [targetGuest];
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        let displayGuests = [];
+        while (displayGuests.length < 50) {
+            displayGuests = displayGuests.concat(shuffled);
+        }
+        displayGuests = displayGuests.slice(0, 50);
+        const targetIndex = Math.max(displayGuests.length - 5, 0);
+        displayGuests.splice(targetIndex, 0, targetGuest);
+
+        guestsList.innerHTML = displayGuests
+            .map(
+                (g, i) => `
+            <div class="guest-item" data-guest-index="${i}">
+                <div class="guest-item-name">${escapeHtml(g.customerName)}</div>
+                <div class="guest-item-stats">${escapeHtml(guestStatsLine(g))}</div>
+            </div>`
+            )
+            .join('');
+        guestsList.style.transform = 'translateY(0)';
+        return targetIndex;
+    }
+
+    function animateGuestSpin(targetGuest, targetIndex) {
+        const items = guestsList.querySelectorAll('.guest-item');
+        const targetElement =
+            items[targetIndex] ||
+            guestsList.querySelector(`[data-guest-index="${targetIndex}"]`);
+        if (!targetElement || !guestSpinnerSlot) {
+            resetGuestSpinner();
+            return;
+        }
+
+        const targetOffset = targetElement.offsetTop;
+        const centerOffset = (guestSpinnerSlot.offsetHeight - 300) / 2;
+        const finalPosition = -(targetOffset - centerOffset);
+        const startTime = Date.now();
+
+        function animate() {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / CONFIG.spinDuration;
+            if (elapsed >= CONFIG.spinDuration) {
+                guestsList.style.transform = `translateY(${finalPosition}px)`;
+                finishGuestSpin(targetGuest);
+                return;
+            }
+            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+            guestsList.style.transform = `translateY(${finalPosition * easeOutCubic}px)`;
+            requestAnimationFrame(animate);
+        }
+
+        guestsList.style.transform = 'translateY(0)';
+        guestsList.style.transition = 'none';
+        requestAnimationFrame(animate);
+    }
+
+    function finishGuestSpin(winner) {
+        setTimeout(() => showGuestWinner(winner), 800);
+    }
+
+    function showGuestWinner(guest) {
+        if (guestWinnerName) guestWinnerName.textContent = guest.customerName;
+        if (guestWinnerSub) guestWinnerSub.textContent = guestStatsLine(guest);
+        if (guestWinnerDisplay) guestWinnerDisplay.classList.add('show');
+        createConfetti();
+        setTimeout(() => resetGuestSpinner(), CONFIG.winnerDisplayDuration);
+    }
+
+    function resetGuestSpinner() {
+        if (guestWinnerDisplay) guestWinnerDisplay.classList.remove('show');
+        if (guestSpinnerOverlay) guestSpinnerOverlay.classList.remove('active');
+        if (guestsList) {
+            guestsList.style.display = 'none';
+            guestsList.style.transition = '';
+        }
+        if (guestSpinnerWaiting) guestSpinnerWaiting.style.display = 'flex';
+        isGuestSpinning = false;
+        loadEventGuestsForSpinner();
     }
 
     // ============================================

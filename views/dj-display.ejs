@@ -1104,25 +1104,119 @@
         .screen-prompt-overlay.style-selfie .screen-prompt-title { color: #111; }
         .screen-prompt-overlay.style-selfie .screen-prompt-sub { color: #555; }
 
-        .screen-prompt-overlay.style-guest-spinner {
-            background: radial-gradient(circle at 50% 30%, rgba(255, 193, 7, 0.35), rgba(0, 0, 0, 0.85));
+        /* Guest spinner — mirrors karaoke wheel (blue accent) */
+        .guest-spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2001;
         }
-        .screen-prompt-overlay.style-guest-spinner .screen-prompt-card {
-            background: linear-gradient(145deg, #1a237e, #3949ab);
-            border: 3px solid #ffd54f;
-            box-shadow: 0 0 60px rgba(255, 213, 79, 0.45);
+        .guest-spinner-overlay.active { display: flex; }
+        .guest-spinner-window {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 3px solid #7986cb;
+            box-shadow: 0 0 40px rgba(121, 134, 203, 0.35);
+            position: relative;
+            overflow: hidden;
+            min-height: 400px;
         }
-        .screen-prompt-overlay.style-guest-spinner .screen-prompt-title {
-            font-size: clamp(2rem, 6vw, 3.5rem);
+        .guest-spinner-slot {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 1rem 0;
+            position: relative;
+            overflow: hidden;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(121, 134, 203, 0.35);
+        }
+        .guest-spinner-slot::before,
+        .guest-spinner-slot::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #7986cb;
+            box-shadow: 0 0 10px #7986cb;
+            z-index: 10;
+        }
+        .guest-spinner-slot::before { top: calc(50% - 150px); }
+        .guest-spinner-slot::after { bottom: calc(50% - 150px); }
+        .guests-list {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            transition: transform 0.1s linear;
+        }
+        .guest-item {
+            padding: 2rem;
+            text-align: center;
+            color: white;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .guest-item-name {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .guest-item-stats {
+            font-size: 1.1rem;
+            color: #c5cae9;
+        }
+        .guest-winner-display {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, rgba(57, 73, 171, 0.97), rgba(92, 107, 192, 0.97));
+            backdrop-filter: blur(30px);
+            padding: 4rem;
+            text-align: center;
+            z-index: 3100;
+            transform: scale(0.5);
+            opacity: 0;
+        }
+        .guest-winner-display.show {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: winnerFullscreen 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        .guest-winner-display .guest-winner-name {
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            font-weight: 800;
             color: #fff9c4;
-            text-shadow: 0 0 24px rgba(255, 213, 79, 0.6);
+            text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
         }
-        .screen-prompt-overlay.style-guest-spinner .screen-prompt-sub {
+        .guest-winner-display .guest-winner-sub {
+            font-size: 1.35rem;
             color: rgba(255, 255, 255, 0.9);
-        }
-        .screen-prompt-overlay.style-guest-spinner .screen-prompt-icon i {
-            color: #ffd54f;
-            font-size: 3rem;
+            margin-top: 1rem;
         }
         .prompt-camera-flash {
             position: absolute;
@@ -1249,6 +1343,34 @@
         <div class="winner-title-text" id="winnerTitle"></div>
         <div class="winner-artist" id="winnerArtist"></div>
         <div class="winner-difficulty" id="winnerDifficulty"></div>
+    </div>
+
+    <!-- Guest Spinner Overlay -->
+    <div class="guest-spinner-overlay" id="guestSpinnerOverlay">
+        <div class="spinner-container">
+            <h1 class="spinner-title">
+                <i class="fas fa-users me-3"></i>
+                Random Guest Selector
+                <i class="fas fa-user-check ms-3"></i>
+            </h1>
+            <div class="guest-spinner-window">
+                <div class="guest-spinner-slot" id="guestSpinnerSlot">
+                    <div class="spinner-waiting" id="guestSpinnerWaiting">
+                        <i class="fas fa-dice"></i>
+                        <div>Spinning...</div>
+                    </div>
+                    <div class="guests-list" id="guestsList" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="guest-winner-display" id="guestWinnerDisplay">
+        <div class="winner-icon">
+            <i class="fas fa-user-check"></i>
+        </div>
+        <div class="guest-winner-name" id="guestWinnerName"></div>
+        <div class="guest-winner-sub" id="guestWinnerSub"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>

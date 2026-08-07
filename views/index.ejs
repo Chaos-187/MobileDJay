@@ -15,6 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=1" rel="stylesheet">
     
     <% if (event) { %>
     <script id="eventThemeCss" type="text/plain">
@@ -64,21 +65,15 @@ a { color: <%= event.accent_color %>; }
     
 
 </head>
-<body class="mdj-eyup-brand">
+<body class="mdj-eyup-brand mdj-guest-hub-page">
     <div class="mdj-scanlines" aria-hidden="true"></div>
 
-    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Requests">
+    <nav class="mdj-site-navbar mdj-site-navbar--minimal mdj-guest-hub-nav" aria-label="Event">
         <div class="nav-container">
             <div class="logo" role="img" aria-label="EYUP EVENTS">
                 <span class="logo-text">EYUP</span>
                 <span class="logo-accent">EVENTS</span>
                 <span class="logo-subtitle"><% if (event && event.name) { %><%= event.name %><% } else if (typeof eventSlug === 'string' && eventSlug) { %>Guest requests<% } else { %>MobileDJay<% } %></span>
-            </div>
-            <div class="mdj-nav-controls">
-                <button id="repliesBellBtn" type="button" class="nav-msg-btn position-relative" title="Messages" aria-pressed="false" role="button" aria-label="Messages">
-                    <i class="fas fa-comment-dots"></i>
-                    <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
-                </button>
             </div>
         </div>
     </nav>
@@ -93,6 +88,13 @@ a { color: <%= event.accent_color %>; }
 
     <main class="container mt-4">
         <div class="index-page">
+            <div class="guest-hub-top" aria-hidden="false">
+                <button id="repliesBellBtn" type="button" class="nav-msg-btn guest-hub-messages-btn position-relative" title="Messages" aria-pressed="false" aria-label="Messages">
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="guest-hub-messages-label">Messages</span>
+                    <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
+                </button>
+            </div>
             <!-- Hero Section (hidden when now playing) -->
             <header class="hero-section" id="heroSection">
                 <% if (event && event.logo_image) { %>
@@ -122,8 +124,6 @@ a { color: <%= event.accent_color %>; }
                         <div class="now-playing-artist" id="nowPlayingArtist"></div>
                     </div>
                 </div>
-            </div>
-
             </div>
 
             <!-- Customer Name Input -->
@@ -198,18 +198,6 @@ a { color: <%= event.accent_color %>; }
                         <div class="option-card-content">
                             <h3 class="option-card-title">Event Cam</h3>
                             <p class="option-card-desc">Open the camera and snap a photo for the event album</p>
-                        </div>
-                        <div class="option-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-                    <div class="option-card" data-target="<%= 'event/' + eventSlug + '/photo' %>">
-                        <div class="option-card-icon option-card-icon--photo">
-                            <i class="fas fa-images"></i>
-                        </div>
-                        <div class="option-card-content">
-                            <h3 class="option-card-title">Upload from Gallery</h3>
-                            <p class="option-card-desc">Choose a photo you already have on your phone</p>
                         </div>
                         <div class="option-card-arrow">
                             <i class="fas fa-chevron-right"></i>

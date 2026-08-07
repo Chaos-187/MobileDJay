@@ -1,0 +1,135 @@
+/* Guest event hub (index) — mobile-first layout without top bar */
+
+body.mdj-guest-hub-page {
+    padding-top: 0 !important;
+}
+
+body.mdj-guest-hub-page main.container {
+    max-height: 100vh;
+    max-height: 100dvh;
+    margin-top: 0 !important;
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+}
+
+body.mdj-guest-hub-page .mdj-guest-hub-nav {
+    display: none;
+}
+
+body.mdj-guest-hub-page .index-page {
+    position: relative;
+    max-width: 560px;
+}
+
+body.mdj-guest-hub-page .guest-hub-top {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    min-height: 2.75rem;
+    margin-bottom: 0.25rem;
+    padding: 0 0.15rem;
+}
+
+body.mdj-guest-hub-page .guest-hub-messages-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 0.95rem;
+    border-radius: var(--radius-pill, 50px);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary, #f0f0f5);
+    background: rgba(255, 107, 0, 0.14);
+    border: 1px solid rgba(255, 107, 0, 0.45);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+body.mdj-guest-hub-page .guest-hub-messages-btn:hover {
+    background: rgba(255, 107, 0, 0.22);
+    transform: translateY(-1px);
+}
+
+body.mdj-guest-hub-page .guest-hub-messages-btn i {
+    font-size: 1.05rem;
+}
+
+body.mdj-guest-hub-page .guest-hub-messages-label {
+    line-height: 1;
+}
+
+body.mdj-guest-hub-page .guest-hub-messages-btn .nav-msg-badge {
+    top: -4px;
+    right: -4px;
+}
+
+/* Ambient glow behind hero */
+body.mdj-guest-hub-page .hero-section {
+    position: relative;
+}
+
+body.mdj-guest-hub-page .hero-section::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 20%;
+    transform: translate(-50%, -50%);
+    width: min(320px, 90vw);
+    height: 200px;
+    background: radial-gradient(ellipse, rgba(255, 107, 0, 0.18), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+body.mdj-guest-hub-page .hero-section > * {
+    position: relative;
+    z-index: 1;
+}
+
+body.mdj-guest-hub-page .name-card-inner {
+    border-color: rgba(255, 107, 0, 0.12);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+@media (min-width: 768px) {
+    body.mdj-guest-hub-page {
+        padding-top: var(--mdj-eyup-nav-h, 74px) !important;
+    }
+
+    body.mdj-guest-hub-page .mdj-guest-hub-nav {
+        display: block;
+    }
+
+    body.mdj-guest-hub-page main.container {
+        margin-top: 1rem !important;
+        max-height: calc(100vh - var(--mdj-eyup-nav-h, 74px));
+    }
+
+    body.mdj-guest-hub-page .guest-hub-top {
+        margin-bottom: 0.5rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.mdj-guest-hub-page .guest-hub-messages-label {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    body.mdj-guest-hub-page .guest-hub-messages-btn {
+        width: 48px;
+        height: 48px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
+    }
+}

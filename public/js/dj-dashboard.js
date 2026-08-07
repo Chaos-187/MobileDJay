@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         `Spin triggered for this event! Selected: "${data.song.title}" by ${data.song.artist}`,
                         'success'
                     );
-                    setTimeout(() => refreshData(false), 1000);
+                    refreshData(false);
                 } else {
                     showAlert(data.error || 'Failed to trigger spin', 'danger');
                 }
@@ -116,6 +116,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function refreshPage() {
         refreshData(true);
     }
+
+    window.mdjRefreshDashboard = function (showFeedback = false) {
+        refreshData(showFeedback);
+    };
 
     // Update dashboard content with fresh data
     function updateDashboard(data) {
@@ -656,6 +660,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.success) {
                     showAlert(`Karaoke spinner triggered! Selected: "${data.song.title}" by ${data.song.artist}`, 'success');
+                    refreshData(false);
                 } else {
                     showAlert(data.error || 'Error triggering karaoke spinner', 'danger');
                 }

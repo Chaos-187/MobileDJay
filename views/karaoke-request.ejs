@@ -25,12 +25,15 @@
 }
 <% if (event.bg_color || event.bg_image) { %>
 body {
-<% if (event.bg_color) { %>background-color: <%= event.bg_color %>;<% } %>
 <% if (event.bg_image) { %>
-background-image: url('<%= event.bg_image %>');
-background-size: cover;
-background-position: center;
-background-attachment: fixed;
+background-image: url('<%= event.bg_image %>') !important;
+background-size: cover !important;
+background-position: center !important;
+background-attachment: fixed !important;
+background-repeat: no-repeat !important;
+<% if (event.bg_color) { %>background-color: <%= event.bg_color %> !important;<% } else { %>background-color: #0a0a0a !important;<% } %>
+<% } else if (event.bg_color) { %>
+background: <%= event.bg_color %> !important;
 <% } %>
 }
 <% } %>

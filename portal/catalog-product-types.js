@@ -84,6 +84,10 @@ function catalogImageFilename(url) {
 function normalizeCatalogImageStorage(url) {
     if (url == null || String(url).trim() === '') return null;
     const s = String(url).trim();
+    const apiMatch = s.match(/\/api\/v1\/public\/catalog\/image\/([^/?#\s]+)/i);
+    if (apiMatch) {
+        return `/uploads/catalog/${decodeURIComponent(apiMatch[1])}`;
+    }
     const match = s.match(/\/uploads\/catalog\/[^/?#\s]+/i);
     if (match) return match[0];
     return s;
@@ -91,11 +95,12 @@ function normalizeCatalogImageStorage(url) {
 
 function resolveCatalogImageUrl(url) {
     if (url == null || String(url).trim() === '') return null;
-    const s = String(url).trim();
-    const catalogPath = s.match(/\/uploads\/catalog\/[^/?#\s]+/i);
-    if (catalogPath) {
-        return catalogPublicOrigin() + catalogPath[0];
+    const filename = catalogImageFilename(url);
+    if (filename) {
+        const origin = catalogPublicOrigin();
+        return `${origin}/api/v1/public/catalog/image/${encodeURIComponent(filename)}`;
     }
+    const s = String(url).trim();
     if (/^https?:\/\//i.test(s)) return s;
     const origin = catalogPublicOrigin();
     return origin + (s.startsWith('/') ? s : `/${s}`);

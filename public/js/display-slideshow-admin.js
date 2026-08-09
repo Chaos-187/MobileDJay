@@ -1,5 +1,11 @@
 // DJ UI — manage ordered display background slideshow images per event.
 (function (global) {
+    function mdjApiFetch(url, opts) {
+        if (typeof global.mdjFetch === 'function') {
+            return global.mdjFetch(url, opts);
+        }
+        return fetch(url, Object.assign({ credentials: 'include' }, opts || {}));
+    }
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text || '';
@@ -30,7 +36,7 @@
         if (!this.eventId || !this.listEl) return;
         this.listEl.innerHTML = '<li class="text-muted small">Loading slideshow images…</li>';
         try {
-            const res = await fetch(`/api/events/${this.eventId}/display-slideshow`);
+            const res = await mdjApiFetch(`/api/events/${this.eventId}/display-slideshow`);
             if (!res.ok) throw new Error('Could not load slideshow');
             this.slides = await res.json();
             this.render();
@@ -135,7 +141,7 @@
         try {
             const formData = new FormData();
             formData.append('image', file);
-            const res = await fetch(`/api/events/${this.eventId}/display-slideshow`, {
+            const res = await mdjApiFetch(`/api/events/${this.eventId}/display-slideshow`, {
                 method: 'POST',
                 body: formData
             });
@@ -169,7 +175,7 @@
         if (!this.eventId) return;
         this.setStatus('Saving order…');
         try {
-            const res = await fetch(`/api/events/${this.eventId}/display-slideshow/reorder`, {
+            const res = await mdjApiFetch(`/api/events/${this.eventId}/display-slideshow/reorder`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order: orderedIds })
@@ -189,7 +195,7 @@
         if (!confirm('Remove this image from the slideshow?')) return;
         this.setStatus('Removing…');
         try {
-            const res = await fetch(`/api/events/${this.eventId}/display-slideshow/${slideId}`, {
+            const res = await mdjApiFetch(`/api/events/${this.eventId}/display-slideshow/${slideId}`, {
                 method: 'DELETE'
             });
             const data = await res.json();

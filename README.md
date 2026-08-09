@@ -14,6 +14,7 @@ Mobile-first web app for **EYUP EVENTS** DJs and guests. Customers request songs
 - **Public event picker** at `/` when enabled — guests choose which event they are at before requesting
 
 ### DJ dashboard (`/dj`)
+- **Portal sign-in** — same email/password as [eyupevents.uk](https://eyupevents.uk) DJ accounts; DJs only see events linked to their assigned bookings (see [`docs/dj-portal-auth.md`](docs/dj-portal-auth.md))
 - Full-width layout with **requests** (main panel) and **messages** (right sidebar)
 - **Messages inbox** shows guest messages only (no DJ replies or auto-generated request notifications)
 - **Awaiting reply** highlight and badge for unreplied guest messages
@@ -61,9 +62,10 @@ Open `http://localhost:3000`
 |-----|---------|
 | `/` | Guest home — event picker (if enabled) or legacy landing |
 | `/event/:slug` | Guest requests for a specific event |
-| `/dj` | DJ dashboard |
+| `/dj/login` | DJ sign-in (redirects here when not authenticated) |
+| `/dj` | DJ dashboard (requires DJ/admin login) |
 | `/dj/events` | Event management |
-| `/dj/settings` | Global DJ settings |
+| `/dj/settings` | Global DJ settings (admin only) |
 | `/dj/display/:slug` | Venue display screen |
 
 ## Public events page
@@ -82,6 +84,7 @@ Only **active** events with **show public** enabled appear. `/events` redirects 
 | [`docs/mobilejay-events-api.md`](docs/mobilejay-events-api.md) | HTTP API for events, guests, tracks, public listing |
 | [`docs/NOW-PLAYING-API.md`](docs/NOW-PLAYING-API.md) | Now playing endpoint for VirtualDJ / integrations |
 | [`docs/deploy-self-hosted.md`](docs/deploy-self-hosted.md) | GitHub Actions + PM2 deployment |
+| [`docs/dj-portal-auth.md`](docs/dj-portal-auth.md) | DJ login, env vars, booking ↔ event access |
 
 ## Technology stack
 

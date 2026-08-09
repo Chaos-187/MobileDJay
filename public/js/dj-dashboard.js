@@ -52,6 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/api/karaoke/trigger-spin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({ eventSlug: slug })
         })
             .then(response => response.json())
@@ -89,8 +90,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Fetch fresh data instead of reloading page
-        fetch('/api/dj/dashboard-data')
-            .then(response => response.json())
+        fetch('/api/dj/dashboard-data', { credentials: 'include' })
+            .then(response => {
+                if (response.status === 401) {
+                    window.location.href = '/dj/login?next=' + encodeURIComponent(window.location.pathname);
+                    return Promise.reject(new Error('Unauthorized'));
+                }
+                return response.json();
+            })
             .then(data => {
                 updateDashboard(data);
                 if (showFeedback) {
@@ -378,7 +385,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Remove request function
     function removeRequest(requestId, showAlert = true) {
         fetch(`/api/dj/request/${requestId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
@@ -417,7 +425,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mark message as displayed
     function markMessageDisplayed(messageId, showAlertMsg = true) {
         fetch(`/api/dj/message/${messageId}/mark-displayed`, {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
@@ -447,7 +456,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function removeSpinnerMessage(messageId) {
         if (!messageId) return;
-        fetch(`/api/dj/message/${messageId}`, { method: 'DELETE' })
+        fetch(`/api/dj/message/${messageId}`, { method: 'DELETE', credentials: 'include' })
             .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
             .then(({ ok, data }) => {
                 if (!ok) {
@@ -531,6 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(replyData)
         })
         .then(response => response.json())

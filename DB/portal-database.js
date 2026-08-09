@@ -1233,6 +1233,21 @@ const portalDb = {
         ).get(bookingId, djUserId);
     },
 
+    /** Mobile DJ app: slugs of guest request events linked to this DJ's assigned bookings. */
+    getDjAssignedRequestsEventSlugs(djUserId) {
+        const rows = db.prepare(`
+            SELECT DISTINCT b.requests_event_slug AS slug
+            FROM bookings b
+            INNER JOIN booking_assignments a ON a.booking_id = b.id AND a.dj_user_id = ?
+            WHERE b.status != 'cancelled'
+              AND b.requests_event_slug IS NOT NULL
+              AND TRIM(b.requests_event_slug) != ''
+        `).all(djUserId);
+        return rows
+            .map((r) => String(r.slug || '').trim().toLowerCase())
+            .filter(Boolean);
+    },
+
     /** Partial update — DJ scope or full admin booking fields (+ JSON coercion). */
     updateBooking(bookingId, patch, { admin = false } = {}) {
         const djCols = [

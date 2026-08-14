@@ -234,6 +234,9 @@ try {
 try {
     db.exec(`ALTER TABLE events ADD COLUMN display_bg_overlay_opacity INTEGER DEFAULT 45`);
 } catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN display_show_waiting_message INTEGER DEFAULT 1`);
+} catch (e) { /* Column already exists */ }
 
 // Display screen background slideshow images (ordered per event)
 db.exec(`
@@ -477,7 +480,7 @@ const eventDb = {
                                'display_show_qr', 'display_qr_position', 'display_qr_size', 'display_qr_label',
                                'display_bg_color1', 'display_bg_color2', 'display_bg_image',
                                'display_bg_slideshow_enabled', 'display_bg_slideshow_seconds',
-                               'display_bg_overlay_opacity',
+                               'display_bg_overlay_opacity', 'display_show_waiting_message',
                                'display_card_color', 'display_card_opacity', 'photo_banner_style',
                                'show_tracks_played_guest', 'show_public'];
         const setClause = [];

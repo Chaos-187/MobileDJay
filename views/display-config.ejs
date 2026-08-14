@@ -296,6 +296,16 @@
                             </div>
                         </div>
 
+                        <!-- Message Display Settings -->
+                        <div class="config-section">
+                            <h6><i class="fas fa-comment-dots me-2"></i>Message Display</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showWaitingMessage" <%= event.display_show_waiting_message !== 0 ? 'checked' : '' %>>
+                                <label class="form-check-label" for="showWaitingMessage">Show idle message when waiting</label>
+                                <small class="text-muted d-block">When off, only the background is shown until a customer message arrives.</small>
+                            </div>
+                        </div>
+
                         <!-- Message Card Settings -->
                         <div class="config-section">
                             <h6><i class="fas fa-comment me-2"></i>Message Card Settings</h6>
@@ -525,6 +535,7 @@
                 display_bg_slideshow_enabled: document.getElementById('slideshowEnabled').checked,
                 display_bg_slideshow_seconds: parseInt(document.getElementById('slideshowSeconds').value, 10) || 15,
                 display_bg_overlay_opacity: parseInt(document.getElementById('bgOverlayOpacity').value, 10) || 0,
+                display_show_waiting_message: document.getElementById('showWaitingMessage').checked,
                 display_card_color: document.getElementById('cardBgColor').value,
                 display_card_opacity: document.getElementById('cardOpacity').value
             };
@@ -580,6 +591,7 @@
                 document.getElementById('slideshowSeconds').value = 15;
                 document.getElementById('bgOverlayOpacity').value = 45;
                 document.getElementById('bgOverlayOpacityValue').textContent = '45';
+                document.getElementById('showWaitingMessage').checked = true;
                 document.getElementById('cardBgColor').value = '#ffffff';
                 document.getElementById('cardBgColorText').value = '#ffffff';
                 document.getElementById('cardOpacity').value = 85;

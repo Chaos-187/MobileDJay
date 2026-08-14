@@ -1109,6 +1109,7 @@
             bgSlideshowSeconds: <%= event.display_bg_slideshow_seconds || 15 %>,
             bgSlideshowImages: <%- JSON.stringify((typeof displaySlides !== 'undefined' ? displaySlides : []).map(function(s) { return s.imageUrl; })) %>,
             bgOverlayOpacity: <%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %>,
+            showWaitingMessage: <%= event.display_show_waiting_message !== 0 %>,
             cardColor: '<%= event.display_card_color || '#ffffff' %>',
             cardOpacity: <%= event.display_card_opacity || 85 %>,
             eventSlug: '<%= event.slug %>'
@@ -1127,6 +1128,7 @@
             bgSlideshowSeconds: 15,
             bgSlideshowImages: [],
             bgOverlayOpacity: 45,
+            showWaitingMessage: true,
             cardColor: '#ffffff',
             cardOpacity: 85,
             eventSlug: null
@@ -1214,6 +1216,11 @@
             });
         }
         
+        // Expose display config for dj-display.js
+        window.displayScreenConfig = {
+            showWaitingMessage: config.showWaitingMessage
+        };
+
         // Expose the event slug for dj-display.js (photo showcase polling)
         window.displayEventSlug = config.eventSlug;
 
@@ -1230,6 +1237,6 @@
     })();
     </script>
     <script src="/js/mdj-binary-spinner.js"></script>
-    <script src="/js/dj-display.js?v=6"></script>
+    <script src="/js/dj-display.js?v=7"></script>
 </body>
 </html>

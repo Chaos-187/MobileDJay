@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let isDisplayingMessage = false;
     let messageQueue = [];
     let refreshInterval;
+    const showWaitingMessage = window.displayScreenConfig?.showWaitingMessage !== false;
 
     // Spinner state
     let isSpinning = false;
@@ -52,6 +53,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize
     function init() {
+        if (!showWaitingMessage && waitingMessage) {
+            waitingMessage.style.display = 'none';
+        }
+
         startMessagePolling();
         setupKeyboardControls();
         setupMouseActivity();
@@ -177,7 +182,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Check if we should show waiting message
             if (messageQueue.length === 0) {
-                waitingMessage.style.display = 'block';
+                if (showWaitingMessage && waitingMessage) {
+                    waitingMessage.style.display = 'block';
+                }
                 updateStatus('Waiting for messages...');
             }
             

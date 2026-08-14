@@ -1460,6 +1460,12 @@
                                             <label for="editDisplayQrLabel" class="form-label">QR Label</label>
                                             <input type="text" class="form-control" id="editDisplayQrLabel" placeholder="Scan to Request Songs!">
                                         </div>
+                                        <h6 class="text-muted mb-3 mt-2"><i class="fas fa-comment-dots me-2"></i>Messages</h6>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="editDisplayShowWaitingMessage" checked>
+                                            <label class="form-check-label" for="editDisplayShowWaitingMessage">Show idle message when waiting</label>
+                                            <div class="form-text">When off, the display shows only your background until a customer message arrives.</div>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
                                         <h6 class="text-muted mb-3"><i class="fas fa-image me-2"></i>Background &amp; Message Card</h6>
@@ -2316,6 +2322,7 @@
 
                         // Load display screen config
                         document.getElementById('editDisplayShowQr').checked = event.display_show_qr !== 0;
+                        document.getElementById('editDisplayShowWaitingMessage').checked = event.display_show_waiting_message !== 0;
                         document.getElementById('editDisplayQrPosition').value = event.display_qr_position || 'top-right';
                         document.getElementById('editDisplayQrSize').value = event.display_qr_size || 120;
                         document.getElementById('editDisplayQrSizeValue').textContent = event.display_qr_size || 120;
@@ -2426,6 +2433,7 @@
                 enable_tips: document.getElementById('editEventEnableTips').checked ? 1 : 0,
                 tip_links: getTipLinks('editTipLinksContainer'),
                 display_show_qr: document.getElementById('editDisplayShowQr').checked ? 1 : 0,
+                display_show_waiting_message: document.getElementById('editDisplayShowWaitingMessage').checked ? 1 : 0,
                 display_qr_position: document.getElementById('editDisplayQrPosition').value,
                 display_qr_size: parseInt(document.getElementById('editDisplayQrSize').value, 10) || 120,
                 display_qr_label: document.getElementById('editDisplayQrLabel').value.trim() || 'Scan to Request Songs!',

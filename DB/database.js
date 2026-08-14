@@ -483,13 +483,23 @@ const eventDb = {
                                'display_bg_overlay_opacity', 'display_show_waiting_message',
                                'display_card_color', 'display_card_opacity', 'photo_banner_style',
                                'show_tracks_played_guest', 'show_public'];
+        const intFlagFields = new Set([
+            'is_active', 'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',
+            'enable_tips', 'enable_photos', 'show_tracks_played_guest', 'show_public',
+            'display_show_qr', 'display_bg_slideshow_enabled', 'display_show_waiting_message',
+            'guest_menu_compact', 'guest_show_option_desc', 'guest_hero_compact'
+        ]);
         const setClause = [];
         const values = [];
         
         for (const [key, value] of Object.entries(updates)) {
             if (allowedFields.includes(key)) {
                 setClause.push(`${key} = ?`);
-                values.push(value);
+                if (intFlagFields.has(key)) {
+                    values.push(value === 1 || value === true || value === '1' ? 1 : 0);
+                } else {
+                    values.push(value);
+                }
             }
         }
         

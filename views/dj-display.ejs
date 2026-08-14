@@ -1109,7 +1109,7 @@
             bgSlideshowSeconds: <%= event.display_bg_slideshow_seconds || 15 %>,
             bgSlideshowImages: <%- JSON.stringify((typeof displaySlides !== 'undefined' ? displaySlides : []).map(function(s) { return s.imageUrl; })) %>,
             bgOverlayOpacity: <%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %>,
-            showWaitingMessage: <%= event.display_show_waiting_message !== 0 %>,
+            showWaitingMessage: <%= (event.display_show_waiting_message === 0 || event.display_show_waiting_message === false || event.display_show_waiting_message === '0') ? 'false' : 'true' %>,
             cardColor: '<%= event.display_card_color || '#ffffff' %>',
             cardOpacity: <%= event.display_card_opacity || 85 %>,
             eventSlug: '<%= event.slug %>'

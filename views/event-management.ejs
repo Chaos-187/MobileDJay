@@ -1462,7 +1462,7 @@
                                         </div>
                                         <h6 class="text-muted mb-3 mt-2"><i class="fas fa-comment-dots me-2"></i>Messages</h6>
                                         <div class="form-check form-switch mb-3">
-                                            <input class="form-check-input" type="checkbox" id="editDisplayShowWaitingMessage" checked>
+                                            <input class="form-check-input" type="checkbox" id="editDisplayShowWaitingMessage">
                                             <label class="form-check-label" for="editDisplayShowWaitingMessage">Show idle message when waiting</label>
                                             <div class="form-text">When off, the display shows only your background until a customer message arrives.</div>
                                         </div>
@@ -1837,6 +1837,12 @@
         editBannerOptions.forEach(opt => {
             opt.addEventListener('click', () => selectEditBannerStyle(opt.dataset.value));
         });
+
+        function isEventFlagOn(value, defaultOn) {
+            if (value === 0 || value === false || value === '0') return false;
+            if (value === 1 || value === true || value === '1') return true;
+            return defaultOn !== false;
+        }
 
         // Guest theme — same rules as index.ejs (scoped for preview)
         const GUEST_THEME_LEGACY = { text: '#212529', bg: '#ffffff', accent: '#0d6efd' };
@@ -2303,9 +2309,9 @@
         // Edit event (optionally opening straight onto a specific tab)
         async function openEditModal(eventId, tabBtnId) {
                 try {
-                    const response = await mdjFetch(`/api/events`);
+                    const response = await mdjFetch(`/api/events?_=${Date.now()}`);
                     const events = await response.json();
-                    const event = events.find(e => e.id == eventId);
+                    const event = events.find(e => String(e.id) === String(eventId));
                     if (event) {
                         document.getElementById('editEventId').value = event.id;
                         document.getElementById('editEventName').value = event.name;
@@ -2321,8 +2327,8 @@
                         document.getElementById('editEventCustomCss').value = event.custom_css || '';
 
                         // Load display screen config
-                        document.getElementById('editDisplayShowQr').checked = event.display_show_qr !== 0;
-                        document.getElementById('editDisplayShowWaitingMessage').checked = event.display_show_waiting_message !== 0;
+                        document.getElementById('editDisplayShowQr').checked = isEventFlagOn(event.display_show_qr, true);
+                        document.getElementById('editDisplayShowWaitingMessage').checked = isEventFlagOn(event.display_show_waiting_message, true);
                         document.getElementById('editDisplayQrPosition').value = event.display_qr_position || 'top-right';
                         document.getElementById('editDisplayQrSize').value = event.display_qr_size || 120;
                         document.getElementById('editDisplayQrSizeValue').textContent = event.display_qr_size || 120;

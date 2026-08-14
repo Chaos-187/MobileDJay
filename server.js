@@ -387,31 +387,37 @@ function getDjInboxMessages() {
     return enrichMessagesWithReplyStatus(filterDjInboxMessages(djMessages), djReplies);
 }
 
-function buildGuestConversation(eventId, customerName) {
-    const name = customerName.toLowerCase();
+function buildCustomerTimeline(customerName, eventSlug = null, eventId = null) {
+    const name = String(customerName || '').trim().toLowerCase();
+    if (!name) return [];
     const items = [];
 
     for (const m of djMessages) {
         if (!isGuestMessageForReply(m)) continue;
         if ((m.customerName || '').toLowerCase() !== name) continue;
-        if (m.eventId != null && Number(m.eventId) !== Number(eventId)) continue;
+        if (eventId != null && m.eventId != null && Number(m.eventId) !== Number(eventId)) continue;
+        if (eventSlug && m.eventSlug && m.eventSlug !== eventSlug) continue;
         items.push({
             kind: 'message',
             id: m.id,
             timestamp: m.timestamp,
             body: m.message,
+            textMessage: m.textMessage,
+            hasMedia: !!m.hasMedia,
             private: !!m.private
         });
     }
 
     for (const r of djReplies) {
         if ((r.customerName || '').toLowerCase() !== name) continue;
-        if (r.eventId != null && Number(r.eventId) !== Number(eventId)) continue;
+        if (eventId != null && r.eventId != null && Number(r.eventId) !== Number(eventId)) continue;
+        if (eventSlug && r.eventSlug && r.eventSlug !== eventSlug) continue;
         items.push({
             kind: 'reply',
             id: r.id,
             timestamp: r.timestamp,
             body: r.replyMessage,
+            replyMessage: r.replyMessage,
             direct: !!r.direct,
             originalType: r.originalType || null
         });
@@ -419,7 +425,8 @@ function buildGuestConversation(eventId, customerName) {
 
     for (const req of djRequests) {
         if ((req.customerName || '').toLowerCase() !== name) continue;
-        if (req.eventId != null && Number(req.eventId) !== Number(eventId)) continue;
+        if (eventId != null && req.eventId != null && Number(req.eventId) !== Number(eventId)) continue;
+        if (eventSlug && req.eventSlug && req.eventSlug !== eventSlug) continue;
         items.push({
             kind: 'request',
             id: req.id,
@@ -427,12 +434,162 @@ function buildGuestConversation(eventId, customerName) {
             type: req.type,
             title: req.song ? req.song.title : req.title,
             artist: req.song ? req.song.artist : req.artist,
-            note: req.message || null
+            message: req.message || null,
+            note: req.message || null,
+            status: req.status || 'pending'
         });
     }
 
     items.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     return items;
+}
+
+function buildGuestConversation(eventId, customerName) {
+    const event = eventDb.getById(eventId);
+    const eventSlug = event ? event.slug : null;
+    return buildCustomerTimeline(customerName, eventSlug, eventId);
+}
+
+async function submitGuestMessage(body, res, { json = false } = {}) {
+    const customerName = (body.customerName || '').trim();
+    const eventSlug = body.eventSlug || null;
+    let { message, messageText } = body;
+
+    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
+
+    if (!rejectGuestIfModerated(event, customerName, res, {
+        json,
+        eventSlug,
+        silentThankYou: {
+            customerName,
+            requestType: 'message',
+            details: { message: 'Your message' },
+            eventSlug: eventSlug || null
+        }
+    })) {
+        return null;
+    }
+
+    if (!customerName) {
+        if (json) {
+            res.status(400).json({ error: 'customerName is required' });
+        } else {
+            res.redirect('/');
+        }
+        return null;
+    }
+
+    const rawDjOnly = body.djOnly;
+    const djOnly = rawDjOnly === '1' || rawDjOnly === 'on' || rawDjOnly === 'true' || rawDjOnly === true;
+
+    messageText = typeof messageText === 'string' ? messageText.trim() : '';
+    let richContent = typeof message === 'string' ? message : '';
+    if (!richContent.trim() && messageText) {
+        richContent = messageText;
+    }
+    const hasMedia = richContent.includes('<img');
+
+    const cleanMessage = DOMPurify.sanitize(richContent, {
+        ALLOWED_TAGS: ['img', 'br', 'p', 'div', 'span', 'strong', 'em', 'u', 'b', 'i'],
+        ALLOWED_ATTR: ['src', 'alt', 'style', 'class'],
+        ALLOW_DATA_ATTR: false,
+        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+    });
+
+    const textContent = DOMPurify.sanitize(richContent, {
+        ALLOWED_TAGS: [],
+        KEEP_CONTENT: true
+    }).trim();
+
+    const finalMessage = cleanMessage || (hasMedia ? richContent : '');
+
+    if (!finalMessage || (!textContent && !hasMedia)) {
+        if (json) {
+            res.status(400).json({ error: 'Please enter a message or add some media.' });
+        } else {
+            res.status(400).render('error', {
+                error: 'Please enter a message or add some media.',
+                customerName,
+                eventSlug: eventSlug || null
+            });
+        }
+        return null;
+    }
+
+    if (textContent.length > 500) {
+        if (json) {
+            res.status(400).json({ error: 'Message text is too long. Please keep it under 500 characters.' });
+        } else {
+            res.status(400).render('error', {
+                error: 'Message text is too long. Please keep it under 500 characters.',
+                customerName,
+                eventSlug: eventSlug || null
+            });
+        }
+        return null;
+    }
+
+    const djDisplayMessage = {
+        customerName,
+        message: finalMessage,
+        textMessage: textContent || (hasMedia ? 'Message with media' : 'Empty message'),
+        timestamp: new Date().toISOString(),
+        displayed: false,
+        private: !!djOnly,
+        hasMedia,
+        eventId: event ? event.id : null,
+        eventSlug: eventSlug || null,
+        eventName: event ? event.name : null
+    };
+    djDisplayMessage.id = messageDb.add(djDisplayMessage);
+    djMessages.push(djDisplayMessage);
+
+    try {
+        await sendToVirtualDJ(customerName, textContent || 'Message with inline GIFs/images');
+        console.log('Guest message sent:', {
+            customerName,
+            hasMedia,
+            messageLength: finalMessage.length,
+            djOnly,
+            eventSlug: eventSlug || null
+        });
+
+        if (json) {
+            res.json({
+                success: true,
+                message: {
+                    id: djDisplayMessage.id,
+                    kind: 'message',
+                    timestamp: djDisplayMessage.timestamp,
+                    body: djDisplayMessage.message,
+                    textMessage: djDisplayMessage.textMessage,
+                    hasMedia: djDisplayMessage.hasMedia,
+                    private: djDisplayMessage.private
+                }
+            });
+            return djDisplayMessage;
+        }
+
+        res.render('thank-you', {
+            customerName,
+            requestType: 'message',
+            details: { message: textContent || 'Message with inline GIFs/images' },
+            eventSlug: eventSlug || null
+        });
+        return djDisplayMessage;
+    } catch (error) {
+        console.error('Error sending message to VirtualDJ:', error);
+        if (json) {
+            res.status(500).json({ error: 'Failed to send message. Please try again.' });
+        } else {
+            res.status(500).render('error', {
+                error: 'Failed to send message. Please try again.',
+                customerName,
+                eventSlug: eventSlug || null
+            });
+        }
+        return null;
+    }
 }
 
 function enrichMessagesWithReplyStatus(messages, replies) {
@@ -2083,27 +2240,25 @@ app.get('/api/customer/replies/:customerName', (req, res) => {
     res.json(customerReplies);
 });
 
-// Full activity for a guest: DJ replies + their own song/karaoke requests,
-// so the messages screen can show a complete conversation timeline.
+// Full activity for a guest: messages, DJ replies, and song/karaoke requests.
 app.get('/api/customer/activity/:customerName', (req, res) => {
-    const name = req.params.customerName.toLowerCase();
+    const customerName = decodeURIComponent(req.params.customerName || '').trim();
+    if (!customerName) {
+        return res.status(400).json({ error: 'customerName is required' });
+    }
     const eventSlug = req.query.eventSlug || null;
+    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
+    const items = buildCustomerTimeline(customerName, eventSlug, event ? event.id : null);
 
-    const replies = djReplies.filter(r => r.customerName.toLowerCase() === name);
-    const requests = djRequests
-        .filter(r => r.customerName && r.customerName.toLowerCase() === name)
-        .filter(r => !eventSlug || !r.eventSlug || r.eventSlug === eventSlug)
-        .map(r => ({
-            id: r.id,
-            type: r.type,
-            title: r.song ? r.song.title : r.title,
-            artist: r.song ? r.song.artist : r.artist,
-            message: r.message || null,
-            status: r.status || 'pending',
-            timestamp: r.timestamp
-        }));
+    const replies = items.filter((i) => i.kind === 'reply');
+    const requests = items.filter((i) => i.kind === 'request');
+    const messages = items.filter((i) => i.kind === 'message');
 
-    res.json({ replies, requests });
+    res.json({ items, replies, requests, messages });
+});
+
+app.post('/api/customer/message', async (req, res) => {
+    await submitGuestMessage(req.body || {}, res, { json: true });
 });
 
 // Karaoke Spinner API endpoints
@@ -2544,101 +2699,7 @@ app.post('/submit-karaoke-request', async (req, res) => {
 });
 
 app.post('/submit-message', async (req, res) => {
-    const { customerName, eventSlug } = req.body;
-    let { message, messageText } = req.body;
-    
-    // Get event info if eventSlug provided
-    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
-
-    if (!rejectGuestIfModerated(event, customerName, res, {
-        eventSlug,
-        silentThankYou: {
-            customerName,
-            requestType: 'message',
-            details: { message: 'Your message' },
-            eventSlug: eventSlug || null
-        }
-    })) {
-        return;
-    }
-    
-    // djOnly may be submitted as '1', 'on', 'true' or boolean
-    const rawDjOnly = req.body.djOnly;
-    const djOnly = rawDjOnly === '1' || rawDjOnly === 'on' || rawDjOnly === 'true' || rawDjOnly === true;
-
-    // Handle inline HTML content directly.
-    // Fall back to plain text mirror when rich payload is empty.
-    messageText = typeof messageText === 'string' ? messageText.trim() : '';
-    let richContent = typeof message === 'string' ? message : '';
-    if (!richContent.trim() && messageText) {
-        richContent = messageText;
-    }
-    let hasMedia = false;
-    
-    // Check if message contains inline images
-    hasMedia = richContent.includes('<img');
-    
-    // Sanitize HTML content while preserving inline images
-    const cleanMessage = DOMPurify.sanitize(richContent, {
-        ALLOWED_TAGS: ['img', 'br', 'p', 'div', 'span', 'strong', 'em', 'u', 'b', 'i'],
-        ALLOWED_ATTR: ['src', 'alt', 'style', 'class'],
-        ALLOW_DATA_ATTR: false,
-        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
-    });
-
-    // Extract plain text content for VirtualDJ
-    const textContent = DOMPurify.sanitize(richContent, { 
-        ALLOWED_TAGS: [],
-        KEEP_CONTENT: true 
-    }).trim();
-
-    // If cleanMessage is empty but hasMedia is true, there might be an issue with sanitization
-    // Use the original richContent if cleanMessage got stripped but we know there's media
-    const finalMessage = cleanMessage || (hasMedia ? richContent : '');
-
-    // Store the message for DJ display
-    const djDisplayMessage = {
-        customerName,
-        message: finalMessage, // Rich HTML with inline images
-        textMessage: textContent || (hasMedia ? 'Message with media' : 'Empty message'),
-        timestamp: new Date().toISOString(),
-        displayed: false,
-        private: !!djOnly,
-        hasMedia: hasMedia,
-        eventId: event ? event.id : null,
-        eventSlug: eventSlug || null,
-        eventName: event ? event.name : null
-    };
-    djDisplayMessage.id = messageDb.add(djDisplayMessage);
-
-    djMessages.push(djDisplayMessage);
-
-    try {
-        // Send plain text version to VirtualDJ
-        await sendToVirtualDJ(customerName, textContent || 'Message with inline GIFs/images');
-        console.log('Inline message sent:', { 
-            customerName, 
-            hasMedia,
-            messageLength: finalMessage.length,
-            textLength: textContent.length,
-            djOnly,
-            containsImg: finalMessage.includes('<img')
-        });
-
-        res.render('thank-you', {
-            customerName,
-            requestType: 'message',
-            details: { message: textContent || 'Message with inline GIFs/images' },
-            eventSlug: eventSlug || null
-        });
-    } catch (error) {
-        console.error('Error sending message to VirtualDJ:', error);
-        res.status(500).render('error', {
-            error: 'Failed to send message. Please try again.',
-            customerName,
-            eventSlug: eventSlug || null
-        });
-    }
+    await submitGuestMessage(req.body || {}, res, { json: false });
 });
 
 // ============================================

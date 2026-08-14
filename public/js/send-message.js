@@ -1,4 +1,4 @@
-// Send Message - Inline GIF System for Android GBoard
+// Guest chat — WhatsApp-style message thread with inline GIF support
 
 document.addEventListener('DOMContentLoaded', function() {
     const customerNameInput = document.getElementById('customerName');
@@ -7,171 +7,395 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageTextHidden = document.getElementById('messageText');
     const charCount = document.getElementById('charCount');
     const form = document.getElementById('messageForm');
-    const clearBtn = document.getElementById('clearBtn');
-
-    // Replies screen elements
-    const repliesBellBtn = document.getElementById('repliesBellBtn');
-    const repliesBadge = document.getElementById('repliesBadge');
-    const repliesScreen = document.getElementById('repliesScreen');
-    const refreshRepliesBtn = document.getElementById('refreshRepliesBtn');
+    const sendBtn = document.getElementById('sendBtn');
+    const djOnlyCheckbox = document.getElementById('djOnly');
     const chatMessages = document.getElementById('chatMessages');
-    const repliesCustomerName = document.getElementById('repliesCustomerName');
-    const mainContainer = document.querySelector('main.container');
-    const backToMessageBtn = document.getElementById('backToMessageBtn');
-    // Declared early to avoid TDZ when initializeReplies() runs.
-    let replyCheckInterval;
 
-    // Check if required elements exist
-    if (!messageInput) {
-        console.error('messageInput element not found');
+    if (!messageInput || !chatMessages) {
+        console.error('Guest chat: required elements missing');
         return;
     }
 
-    // Initialize replies functionality
-    initializeReplies();
+    let pollInterval = null;
+    let lastTimelineKey = '';
+    let isSending = false;
+    let compositionData = '';
 
-    // Auto-fill customer name from session storage
-    if (customerNameInput && !customerNameInput.value && sessionStorage.getItem('customerName')) {
-        customerNameInput.value = sessionStorage.getItem('customerName');
+    const customerName = getCustomerName();
+    if (!customerName) {
+        window.location.href = window.eventSlug ? `/event/${window.eventSlug}` : '/';
+        return;
     }
 
-    // Initialize inline GIF system
+    if (customerNameInput && !customerNameInput.value) {
+        customerNameInput.value = customerName;
+    }
+    sessionStorage.setItem('customerName', customerName);
+
     initializeInlineGifSystem();
+    loadTimeline(true);
+    startPolling();
 
-    // Initialize inline GIF system for contenteditable
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            sendMessage();
+        });
+    }
+
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    window.addEventListener('beforeunload', function() {
+        if (pollInterval) clearInterval(pollInterval);
+    });
+
+    function getCustomerName() {
+        const fromInput = customerNameInput ? customerNameInput.value.trim() : '';
+        return fromInput || (sessionStorage.getItem('customerName') || '').trim();
+    }
+
+    function activityUrl() {
+        const base = `/api/customer/activity/${encodeURIComponent(customerName)}`;
+        return window.eventSlug
+            ? `${base}?eventSlug=${encodeURIComponent(window.eventSlug)}`
+            : base;
+    }
+
+    function loadTimeline(scrollToBottom) {
+        fetch(activityUrl())
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load');
+                return response.json();
+            })
+            .then(function(data) {
+                const items = data.items || buildItemsFromLegacy(data);
+                renderTimeline(items, scrollToBottom);
+            })
+            .catch(function(err) {
+                console.error('Error loading timeline:', err);
+                chatMessages.innerHTML = `
+                    <div class="guest-chat-thread__empty">
+                        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                        <p class="mb-0">Could not load messages. Pull to refresh or try again.</p>
+                    </div>`;
+            });
+    }
+
+    function buildItemsFromLegacy(data) {
+        const items = [];
+        (data.messages || []).forEach(function(m) { items.push(Object.assign({ kind: 'message' }, m)); });
+        (data.replies || []).forEach(function(r) { items.push(Object.assign({ kind: 'reply' }, r)); });
+        (data.requests || []).forEach(function(r) { items.push(Object.assign({ kind: 'request' }, r)); });
+        items.sort(function(a, b) { return new Date(a.timestamp) - new Date(b.timestamp); });
+        return items;
+    }
+
+    function timelineKey(items) {
+        if (!items.length) return 'empty';
+        const last = items[items.length - 1];
+        return items.length + ':' + last.kind + ':' + last.id + ':' + last.timestamp;
+    }
+
+    function renderTimeline(items, scrollToBottom) {
+        const key = timelineKey(items);
+        if (key === lastTimelineKey && !scrollToBottom) return;
+        lastTimelineKey = key;
+
+        if (!items.length) {
+            chatMessages.innerHTML = `
+                <div class="guest-chat-thread__empty">
+                    <i class="fas fa-comments" aria-hidden="true"></i>
+                    <h5 class="mb-2">Say hi to the DJ</h5>
+                    <p class="mb-0 small">Your messages appear here. Song requests and DJ replies show up in this thread too.</p>
+                </div>`;
+            return;
+        }
+
+        chatMessages.innerHTML = items.map(renderItem).join('');
+        if (scrollToBottom !== false) {
+            scrollChatToBottom();
+        }
+    }
+
+    function renderItem(item) {
+        if (item.kind === 'message') return renderGuestMessage(item);
+        if (item.kind === 'reply') return renderDjReply(item);
+        if (item.kind === 'request') return renderRequest(item);
+        return '';
+    }
+
+    function renderGuestMessage(item) {
+        const body = item.body || item.textMessage || '';
+        const when = formatTime(item.timestamp);
+        const privateBadge = item.private
+            ? '<span class="badge bg-dark ms-1" style="font-size:0.65rem"><i class="fas fa-user-lock me-1"></i>Private</span>'
+            : '';
+
+        return `
+            <div class="guest-chat-row guest-chat-row--out" data-id="${escapeAttr(item.id)}">
+                <div class="guest-chat-bubble guest-chat-bubble--out">
+                    <div class="guest-chat-bubble__head">
+                        <span>You</span>${privateBadge}
+                    </div>
+                    <div class="guest-chat-bubble__body">${body}</div>
+                    <span class="guest-chat-bubble__meta">${when}</span>
+                </div>
+            </div>`;
+    }
+
+    function renderDjReply(item) {
+        const when = formatTime(item.timestamp);
+        const typeBadge = item.originalType
+            ? `<span class="badge bg-secondary ms-1" style="font-size:0.65rem">${escapeHtml(item.originalType)}</span>`
+            : '';
+        const directBadge = item.direct
+            ? '<span class="badge bg-dark ms-1" style="font-size:0.65rem"><i class="fas fa-user-lock me-1"></i>Just for you</span>'
+            : '';
+
+        return `
+            <div class="guest-chat-row guest-chat-row--in" data-id="${escapeAttr(item.id)}">
+                <div class="guest-chat-bubble guest-chat-bubble--in">
+                    <div class="guest-chat-bubble__head">
+                        <i class="fas fa-user-tie" aria-hidden="true"></i>
+                        <span>${escapeHtml(window.djName || 'DJ')}</span>${typeBadge}${directBadge}
+                    </div>
+                    <div class="guest-chat-bubble__body">${escapeHtml(item.body || item.replyMessage || '')}</div>
+                    <span class="guest-chat-bubble__meta">${when}</span>
+                </div>
+            </div>`;
+    }
+
+    function renderRequest(item) {
+        const when = formatTime(item.timestamp);
+        const isKaraoke = (item.type || '').indexOf('karaoke') !== -1;
+        const icon = isKaraoke ? 'microphone' : 'music';
+        const label = isKaraoke ? 'Karaoke' : 'Song';
+        const title = escapeHtml(item.title || 'Unknown');
+        const artist = item.artist ? ' by ' + escapeHtml(item.artist) : '';
+        const note = item.message || item.note
+            ? `<p class="mb-1 small fst-italic">"${escapeHtml(item.message || item.note)}"</p>`
+            : '';
+
+        return `
+            <div class="guest-chat-row guest-chat-row--out" data-id="${escapeAttr(item.id)}">
+                <div class="guest-chat-bubble guest-chat-bubble--request">
+                    <div class="guest-chat-bubble__head">
+                        <i class="fas fa-${icon}" aria-hidden="true"></i>
+                        <span>You requested</span>
+                        <span class="badge bg-secondary ms-1" style="font-size:0.65rem">${label}</span>
+                    </div>
+                    <div class="guest-chat-bubble__body">
+                        <p class="mb-1">"${title}"${artist}</p>
+                        ${note}
+                    </div>
+                    <span class="guest-chat-bubble__meta">${when}</span>
+                </div>
+            </div>`;
+    }
+
+    function sendMessage() {
+        if (isSending) return;
+
+        if (document.activeElement === messageInput) {
+            messageInput.blur();
+        }
+
+        window.requestAnimationFrame(function() {
+            updateContent();
+            const htmlContent = getNormalizedHtmlContent();
+            const textContent = getNormalizedTextContent();
+
+            if (!htmlContent || (!textContent && !htmlContent.includes('<img'))) {
+                showToast('Please enter a message or add some media.', 'error');
+                messageInput.focus();
+                return;
+            }
+
+            if (textContent.length > 500) {
+                showToast('Message is too long. Keep it under 500 characters.', 'error');
+                messageInput.focus();
+                return;
+            }
+
+            isSending = true;
+            if (sendBtn) sendBtn.disabled = true;
+
+            const payload = {
+                customerName: customerName,
+                message: htmlContent,
+                messageText: textContent,
+                eventSlug: window.eventSlug || '',
+                djOnly: djOnlyCheckbox && djOnlyCheckbox.checked
+            };
+
+            fetch('/api/customer/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(function(response) {
+                    return response.json().then(function(data) {
+                        if (!response.ok) throw new Error(data.error || 'Send failed');
+                        return data;
+                    });
+                })
+                .then(function() {
+                    messageInput.innerHTML = '';
+                    updateContent();
+                    if (djOnlyCheckbox) djOnlyCheckbox.checked = false;
+                    lastTimelineKey = '';
+                    loadTimeline(true);
+                    messageInput.focus();
+                })
+                .catch(function(err) {
+                    showToast(err.message || 'Failed to send. Please try again.', 'error');
+                })
+                .finally(function() {
+                    isSending = false;
+                    if (sendBtn) sendBtn.disabled = false;
+                });
+        });
+    }
+
+    function startPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(function() {
+            loadTimeline(false);
+        }, 15000);
+    }
+
+    function scrollChatToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function formatTime(ts) {
+        try {
+            return new Date(ts).toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text == null ? '' : String(text);
+        return div.innerHTML;
+    }
+
+    function escapeAttr(text) {
+        return escapeHtml(text).replace(/"/g, '&quot;');
+    }
+
+    function showToast(message, type) {
+        const existing = document.querySelector('.guest-chat-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'guest-chat-toast guest-chat-toast--' + (type || 'info');
+        toast.setAttribute('role', 'alert');
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(function() {
+            toast.remove();
+        }, type === 'error' ? 5000 : 3500);
+    }
+
+    // ---------- Inline GIF / rich content (GBoard, paste) ----------
+
     function initializeInlineGifSystem() {
-        if (!messageInput) return;
-
-        // Set up event listeners for contenteditable
         messageInput.addEventListener('input', updateContent);
         messageInput.addEventListener('beforeinput', handleBeforeInput);
         messageInput.addEventListener('paste', handlePaste);
         messageInput.addEventListener('compositionstart', handleCompositionStart);
         messageInput.addEventListener('compositionupdate', handleCompositionUpdate);
         messageInput.addEventListener('compositionend', handleCompositionEnd);
-        
-        // Initialize content
         updateContent();
     }
 
-    // Handle beforeinput for rich content insertion
     function handleBeforeInput(e) {
-        console.log('beforeinput event:', e.inputType, e.data);
-        
-        if (e.inputType === 'insertCompositionText' || e.inputType === 'insertText') {
-            // Let composition events handle this
-            return;
-        }
-        
-        if (e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop') {
-            // Handle in paste/drop events
-            return;
-        }
-        
-        // Handle any rich content insertions
+        if (e.inputType === 'insertCompositionText' || e.inputType === 'insertText') return;
+        if (e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop') return;
         if (e.data && (e.data.includes('http') || e.data.includes('data:'))) {
-            setTimeout(() => {
-                processRichContent();
-            }, 10);
+            setTimeout(processRichContent, 10);
         }
     }
 
-    // Handle composition events (for mobile keyboards)
-    let compositionData = '';
-    
-    function handleCompositionStart(e) {
-        console.log('Composition start:', e.data);
+    function handleCompositionStart() {
         compositionData = '';
     }
-    
+
     function handleCompositionUpdate(e) {
-        console.log('Composition update:', e.data);
         compositionData = e.data || '';
     }
-    
+
     function handleCompositionEnd(e) {
-        console.log('Composition end:', e.data);
         const finalData = e.data || compositionData;
-        
-        // Check if composition included media URLs
         if (finalData && (finalData.includes('http') || finalData.includes('data:'))) {
-            setTimeout(() => {
-                processRichContent();
-            }, 50);
+            setTimeout(processRichContent, 50);
         }
     }
 
-    // Handle paste events with rich content
     function handlePaste(e) {
-        console.log('Paste event triggered');
-        
-        // Check for files in clipboard
         const items = (e.clipboardData || e.originalEvent.clipboardData).items;
         let hasFiles = false;
-        
+
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             if (item.type.indexOf('image') !== -1) {
                 hasFiles = true;
                 const file = item.getAsFile();
-                if (file) {
-                    insertImageInline(file);
-                }
+                if (file) insertImageInline(file);
             }
         }
-        
-        // If no files, check for URLs after paste
+
         if (!hasFiles) {
-            setTimeout(() => {
-                processRichContent();
-            }, 10);
+            setTimeout(processRichContent, 10);
         }
     }
 
-    // Process rich content (URLs, embeds, etc.)
     function processRichContent() {
         const content = messageInput.innerHTML;
-        
-        // Look for image URLs in the content
         const urlPattern = /(https?:\/\/[^\s<>"]+\.(gif|jpg|jpeg|png|webp))/gi;
         const tenorPattern = /(https?:\/\/tenor\.com\/[^\s<>"]+)/gi;
         const giphyPattern = /(https?:\/\/giphy\.com\/[^\s<>"]+)/gi;
-        
+
         let modified = false;
         let newContent = content;
-        
-        // Replace image URLs with inline images
-        newContent = newContent.replace(urlPattern, (match, url) => {
+
+        newContent = newContent.replace(urlPattern, function(match, url) {
             modified = true;
             return insertMediaUrlInline(url);
         });
-        
-        // Handle Tenor URLs
-        newContent = newContent.replace(tenorPattern, (match, url) => {
+
+        newContent = newContent.replace(tenorPattern, function(match, url) {
             modified = true;
-            // Extract GIF URL from Tenor
             const tenorId = url.split('/').pop();
-            const gifUrl = `https://tenor.com/view/${tenorId}.gif`;
-            return insertMediaUrlInline(gifUrl);
+            return insertMediaUrlInline('https://tenor.com/view/' + tenorId + '.gif');
         });
-        
-        // Handle Giphy URLs
-        newContent = newContent.replace(giphyPattern, (match, url) => {
+
+        newContent = newContent.replace(giphyPattern, function(match, url) {
             modified = true;
-            // Convert Giphy URL to direct GIF
             const giphyId = url.split('/').pop().split('-').pop();
-            const gifUrl = `https://i.giphy.com/media/${giphyId}/giphy.gif`;
-            return insertMediaUrlInline(gifUrl);
+            return insertMediaUrlInline('https://i.giphy.com/media/' + giphyId + '/giphy.gif');
         });
-        
+
         if (modified) {
             messageInput.innerHTML = newContent;
             updateContent();
-            showInfo('Media detected and added inline! 🎉');
         }
     }
 
-    // Insert image file inline
     function insertImageInline(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -179,9 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
             img.src = e.target.result;
             img.className = 'inline-media';
             img.alt = file.name;
-            img.title = file.name;
-            
-            // Insert at current cursor position or at the end
+
             const selection = window.getSelection();
             if (selection.rangeCount > 0) {
                 const range = selection.getRangeAt(0);
@@ -190,399 +412,40 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 messageInput.appendChild(img);
             }
-            
             updateContent();
         };
         reader.readAsDataURL(file);
     }
 
-    // Insert media URL inline
     function insertMediaUrlInline(url) {
-        return `<img src="${url}" class="inline-media" alt="Inline media" loading="lazy">`;
+        return '<img src="' + url + '" class="inline-media" alt="Inline media" loading="lazy">';
     }
 
-    // Content update handler for contenteditable
     function updateContent() {
         const htmlContent = getNormalizedHtmlContent();
         const textContent = getNormalizedTextContent();
-        const hasMedia = htmlContent.includes('<img') || htmlContent.includes('data:image');
-        
-        // Store HTML content for server processing
-        if (messageHidden) {
-            messageHidden.value = htmlContent;
-        }
-        if (messageTextHidden) {
-            messageTextHidden.value = textContent;
-        }
-        
-        // Update character counter
+
+        if (messageHidden) messageHidden.value = htmlContent;
+        if (messageTextHidden) messageTextHidden.value = textContent;
+
         if (charCount) {
-            charCount.textContent = textContent.length;
-            
-            // Update character count color
-            if (textContent.length > 450) {
-                charCount.style.color = '#dc3545';
-            } else if (textContent.length > 400) {
-                charCount.style.color = '#ffc107';
-            } else {
-                charCount.style.color = '#6c757d';
-            }
-        }
-        
-        // Save customer name to session storage
-        if (customerNameInput && customerNameInput.value) {
-            sessionStorage.setItem('customerName', customerNameInput.value);
-        }
-    }
-
-    // Clear button handler
-    if (clearBtn) {
-        clearBtn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear your message?')) {
-                messageInput.innerHTML = '';
-                updateContent();
-                messageInput.focus();
-            }
-        });
-    }
-
-    // Form submission handler
-    if (form) {
-        let isProgrammaticSubmit = false;
-        form.addEventListener('submit', function(e) {
-            if (isProgrammaticSubmit) {
-                return;
-            }
-            e.preventDefault();
-
-            // On some mobile/IME keyboards, composition text commits on blur.
-            if (document.activeElement === messageInput) {
-                messageInput.blur();
-            }
-
-            window.requestAnimationFrame(() => {
-            const customerName = customerNameInput ? customerNameInput.value.trim() : '';
-            // Force a final sync for mobile/IME keyboards before submit.
-            updateContent();
-            const htmlContent = getNormalizedHtmlContent();
-            const textContent = getNormalizedTextContent();
-
-            if (!customerName) {
-                window.location.href = '/';
-                return;
-            }
-
-            if (!htmlContent || (!textContent && !htmlContent.includes('<img'))) {
-                showError('Please enter a message or add some media.');
-                messageInput.focus();
-                return;
-            }
-
+            charCount.textContent = textContent.length + '/500';
+            charCount.classList.remove('is-warn', 'is-over');
             if (textContent.length > 500) {
-                showError('Message text is too long. Please keep it under 500 characters.');
-                messageInput.focus();
-                return;
+                charCount.classList.add('is-over');
+            } else if (textContent.length > 450) {
+                charCount.classList.add('is-warn');
             }
-
-            // Ensure hidden field is synced before form submits
-            if (messageHidden) {
-                messageHidden.value = htmlContent || textContent;
-            }
-            if (messageTextHidden) {
-                messageTextHidden.value = textContent;
-            }
-
-            // Show loading state
-            const submitButton = form.querySelector('button[type="submit"]');
-            if (submitButton) {
-                showLoading(submitButton);
-            }
-            isProgrammaticSubmit = true;
-            form.submit();
-            });
-        });
-    }
-
-    // Initialize
-    messageInput.focus();
-
-    // Utility functions
-    function showError(message) {
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-danger alert-dismissible fade show';
-        alert.innerHTML = `
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.querySelector('main .container').insertBefore(alert, document.querySelector('main .container').firstChild);
-        
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.remove();
-            }
-        }, 5000);
-    }
-
-    function showInfo(message) {
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-info alert-dismissible fade show';
-        alert.innerHTML = `
-            <i class="fas fa-info-circle me-2"></i>
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        
-        document.querySelector('main .container').insertBefore(alert, document.querySelector('main .container').firstChild);
-        
-        setTimeout(() => {
-            if (alert.parentNode) {
-                alert.remove();
-            }
-        }, 4000);
-    }
-
-    function showLoading(element) {
-        element.classList.add('loading');
-        element.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        }
     }
 
     function getNormalizedHtmlContent() {
-        if (!messageInput) return '';
         const html = (messageInput.innerHTML || '').trim();
-        // Treat editor placeholders/empty markup as empty content.
-        if (!html || html === '<br>' || html === '<div><br></div>') {
-            return '';
-        }
+        if (!html || html === '<br>' || html === '<div><br></div>') return '';
         return html;
     }
 
     function getNormalizedTextContent() {
-        if (!messageInput) return '';
         return (messageInput.textContent || messageInput.innerText || '').replace(/\u00a0/g, ' ').trim();
     }
-
-    // ============================================
-    // Replies Screen Functionality
-    // ============================================
-    
-    function initializeReplies() {
-        const customerName = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
-        
-        // Check for replies on load
-        if (customerName) {
-            checkForReplies(customerName);
-        }
-        
-        // Handle bell icon click
-        if (repliesBellBtn) {
-            repliesBellBtn.addEventListener('click', function() {
-                const name = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
-                
-                if (!name) {
-                    showError('Please enter your name first');
-                    return;
-                }
-                
-                // Toggle between message form and replies screen
-                if (repliesScreen.style.display === 'block') {
-                    hideRepliesScreen();
-                } else {
-                    showRepliesScreen(name);
-                }
-            });
-        }
-        
-        // Handle refresh replies button
-        if (refreshRepliesBtn) {
-            refreshRepliesBtn.addEventListener('click', function() {
-                const name = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
-                if (name) {
-                    loadReplies(name);
-                }
-            });
-        }
-        
-        // Handle back to message button
-        if (backToMessageBtn) {
-            backToMessageBtn.addEventListener('click', function() {
-                hideRepliesScreen();
-            });
-        }
-        
-        // Start periodic reply checking
-        if (customerName) {
-            startReplyChecking(customerName);
-        }
-    }
-    
-    function showRepliesScreen(customerName) {
-        if (mainContainer) mainContainer.style.display = 'none';
-        if (repliesScreen) repliesScreen.style.display = 'block';
-        if (repliesCustomerName) repliesCustomerName.textContent = customerName;
-        
-        // Update bell button appearance
-        if (repliesBellBtn) {
-            repliesBellBtn.setAttribute('aria-pressed', 'true');
-            repliesBellBtn.classList.remove('btn-outline-light');
-            repliesBellBtn.classList.add('btn-light');
-        }
-        
-        loadReplies(customerName);
-    }
-    
-    function hideRepliesScreen() {
-        if (repliesScreen) repliesScreen.style.display = 'none';
-        if (mainContainer) mainContainer.style.display = 'block';
-        
-        // Update bell button appearance
-        if (repliesBellBtn) {
-            repliesBellBtn.setAttribute('aria-pressed', 'false');
-            repliesBellBtn.classList.remove('btn-light');
-            repliesBellBtn.classList.add('btn-outline-light');
-        }
-    }
-    
-    function checkForReplies(customerName) {
-        fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
-            .then(response => response.json())
-            .then(replies => {
-                updateBellIcon(replies.length);
-            })
-            .catch(error => {
-                console.error('Error checking replies:', error);
-            });
-    }
-    
-    function updateBellIcon(replyCount) {
-        if (repliesBadge) {
-            if (replyCount > 0) {
-                repliesBadge.textContent = replyCount;
-                repliesBadge.style.display = 'block';
-                // Add a subtle animation to the bell
-                if (repliesBellBtn) {
-                    repliesBellBtn.classList.add('text-warning');
-                }
-            } else {
-                repliesBadge.style.display = 'none';
-                if (repliesBellBtn) {
-                    repliesBellBtn.classList.remove('text-warning');
-                }
-            }
-        }
-    }
-    
-    function loadReplies(customerName) {
-        // Show loading state in chat
-        if (chatMessages) {
-            chatMessages.innerHTML = `
-                <div class="text-center py-4">
-                    <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-                    <p>Loading your conversation...</p>
-                </div>
-            `;
-        }
-
-        // Disable refresh button
-        if (refreshRepliesBtn) {
-            refreshRepliesBtn.disabled = true;
-            const originalText = refreshRepliesBtn.innerHTML;
-            refreshRepliesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
-
-            fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
-                .then(response => response.json())
-                .then(replies => {
-                    displayChatMessages(replies, customerName);
-                    updateBellIcon(replies.length);
-                })
-                .catch(error => {
-                    console.error('Error fetching replies:', error);
-                    showError('Failed to load messages. Please try again.');
-                    if (chatMessages) {
-                        chatMessages.innerHTML = `
-                            <div class="text-center py-4 text-muted">
-                                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
-                                <p>Failed to load messages. Please try again.</p>
-                            </div>
-                        `;
-                    }
-                })
-                .finally(() => {
-                    // Reset refresh button
-                    refreshRepliesBtn.disabled = false;
-                    refreshRepliesBtn.innerHTML = originalText;
-                });
-        }
-    }
-    
-    function displayChatMessages(replies, customerName) {
-        if (!chatMessages) return;
-        
-        if (replies.length === 0) {
-            chatMessages.innerHTML = `
-                <div class="text-center py-5">
-                    <i class="fas fa-comments fa-3x text-muted mb-3"></i>
-                    <h5 class="text-muted">No messages yet</h5>
-                    <p class="text-muted">The DJ will reply to your requests and messages here.</p>
-                </div>
-            `;
-            return;
-        }
-
-        const messagesHtml = replies.map(reply => createChatBubble(reply)).join('');
-        chatMessages.innerHTML = messagesHtml;
-        
-        // Scroll to bottom of chat
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    function createChatBubble(reply) {
-        const timestamp = new Date(reply.timestamp).toLocaleString();
-        
-        return `
-            <div class="mb-3">
-                <div class="d-flex justify-content-start">
-                    <div class="chat-bubble from-dj" style="max-width: 80%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; border-radius: 18px 18px 18px 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                        <div class="d-flex align-items-center mb-1">
-                            <i class="fas fa-user-tie me-2" style="color: #ffc107;"></i>
-                            <strong style="color: #ffc107;">${escapeHtmlReply(window.djName || 'DJ')}</strong>
-                            <span class="badge bg-secondary ms-2 small">${escapeHtmlReply(reply.originalType)}</span>
-                        </div>
-                        <p class="mb-1">${escapeHtmlReply(reply.replyMessage)}</p>
-                        <small style="opacity: 0.8;">
-                            <i class="fas fa-clock me-1"></i>
-                            ${timestamp}
-                        </small>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    function escapeHtmlReply(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // Periodically check for new replies
-    function startReplyChecking(customerName) {
-        // Clear any existing interval
-        if (replyCheckInterval) {
-            clearInterval(replyCheckInterval);
-        }
-        
-        // Check every 30 seconds
-        replyCheckInterval = setInterval(() => {
-            checkForReplies(customerName);
-        }, 30000);
-    }
-    
-    // Stop checking when leaving the page
-    window.addEventListener('beforeunload', function() {
-        if (replyCheckInterval) {
-            clearInterval(replyCheckInterval);
-        }
-    });
 });

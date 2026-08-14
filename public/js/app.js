@@ -283,7 +283,11 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(activityUrl)
             .then(response => response.json())
             .then(data => {
-                displayChatMessages(data.replies || [], data.requests || []);
+                if (data.items && data.items.length) {
+                    displayTimelineItems(data.items);
+                } else {
+                    displayChatMessages(data.replies || [], data.requests || [], data.messages || []);
+                }
                 updateBellIcon((data.replies || []).length);
             })
             .catch(error => {
@@ -303,9 +307,32 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    function displayChatMessages(replies, requests) {
-        // Merge DJ replies and the guest's own requests into one timeline
+    function displayTimelineItems(items) {
+        if (!items.length) {
+            chatMessages.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Nothing here yet</h5>
+                    <p class="text-muted">Your messages and requests will show here, along with the DJ's replies.</p>
+                </div>
+            `;
+            return;
+        }
+
+        chatMessages.innerHTML = items.map(item => {
+            if (item.kind === 'message') return createGuestMessageBubble(item);
+            if (item.kind === 'reply') return createChatBubble(item);
+            if (item.kind === 'request') return createRequestBubble(item);
+            return '';
+        }).join('');
+
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function displayChatMessages(replies, requests, messages = []) {
+        // Merge guest messages, DJ replies, and song/karaoke requests into one timeline
         const items = [
+            ...messages.map(m => ({ kind: 'message', timestamp: m.timestamp, data: m })),
             ...replies.map(r => ({ kind: 'reply', timestamp: r.timestamp, data: r })),
             ...requests.map(r => ({ kind: 'request', timestamp: r.timestamp, data: r }))
         ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -322,11 +349,40 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         chatMessages.innerHTML = items
-            .map(item => item.kind === 'reply' ? createChatBubble(item.data) : createRequestBubble(item.data))
+            .map(item => {
+                if (item.kind === 'message') return createGuestMessageBubble(item.data);
+                if (item.kind === 'reply') return createChatBubble(item.data);
+                return createRequestBubble(item.data);
+            })
             .join('');
         
         // Scroll to bottom of chat
         chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function createGuestMessageBubble(message) {
+        const timestamp = new Date(message.timestamp).toLocaleString();
+        const body = message.body || message.textMessage || '';
+        const privateBadge = message.private
+            ? '<span class="badge bg-dark ms-1 small" title="Private message"><i class="fas fa-user-lock me-1"></i>Private</span>'
+            : '';
+
+        return `
+            <div class="mb-3">
+                <div class="d-flex justify-content-end">
+                    <div class="chat-bubble from-customer" style="max-width: 80%;">
+                        <div class="d-flex align-items-center mb-1">
+                            <strong>You</strong>${privateBadge}
+                        </div>
+                        <div class="mb-1">${body}</div>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            ${timestamp}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     function createChatBubble(reply) {

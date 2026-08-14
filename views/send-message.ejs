@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <!-- Enable rich media input for mobile keyboards -->
     <meta name="supports-keyboard-gifs" content="true">
     <meta name="supports-keyboard-stickers" content="true">
     <link rel="manifest" href="/manifest.json">
-    <title>Send Message - MobileDJay</title>
+    <title>Messages<% if (typeof event !== 'undefined' && event && event.name) { %> · <%= event.name %><% } %> - MobileDJay</title>
     <meta name="theme-color" content="<%= typeof event !== 'undefined' && event && event.accent_color ? event.accent_color : '#0a0a0a' %>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
@@ -19,27 +18,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
-    <% if (typeof event !== 'undefined' && event && event.accent_color) { %>
-    <style>
-        body.mdj-eyup-brand .mdj-site-navbar { background-color: <%= event.accent_color %> !important; border-bottom-color: <%= event.accent_color %> !important; }
-    </style>
+    <link href="/css/guest-chat.css" rel="stylesheet">
+    <% if (typeof event !== 'undefined' && event) { %>
+    <%- include('partials/guest-event-theme', { event }) %>
     <% } %>
 </head>
-<body class="mdj-eyup-brand">
+<body class="mdj-eyup-brand guest-chat-page">
     <div class="mdj-scanlines" aria-hidden="true"></div>
 
-    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Send message">
+    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Messages">
         <div class="nav-container">
             <div class="logo" role="img" aria-label="EYUP EVENTS">
                 <span class="logo-text">EYUP</span>
                 <span class="logo-accent">EVENTS</span>
-                <span class="logo-subtitle">Messages<% if (typeof event !== 'undefined' && event && event.name) { %> · <%= event.name %><% } %></span>
+                <span class="logo-subtitle">Chat<% if (typeof event !== 'undefined' && event && event.name) { %> · <%= event.name %><% } %></span>
             </div>
             <div class="mdj-nav-controls">
-                <button id="repliesBellBtn" type="button" class="nav-msg-btn position-relative" title="Messages" aria-pressed="false" role="button" aria-label="Messages">
-                    <i class="fas fa-comment-dots"></i>
-                    <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
-                </button>
                 <a href="<%= eventSlug ? '/event/' + eventSlug : '/' %>" class="mdj-nav-back">
                     <i class="fas fa-arrow-left" aria-hidden="true"></i> Back
                 </a>
@@ -47,120 +41,57 @@
         </div>
     </nav>
 
-    <main class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <!-- Message Form -->
-                <form id="messageForm" action="/submit-message" method="POST">
-                    <!-- Hidden input for customer name and event -->
-                    <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
-                    <input type="hidden" name="eventSlug" value="<%= eventSlug || '' %>">
-
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <h5 class="card-title">Your Message</h5>
-                            <div class="form-group mb-3">
-                                <label for="messageInput" class="form-label">Message *</label>
-                                
-                                <!-- Inline rich text editor with GBoard support -->
-                                <div id="messageInput" 
-                                     class="form-control" 
-                                     contenteditable="true"
-                                     role="textbox"
-                                     aria-label="Message with media support"
-                                     data-placeholder="Write your message... Use your keyboard's GIF button!"
-                                     style="min-height: 120px; max-height: 300px; overflow-y: auto; white-space: pre-wrap;"
-                                     
-                                     accept="image/*"
-                                     data-supports="gifs stickers emojis"
-                                     
-                                     inputmode="text"
-                                     enterkeyhint="send"
-                                     spellcheck="true"
-                                     tabindex="0"></div>
-                                
-                                <!-- Hidden fields for form submission -->
-                                <input type="hidden" id="message" name="message">
-                                <input type="hidden" id="messageText" name="messageText">
-                                
-                                <!-- Clear button -->
-                                <div class="mt-3">
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <button type="button" id="clearBtn" class="btn btn-outline-danger btn-sm">
-                                            <i class="fas fa-trash me-1"></i>Clear Content
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-text">
-                                    <span id="charCount">0</span>/500 characters
-                                    <div class="small text-muted mt-1">
-                                        📱 <strong>Mobile:</strong> Use your keyboard's GIF/sticker button to add GIFs inline!
-                                        <br>🖥️ <strong>Desktop:</strong> Paste images directly into the text area above.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Privacy / DJ-only checkbox -->
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <h5 class="card-title">Privacy</h5>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="1" id="djOnly" name="djOnly">
-                                <label class="form-check-label" for="djOnly">Send to DJ only (private)</label>
-                            </div>
-                            <div class="form-text mt-2">When checked, the message will be delivered only to the DJ and not shown publicly on displays.</div>
-                        </div>
-                    </div>
-
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-info btn-lg">
-                            <i class="fas fa-paper-plane me-2"></i>Send Message
-                        </button>
-                    </div>
-                </form>
+    <div class="guest-chat-shell">
+        <div id="chatMessages" class="guest-chat-thread" role="log" aria-live="polite" aria-relevant="additions">
+            <div class="guest-chat-thread__empty">
+                <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                <p class="mb-0">Loading conversation…</p>
             </div>
         </div>
-    </main>
 
-    <!-- Replies Screen (hidden by default) -->
-    <div id="repliesScreen" class="container-fluid" style="display: none; height: 100vh; background-color: #f8f9fa;">
-        <div class="row h-100">
-            <div class="col-12 d-flex flex-column">
-                <!-- Header -->
-                <div class="bg-white border-bottom p-3 mb-0">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <button id="backToMessageBtn" class="btn btn-outline-secondary btn-sm me-3">
-                                <i class="fas fa-arrow-left me-1"></i>Back
-                            </button>
-                            <h5 class="mb-0">
-                                <i class="fas fa-comments me-2 text-primary"></i>
-                                Messages for <span id="repliesCustomerName" class="text-primary"></span>
-                            </h5>
-                        </div>
-                        <button id="refreshRepliesBtn" class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-sync-alt me-1"></i>Refresh
-                        </button>
-                    </div>
+        <div class="guest-chat-composer">
+            <form id="messageForm" novalidate>
+                <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
+                <input type="hidden" id="message" name="message">
+                <input type="hidden" id="messageText" name="messageText">
+                <input type="hidden" name="eventSlug" value="<%= eventSlug || '' %>">
+
+                <div class="guest-chat-composer__toolbar">
+                    <label class="guest-chat-composer__privacy" for="djOnly">
+                        <input class="form-check-input" type="checkbox" value="1" id="djOnly" name="djOnly">
+                        <span><i class="fas fa-user-lock me-1" aria-hidden="true"></i>DJ only (private)</span>
+                    </label>
+                    <span id="charCount" class="guest-chat-composer__char">0/500</span>
                 </div>
 
-                <!-- Chat Messages -->
-                <div id="chatMessages" class="flex-grow-1 p-3" style="overflow-y: auto;">
-                    <div class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-                        <p>Loading your conversation...</p>
-                    </div>
+                <div class="guest-chat-composer__row">
+                    <div id="messageInput"
+                         class="guest-chat-composer__input"
+                         contenteditable="true"
+                         role="textbox"
+                         aria-label="Type a message"
+                         aria-multiline="true"
+                         data-placeholder="Message the DJ…"
+                         inputmode="text"
+                         enterkeyhint="send"
+                         spellcheck="true"
+                         tabindex="0"></div>
+                    <button type="submit" id="sendBtn" class="guest-chat-composer__send" aria-label="Send message">
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                    </button>
                 </div>
-            </div>
+
+                <p class="guest-chat-composer__hint mb-0">
+                    Use your keyboard GIF button on mobile, or paste images on desktop.
+                </p>
+            </form>
         </div>
     </div>
 
-    <script>window.djName = '<%= typeof djName !== "undefined" && djName ? djName : "DJ" %>';</script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/app.js"></script>
+    <script>
+        window.djName = '<%= typeof djName !== "undefined" && djName ? djName : "DJ" %>';
+        window.eventSlug = '<%= eventSlug || "" %>';
+    </script>
     <script src="/js/send-message.js"></script>
 </body>
 </html>

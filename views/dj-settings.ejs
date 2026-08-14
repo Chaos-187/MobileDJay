@@ -11,35 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <style>
-        body.dark-mode { background: #0f1720; color: #e6eef8; }
-        body.dark-mode .card {
-            background: #101419;
-            border-color: rgba(255,255,255,0.03);
-            color: #d7e6f5;
-            box-shadow: none;
-        }
-        body.dark-mode .card-header {
-            background: rgba(255,255,255,0.03);
-            border-color: rgba(255,255,255,0.06);
-        }
-        body.dark-mode .form-control,
-        body.dark-mode .form-select {
-            background: #0b1114;
-            color: #d7e6f5;
-            border-color: rgba(255,255,255,0.1);
-        }
-        body.dark-mode .text-muted { color: #98a9bf !important; }
-        body.dark-mode .form-text { color: #98a9bf; }
-        body.dark-mode .nav-tabs { border-color: rgba(255,255,255,0.12); }
-        body.dark-mode .nav-tabs .nav-link { color: #98a9bf; }
-        body.dark-mode .nav-tabs .nav-link:hover { border-color: rgba(255,255,255,0.12); }
-        body.dark-mode .nav-tabs .nav-link.active {
-            background: #101419;
-            color: #e6eef8;
-            border-color: rgba(255,255,255,0.12) rgba(255,255,255,0.12) transparent;
-        }
-
-        /* Banner style preview chips */
+        /* Theme surfaces: dj-dash-theme.css */
         .banner-preview {
             display: inline-block;
             padding: 0.35rem 1.3rem;
@@ -75,8 +47,9 @@
             margin-right: 0.6rem;
         }
     </style>
+    <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
 </head>
-<body class="mdj-eyup-brand mdj-dash-tools">
+<body class="mdj-eyup-brand mdj-dash-tools dark-mode">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">Global Settings</h1>
 
@@ -393,7 +366,9 @@
             icon.classList.toggle('fa-moon', !enabled);
             icon.classList.toggle('fa-sun', enabled);
         }
-        setMode(localStorage.getItem('djDashboardDarkMode') === 'true');
+        const saved = localStorage.getItem('djDashboardDarkMode');
+        const enabled = saved === null ? true : saved === 'true';
+        setMode(enabled);
         toggle.addEventListener('click', function () {
             const enabled = !document.body.classList.contains('dark-mode');
             localStorage.setItem('djDashboardDarkMode', enabled ? 'true' : 'false');

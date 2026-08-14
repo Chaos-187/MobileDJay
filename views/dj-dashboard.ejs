@@ -81,48 +81,157 @@
             color: #0056b3;
         }
 
-        /* Dark mode overrides for DJ dashboard */
-        body.dark-mode {
-            background: #0f1720;
-            color: #e6eef8;
-        }
-        body.dark-mode.mdj-eyup-brand .mdj-dashboard-navbar.mdj-site-navbar {
-            background: rgba(6, 10, 16, 0.98);
-            border-bottom-color: var(--eyup-primary-orange);
+        /* Dashboard navbar dark tint — see dj-dash-theme.css */
+
+        body.mdj-eyup-brand.mdj-dashboard-page {
+            --mdj-eyup-nav-h: 96px;
         }
 
-        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .nav-container {
-            flex-wrap: wrap;
-            row-gap: 10px;
+        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar .mdj-dash-nav-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.65rem;
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
-        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .logo {
-            flex: 0 1 auto;
-            min-width: 0;
-        }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event {
+
+        body.mdj-eyup-brand .mdj-dash-nav-top {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            flex: 1 1 200px;
+            justify-content: space-between;
+            gap: 0.75rem;
             min-width: 0;
         }
+
+        body.mdj-eyup-brand .mdj-dash-nav-brand {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 8px;
+            text-decoration: none;
+            flex-shrink: 0;
+            min-width: 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-brand .logo-text {
+            font-family: var(--font-retro);
+            font-size: clamp(0.72rem, 2.5vw, 1.1rem);
+            color: var(--eyup-white);
+            text-shadow: 0 0 10px var(--eyup-primary-orange);
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-brand .logo-accent {
+            font-family: var(--font-futuristic);
+            font-size: clamp(0.68rem, 2.2vw, 0.95rem);
+            color: var(--eyup-primary-orange);
+            font-weight: 700;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick .btn {
+            min-width: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.65rem;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick .mdj-dash-nav-spin {
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick .dropdown-toggle::after {
+            display: none;
+        }
+
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dash-nav-event {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            width: 100%;
+            min-width: 0;
+        }
+
         body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event-label {
             font-family: var(--font-mono);
-            font-size: 0.72rem;
-            letter-spacing: 0.05em;
-            color: rgba(240, 240, 245, 0.55);
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(240, 240, 245, 0.5);
             white-space: nowrap;
+            flex-shrink: 0;
         }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event .form-select.form-select-sm {
+
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dash-nav-event .form-select.form-select-sm {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: none;
             background: rgba(255, 255, 255, 0.07);
             color: var(--eyup-off-white);
             border: 1px solid rgba(255, 102, 0, 0.35);
+            border-radius: 2px;
             font-family: var(--font-mono);
-            font-size: 0.75rem;
+            font-size: 0.78rem;
+            padding-top: 0.4rem;
+            padding-bottom: 0.4rem;
         }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event .form-select.form-select-sm:focus {
+
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dash-nav-event .form-select.form-select-sm:focus {
             border-color: var(--eyup-primary-orange);
             box-shadow: 0 0 0 0.18rem rgba(255, 102, 0, 0.22);
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu {
+            min-width: 13.5rem;
+            background: rgba(14, 14, 14, 0.98);
+            border: 1px solid rgba(255, 102, 0, 0.28);
+            border-radius: 2px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+            padding: 0.35rem 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: 0.03em;
+            color: var(--eyup-off-white);
+            padding: 0.55rem 0.85rem;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item:hover,
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item:focus {
+            background: rgba(255, 102, 0, 0.12);
+            color: var(--eyup-light-orange);
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item.text-muted {
+            color: rgba(240, 240, 245, 0.45) !important;
+            font-size: 0.72rem;
+            pointer-events: none;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-divider {
+            border-color: rgba(255, 102, 0, 0.18);
+            margin: 0.35rem 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item.text-danger {
+            color: #ffb3b8 !important;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item.text-danger:hover {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ffd0d3 !important;
         }
 
         /*
@@ -137,72 +246,87 @@
             color: #5c6570 !important;
         }
 
-        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .mdj-nav-controls {
-            margin-left: auto;
+        /* Compact dashboard tabs */
+        .mdj-dash-tabs {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            border-bottom-color: rgba(255, 102, 0, 0.22);
+            gap: 0.15rem;
+        }
+
+        .mdj-dash-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .mdj-dash-tabs .nav-item {
             flex-shrink: 0;
         }
 
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn {
-            min-width: 48px;
+        .mdj-dash-tabs .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            border-radius: 2px 2px 0 0;
+            border: 1px solid transparent;
+        }
+
+        .mdj-dash-tabs .nav-link.active {
+            font-weight: 700;
+        }
+
+        .mdj-dash-tab-count {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: .5rem;
-        }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn.btn-lg {
-            padding: .45rem .9rem;
-            font-size: 0.95rem;
-        }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn i { margin-right: .4rem; }
-
-        @media (max-width: 768px) {
-            body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn { min-width: 40px; }
-            body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn.btn-lg { padding: .35rem .6rem; }
+            min-width: 1.35rem;
+            padding: 0.08rem 0.35rem;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            line-height: 1.2;
+            background: rgba(0, 0, 0, 0.18);
         }
 
-        body.dark-mode .card {
-            background: #101419;
-            color: #d7e6f5;
-            box-shadow: none;
-            border-color: rgba(255,255,255,0.03);
+        .mdj-dash-tabs .nav-link:not(.active) .mdj-dash-tab-count {
+            background: rgba(255, 102, 0, 0.14);
         }
-        body.dark-mode .request-timestamp,
-        body.dark-mode .text-muted { color: #98a9bf !important; }
-        body.dark-mode .btn-outline-light { color: #fff; border-color: rgba(255,255,255,0.12); }
-        body.dark-mode .badge { opacity: 0.95; }
-        body.dark-mode .message-preview {
-            background: rgba(255,255,255,0.03);
-            border-left-color: rgba(59,130,246,0.9);
-            color: #d7e6f5;
-        }
-        body.dark-mode .bg-light,
-        body.dark-mode .card.bg-light {
-            background-color: #0b1114 !important;
-            color: #d7e6f5 !important;
-            border-color: rgba(255,255,255,0.03) !important;
-        }
-        body.dark-mode .event-url {
-            background: rgba(255,255,255,0.05);
-            color: #cfe8ff;
-        }
-        body.dark-mode .modal-content {
-            background: #101419;
-            color: #d7e6f5;
-        }
-        body.dark-mode .modal-header,
-        body.dark-mode .modal-footer {
-            border-color: rgba(255,255,255,0.1);
-        }
-        body.dark-mode .form-control,
-        body.dark-mode .form-select {
-            background: #0b1114;
-            color: #d7e6f5;
-            border-color: rgba(255,255,255,0.1);
-        }
-        body.dark-mode .btn-outline-primary { color: #cfe8ff; border-color: rgba(79,174,255,0.18); }
-        body.dark-mode .btn-outline-secondary { color: #c7d5e6; border-color: rgba(255,255,255,0.06); }
 
-        /* Photos tab grid */
+        body.dark-mode .mdj-dash-tabs .nav-link:not(.active) .mdj-dash-tab-count {
+            color: var(--eyup-light-orange);
+        }
+
+        .mdj-dash-section-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 0.85rem;
+        }
+
+        @media (max-width: 576px) {
+            body.mdj-eyup-brand.mdj-dashboard-page {
+                --mdj-eyup-nav-h: 88px;
+            }
+
+            body.mdj-eyup-brand .mdj-dash-nav-quick .mdj-dash-nav-spin-label {
+                display: none;
+            }
+
+            .mdj-dash-tabs .mdj-dash-tab-label {
+                display: none;
+            }
+
+            .mdj-dash-tabs .nav-link {
+                padding: 0.5rem 0.7rem;
+            }
+        }
+
         .dash-photo-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -245,21 +369,7 @@
             left: 0.35rem;
         }
 
-        /* Nav tabs styling */
-        .nav-tabs .nav-link {
-            color: #6c757d;
-        }
-        .nav-tabs .nav-link.active {
-            font-weight: 600;
-        }
-        body.dark-mode .nav-tabs .nav-link {
-            color: #98a9bf;
-        }
-        body.dark-mode .nav-tabs .nav-link.active {
-            background: #101419;
-            color: #cfe8ff;
-            border-color: rgba(255,255,255,0.1);
-        }
+        /* Nav tabs styling — non-dashboard tabs use dj-dash-theme.css */
 
         /* Screen prompts panel */
         .prompt-btn-grid {
@@ -547,21 +657,10 @@
         .mdj-dash-messages-list .message-card-actions-bottom .reply-message {
             flex: 1 1 auto;
         }
-        body.dark-mode .mdj-dash-messages-panel {
-            border-left-color: rgba(255, 255, 255, 0.08);
-        }
-        body.dark-mode .mdj-dash-messages-header {
-            border-bottom-color: rgba(255, 255, 255, 0.06);
-        }
         .mdj-dash-messages-list .message-needs-reply {
             border-left: 3px solid #0d6efd;
             background: rgba(13, 110, 253, 0.07) !important;
             box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.15);
-        }
-        body.dark-mode .mdj-dash-messages-list .message-needs-reply {
-            background: rgba(13, 110, 253, 0.14) !important;
-            border-left-color: #4fa8ff;
-            box-shadow: 0 0 0 1px rgba(79, 168, 255, 0.2);
         }
         .mdj-dash-messages-list .message-spinner-result {
             border-left: 3px solid #0dcaf0;
@@ -579,26 +678,55 @@
                 padding-top: 1rem;
                 max-height: 42vh;
             }
-            body.dark-mode .mdj-dash-messages-panel {
-                border-top-color: rgba(255, 255, 255, 0.08);
-            }
         }
     </style>
+    <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
 </head>
-<body class="mdj-eyup-brand mdj-dash-tools mdj-dashboard-page">
+<body class="mdj-eyup-brand mdj-dash-tools mdj-dashboard-page dark-mode">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">DJ Dashboard</h1>
 
     <nav class="mdj-site-navbar mdj-site-navbar--minimal mdj-dashboard-navbar" aria-label="DJ dashboard">
-        <div class="nav-container">
-            <div class="logo" role="img" aria-label="EYUP EVENTS">
-                <span class="logo-text">EYUP</span>
-                <span class="logo-accent">EVENTS</span>
-                <span class="logo-subtitle"><i class="fas fa-headphones" aria-hidden="true"></i> DJ Dashboard</span>
+        <div class="nav-container mdj-dash-nav-container">
+            <div class="mdj-dash-nav-top">
+                <a href="/dj" class="mdj-dash-nav-brand" aria-label="EYUP EVENTS DJ Dashboard">
+                    <span class="logo-text">EYUP</span>
+                    <span class="logo-accent">EVENTS</span>
+                </a>
+                <div class="mdj-dash-nav-quick">
+                    <button id="triggerSpinBtn" class="btn btn-warning btn-sm mdj-dash-nav-spin" type="button" title="Trigger karaoke spin">
+                        <i class="fas fa-dice"></i><span class="mdj-dash-nav-spin-label">Spin</span>
+                    </button>
+                    <button id="refreshBtn" class="btn btn-outline-light btn-sm" type="button" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="djNavMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" title="More options">
+                            <i class="fas fa-bars"></i><span class="visually-hidden">Menu</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end mdj-dash-nav-menu" aria-labelledby="djNavMenuBtn">
+                            <li><a class="dropdown-item" href="/dj/events"><i class="fas fa-calendar-alt fa-fw"></i> Event management</a></li>
+                            <li><a class="dropdown-item" href="/karaoke-spinner" id="karaokeSpinnerDisplayLink" target="_blank" rel="noopener"><i class="fas fa-tv fa-fw"></i> Karaoke spinner display</a></li>
+                            <li><a class="dropdown-item" href="/guest-spinner" id="guestSpinnerDisplayLink" target="_blank" rel="noopener"><i class="fas fa-users fa-fw"></i> Guest spinner display</a></li>
+                            <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                            <li><a class="dropdown-item" href="/dj/settings"><i class="fas fa-gear fa-fw"></i> Global settings</a></li>
+                            <% } %>
+                            <% if (portalUser) { %>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><span class="dropdown-item text-muted"><i class="fas fa-user-circle fa-fw"></i> <%= [portalUser.first_name, portalUser.last_name].filter(Boolean).join(' ') || portalUser.email %></span></li>
+                            <li><button type="button" class="dropdown-item" id="darkModeToggle"><i class="fas fa-moon fa-fw"></i><span id="darkModeLabel">Dark mode</span></button></li>
+                            <li><button type="button" class="dropdown-item text-danger" id="djLogoutBtn"><i class="fas fa-sign-out-alt fa-fw"></i> Sign out</button></li>
+                            <% } else { %>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item" id="darkModeToggle"><i class="fas fa-moon fa-fw"></i><span id="darkModeLabel">Dark mode</span></button></li>
+                            <% } %>
+                        </ul>
+                    </div>
+                </div>
             </div>
-            <div class="mdj-dashboard-nav-event">
-                <label for="activeEventSelect" class="mdj-dashboard-nav-event-label mb-0 d-none d-sm-inline">Event:</label>
-                <select id="activeEventSelect" class="form-select form-select-sm" style="min-width: 180px; max-width: 250px;">
+            <div class="mdj-dash-nav-event">
+                <label for="activeEventSelect" class="mdj-dashboard-nav-event-label mb-0">Event</label>
+                <select id="activeEventSelect" class="form-select form-select-sm">
                     <option value="all">All Events</option>
                     <% events.forEach(function(event) { %>
                         <option value="<%= event.id %>" data-slug="<%= event.slug %>"<%= event.is_active ? '' : ' class="mdj-dash-event-opt--inactive"' %>>
@@ -606,39 +734,6 @@
                         </option>
                     <% }); %>
                 </select>
-            </div>
-            <div class="mdj-nav-controls">
-                <a href="/dj/events" class="btn btn-info btn-sm" title="Event Management">
-                    <i class="fas fa-calendar-alt me-1"></i><span class="d-none d-md-inline">Events</span>
-                </a>
-                <button id="triggerSpinBtn" class="btn btn-warning btn-sm" title="Trigger Karaoke Spin">
-                    <i class="fas fa-dice me-1"></i><span class="d-none d-md-inline">Spin!</span>
-                </button>
-                <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" id="karaokeSpinnerDisplayLink" target="_blank" title="Open Karaoke Spinner Display">
-                    <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">Spinner</span>
-                </a>
-                <a href="/guest-spinner" class="btn btn-outline-primary btn-sm" id="guestSpinnerDisplayLink" target="_blank" title="Open Guest Spinner Display">
-                    <i class="fas fa-users me-1"></i><span class="d-none d-md-inline">Guests</span>
-                </a>
-                <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
-                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
-                    <i class="fas fa-gear me-1"></i><span class="d-none d-md-inline">Settings</span>
-                </a>
-                <% } %>
-                <% if (portalUser) { %>
-                <span class="text-light small d-none d-lg-inline ms-1" title="<%= portalUser.email %>">
-                    <i class="fas fa-user-circle me-1"></i><%= [portalUser.first_name, portalUser.last_name].filter(Boolean).join(' ') || portalUser.email %>
-                </span>
-                <button type="button" class="btn btn-outline-light btn-sm" id="djLogoutBtn" title="Sign out">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-                <% } %>
-                <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
-                    <i class="fas fa-moon"></i>
-                </button>
-                <button id="refreshBtn" class="btn btn-outline-light btn-sm" title="Refresh">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
             </div>
         </div>
     </nav>
@@ -673,30 +768,39 @@
         <div class="mdj-dash-layout">
         <div class="mdj-dash-primary mdj-dash-scroll">
         <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+        <ul class="nav nav-tabs mdj-dash-tabs mb-3" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab">
-                    <i class="fas fa-music me-2"></i>Requests (<span id="requestCount"><%= requests.length %></span>)
+                <button class="nav-link active" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab" aria-controls="requests" aria-selected="true">
+                    <i class="fas fa-music" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Requests</span>
+                    <span class="mdj-dash-tab-count" id="requestCount"><%= requests.length %></span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="guests-tab" data-bs-toggle="tab" data-bs-target="#guests" type="button" role="tab">
-                    <i class="fas fa-users me-2"></i>Guests (<span id="guestCount">0</span>)
+                <button class="nav-link" id="guests-tab" data-bs-toggle="tab" data-bs-target="#guests" type="button" role="tab" aria-controls="guests" aria-selected="false">
+                    <i class="fas fa-users" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Guests</span>
+                    <span class="mdj-dash-tab-count" id="guestCount">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab">
-                    <i class="fas fa-camera me-2"></i>Photos (<span id="photoCount">0</span>)
+                <button class="nav-link" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab" aria-controls="photos" aria-selected="false">
+                    <i class="fas fa-camera" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Photos</span>
+                    <span class="mdj-dash-tab-count" id="photoCount">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tracks-tab" data-bs-toggle="tab" data-bs-target="#tracks" type="button" role="tab">
-                    <i class="fas fa-compact-disc me-2"></i>Tracks (<span id="trackCount">0</span>)
+                <button class="nav-link" id="tracks-tab" data-bs-toggle="tab" data-bs-target="#tracks" type="button" role="tab" aria-controls="tracks" aria-selected="false">
+                    <i class="fas fa-compact-disc" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Tracks</span>
+                    <span class="mdj-dash-tab-count" id="trackCount">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="screen-tab" data-bs-toggle="tab" data-bs-target="#screen" type="button" role="tab">
-                    <i class="fas fa-tv me-2"></i>Screen
+                <button class="nav-link" id="screen-tab" data-bs-toggle="tab" data-bs-target="#screen" type="button" role="tab" aria-controls="screen" aria-selected="false">
+                    <i class="fas fa-tv" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Screen</span>
                 </button>
             </li>
         </ul>
@@ -704,10 +808,9 @@
         <div class="tab-content" id="dashboardTabContent">
             <!-- Requests Tab -->
             <div class="tab-pane fade show active" id="requests" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3><i class="fas fa-music me-2"></i>Song & Karaoke Requests</h3>
-                    <button id="clearAllRequests" class="btn btn-outline-danger">
-                        <i class="fas fa-trash me-2"></i>Clear All
+                <div class="mdj-dash-section-bar">
+                    <button id="clearAllRequests" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-trash me-1"></i>Clear all
                     </button>
                 </div>
 
@@ -903,9 +1006,9 @@
 
         <aside class="mdj-dash-messages-panel" aria-label="Guest messages">
             <div class="mdj-dash-messages-header d-flex justify-content-between align-items-center gap-2">
-                <h4><i class="fas fa-envelope me-2"></i>Messages (<span id="messageCount"><%= messages.filter(function(m){ return m.needsReply; }).length %></span>)</h4>
-                <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm flex-shrink-0">
-                    <i class="fas fa-check me-1"></i><span class="d-none d-xl-inline">Mark All</span>
+                <h4 class="mb-0"><i class="fas fa-envelope me-2"></i><span class="d-none d-md-inline">Messages </span><span class="mdj-dash-tab-count" id="messageCount"><%= messages.filter(function(m){ return m.needsReply; }).length %></span></h4>
+                <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm flex-shrink-0" title="Mark all displayed">
+                    <i class="fas fa-check"></i><span class="d-none d-lg-inline ms-1">Mark all</span>
                 </button>
             </div>
             <div id="messagesList" class="mdj-dash-messages-list">
@@ -1082,19 +1185,20 @@
             function setMode(enabled) {
                 if (enabled) {
                     document.body.classList.add('dark-mode');
-                    if (label) label.textContent = 'Dark';
+                    if (label) label.textContent = 'Light mode';
                     const icon = toggle.querySelector('i');
                     if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
                 } else {
                     document.body.classList.remove('dark-mode');
-                    if (label) label.textContent = 'Light';
+                    if (label) label.textContent = 'Dark mode';
                     const icon = toggle.querySelector('i');
                     if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
                 }
             }
 
-            const saved = localStorage.getItem('djDashboardDarkMode') === 'true';
-            setMode(saved);
+            const saved = localStorage.getItem('djDashboardDarkMode');
+            const enabled = saved === null ? true : saved === 'true';
+            setMode(enabled);
 
             toggle.addEventListener('click', function() {
                 const enabled = document.body.classList.toggle('dark-mode');

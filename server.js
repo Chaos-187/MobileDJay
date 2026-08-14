@@ -219,8 +219,18 @@ const GLOBAL_SETTINGS_DEFAULTS = {
     photo_slideshow_enabled: false,
     photo_slideshow_minutes: 5,
     // Banner style around showcased photos: party | neon | elegant | minimal
-    photo_banner_style: 'party'
+    photo_banner_style: 'party',
+    // Big-screen guest message card: classic | party | neon | elegant | minimal | celebration | retro
+    display_message_style: 'classic'
 };
+
+const DISPLAY_MESSAGE_STYLES = ['classic', 'party', 'neon', 'elegant', 'minimal', 'celebration', 'retro'];
+
+function resolveDisplayMessageStyle(event) {
+    const settings = getGlobalSettings();
+    const raw = (event && event.display_message_style) || settings.display_message_style || 'classic';
+    return DISPLAY_MESSAGE_STYLES.includes(raw) ? raw : 'classic';
+}
 
 // Base URL for shareable guest links: configured public URL if set, else the request host.
 function getPublicBaseUrl(req) {
@@ -1968,7 +1978,8 @@ app.get('/dj/events', djWebAuth.requireDjWebAuth, (req, res) => {
     res.render('event-management', {
         events,
         portalUser: djWebAuth.authUserPayload(req.portalUser),
-        isAdmin: req.portalUser.role === 'admin'
+        isAdmin: req.portalUser.role === 'admin',
+        globalDisplayMessageStyle: resolveDisplayMessageStyle(null)
     });
 });
 
@@ -1989,7 +2000,8 @@ app.get('/dj/display-config/:eventSlug', djWebAuth.requireDjWebAuth, djWebAuth.r
     const event = req.event;
     res.render('display-config', {
         event,
-        displaySlides: slideshowDb.getByEvent(event.id)
+        displaySlides: slideshowDb.getByEvent(event.id),
+        resolvedMessageStyle: resolveDisplayMessageStyle(event)
     });
 });
 
@@ -2003,7 +2015,8 @@ app.get('/dj/display/:eventSlug', (req, res) => {
     res.render('dj-display', {
         event,
         messages: publicMessages,
-        displaySlides: slideshowDb.getByEvent(event.id)
+        displaySlides: slideshowDb.getByEvent(event.id),
+        resolvedMessageStyle: resolveDisplayMessageStyle(event)
     });
 });
 
@@ -2011,7 +2024,7 @@ app.get('/dj/display/:eventSlug', (req, res) => {
 app.get('/dj/display', (req, res) => {
     // Only pass non-private messages to the public display
     const publicMessages = djMessages.filter(msg => !msg.private);
-    res.render('dj-display', { event: null, messages: publicMessages });
+    res.render('dj-display', { event: null, messages: publicMessages, resolvedMessageStyle: 'classic' });
 });
 
 // API endpoint to update event display config
@@ -2030,7 +2043,8 @@ app.put('/api/events/:id/display-config', djWebAuth.requireDjApiAuth, djWebAuth.
         display_bg_overlay_opacity: Math.min(Math.max(parseInt(req.body.display_bg_overlay_opacity, 10) || 45, 0), 100),
         display_show_waiting_message: (req.body.display_show_waiting_message === 1 || req.body.display_show_waiting_message === true || req.body.display_show_waiting_message === '1') ? 1 : 0,
         display_card_color: req.body.display_card_color || '#ffffff',
-        display_card_opacity: parseInt(req.body.display_card_opacity) || 85
+        display_card_opacity: parseInt(req.body.display_card_opacity) || 85,
+        display_message_style: req.body.display_message_style || null
     };
     
     const success = eventDb.update(eventId, updates);

@@ -216,6 +216,9 @@ try {
     db.exec(`ALTER TABLE events ADD COLUMN photo_banner_style TEXT`);
 } catch (e) { /* Column already exists */ }
 try {
+    db.exec(`ALTER TABLE events ADD COLUMN display_message_style TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
     // Secret token protecting the customer-facing gallery link (/gallery/:slug/:token)
     db.exec(`ALTER TABLE events ADD COLUMN share_token TEXT`);
 } catch (e) { /* Column already exists */ }
@@ -481,7 +484,7 @@ const eventDb = {
                                'display_bg_color1', 'display_bg_color2', 'display_bg_image',
                                'display_bg_slideshow_enabled', 'display_bg_slideshow_seconds',
                                'display_bg_overlay_opacity', 'display_show_waiting_message',
-                               'display_card_color', 'display_card_opacity', 'photo_banner_style',
+                               'display_card_color', 'display_card_opacity', 'display_message_style', 'photo_banner_style',
                                'show_tracks_played_guest', 'show_public'];
         const intFlagFields = new Set([
             'is_active', 'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',

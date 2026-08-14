@@ -329,6 +329,48 @@
                                 </div>
                                 <div class="form-text">The banner shown around photos popped up on display screens.</div>
                             </div>
+
+                            <div class="mt-4 mb-0">
+                                <label class="form-label">Message display style (default)</label>
+                                <div id="messageStyleOptions">
+                                    <div class="banner-style-option" data-value="classic">
+                                        <input type="radio" name="messageStyle" value="classic" class="form-check-input mt-0">
+                                        <span class="banner-preview minimal" style="background:rgba(255,255,255,0.9);color:#111;border:1px solid #ccc;">Classic</span>
+                                        <span class="small text-muted">Custom card colour — default for new events</span>
+                                    </div>
+                                    <div class="banner-style-option" data-value="party">
+                                        <input type="radio" name="messageStyle" value="party" class="form-check-input mt-0">
+                                        <span class="banner-preview party">Party</span>
+                                        <span class="small text-muted">Rainbow edge &amp; warm glow</span>
+                                    </div>
+                                    <div class="banner-style-option" data-value="neon">
+                                        <input type="radio" name="messageStyle" value="neon" class="form-check-input mt-0">
+                                        <span class="banner-preview neon">Neon</span>
+                                        <span class="small text-muted">Glowing club vibes</span>
+                                    </div>
+                                    <div class="banner-style-option" data-value="elegant">
+                                        <input type="radio" name="messageStyle" value="elegant" class="form-check-input mt-0">
+                                        <span class="banner-preview elegant">Elegant</span>
+                                        <span class="small text-muted">Gold &amp; shimmer</span>
+                                    </div>
+                                    <div class="banner-style-option" data-value="minimal">
+                                        <input type="radio" name="messageStyle" value="minimal" class="form-check-input mt-0">
+                                        <span class="banner-preview minimal">Minimal</span>
+                                        <span class="small text-muted">Clean &amp; understated</span>
+                                    </div>
+                                    <div class="banner-style-option" data-value="celebration">
+                                        <input type="radio" name="messageStyle" value="celebration" class="form-check-input mt-0">
+                                        <span class="banner-preview party" style="background:linear-gradient(135deg,#ff6b6b,#ffe45c,#6bff8f);">Celebration</span>
+                                        <span class="small text-muted">Bold rainbow — birthdays</span>
+                                    </div>
+                                    <div class="banner-style-option" data-value="retro">
+                                        <input type="radio" name="messageStyle" value="retro" class="form-check-input mt-0">
+                                        <span class="banner-preview neon" style="background:linear-gradient(160deg,#2d0a50,#781464);border-color:#ff6bd8;color:#6be7ff;">Retro</span>
+                                        <span class="small text-muted">Synthwave — 80s night</span>
+                                    </div>
+                                </div>
+                                <div class="form-text">Default theme for guest messages on display screens. Events can override this in Edit Event.</div>
+                            </div>
                         </div>
                     </div>
 
@@ -467,6 +509,19 @@
         });
         selectBannerStyle('<%= settings.photo_banner_style %>');
 
+        const messageStyleOptions = document.querySelectorAll('#messageStyleOptions .banner-style-option');
+        function selectMessageStyle(value) {
+            messageStyleOptions.forEach(opt => {
+                const isSelected = opt.dataset.value === value;
+                opt.classList.toggle('selected', isSelected);
+                opt.querySelector('input').checked = isSelected;
+            });
+        }
+        messageStyleOptions.forEach(opt => {
+            opt.addEventListener('click', () => selectMessageStyle(opt.dataset.value));
+        });
+        selectMessageStyle('<%= settings.display_message_style || "classic" %>');
+
         // Save settings
         const form = document.getElementById('settingsForm');
         const saveStatus = document.getElementById('saveStatus');
@@ -490,7 +545,8 @@
                 photo_max_per_guest: parseInt(document.getElementById('photoMaxPerGuest').value, 10) || 20,
                 photo_slideshow_enabled: document.getElementById('photoSlideshowEnabled').checked,
                 photo_slideshow_minutes: parseInt(document.getElementById('photoSlideshowMinutes').value, 10) || 5,
-                photo_banner_style: (document.querySelector('input[name="bannerStyle"]:checked') || {}).value || 'party'
+                photo_banner_style: (document.querySelector('input[name="bannerStyle"]:checked') || {}).value || 'party',
+                display_message_style: (document.querySelector('input[name="messageStyle"]:checked') || {}).value || 'classic'
             };
 
             try {

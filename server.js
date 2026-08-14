@@ -1869,6 +1869,7 @@ app.put('/api/events/:id/display-config', djWebAuth.requireDjApiAuth, djWebAuth.
         display_bg_image: req.body.display_bg_image || null,
         display_bg_slideshow_enabled: req.body.display_bg_slideshow_enabled ? 1 : 0,
         display_bg_slideshow_seconds: Math.min(Math.max(parseInt(req.body.display_bg_slideshow_seconds, 10) || 15, 5), 300),
+        display_bg_overlay_opacity: Math.min(Math.max(parseInt(req.body.display_bg_overlay_opacity, 10) || 45, 0), 100),
         display_card_color: req.body.display_card_color || '#ffffff',
         display_card_opacity: parseInt(req.body.display_card_opacity) || 85
     };

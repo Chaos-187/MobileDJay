@@ -279,6 +279,11 @@
                                         <label for="slideshowSeconds" class="form-label">Seconds per image</label>
                                         <input type="number" class="form-control" id="slideshowSeconds" min="5" max="300" value="<%= event.display_bg_slideshow_seconds || 15 %>">
                                     </div>
+                                    <div class="col-12">
+                                        <label for="bgOverlayOpacity" class="form-label">Image overlay opacity: <span id="bgOverlayOpacityValue"><%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %></span>%</label>
+                                        <input type="range" class="form-range" id="bgOverlayOpacity" min="0" max="100" value="<%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %>">
+                                        <small class="text-muted">How strongly the gradient tints slideshow and background images. Lower = more vivid photos; 0 = no tint.</small>
+                                    </div>
                                 </div>
                                 <ul class="slideshow-list mb-3" id="displaySlideshowList"></ul>
                                 <input type="file" id="displaySlideshowFile" accept="image/*" class="d-none">
@@ -438,12 +443,25 @@
             document.getElementById('cardOpacityValue').textContent = this.value;
             updatePreview();
         });
+
+        document.getElementById('bgOverlayOpacity').addEventListener('input', function() {
+            document.getElementById('bgOverlayOpacityValue').textContent = this.value;
+            updatePreview();
+        });
         
         // Other inputs
         document.getElementById('showQrCode').addEventListener('change', updatePreview);
         document.getElementById('qrLabel').addEventListener('input', updatePreview);
         document.getElementById('bgImage').addEventListener('input', updatePreview);
         
+        function displayColorWithAlpha(hex, opacityPercent) {
+            const h = (hex && /^#[0-9A-Fa-f]{6}$/.test(hex)) ? hex : '#000428';
+            const p = Math.max(0, Math.min(100, Number(opacityPercent) || 0));
+            if (p <= 0) return 'transparent';
+            const a = Math.round(p / 100 * 255).toString(16).padStart(2, '0');
+            return h + a;
+        }
+
         // Update preview
         function updatePreview() {
             const showQr = document.getElementById('showQrCode').checked;
@@ -453,12 +471,16 @@
             const bgColor1 = document.getElementById('bgColor1').value;
             const bgColor2 = document.getElementById('bgColor2').value;
             const bgImage = document.getElementById('bgImage').value;
+            const bgOverlayOpacity = parseInt(document.getElementById('bgOverlayOpacity').value, 10);
             const cardBgColor = document.getElementById('cardBgColor').value;
             const cardOpacity = document.getElementById('cardOpacity').value;
             
             // Update background
             if (bgImage) {
-                previewContainer.style.background = `linear-gradient(180deg, ${bgColor1}aa, ${bgColor2}aa), url('${bgImage}')`;
+                const overlay = Number.isFinite(bgOverlayOpacity) && bgOverlayOpacity > 0
+                    ? `linear-gradient(180deg, ${displayColorWithAlpha(bgColor1, bgOverlayOpacity)}, ${displayColorWithAlpha(bgColor2, bgOverlayOpacity)}), `
+                    : '';
+                previewContainer.style.background = `${overlay}url('${bgImage.replace(/'/g, "\\'")}')`;
                 previewContainer.style.backgroundSize = 'cover';
                 previewContainer.style.backgroundPosition = 'center';
             } else {
@@ -502,6 +524,7 @@
                 display_bg_image: document.getElementById('bgImage').value || null,
                 display_bg_slideshow_enabled: document.getElementById('slideshowEnabled').checked,
                 display_bg_slideshow_seconds: parseInt(document.getElementById('slideshowSeconds').value, 10) || 15,
+                display_bg_overlay_opacity: parseInt(document.getElementById('bgOverlayOpacity').value, 10) || 0,
                 display_card_color: document.getElementById('cardBgColor').value,
                 display_card_opacity: document.getElementById('cardOpacity').value
             };
@@ -555,6 +578,8 @@
                 document.getElementById('bgImage').value = '';
                 document.getElementById('slideshowEnabled').checked = false;
                 document.getElementById('slideshowSeconds').value = 15;
+                document.getElementById('bgOverlayOpacity').value = 45;
+                document.getElementById('bgOverlayOpacityValue').textContent = '45';
                 document.getElementById('cardBgColor').value = '#ffffff';
                 document.getElementById('cardBgColorText').value = '#ffffff';
                 document.getElementById('cardOpacity').value = 85;

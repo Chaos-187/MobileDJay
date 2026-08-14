@@ -1108,6 +1108,7 @@
             bgSlideshowEnabled: <%= event.display_bg_slideshow_enabled ? 'true' : 'false' %>,
             bgSlideshowSeconds: <%= event.display_bg_slideshow_seconds || 15 %>,
             bgSlideshowImages: <%- JSON.stringify((typeof displaySlides !== 'undefined' ? displaySlides : []).map(function(s) { return s.imageUrl; })) %>,
+            bgOverlayOpacity: <%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %>,
             cardColor: '<%= event.display_card_color || '#ffffff' %>',
             cardOpacity: <%= event.display_card_opacity || 85 %>,
             eventSlug: '<%= event.slug %>'
@@ -1125,6 +1126,7 @@
             bgSlideshowEnabled: false,
             bgSlideshowSeconds: 15,
             bgSlideshowImages: [],
+            bgOverlayOpacity: 45,
             cardColor: '#ffffff',
             cardOpacity: 85,
             eventSlug: null
@@ -1142,10 +1144,24 @@
 
         const slideA = document.getElementById('displayBgSlideA');
         const slideB = document.getElementById('displayBgSlideB');
-        const gradientOverlay = 'linear-gradient(180deg, ' + bg1 + 'aa, ' + bg2 + 'aa)';
+
+        function colorWithAlpha(hex, opacityPercent) {
+            const h = (hex && /^#[0-9A-Fa-f]{6}$/.test(hex)) ? hex : '#000428';
+            const p = Math.max(0, Math.min(100, Number(opacityPercent) || 0));
+            if (p <= 0) return 'transparent';
+            const a = Math.round(p / 100 * 255).toString(16).padStart(2, '0');
+            return h + a;
+        }
+
+        function gradientOverlayForImages() {
+            const op = config.bgOverlayOpacity;
+            if (op <= 0) return '';
+            return 'linear-gradient(180deg, ' + colorWithAlpha(bg1, op) + ', ' + colorWithAlpha(bg2, op) + ')';
+        }
 
         function setSlideLayer(layer, imageUrl) {
-            layer.style.backgroundImage = gradientOverlay + (imageUrl ? ", url('" + imageUrl + "')" : '');
+            const overlay = gradientOverlayForImages();
+            layer.style.backgroundImage = (overlay ? overlay + ', ' : '') + (imageUrl ? "url('" + imageUrl + "')" : 'none');
             layer.classList.add('is-visible');
         }
 

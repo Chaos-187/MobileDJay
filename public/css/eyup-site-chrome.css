@@ -103,6 +103,32 @@ body.mdj-eyup-brand.mdj-dash-tools.mdj-events-mgmt-page main.container.mdj-dash-
     max-width: min(1680px, 96vw);
 }
 
+/* Event management: use natural page scroll (no inner scrollbar) */
+html:has(body.mdj-events-mgmt-page) {
+    overflow-y: auto !important;
+    height: auto !important;
+}
+
+body.mdj-eyup-brand.mdj-events-mgmt-page {
+    overflow-y: auto !important;
+    height: auto !important;
+    min-height: 100vh;
+}
+
+body.mdj-eyup-brand.mdj-events-mgmt-page main.container.mdj-dash-main {
+    max-height: none;
+    overflow: visible;
+}
+
+body.mdj-eyup-brand.mdj-events-mgmt-page main.container.mdj-dash-main > .mdj-dash-scroll {
+    overflow: visible;
+    max-height: none;
+    min-height: 0;
+    flex: none;
+    padding-top: clamp(1.25rem, 3vw, 2rem);
+    padding-bottom: 1.5rem;
+}
+
 /* Guest pages: pin the statutory footer to the bottom of the viewport
    even when the page content is short */
 body.mdj-eyup-brand:not(.mdj-dash-tools) {

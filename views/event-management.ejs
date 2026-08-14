@@ -31,7 +31,9 @@
             font-family: var(--font-mono);
             font-size: 0.82rem;
             color: rgba(240, 240, 245, 0.55);
-            margin-bottom: 1rem;
+            margin-bottom: 1.25rem;
+            line-height: 1.5;
+            max-width: 42rem;
         }
 
         body.mdj-dash-tools:not(.dark-mode) .mdj-events-lede {
@@ -43,13 +45,13 @@
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
             position: sticky;
-            top: 0;
+            top: var(--mdj-eyup-nav-h, 74px);
             z-index: 5;
-            padding: 0.65rem 0;
-            background: linear-gradient(180deg, rgba(10, 10, 10, 0.96) 0%, rgba(10, 10, 10, 0.88) 80%, transparent 100%);
+            padding: 0.85rem 0 1rem;
+            background: linear-gradient(180deg, rgba(10, 10, 10, 0.98) 0%, rgba(10, 10, 10, 0.94) 85%, transparent 100%);
         }
 
         body.mdj-dash-tools:not(.dark-mode) .mdj-events-toolbar {
@@ -114,15 +116,15 @@
         .mdj-events-list {
             display: flex;
             flex-direction: column;
-            gap: 0.45rem;
+            gap: 0.75rem;
         }
 
         .mdj-event-row {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
-            gap: 0.65rem 1rem;
+            gap: 1rem 1.5rem;
             align-items: center;
-            padding: 0.75rem 0.85rem;
+            padding: 1rem 1.25rem;
             border: 1px solid rgba(255, 102, 0, 0.18);
             border-radius: 2px;
             background: rgba(255, 255, 255, 0.03);
@@ -173,20 +175,28 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 0.35rem 0.5rem;
-            margin: 0 0 0.2rem;
-            font-size: 0.95rem;
+            gap: 0.4rem 0.65rem;
+            margin: 0 0 0.45rem;
+            font-size: 1.02rem;
             font-weight: 700;
-            line-height: 1.25;
+            line-height: 1.3;
+        }
+
+        .mdj-event-row__subline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem 1.1rem;
         }
 
         .mdj-event-row__meta {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.35rem 0.85rem;
+            align-items: center;
+            gap: 0.45rem 1rem;
             font-family: var(--font-mono);
-            font-size: 0.72rem;
-            color: rgba(240, 240, 245, 0.52);
+            font-size: 0.78rem;
+            color: rgba(240, 240, 245, 0.58);
         }
 
         body.mdj-dash-tools:not(.dark-mode) .mdj-event-row__meta {
@@ -208,34 +218,40 @@
         .mdj-event-row__features {
             display: inline-flex;
             flex-wrap: wrap;
-            gap: 0.25rem;
-            margin-top: 0.35rem;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0;
         }
 
         .mdj-event-row__feature {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 1.55rem;
-            height: 1.55rem;
+            width: 1.65rem;
+            height: 1.65rem;
             border-radius: 2px;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             opacity: 0.92;
         }
 
         .mdj-event-row__actions {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             align-items: center;
             justify-content: flex-end;
-            gap: 0.35rem;
+            gap: 0.5rem;
         }
 
         .mdj-event-row__actions .btn {
             font-family: var(--font-mono);
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             letter-spacing: 0.03em;
-            padding: 0.3rem 0.55rem;
+            padding: 0.45rem 0.7rem;
+            white-space: nowrap;
+        }
+
+        .mdj-event-row__actions .dropdown-toggle::after {
+            display: none;
         }
 
         .mdj-events-empty-filter {
@@ -253,11 +269,14 @@
         @media (max-width: 768px) {
             .mdj-event-row {
                 grid-template-columns: 1fr;
+                gap: 0.85rem;
+                padding: 1rem;
             }
 
             .mdj-event-row__actions {
+                flex-wrap: wrap;
                 justify-content: flex-start;
-                padding-top: 0.35rem;
+                padding-top: 0.65rem;
                 border-top: 1px solid rgba(255, 102, 0, 0.12);
             }
 
@@ -268,6 +287,12 @@
             .mdj-events-search {
                 max-width: none;
                 flex-basis: 100%;
+            }
+
+            .mdj-event-row__subline {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.55rem;
             }
         }
 
@@ -745,21 +770,20 @@
                 <span class="logo-subtitle"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Event Management</span>
             </div>
             <div class="mdj-nav-controls">
-                <a href="/dj" class="btn btn-outline-light btn-sm" title="Back to Dashboard">
+                <a href="/dj" class="btn btn-outline-light btn-sm" title="Back to dashboard">
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
-                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
+                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global settings">
                     <i class="fas fa-gear"></i>
                 </a>
-                <% } %>
-                <% if (portalUser) { %>
-                <span class="text-light small d-none d-md-inline"><%= [portalUser.first_name, portalUser.last_name].filter(Boolean).join(' ') || portalUser.email %></span>
-                <button type="button" class="btn btn-outline-light btn-sm" id="djLogoutBtn" title="Sign out"><i class="fas fa-sign-out-alt"></i></button>
                 <% } %>
                 <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
                     <i class="fas fa-moon"></i>
                 </button>
+                <% if (portalUser) { %>
+                <button type="button" class="btn btn-outline-light btn-sm" id="djLogoutBtn" title="Sign out"><i class="fas fa-sign-out-alt"></i></button>
+                <% } %>
             </div>
         </div>
     </nav>
@@ -825,38 +849,40 @@
                                         <span class="badge bg-secondary">Inactive</span>
                                     <% } %>
                                 </h2>
-                                <div class="mdj-event-row__meta">
-                                    <% if (event.event_date) { %>
-                                        <span><i class="fas fa-calendar-day"></i><%= new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) %></span>
-                                    <% } %>
-                                    <% if (event.venue) { %>
-                                        <span><i class="fas fa-map-marker-alt"></i><%= event.venue %></span>
-                                    <% } %>
-                                    <span class="mdj-event-row__slug"><i class="fas fa-link"></i>/<%= event.slug %></span>
-                                    <% if (event.stats && event.stats.totalPhotos) { %>
-                                        <span><i class="fas fa-images"></i><%= event.stats.totalPhotos %> photos</span>
-                                    <% } %>
-                                </div>
-                                <div class="mdj-event-row__features" aria-label="Enabled features">
-                                    <% if (event.enable_song_requests) { %><span class="mdj-event-row__feature bg-success text-white" title="Song requests"><i class="fas fa-music"></i></span><% } %>
-                                    <% if (event.enable_karaoke_requests) { %><span class="mdj-event-row__feature bg-info text-dark" title="Karaoke"><i class="fas fa-microphone"></i></span><% } %>
-                                    <% if (event.enable_messages) { %><span class="mdj-event-row__feature bg-warning text-dark" title="Messages"><i class="fas fa-envelope"></i></span><% } %>
-                                    <% if (event.enable_photos) { %><span class="mdj-event-row__feature text-white" style="background:#a855f7;" title="Guest photos"><i class="fas fa-camera"></i></span><% } %>
+                                <div class="mdj-event-row__subline">
+                                    <div class="mdj-event-row__meta">
+                                        <% if (event.event_date) { %>
+                                            <span><i class="fas fa-calendar-day"></i><%= new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+                                        <% } %>
+                                        <% if (event.venue) { %>
+                                            <span><i class="fas fa-map-marker-alt"></i><%= event.venue %></span>
+                                        <% } %>
+                                        <span class="mdj-event-row__slug"><i class="fas fa-link"></i>/<%= event.slug %></span>
+                                        <% if (event.stats && event.stats.totalPhotos) { %>
+                                            <span><i class="fas fa-images"></i><%= event.stats.totalPhotos %> photos</span>
+                                        <% } %>
+                                    </div>
+                                    <div class="mdj-event-row__features" aria-label="Enabled features">
+                                        <% if (event.enable_song_requests) { %><span class="mdj-event-row__feature bg-success text-white" title="Song requests"><i class="fas fa-music"></i></span><% } %>
+                                        <% if (event.enable_karaoke_requests) { %><span class="mdj-event-row__feature bg-info text-dark" title="Karaoke"><i class="fas fa-microphone"></i></span><% } %>
+                                        <% if (event.enable_messages) { %><span class="mdj-event-row__feature bg-warning text-dark" title="Messages"><i class="fas fa-envelope"></i></span><% } %>
+                                        <% if (event.enable_photos) { %><span class="mdj-event-row__feature text-white" style="background:#a855f7;" title="Guest photos"><i class="fas fa-camera"></i></span><% } %>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="mdj-event-row__actions">
                             <button type="button" class="btn btn-outline-secondary btn-sm copy-url" data-url="/event/<%= event.slug %>" title="Copy guest URL">
-                                <i class="fas fa-copy"></i><span class="d-none d-lg-inline ms-1">Copy</span>
+                                <i class="fas fa-copy"></i><span class="d-none d-xl-inline ms-1">Copy</span>
                             </button>
                             <a href="/dj/display/<%= event.slug %>" target="_blank" rel="noopener" class="btn btn-primary btn-sm" title="Open display screen">
-                                <i class="fas fa-tv"></i><span class="d-none d-lg-inline ms-1">Display</span>
+                                <i class="fas fa-tv"></i><span class="d-none d-xl-inline ms-1">Display</span>
                             </a>
                             <button type="button" class="btn btn-outline-primary btn-sm edit-event" data-event-id="<%= event.id %>" title="Edit event">
                                 <i class="fas fa-edit"></i><span class="d-none d-xl-inline ms-1">Edit</span>
                             </button>
                             <div class="dropdown">
-                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle mdj-event-row__menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">

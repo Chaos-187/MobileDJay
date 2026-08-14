@@ -25,8 +25,250 @@
             border-color: #28a745;
             border-width: 2px;
         }
-        .event-card.inactive {
-            opacity: 0.6;
+
+        /* Compact event list (replaces card grid) */
+        .mdj-events-lede {
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            color: rgba(240, 240, 245, 0.55);
+            margin-bottom: 1rem;
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-lede {
+            color: #6c757d;
+        }
+
+        .mdj-events-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            padding: 0.65rem 0;
+            background: linear-gradient(180deg, rgba(10, 10, 10, 0.96) 0%, rgba(10, 10, 10, 0.88) 80%, transparent 100%);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-toolbar {
+            background: linear-gradient(180deg, rgba(244, 246, 249, 0.98) 0%, rgba(244, 246, 249, 0.92) 80%, transparent 100%);
+        }
+
+        .mdj-events-toolbar-left {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.65rem;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .mdj-events-search {
+            flex: 1 1 220px;
+            min-width: 0;
+            max-width: 320px;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+        }
+
+        .mdj-events-filters {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .mdj-events-filter {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border-radius: 999px;
+            padding: 0.35rem 0.75rem;
+            border: 1px solid rgba(255, 102, 0, 0.28);
+            color: rgba(240, 240, 245, 0.72);
+            background: rgba(255, 102, 0, 0.06);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-filter {
+            color: #495057;
+            background: #ffffff;
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+
+        .mdj-events-filter.active {
+            color: var(--eyup-primary-black, #0a0a0a);
+            background: var(--eyup-primary-orange, #ff6600);
+            border-color: var(--eyup-primary-orange, #ff6600);
+            font-weight: 700;
+        }
+
+        .mdj-events-filter-count {
+            display: inline-block;
+            min-width: 1.1rem;
+            margin-left: 0.2rem;
+            opacity: 0.85;
+        }
+
+        .mdj-events-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+        }
+
+        .mdj-event-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.65rem 1rem;
+            align-items: center;
+            padding: 0.75rem 0.85rem;
+            border: 1px solid rgba(255, 102, 0, 0.18);
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.03);
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-event-row {
+            background: #ffffff;
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .mdj-event-row.is-active {
+            border-left: 3px solid #28a745;
+        }
+
+        .mdj-event-row.is-inactive {
+            border-left: 3px solid rgba(108, 117, 125, 0.55);
+        }
+
+        .mdj-event-row__main {
+            min-width: 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+        }
+
+        .mdj-event-row__status {
+            flex-shrink: 0;
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 50%;
+            margin-top: 0.45rem;
+            background: #6c757d;
+        }
+
+        .mdj-event-row.is-active .mdj-event-row__status {
+            background: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.18);
+        }
+
+        .mdj-event-row__body {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .mdj-event-row__title {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem 0.5rem;
+            margin: 0 0 0.2rem;
+            font-size: 0.95rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .mdj-event-row__meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: rgba(240, 240, 245, 0.52);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-event-row__meta {
+            color: #6c757d;
+        }
+
+        .mdj-event-row__meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            min-width: 0;
+        }
+
+        .mdj-event-row__slug {
+            font-family: var(--font-mono);
+            opacity: 0.85;
+        }
+
+        .mdj-event-row__features {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.35rem;
+        }
+
+        .mdj-event-row__feature {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.55rem;
+            height: 1.55rem;
+            border-radius: 2px;
+            font-size: 0.72rem;
+            opacity: 0.92;
+        }
+
+        .mdj-event-row__actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.35rem;
+        }
+
+        .mdj-event-row__actions .btn {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.03em;
+            padding: 0.3rem 0.55rem;
+        }
+
+        .mdj-events-empty-filter {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: rgba(240, 240, 245, 0.55);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-empty-filter {
+            color: #6c757d;
+        }
+
+        @media (max-width: 768px) {
+            .mdj-event-row {
+                grid-template-columns: 1fr;
+            }
+
+            .mdj-event-row__actions {
+                justify-content: flex-start;
+                padding-top: 0.35rem;
+                border-top: 1px solid rgba(255, 102, 0, 0.12);
+            }
+
+            body.mdj-dash-tools:not(.dark-mode) .mdj-event-row__actions {
+                border-top-color: rgba(0, 0, 0, 0.08);
+            }
+
+            .mdj-events-search {
+                max-width: none;
+                flex-basis: 100%;
+            }
         }
 
         /* Bigger edit modal — room for options + live previews */
@@ -507,9 +749,6 @@
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createEventModal">
-                    <i class="fas fa-plus me-1"></i>Create Event
-                </button>
                 <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
                     <i class="fas fa-gear"></i>
                 </a>
@@ -527,123 +766,117 @@
 
     <main class="container mdj-dash-main">
         <div class="mdj-dash-scroll">
-        <div id="eventsList" class="row g-3">
+        <% if (events && events.length > 0) { %>
+            <% const activeEventCount = events.filter(function(e) { return e.is_active; }).length; %>
+            <% const inactiveEventCount = events.length - activeEventCount; %>
+            <p class="mdj-events-lede mb-0">Find an event quickly — active gigs show by default. Use search or filters when the list grows.</p>
+            <div class="mdj-events-toolbar">
+                <div class="mdj-events-toolbar-left">
+                    <input type="search" class="form-control form-control-sm mdj-events-search" id="eventsSearch" placeholder="Search name, venue, slug…" autocomplete="off" aria-label="Search events">
+                    <div class="mdj-events-filters" role="group" aria-label="Filter events by status">
+                        <button type="button" class="btn btn-sm mdj-events-filter active" data-filter="active">Active <span class="mdj-events-filter-count"><%= activeEventCount %></span></button>
+                        <button type="button" class="btn btn-sm mdj-events-filter" data-filter="inactive">Inactive <span class="mdj-events-filter-count"><%= inactiveEventCount %></span></button>
+                        <button type="button" class="btn btn-sm mdj-events-filter" data-filter="all">All <span class="mdj-events-filter-count"><%= events.length %></span></button>
+                    </div>
+                </div>
+                <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                    <i class="fas fa-plus me-1"></i>New event
+                </button>
+                <% } %>
+            </div>
+            <div id="eventsEmptyFilter" class="mdj-events-empty-filter d-none" role="status">
+                <i class="fas fa-search mb-2 d-block"></i>
+                No events match your search or filter.
+            </div>
+        <% } %>
+
+        <div id="eventsList" class="mdj-events-list">
             <% if (events && events.length === 0) { %>
-                <div class="col-12">
-                    <div class="card text-center">
-                        <div class="card-body py-5">
-                            <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
-                            <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
-                            <h5 class="text-muted">No events yet</h5>
-                            <p class="text-muted">Create your first event to get a unique URL for customers</p>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
-                                <i class="fas fa-plus me-2"></i>Create Event
-                            </button>
-                            <% } else { %>
-                            <h5 class="text-muted">No assigned request events</h5>
-                            <p class="text-muted mb-0">Events appear here when your booking is linked to a requests event in the EYUP portal.</p>
-                            <p class="mt-2"><a href="https://eyupevents.uk/events/dj.html" target="_blank" rel="noopener">View your DJ portal</a></p>
-                            <% } %>
-                        </div>
+                <div class="card text-center">
+                    <div class="card-body py-5">
+                        <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
+                        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                        <h5 class="text-muted">No events yet</h5>
+                        <p class="text-muted">Create your first event to get a unique URL for customers</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                            <i class="fas fa-plus me-2"></i>Create Event
+                        </button>
+                        <% } else { %>
+                        <h5 class="text-muted">No assigned request events</h5>
+                        <p class="text-muted mb-0">Events appear here when your booking is linked to a requests event in the EYUP portal.</p>
+                        <p class="mt-2"><a href="https://eyupevents.uk/events/dj.html" target="_blank" rel="noopener">View your DJ portal</a></p>
+                        <% } %>
                     </div>
                 </div>
             <% } else if (events) { %>
                 <% events.forEach(function(event) { %>
-                    <div class="col-md-6 col-xl-4 col-xxl-3">
-                        <div class="card event-card <%= event.is_active ? 'active' : 'inactive' %>" data-event-id="<%= event.id %>">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0">
-                                    <% if (event.is_active) { %>
-                                        <span class="badge bg-success me-2">Active</span>
-                                    <% } else { %>
-                                        <span class="badge bg-secondary me-2">Inactive</span>
-                                    <% } %>
-                                    <% if (event.show_public) { %>
-                                        <span class="badge bg-primary me-2" title="Listed on public events page"><i class="fas fa-globe me-1"></i>Public</span>
-                                    <% } %>
+                    <% const searchBlob = [event.name, event.venue, event.slug, event.description].filter(Boolean).join(' ').toLowerCase(); %>
+                    <article class="mdj-event-row <%= event.is_active ? 'is-active' : 'is-inactive' %>" data-event-id="<%= event.id %>" data-active="<%= event.is_active ? '1' : '0' %>" data-search="<%= searchBlob.replace(/"/g, '&quot;') %>">
+                        <div class="mdj-event-row__main">
+                            <span class="mdj-event-row__status" aria-hidden="true"></span>
+                            <div class="mdj-event-row__body">
+                                <h2 class="mdj-event-row__title">
                                     <%= event.name %>
-                                </h6>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item edit-event" href="#" data-event-id="<%= event.id %>"><i class="fas fa-edit me-2"></i>Edit</a></li>
-                                        <li><a class="dropdown-item toggle-event" href="#" data-event-id="<%= event.id %>" data-active="<%= event.is_active %>">
-                                            <i class="fas fa-<%= event.is_active ? 'pause' : 'play' %> me-2"></i><%= event.is_active ? 'Deactivate' : 'Activate' %>
-                                        </a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger delete-event" href="#" data-event-id="<%= event.id %>"><i class="fas fa-trash me-2"></i>Delete</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <% if (event.description) { %>
-                                    <p class="card-text small text-muted mb-2"><%= event.description %></p>
-                                <% } %>
-                                <% if (event.venue) { %>
-                                    <p class="card-text small mb-2"><i class="fas fa-map-marker-alt me-2"></i><%= event.venue %></p>
-                                <% } %>
-                                <% if (event.event_date) { %>
-                                    <p class="card-text small mb-2"><i class="fas fa-clock me-2"></i><%= new Date(event.event_date).toLocaleDateString() %></p>
-                                <% } %>
-                                
-                                <!-- Feature toggles display -->
-                                <div class="mb-2">
-                                    <% if (event.enable_song_requests) { %><span class="badge bg-success me-1"><i class="fas fa-music me-1"></i>Songs</span><% } %>
-                                    <% if (event.enable_karaoke_requests) { %><span class="badge bg-info me-1"><i class="fas fa-microphone me-1"></i>Karaoke</span><% } %>
-                                    <% if (event.enable_messages) { %><span class="badge bg-warning text-dark me-1"><i class="fas fa-envelope me-1"></i>Messages</span><% } %>
-                                    <% if (event.enable_photos) { %><span class="badge me-1" style="background:#a855f7;"><i class="fas fa-camera me-1"></i>Photos</span><% } %>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <label class="form-label small fw-bold">Customer URL:</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control event-url" value="/event/<%= event.slug %>" readonly>
-                                        <button class="btn btn-outline-secondary copy-url" type="button" data-url="/event/<%= event.slug %>" title="Copy URL">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                        <button class="btn btn-outline-primary show-qr" type="button" data-slug="<%= event.slug %>" data-name="<%= event.name %>" title="Show QR Code">
-                                            <i class="fas fa-qrcode"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <a href="/event/<%= event.slug %>" target="_blank" class="btn btn-sm btn-outline-success w-100">
-                                        <i class="fas fa-external-link-alt me-2"></i>Open Event Page
-                                    </a>
-                                </div>
-                                
-                                <!-- Display buttons -->
-                                <div class="mt-2 d-flex gap-1">
-                                    <a href="/dj/display/<%= event.slug %>" target="_blank" class="btn btn-sm btn-primary flex-grow-1" title="Open Display for this event">
-                                        <i class="fas fa-tv me-1"></i>Display
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-primary edit-display" data-event-id="<%= event.id %>" title="Configure Display">
-                                        <i class="fas fa-cog"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Share + photos -->
-                                <div class="mt-2 d-flex gap-1">
-                                    <button type="button" class="btn btn-sm btn-outline-info flex-grow-1 share-links" data-event-id="<%= event.id %>" data-name="<%= event.name %>" title="Share event links">
-                                        <i class="fas fa-share-nodes me-1"></i>Share Links
-                                    </button>
-                                    <% if (event.enable_photos) { %>
-                                    <a href="/dj/photos/<%= event.slug %>" class="btn btn-sm btn-outline-light" title="Manage photos" style="border-color:#a855f7; color:#c084fc;">
-                                        <i class="fas fa-images"></i><% if (event.stats && event.stats.totalPhotos) { %> <%= event.stats.totalPhotos %><% } %>
-                                    </a>
+                                    <% if (event.show_public) { %>
+                                        <span class="badge bg-primary" title="Listed on public events page"><i class="fas fa-globe"></i></span>
+                                    <% } %>
+                                    <% if (!event.is_active) { %>
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    <% } %>
+                                </h2>
+                                <div class="mdj-event-row__meta">
+                                    <% if (event.event_date) { %>
+                                        <span><i class="fas fa-calendar-day"></i><%= new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+                                    <% } %>
+                                    <% if (event.venue) { %>
+                                        <span><i class="fas fa-map-marker-alt"></i><%= event.venue %></span>
+                                    <% } %>
+                                    <span class="mdj-event-row__slug"><i class="fas fa-link"></i>/<%= event.slug %></span>
+                                    <% if (event.stats && event.stats.totalPhotos) { %>
+                                        <span><i class="fas fa-images"></i><%= event.stats.totalPhotos %> photos</span>
                                     <% } %>
                                 </div>
-                            </div>
-                            <div class="card-footer bg-transparent">
-                                <small class="text-muted">
-                                    Created: <%= new Date(event.created_at).toLocaleDateString() %>
-                                </small>
+                                <div class="mdj-event-row__features" aria-label="Enabled features">
+                                    <% if (event.enable_song_requests) { %><span class="mdj-event-row__feature bg-success text-white" title="Song requests"><i class="fas fa-music"></i></span><% } %>
+                                    <% if (event.enable_karaoke_requests) { %><span class="mdj-event-row__feature bg-info text-dark" title="Karaoke"><i class="fas fa-microphone"></i></span><% } %>
+                                    <% if (event.enable_messages) { %><span class="mdj-event-row__feature bg-warning text-dark" title="Messages"><i class="fas fa-envelope"></i></span><% } %>
+                                    <% if (event.enable_photos) { %><span class="mdj-event-row__feature text-white" style="background:#a855f7;" title="Guest photos"><i class="fas fa-camera"></i></span><% } %>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                        <div class="mdj-event-row__actions">
+                            <button type="button" class="btn btn-outline-secondary btn-sm copy-url" data-url="/event/<%= event.slug %>" title="Copy guest URL">
+                                <i class="fas fa-copy"></i><span class="d-none d-lg-inline ms-1">Copy</span>
+                            </button>
+                            <a href="/dj/display/<%= event.slug %>" target="_blank" rel="noopener" class="btn btn-primary btn-sm" title="Open display screen">
+                                <i class="fas fa-tv"></i><span class="d-none d-lg-inline ms-1">Display</span>
+                            </a>
+                            <button type="button" class="btn btn-outline-primary btn-sm edit-event" data-event-id="<%= event.id %>" title="Edit event">
+                                <i class="fas fa-edit"></i><span class="d-none d-xl-inline ms-1">Edit</span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/event/<%= event.slug %>" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-2"></i>Open guest page</a></li>
+                                    <li><a class="dropdown-item" href="/dj?event=<%= event.id %>"><i class="fas fa-headphones me-2"></i>Open in dashboard</a></li>
+                                    <li><button type="button" class="dropdown-item share-links" data-event-id="<%= event.id %>" data-name="<%= event.name %>"><i class="fas fa-share-nodes me-2"></i>Share links</button></li>
+                                    <li><button type="button" class="dropdown-item show-qr" data-slug="<%= event.slug %>" data-name="<%= event.name %>"><i class="fas fa-qrcode me-2"></i>QR code</button></li>
+                                    <li><button type="button" class="dropdown-item edit-display" data-event-id="<%= event.id %>"><i class="fas fa-cog me-2"></i>Display settings</button></li>
+                                    <% if (event.enable_photos) { %>
+                                    <li><a class="dropdown-item" href="/dj/photos/<%= event.slug %>"><i class="fas fa-images me-2"></i>Manage photos<% if (event.stats && event.stats.totalPhotos) { %> (<%= event.stats.totalPhotos %>)<% } %></a></li>
+                                    <% } %>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item toggle-event" href="#" data-event-id="<%= event.id %>" data-active="<%= event.is_active ? '1' : '0' %>">
+                                        <i class="fas fa-<%= event.is_active ? 'pause' : 'play' %> me-2"></i><%= event.is_active ? 'Deactivate' : 'Activate' %>
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger delete-event" href="#" data-event-id="<%= event.id %>"><i class="fas fa-trash me-2"></i>Delete</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </article>
                 <% }); %>
             <% } %>
         </div>
@@ -1407,6 +1640,47 @@
         document.getElementById('djLogoutBtn')?.addEventListener('click', function () {
             if (typeof window.mdjLogout === 'function') window.mdjLogout();
         });
+
+        // Event list search + status filter
+        (function initEventsListFilter() {
+            const searchInput = document.getElementById('eventsSearch');
+            const filterBtns = document.querySelectorAll('.mdj-events-filter');
+            const rows = document.querySelectorAll('.mdj-event-row');
+            const emptyState = document.getElementById('eventsEmptyFilter');
+            if (!rows.length || !filterBtns.length) return;
+
+            let currentFilter = localStorage.getItem('mdjEventsFilter') || 'active';
+
+            function applyEventsListFilter() {
+                const q = (searchInput?.value || '').trim().toLowerCase();
+                let visible = 0;
+                rows.forEach(function(row) {
+                    const active = row.dataset.active === '1';
+                    const matchesFilter =
+                        currentFilter === 'all' ||
+                        (currentFilter === 'active' && active) ||
+                        (currentFilter === 'inactive' && !active);
+                    const matchesSearch = !q || (row.dataset.search || '').includes(q);
+                    const show = matchesFilter && matchesSearch;
+                    row.classList.toggle('d-none', !show);
+                    if (show) visible++;
+                });
+                if (emptyState) emptyState.classList.toggle('d-none', visible > 0);
+            }
+
+            filterBtns.forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.filter === currentFilter);
+                btn.addEventListener('click', function() {
+                    currentFilter = btn.dataset.filter;
+                    localStorage.setItem('mdjEventsFilter', currentFilter);
+                    filterBtns.forEach(function(b) { b.classList.toggle('active', b === btn); });
+                    applyEventsListFilter();
+                });
+            });
+
+            searchInput?.addEventListener('input', applyEventsListFilter);
+            applyEventsListFilter();
+        })();
 
         const mdjIsAdmin = <%= typeof isAdmin !== 'undefined' && isAdmin ? 'true' : 'false' %>;
 

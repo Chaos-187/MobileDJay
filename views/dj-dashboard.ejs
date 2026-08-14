@@ -1212,6 +1212,10 @@
         
         // Load saved event selection — default to first active event so screen prompts work out of the box
         let savedEventId = localStorage.getItem('djActiveEventId') || 'all';
+        const urlEventId = new URLSearchParams(window.location.search).get('event');
+        if (urlEventId && eventSelect.querySelector('option[value="' + urlEventId.replace(/"/g, '') + '"]')) {
+            savedEventId = urlEventId;
+        }
         const allEventOptions = Array.from(eventSelect.options).filter(o => o.value !== 'all');
         const firstActiveOption = allEventOptions.find(o => !o.classList.contains('mdj-dash-event-opt--inactive'));
         if (savedEventId === 'all' && firstActiveOption) {

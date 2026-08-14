@@ -1793,10 +1793,20 @@ app.delete('/api/tracks-played/:id', djWebAuth.requireDjApiAuth, djWebAuth.requi
 app.get('/dj', djWebAuth.requireDjWebAuth, renderDjDashboard);
 
 app.get('/dj/events', djWebAuth.requireDjWebAuth, (req, res) => {
-    const events = djAllowedEvents(req.portalUser).map((event) => ({
-        ...event,
-        stats: eventDb.getStats(event.id)
-    }));
+    const events = djAllowedEvents(req.portalUser)
+        .map((event) => ({
+            ...event,
+            stats: eventDb.getStats(event.id)
+        }))
+        .sort((a, b) => {
+            if (Boolean(a.is_active) !== Boolean(b.is_active)) {
+                return Number(b.is_active) - Number(a.is_active);
+            }
+            const dateA = a.event_date ? new Date(a.event_date).getTime() : 0;
+            const dateB = b.event_date ? new Date(b.event_date).getTime() : 0;
+            if (dateA !== dateB) return dateB - dateA;
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
     res.render('event-management', {
         events,
         portalUser: djWebAuth.authUserPayload(req.portalUser),

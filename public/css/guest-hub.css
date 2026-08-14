@@ -155,16 +155,144 @@ body.mdj-guest-hub-page .name-card-inner,
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
+body.mdj-guest-hub-page .options-prompt,
+.guest-phone-screen.mdj-guest-hub-page .options-prompt {
+    margin-bottom: 0.5rem;
+    font-size: 0.88rem;
+}
+
+/* Guest hub menu cards — tighter than global index styles so more options fit on screen */
+body.mdj-guest-hub-page .options-grid,
+.guest-phone-screen.mdj-guest-hub-page .options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+body.mdj-guest-hub-page .option-card,
+.guest-phone-screen.mdj-guest-hub-page .option-card {
+    padding: 0.7rem 0.8rem;
+    gap: 0.6rem;
+}
+
+body.mdj-guest-hub-page .option-card-icon,
+.guest-phone-screen.mdj-guest-hub-page .option-card-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+    border-radius: 12px;
+}
+
+body.mdj-guest-hub-page .option-card-title,
+.guest-phone-screen.mdj-guest-hub-page .option-card-title {
+    font-size: 0.92rem;
+    line-height: 1.25;
+}
+
+body.mdj-guest-hub-page .option-card-desc,
+.guest-phone-screen.mdj-guest-hub-page .option-card-desc {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    margin-top: 0.1rem;
+}
+
+body.mdj-guest-hub-page .option-card-arrow,
+.guest-phone-screen.mdj-guest-hub-page .option-card-arrow {
+    font-size: 0.8rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-compact .options-grid,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-compact .options-grid {
+    gap: 0.4rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-compact .option-card,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-compact .option-card {
+    padding: 0.55rem 0.65rem;
+    gap: 0.5rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-compact .option-card-icon,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-compact .option-card-icon {
+    width: 34px;
+    height: 34px;
+    font-size: 0.95rem;
+    border-radius: 10px;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-compact .option-card-title,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-compact .option-card-title {
+    font-size: 0.86rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-compact .option-card-desc,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-compact .option-card-desc {
+    font-size: 0.66rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-no-desc .option-card-desc,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-no-desc .option-card-desc {
+    display: none !important;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-no-desc .option-card,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-no-desc .option-card {
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-section,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-section {
+    padding-bottom: 0.55rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-icon,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 1.25rem;
+    border-radius: 14px;
+    margin-bottom: 0.4rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-event-logo img,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-event-logo img {
+    max-height: 72px !important;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-title,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-subtitle,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-subtitle {
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+
 /* Theme editor phone frame — compact mobile layout always */
 .guest-phone-device .guest-phone-screen.mdj-guest-hub-page {
     min-height: 0;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .guest-phone-device .guest-phone-screen.mdj-guest-hub-page main.container.mdj-guest-hub-main {
     min-height: 0;
     height: 100%;
+    flex: 1 1 auto;
     padding: 0.35rem 0.65rem 0.25rem;
+}
+
+.guest-phone-device .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .guest-phone-device .guest-phone-screen .guest-hub-top {
@@ -231,15 +359,16 @@ body.mdj-guest-hub-page .name-card-inner,
 .guest-phone-device .guest-phone-screen .options-grid {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.4rem;
     width: 100%;
 }
 
 .guest-phone-device .guest-phone-screen .option-card {
-    padding: 0.85rem 0.9rem;
+    padding: 0.55rem 0.65rem;
     width: 100%;
     flex-direction: row;
     align-items: center;
+    gap: 0.5rem;
 }
 
 .guest-phone-device .guest-phone-screen .option-card-content {
@@ -248,17 +377,17 @@ body.mdj-guest-hub-page .name-card-inner,
 }
 
 .guest-phone-device .guest-phone-screen .option-card-icon {
-    width: 44px;
-    height: 44px;
-    font-size: 1.15rem;
-}
-
-.guest-phone-device .guest-phone-screen .option-card-title {
+    width: 34px;
+    height: 34px;
     font-size: 0.95rem;
 }
 
+.guest-phone-device .guest-phone-screen .option-card-title {
+    font-size: 0.86rem;
+}
+
 .guest-phone-device .guest-phone-screen .option-card-desc {
-    font-size: 0.75rem;
+    font-size: 0.66rem;
 }
 
 .guest-phone-device .guest-phone-screen .mdj-eyup-footer--compact .mdj-company-foot__legal {
@@ -363,5 +492,23 @@ body.mdj-guest-hub-page .name-card-inner,
     body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,
     .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact {
         max-width: 720px;
+    }
+
+    /* Keep guest hub as a vertical list on large screens (not the 3-column index grid) */
+    body.mdj-guest-hub-page .options-grid,
+    .guest-phone-screen.mdj-guest-hub-page .options-grid {
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.mdj-guest-hub-page .option-card,
+    .guest-phone-screen.mdj-guest-hub-page .option-card {
+        flex-direction: row;
+        text-align: left;
+    }
+
+    body.mdj-guest-hub-page .option-card-arrow,
+    .guest-phone-screen.mdj-guest-hub-page .option-card-arrow {
+        display: block;
     }
 }

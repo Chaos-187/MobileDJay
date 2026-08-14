@@ -8,10 +8,25 @@
         return String(url).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     }
 
+    function guestBgPosition(value) {
+        const allowed = ['center', 'top', 'bottom', 'left', 'right'];
+        const v = String(value || 'center').toLowerCase();
+        return allowed.includes(v) ? v : 'center';
+    }
+
+    function guestBgOverlayPercent(value) {
+        if (value === null || value === undefined || value === '') return 45;
+        const n = parseInt(value, 10);
+        if (!Number.isFinite(n)) return 45;
+        return Math.max(0, Math.min(80, n));
+    }
+
     function buildGuestEventThemeCss(scope, theme) {
         const t = theme || {};
         const parts = [];
         const vars = [];
+        const bgPos = guestBgPosition(t.guest_bg_position);
+        const bgOverlay = guestBgOverlayPercent(t.guest_bg_overlay);
 
         if (t.heading_color) vars.push(`--event-heading-color: ${t.heading_color};`);
         if (t.text_color) vars.push(`--event-text-color: ${t.text_color};`);
@@ -37,11 +52,25 @@
             let block = `${scope} {\n`;
             block += `  background-image: url('${escapeCssUrl(t.bg_image)}') !important;\n`;
             block += '  background-size: cover !important;\n';
-            block += '  background-position: center !important;\n';
+            block += `  background-position: ${bgPos} !important;\n`;
             block += '  background-repeat: no-repeat !important;\n';
             block += `  background-color: ${t.bg_color || '#0a0a0a'} !important;\n`;
             block += '}';
             parts.push(block);
+
+            if (bgOverlay > 0) {
+                const overlayPos = scope === 'body' ? 'fixed' : 'absolute';
+                parts.push(`${scope} { position: relative; }`);
+                parts.push(`${scope}::before {
+  content: '';
+  position: ${overlayPos};
+  inset: 0;
+  background: rgba(0, 0, 0, ${(bgOverlay / 100).toFixed(2)});
+  pointer-events: none;
+  z-index: 0;
+}`);
+                parts.push(`${scope} main.container.mdj-guest-hub-main { position: relative; z-index: 1; }`);
+            }
         } else if (t.bg_color) {
             parts.push(`${scope} {\n  background: ${t.bg_color} !important;\n}`);
         } else if (scope !== 'body') {
@@ -115,11 +144,17 @@
             parts.push(`body.mdj-eyup-brand .mdj-site-navbar { background-color: ${a} !important; border-bottom-color: ${a} !important; }`);
         }
 
+        if (t.guest_show_option_desc === 0 || t.guest_show_option_desc === false) {
+            parts.push(`${scope} .option-card-desc { display: none !important; }`);
+        }
+
         if (t.custom_css) parts.push(t.custom_css);
         return parts.join('\n');
     }
 
     global.buildGuestEventThemeCss = buildGuestEventThemeCss;
+    global.guestBgPosition = guestBgPosition;
+    global.guestBgOverlayPercent = guestBgOverlayPercent;
     global.escapeGuestThemeCssUrl = escapeCssUrl;
 
     /** Built-in guest hub themes (null/ omitted color = EYUP default for that slot) */

@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
-    <link href="/css/guest-hub.css?v=3" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=4" rel="stylesheet">
     <style>
         .event-card {
             transition: all 0.3s ease;
@@ -465,6 +465,8 @@
         .guest-phone-screen {
             height: 100%;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
             font-size: 14px;
             color: var(--text-primary, #f0f0f5);
             position: relative;
@@ -1267,8 +1269,8 @@
                                                 </div>
                                                 <div class="mb-3">
                                                     <label for="editEventCustomCss" class="form-label">Custom CSS <span class="badge bg-secondary">Advanced</span></label>
-                                                    <textarea class="form-control font-monospace" id="editEventCustomCss" rows="5" placeholder=".hero-title { letter-spacing: 0.05em; }"></textarea>
-                                                    <div class="form-text">Same rules as the live guest hub. Use <code>body</code> for page-wide styles — the preview maps that automatically.</div>
+                                                    <textarea class="form-control font-monospace" id="editEventCustomCss" rows="5" placeholder=".hero-title { letter-spacing: 0.05em; }&#10;.option-card { border-radius: 1rem; }"></textarea>
+                                                    <div class="form-text">Same rules as the live guest hub. Use <code>body</code> for page-wide styles — the preview maps that automatically. Target <code>.option-card</code>, <code>.hero-title</code>, <code>.options-grid</code>, etc.</div>
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
@@ -1296,6 +1298,34 @@
                                                     <div class="form-text">Hero logo on the guest landing page (PNG/SVG with transparency works best).</div>
                                                 </div>
                                                 <div id="themeUploadStatus" class="small" aria-live="polite"></div>
+                                                <h6 class="text-muted mb-3 mt-3"><i class="fas fa-sliders-h me-2"></i>Layout</h6>
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="editGuestMenuCompact" checked>
+                                                    <label class="form-check-label" for="editGuestMenuCompact">Compact menu cards</label>
+                                                </div>
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="editGuestShowOptionDesc" checked>
+                                                    <label class="form-check-label" for="editGuestShowOptionDesc">Show option descriptions</label>
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="editGuestHeroCompact">
+                                                    <label class="form-check-label" for="editGuestHeroCompact">Compact hero (smaller title &amp; logo)</label>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="editGuestBgOverlay" class="form-label">Background dim: <span id="editGuestBgOverlayValue">45</span>%</label>
+                                                    <input type="range" class="form-range" id="editGuestBgOverlay" min="0" max="80" value="45">
+                                                    <div class="form-text">Darkens the background image so text and cards stay readable.</div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="editGuestBgPosition" class="form-label">Background position</label>
+                                                    <select class="form-select form-select-sm" id="editGuestBgPosition">
+                                                        <option value="center">Center</option>
+                                                        <option value="top">Top</option>
+                                                        <option value="bottom">Bottom</option>
+                                                        <option value="left">Left</option>
+                                                        <option value="right">Right</option>
+                                                    </select>
+                                                </div>
                                                 <div class="mb-0 mt-2">
                                                     <label class="form-label d-flex align-items-center gap-2">
                                                         <input type="checkbox" class="form-check-input mt-0" id="editGuestPreviewShowNameCard">
@@ -1311,7 +1341,7 @@
                                         <div class="guest-phone-device" aria-hidden="false">
                                             <div class="guest-phone-device__shell">
                                                 <div class="guest-phone-device__notch" aria-hidden="true"></div>
-                                                <div class="guest-phone-screen mdj-eyup-brand mdj-guest-hub-page" id="guestPreviewScreen">
+                                                <div class="guest-phone-screen mdj-eyup-brand mdj-guest-hub-page mdj-guest-hub-compact" id="guestPreviewScreen">
                                                     <div class="mdj-scanlines" aria-hidden="true"></div>
                                                     <style id="guestPreviewThemeStyle"></style>
                                                     <main class="container mdj-guest-hub-main">
@@ -1633,7 +1663,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/display-slideshow-admin.js"></script>
-    <script src="/js/guest-event-theme.js?v=2"></script>
+    <script src="/js/guest-event-theme.js?v=3"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1826,6 +1856,15 @@
                 guest_card_color: (event.guest_card_color || '').trim(),
                 guest_card_shadow_color: (event.guest_card_shadow_color || '').trim()
             });
+            document.getElementById('editGuestMenuCompact').checked = event.guest_menu_compact !== 0;
+            document.getElementById('editGuestShowOptionDesc').checked = event.guest_show_option_desc !== 0;
+            document.getElementById('editGuestHeroCompact').checked = event.guest_hero_compact === 1;
+            const overlay = event.guest_bg_overlay != null && event.guest_bg_overlay !== ''
+                ? Math.max(0, Math.min(80, parseInt(event.guest_bg_overlay, 10) || 45))
+                : 45;
+            document.getElementById('editGuestBgOverlay').value = overlay;
+            document.getElementById('editGuestBgOverlayValue').textContent = overlay;
+            document.getElementById('editGuestBgPosition').value = event.guest_bg_position || 'center';
         }
 
         const GUEST_THEME_FIELD_MAP = [
@@ -1858,7 +1897,21 @@
             document.getElementById('editEventCustomCss').value = '';
             document.getElementById('editEventBgImage').value = '';
             document.getElementById('editEventBgImage').dispatchEvent(new Event('change'));
+            document.getElementById('editGuestMenuCompact').checked = true;
+            document.getElementById('editGuestShowOptionDesc').checked = true;
+            document.getElementById('editGuestHeroCompact').checked = false;
+            document.getElementById('editGuestBgOverlay').value = 45;
+            document.getElementById('editGuestBgOverlayValue').textContent = '45';
+            document.getElementById('editGuestBgPosition').value = 'center';
             highlightGuestThemePreset('eyup');
+        }
+
+        function applyGuestLayoutPreviewClasses() {
+            const preview = document.getElementById('guestPreviewScreen');
+            if (!preview) return;
+            preview.classList.toggle('mdj-guest-hub-compact', document.getElementById('editGuestMenuCompact').checked);
+            preview.classList.toggle('mdj-guest-hub-no-desc', !document.getElementById('editGuestShowOptionDesc').checked);
+            preview.classList.toggle('mdj-guest-hub-hero-compact', document.getElementById('editGuestHeroCompact').checked);
         }
 
         function highlightGuestThemePreset(presetId) {
@@ -1948,9 +2001,15 @@
                 guest_card_color: readGuestThemeField('editEventGuestCardColorText'),
                 guest_card_shadow_color: readGuestThemeField('editEventGuestCardShadowColorText'),
                 bg_image: document.getElementById('editEventBgImage').value.trim() || null,
+                guest_menu_compact: document.getElementById('editGuestMenuCompact').checked ? 1 : 0,
+                guest_show_option_desc: document.getElementById('editGuestShowOptionDesc').checked ? 1 : 0,
+                guest_hero_compact: document.getElementById('editGuestHeroCompact').checked ? 1 : 0,
+                guest_bg_overlay: parseInt(document.getElementById('editGuestBgOverlay').value, 10) || 0,
+                guest_bg_position: document.getElementById('editGuestBgPosition').value || 'center',
                 custom_css: customCss
             };
 
+            applyGuestLayoutPreviewClasses();
             themeStyle.textContent = window.buildGuestEventThemeCss('#guestPreviewScreen', theme);
 
             const eventName = document.getElementById('editEventName').value.trim() || 'Your Event Name';
@@ -2002,6 +2061,11 @@
             document.getElementById('dpCard').style.background = `rgba(${r},${g},${b},${opacity})`;
         }
 
+        document.getElementById('editGuestBgOverlay')?.addEventListener('input', function() {
+            document.getElementById('editGuestBgOverlayValue').textContent = this.value;
+            updateGuestPreview();
+        });
+
         document.getElementById('editTabThemeBtn')?.addEventListener('shown.bs.tab', updateGuestPreview);
 
         // Any relevant field updates its preview as you type/pick
@@ -2012,7 +2076,9 @@
          'editEventGuestCardShadowColor', 'editEventGuestCardShadowColorText',
          'editEventBgImage', 'editEventLogoImage', 'editEventCustomCss',
          'editEventEnableSongRequests', 'editEventEnableKaraokeRequests', 'editEventEnableMessages',
-         'editEventEnablePhotos', 'editEventEnableTips', 'editGuestPreviewShowNameCard'].forEach(id => {
+         'editEventEnablePhotos', 'editEventEnableTips', 'editGuestPreviewShowNameCard',
+         'editGuestMenuCompact', 'editGuestShowOptionDesc', 'editGuestHeroCompact',
+         'editGuestBgOverlay', 'editGuestBgPosition'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('input', updateGuestPreview);
             el.addEventListener('change', updateGuestPreview);
@@ -2317,6 +2383,11 @@
                 hero_title_color: document.getElementById('editEventHeroTitleColorText').value.trim() || null,
                 guest_card_color: document.getElementById('editEventGuestCardColorText').value.trim() || null,
                 guest_card_shadow_color: document.getElementById('editEventGuestCardShadowColorText').value.trim() || null,
+                guest_menu_compact: document.getElementById('editGuestMenuCompact').checked ? 1 : 0,
+                guest_show_option_desc: document.getElementById('editGuestShowOptionDesc').checked ? 1 : 0,
+                guest_hero_compact: document.getElementById('editGuestHeroCompact').checked ? 1 : 0,
+                guest_bg_overlay: parseInt(document.getElementById('editGuestBgOverlay').value, 10) || 0,
+                guest_bg_position: document.getElementById('editGuestBgPosition').value || 'center',
                 bg_image: document.getElementById('editEventBgImage').value.trim() || null,
                 logo_image: document.getElementById('editEventLogoImage').value.trim() || null,
                 custom_css: document.getElementById('editEventCustomCss').value.trim() || null,

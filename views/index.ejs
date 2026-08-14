@@ -15,13 +15,20 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
-    <link href="/css/guest-hub.css?v=3" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=4" rel="stylesheet">
     
     <%- include('partials/guest-event-theme', { event: typeof event !== 'undefined' ? event : null }) %>
     
 
 </head>
-<body class="mdj-eyup-brand mdj-guest-hub-page">
+<%
+  const hubEvent = typeof event !== 'undefined' ? event : null;
+  let hubBodyClass = 'mdj-eyup-brand mdj-guest-hub-page';
+  if (!hubEvent || hubEvent.guest_menu_compact !== 0) hubBodyClass += ' mdj-guest-hub-compact';
+  if (hubEvent && hubEvent.guest_show_option_desc === 0) hubBodyClass += ' mdj-guest-hub-no-desc';
+  if (hubEvent && hubEvent.guest_hero_compact === 1) hubBodyClass += ' mdj-guest-hub-hero-compact';
+%>
+<body class="<%= hubBodyClass %>">
     <div class="mdj-scanlines" aria-hidden="true"></div>
 
     <span id="welcomeName" class="visually-hidden"></span>

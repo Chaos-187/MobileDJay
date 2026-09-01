@@ -6,6 +6,7 @@ const internalRouter = require('./internal-router');
 const adminRouter = require('./admin-router');
 const publicRouter = require('./public-router');
 const { verifyTurnstile } = require('./turnstile');
+const { handleZohoOAuthCallback } = require('./zoho-oauth');
 const { verifyGoogleIdToken, isGoogleSignInConfigured } = require('./verify-google-id-token');
 const { allowForgotPasswordAttempt } = require('./forgot-password-rate');
 const { sendPasswordResetEmail } = require('./portal-password-reset');
@@ -1201,6 +1202,8 @@ router.use(
 );
 
 router.use('/public', publicRouter);
+
+router.get('/admin/zoho/oauth/callback', handleZohoOAuthCallback);
 
 router.use('/admin', authMiddleware, requireRole('admin'), adminRouter);
 

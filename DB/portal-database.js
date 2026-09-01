@@ -280,6 +280,27 @@ for (const stmt of zohoPaymentCols) {
 }
 
 db.exec(`
+    CREATE TABLE IF NOT EXISTS portal_zoho_oauth (
+        id TEXT PRIMARY KEY CHECK (id = 'default'),
+        refresh_token TEXT,
+        connected_at TEXT,
+        connected_by_user_id TEXT REFERENCES users(id),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS portal_oauth_states (
+        id TEXT PRIMARY KEY,
+        purpose TEXT NOT NULL,
+        state_hash TEXT NOT NULL,
+        admin_user_id TEXT NOT NULL REFERENCES users(id),
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_oauth_states_hash ON portal_oauth_states(purpose, state_hash);
+    CREATE INDEX IF NOT EXISTS idx_portal_oauth_states_expires ON portal_oauth_states(expires_at);
+`);
+
+db.exec(`
     CREATE TABLE IF NOT EXISTS admin_audit_log (
         id TEXT PRIMARY KEY,
         admin_user_id TEXT NOT NULL REFERENCES users(id),
@@ -1119,6 +1140,64 @@ const portalDb = {
 
     getUserById(id) {
         return materializeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+    },
+
+    getZohoOAuthCredentials() {
+        return db
+            .prepare(
+                `SELECT refresh_token, connected_at, connected_by_user_id, updated_at
+                 FROM portal_zoho_oauth WHERE id = 'default'`
+            )
+            .get();
+    },
+
+    saveZohoRefreshToken(refreshToken, adminUserId) {
+        const now = nowIso();
+        db.prepare(
+            `INSERT INTO portal_zoho_oauth (id, refresh_token, connected_at, connected_by_user_id, updated_at)
+             VALUES ('default', ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               refresh_token = excluded.refresh_token,
+               connected_at = excluded.connected_at,
+               connected_by_user_id = excluded.connected_by_user_id,
+               updated_at = excluded.updated_at`
+        ).run(refreshToken, now, adminUserId, now);
+    },
+
+    clearZohoRefreshToken() {
+        const now = nowIso();
+        return (
+            db.prepare(
+                `UPDATE portal_zoho_oauth
+                 SET refresh_token = NULL, connected_at = NULL, connected_by_user_id = NULL, updated_at = ?
+                 WHERE id = 'default'`
+            ).run(now).changes > 0
+        );
+    },
+
+    createOAuthState({ id, purpose, state_hash, admin_user_id, expires_at }) {
+        db.prepare(
+            `INSERT INTO portal_oauth_states (id, purpose, state_hash, admin_user_id, expires_at)
+             VALUES (?, ?, ?, ?, ?)`
+        ).run(id, purpose, state_hash, admin_user_id, expires_at);
+    },
+
+    getOAuthStateByHash(stateHash, purpose) {
+        return db
+            .prepare(
+                `SELECT * FROM portal_oauth_states WHERE state_hash = ? AND purpose = ?`
+            )
+            .get(stateHash, purpose);
+    },
+
+    deleteOAuthState(id) {
+        return db.prepare(`DELETE FROM portal_oauth_states WHERE id = ?`).run(id).changes > 0;
+    },
+
+    purgeExpiredOAuthStates() {
+        return db
+            .prepare(`DELETE FROM portal_oauth_states WHERE expires_at < ?`)
+            .run(nowIso()).changes;
     },
 
     updateUserZohoSync(userId, patch = {}) {

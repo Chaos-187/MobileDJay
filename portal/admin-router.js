@@ -22,6 +22,7 @@ const { refundBookingPayment } = require('./refund-booking-payment');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 const { balanceDueCalendarFields } = require('./customer-payment-schedule');
 const zohoBooks = require('./zoho-books');
+const zohoOAuth = require('./zoho-oauth');
 const {
     syncCustomerToZoho,
     scheduleZohoContactSync,
@@ -246,7 +247,7 @@ router.post('/users/:id/zoho/sync', async (req, res) => {
         return jsonError(
             res,
             'service_unavailable',
-            'Zoho Books is not configured (set ZOHO_BOOKS_* env vars)',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
             503
         );
     }
@@ -482,8 +483,42 @@ router.get('/integrations/status', (req, res) => {
         stripe_configured: stripePortal.isConfigured(),
         stripe_webhook_configured: stripePortal.isWebhookConfigured(),
         brevo_configured: brevoMail.isConfigured(),
-        zoho_books: zohoBooks.configSummary()
+        zoho_books: {
+            ...zohoBooks.configSummary(),
+            ...zohoOAuth.oauthStatus()
+        }
     });
+});
+
+router.get('/zoho/oauth/start', (req, res) => {
+    if (!zohoOAuth.canStartOAuth()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Set ZOHO_BOOKS_CLIENT_ID, ZOHO_BOOKS_CLIENT_SECRET, and ZOHO_BOOKS_ORGANIZATION_ID on the API server, then restart.',
+            503
+        );
+    }
+    try {
+        const authorize_url = zohoOAuth.buildAuthorizeUrl(req.portalUser.id);
+        res.json({
+            authorize_url,
+            redirect_uri: zohoOAuth.oauthRedirectUri()
+        });
+    } catch (err) {
+        return jsonError(
+            res,
+            err.code || 'upstream_error',
+            err.message || 'Could not start Zoho OAuth',
+            err.code === 'service_unavailable' ? 503 : 502
+        );
+    }
+});
+
+router.post('/zoho/oauth/disconnect', (req, res) => {
+    zohoOAuth.disconnect();
+    audit(req.portalUser.id, 'zoho.oauth_disconnect', 'integration', 'zoho_books', {});
+    res.json({ ok: true, disconnected: true });
 });
 
 router.post('/zoho/test', async (req, res) => {
@@ -491,7 +526,7 @@ router.post('/zoho/test', async (req, res) => {
         return jsonError(
             res,
             'service_unavailable',
-            'Zoho Books is not configured (set ZOHO_BOOKS_* env vars)',
+            'Zoho Books is not connected. Set client ID, secret, and organisation ID, then use Connect Zoho Books in Site → Integrations.',
             503
         );
     }
@@ -519,7 +554,7 @@ router.post('/zoho/sync-contacts', async (req, res) => {
         return jsonError(
             res,
             'service_unavailable',
-            'Zoho Books is not configured (set ZOHO_BOOKS_* env vars)',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
             503
         );
     }
@@ -1141,7 +1176,7 @@ router.post('/bookings/:id/zoho/invoice', async (req, res) => {
         return jsonError(
             res,
             'service_unavailable',
-            'Zoho Books is not configured (set ZOHO_BOOKS_* env vars)',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
             503
         );
     }
@@ -1194,7 +1229,7 @@ router.post('/payments/:id/zoho/sync-payment', async (req, res) => {
         return jsonError(
             res,
             'service_unavailable',
-            'Zoho Books is not configured (set ZOHO_BOOKS_* env vars)',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
             503
         );
     }

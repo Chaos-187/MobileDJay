@@ -39,7 +39,15 @@ function clientSecret() {
 }
 
 function refreshToken() {
-    return process.env.ZOHO_BOOKS_REFRESH_TOKEN || '';
+    const fromEnv = (process.env.ZOHO_BOOKS_REFRESH_TOKEN || '').trim();
+    if (fromEnv) return fromEnv;
+    try {
+        const { portalDb } = require('../db/portal-database');
+        const row = portalDb.getZohoOAuthCredentials();
+        return row && row.refresh_token ? String(row.refresh_token).trim() : '';
+    } catch {
+        return '';
+    }
 }
 
 function organizationId() {
@@ -75,13 +83,20 @@ function isConfigured() {
 }
 
 function configSummary() {
+    const token = refreshToken();
     return {
         configured: isConfigured(),
         region: regionKey(),
         organization_id: organizationId() || null,
         accounts_url: accountsBaseUrl(),
-        api_base: apiBaseUrl()
+        api_base: apiBaseUrl(),
+        has_refresh_token: token.length > 0
     };
+}
+
+function clearTokenCache() {
+    cachedAccessToken = null;
+    cachedAccessTokenExpiresAt = 0;
 }
 
 let cachedAccessToken = null;
@@ -257,8 +272,13 @@ async function testConnection() {
 module.exports = {
     isConfigured,
     configSummary,
+    clientId,
+    clientSecret,
+    organizationId,
+    regionKey,
     accountsBaseUrl,
     apiBaseUrl,
+    clearTokenCache,
     booksRequest,
     searchContactByEmail,
     getContact,

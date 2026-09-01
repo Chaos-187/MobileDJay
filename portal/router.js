@@ -1209,4 +1209,15 @@ router.use('/admin', authMiddleware, requireRole('admin'), adminRouter);
 
 router.use('/internal', internalRouter);
 
+router.use((err, req, res, _next) => {
+    console.error('[portal] unhandled route error', err);
+    if (res.headersSent) return;
+    jsonError(
+        res,
+        err.code || 'internal_error',
+        err.message || 'Internal server error',
+        err.status && Number.isFinite(Number(err.status)) ? Number(err.status) : 500
+    );
+});
+
 module.exports = router;

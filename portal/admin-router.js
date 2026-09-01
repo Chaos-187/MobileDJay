@@ -1331,16 +1331,28 @@ router.post('/bookings/:id/zoho/estimate', async (req, res) => {
                   ? 409
                   : err.code === 'validation_error'
                     ? 422
-                    : err.code === 'service_unavailable'
+                    : err.code === 'service_unavailable' || err.code === 'zoho_auth_failed'
                       ? 503
                       : 502;
-        return jsonError(
-            res,
-            err.code || 'upstream_error',
-            err.message || 'Could not create Zoho estimate',
-            status,
-            err.details || {}
-        );
+        try {
+            return jsonError(
+                res,
+                err.code || 'upstream_error',
+                err.message || 'Could not create Zoho estimate',
+                status,
+                err.details || {}
+            );
+        } catch (sendErr) {
+            console.error('[portal] admin/bookings zoho estimate response', sendErr);
+            if (!res.headersSent) {
+                res.status(status).json({
+                    error: {
+                        code: err.code || 'upstream_error',
+                        message: err.message || 'Could not create Zoho estimate'
+                    }
+                });
+            }
+        }
     }
 });
 

@@ -7,6 +7,20 @@ const { syncCustomerToZoho } = require('./zoho-contact-sync');
 const { mapBookingLineItemsToZoho } = require('./zoho-line-items');
 const { portalDb } = require('../db/portal-database');
 
+function safeUpdateBookingZohoEstimate(bookingId, patch) {
+    try {
+        if (typeof portalDb.updateBookingZohoEstimate === 'function') {
+            portalDb.updateBookingZohoEstimate(bookingId, patch);
+        } else {
+            console.error(
+                '[portal] updateBookingZohoEstimate missing — deploy latest db/portal-database.js'
+            );
+        }
+    } catch (dbErr) {
+        console.error('[portal] updateBookingZohoEstimate failed', dbErr.message || dbErr);
+    }
+}
+
 function isoDateOnly(iso) {
     if (!iso) return new Date().toISOString().slice(0, 10);
     const d = new Date(iso);
@@ -126,7 +140,7 @@ async function createBookingZohoEstimate(bookingId, opts = {}) {
 
         const estimateId = String(estimate.estimate_id);
         const now = new Date().toISOString();
-        portalDb.updateBookingZohoEstimate(bookingId, {
+        safeUpdateBookingZohoEstimate(bookingId, {
             zoho_estimate_id: estimateId,
             zoho_estimate_synced_at: now,
             zoho_estimate_sync_error: null
@@ -148,11 +162,22 @@ async function createBookingZohoEstimate(bookingId, opts = {}) {
             customer_id: contactSync.contact_id
         };
     } catch (err) {
-        const msg = err && err.message ? String(err.message) : 'Zoho estimate sync failed';
-        portalDb.updateBookingZohoEstimate(bookingId, {
+        let msg = err && err.message ? String(err.message) : 'Zoho estimate sync failed';
+        if (zohoBooks.isZohoAuthorizationError && zohoBooks.isZohoAuthorizationError(err)) {
+            msg = `${msg}. ${zohoBooks.zohoAuthRemediation()}`;
+        }
+        safeUpdateBookingZohoEstimate(bookingId, {
             zoho_estimate_sync_error: msg.slice(0, 500)
         });
-        throw err;
+        const wrapped = new Error(msg);
+        wrapped.code =
+            err && err.code
+                ? err.code
+                : zohoBooks.isZohoAuthorizationError && zohoBooks.isZohoAuthorizationError(err)
+                  ? 'zoho_auth_failed'
+                  : 'upstream_error';
+        wrapped.details = err && err.details ? err.details : undefined;
+        throw wrapped;
     }
 }
 

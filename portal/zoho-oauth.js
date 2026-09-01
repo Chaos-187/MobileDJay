@@ -10,7 +10,7 @@ const zohoBooks = require('./zoho-books');
 const OAUTH_PURPOSE = 'zoho_books';
 const STATE_TTL_MS = 15 * 60 * 1000;
 const SCOPES =
-    'ZohoBooks.contacts.ALL,ZohoBooks.invoices.ALL,ZohoBooks.customerpayments.ALL';
+    'ZohoBooks.contacts.ALL,ZohoBooks.invoices.ALL,ZohoBooks.customerpayments.ALL,ZohoBooks.estimates.ALL,ZohoBooks.items.ALL';
 
 function apiPublicOrigin() {
     const explicit =

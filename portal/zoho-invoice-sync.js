@@ -4,6 +4,7 @@
 
 const zohoBooks = require('./zoho-books');
 const { syncCustomerToZoho } = require('./zoho-contact-sync');
+const { mapBookingLineItemsToZoho } = require('./zoho-line-items');
 const { computeBalanceDueAt } = require('./customer-payment-schedule');
 const { portalDb } = require('../db/portal-database');
 
@@ -37,34 +38,10 @@ function invoiceReference(booking, kind) {
     return `${ref}-${kind}`;
 }
 
-function mapLineItemsToZoho(lineItems) {
-    return (lineItems || [])
-        .filter((li) => Number(li.line_subtotal) > 0)
-        .map((li) => {
-            const qty = Number(li.quantity) || 1;
-            const hours = li.hours != null && Number(li.hours) > 0 ? Number(li.hours) : null;
-            const rate =
-                li.unit_rate != null && Number.isFinite(Number(li.unit_rate))
-                    ? Number(li.unit_rate)
-                    : qty > 0
-                      ? Number(li.line_subtotal) / qty
-                      : Number(li.line_subtotal);
-            const item = {
-                name: li.label || li.product_code || 'Service',
-                rate: Math.round(rate * 100) / 100,
-                quantity: hours != null ? hours : qty
-            };
-            if (hours != null) {
-                item.description = `${qty} × ${hours}h`;
-            }
-            return item;
-        });
-}
-
 function buildInvoiceLineItems(booking, lineItems, quote, settlement, kind) {
     const currency = booking.deposit_currency || 'GBP';
     if (kind === 'full') {
-        const items = mapLineItemsToZoho(lineItems);
+        const items = mapBookingLineItemsToZoho(lineItems);
         if (items.length) return { line_items: items, currency_code: currency, amount: quote.quote_total };
         return {
             line_items: [
@@ -235,7 +212,12 @@ function zohoStatusForBooking(booking) {
         balance_invoice_id: booking.zoho_balance_invoice_id || null,
         balance_invoice_url: zohoBooks.invoiceWebUrl(booking.zoho_balance_invoice_id),
         full_invoice_id: booking.zoho_full_invoice_id || null,
-        full_invoice_url: zohoBooks.invoiceWebUrl(booking.zoho_full_invoice_id)
+        full_invoice_url: zohoBooks.invoiceWebUrl(booking.zoho_full_invoice_id),
+        estimate_id: booking.zoho_estimate_id || null,
+        estimate_url: zohoBooks.estimateWebUrl(booking.zoho_estimate_id),
+        quote_in_zoho: !!(booking.zoho_estimate_id && String(booking.zoho_estimate_id).trim()),
+        estimate_synced_at: booking.zoho_estimate_synced_at || null,
+        estimate_sync_error: booking.zoho_estimate_sync_error || null
     };
 }
 

@@ -230,19 +230,77 @@ async function createCustomerPayment(payload) {
     return data && data.payment ? data.payment : null;
 }
 
+async function searchItemBySku(sku) {
+    const code = String(sku || '').trim();
+    if (!code) return null;
+    try {
+        const data = await booksRequest('GET', '/books/v3/items', { query: { sku: code } });
+        const items = data && Array.isArray(data.items) ? data.items : [];
+        const match = items.find((it) => String(it.sku || '').toLowerCase() === code.toLowerCase());
+        return match || (items.length ? items[0] : null);
+    } catch {
+        const data = await booksRequest('GET', '/books/v3/items', {
+            query: { search_text: code }
+        });
+        const items = data && Array.isArray(data.items) ? data.items : [];
+        return (
+            items.find((it) => String(it.sku || '').toLowerCase() === code.toLowerCase()) ||
+            items[0] ||
+            null
+        );
+    }
+}
+
+async function getItem(itemId) {
+    const data = await booksRequest('GET', `/books/v3/items/${encodeURIComponent(itemId)}`);
+    return data && data.item ? data.item : null;
+}
+
+async function createItem(payload) {
+    const data = await booksRequest('POST', '/books/v3/items', { body: payload });
+    return data && data.item ? data.item : null;
+}
+
+async function updateItem(itemId, payload) {
+    const data = await booksRequest('PUT', `/books/v3/items/${encodeURIComponent(itemId)}`, {
+        body: payload
+    });
+    return data && data.item ? data.item : null;
+}
+
+async function createEstimate(payload) {
+    const data = await booksRequest('POST', '/books/v3/estimates', { body: payload });
+    return data && data.estimate ? data.estimate : null;
+}
+
+async function getEstimate(estimateId) {
+    const data = await booksRequest('GET', `/books/v3/estimates/${encodeURIComponent(estimateId)}`);
+    return data && data.estimate ? data.estimate : null;
+}
+
+async function markEstimateSent(estimateId) {
+    const data = await booksRequest('POST', `/books/v3/estimates/${encodeURIComponent(estimateId)}/status/sent`);
+    return data && data.estimate ? data.estimate : null;
+}
+
+function booksWebHost() {
+    const region = regionKey();
+    if (region === 'eu') return 'https://books.zoho.eu';
+    if (region === 'in') return 'https://books.zoho.in';
+    if (region === 'com.au') return 'https://books.zoho.com.au';
+    return 'https://books.zoho.com';
+}
+
 function invoiceWebUrl(invoiceId) {
     if (!invoiceId) return null;
     const org = organizationId();
-    const region = regionKey();
-    const host =
-        region === 'eu'
-            ? 'https://books.zoho.eu'
-            : region === 'in'
-              ? 'https://books.zoho.in'
-              : region === 'com.au'
-                ? 'https://books.zoho.com.au'
-                : 'https://books.zoho.com';
-    return `${host}/app/${org}#/invoices/${encodeURIComponent(String(invoiceId))}`;
+    return `${booksWebHost()}/app/${org}#/invoices/${encodeURIComponent(String(invoiceId))}`;
+}
+
+function estimateWebUrl(estimateId) {
+    if (!estimateId) return null;
+    const org = organizationId();
+    return `${booksWebHost()}/app/${org}#/quotes/${encodeURIComponent(String(estimateId))}`;
 }
 
 /** Verify OAuth credentials and organisation access. */
@@ -288,6 +346,15 @@ module.exports = {
     getInvoice,
     markInvoiceSent,
     createCustomerPayment,
+    searchItemBySku,
+    getItem,
+    createItem,
+    updateItem,
+    createEstimate,
+    getEstimate,
+    markEstimateSent,
+    booksWebHost,
     invoiceWebUrl,
+    estimateWebUrl,
     testConnection
 };

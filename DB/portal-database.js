@@ -256,7 +256,10 @@ const zohoBookingCols = [
     'ALTER TABLE bookings ADD COLUMN balance_due_at TEXT',
     'ALTER TABLE bookings ADD COLUMN zoho_deposit_invoice_id TEXT',
     'ALTER TABLE bookings ADD COLUMN zoho_balance_invoice_id TEXT',
-    'ALTER TABLE bookings ADD COLUMN zoho_full_invoice_id TEXT'
+    'ALTER TABLE bookings ADD COLUMN zoho_full_invoice_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_estimate_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_estimate_synced_at TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_estimate_sync_error TEXT'
 ];
 for (const stmt of zohoBookingCols) {
     try {
@@ -273,6 +276,19 @@ const zohoPaymentCols = [
     'ALTER TABLE booking_payments ADD COLUMN zoho_sync_error TEXT'
 ];
 for (const stmt of zohoPaymentCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+const zohoCatalogCols = [
+    'ALTER TABLE catalog_products ADD COLUMN zoho_item_id TEXT',
+    'ALTER TABLE catalog_products ADD COLUMN zoho_item_synced_at TEXT',
+    'ALTER TABLE catalog_products ADD COLUMN zoho_item_sync_error TEXT'
+];
+for (const stmt of zohoCatalogCols) {
     try {
         db.exec(stmt);
     } catch (e) {
@@ -1243,6 +1259,59 @@ const portalDb = {
         if (kind === 'balance') return booking.zoho_balance_invoice_id || null;
         if (kind === 'full') return booking.zoho_full_invoice_id || null;
         return null;
+    },
+
+    updateBookingZohoEstimate(bookingId, patch = {}) {
+        const allowed = ['zoho_estimate_id', 'zoho_estimate_synced_at', 'zoho_estimate_sync_error'];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(bookingId);
+        return db
+            .prepare(`UPDATE bookings SET ${setClause.join(', ')} WHERE id = ?`)
+            .run(...values).changes > 0;
+    },
+
+    updateCatalogProductZoho(productId, patch = {}) {
+        const allowed = ['zoho_item_id', 'zoho_item_synced_at', 'zoho_item_sync_error'];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(productId);
+        return db
+            .prepare(`UPDATE catalog_products SET ${setClause.join(', ')} WHERE id = ?`)
+            .run(...values).changes > 0;
+    },
+
+    listBookingsPendingZohoEstimate() {
+        return db
+            .prepare(
+                `SELECT b.* FROM bookings b
+                 WHERE b.status != 'cancelled'
+                   AND (b.deposit_paid IS NULL OR b.deposit_paid = 0)
+                   AND (b.zoho_estimate_id IS NULL OR trim(b.zoho_estimate_id) = '')
+                   AND EXISTS (
+                     SELECT 1 FROM booking_line_items li
+                     WHERE li.booking_id = b.id AND li.line_subtotal > 0
+                   )
+                 ORDER BY b.created_at DESC`
+            )
+            .all()
+            .map((row) => materializeBooking(row));
     },
 
     updateBookingPaymentZoho(paymentId, patch = {}) {

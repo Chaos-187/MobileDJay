@@ -50,6 +50,14 @@ function refreshToken() {
     }
 }
 
+/** @returns {'env'|'database'|null} */
+function refreshTokenSource() {
+    const fromEnv = (process.env.ZOHO_BOOKS_REFRESH_TOKEN || '').trim();
+    if (fromEnv) return 'env';
+    if (refreshToken()) return 'database';
+    return null;
+}
+
 function organizationId() {
     return process.env.ZOHO_BOOKS_ORGANIZATION_ID || '';
 }
@@ -84,13 +92,16 @@ function isConfigured() {
 
 function configSummary() {
     const token = refreshToken();
+    const source = refreshTokenSource();
     return {
         configured: isConfigured(),
         region: regionKey(),
         organization_id: organizationId() || null,
         accounts_url: accountsBaseUrl(),
         api_base: apiBaseUrl(),
-        has_refresh_token: token.length > 0
+        has_refresh_token: token.length > 0,
+        refresh_token_source: source,
+        uses_env_refresh_token: source === 'env'
     };
 }
 
@@ -303,6 +314,44 @@ function estimateWebUrl(estimateId) {
     return `${booksWebHost()}/app/${org}#/quotes/${encodeURIComponent(String(estimateId))}`;
 }
 
+function zohoAuthRemediation() {
+    const source = refreshTokenSource();
+    if (source === 'env') {
+        return (
+            'ZOHO_BOOKS_REFRESH_TOKEN in server env overrides admin Connect and may lack ZohoBooks.settings.ALL. ' +
+            'Remove it and use Connect again, or regenerate the env token with settings scope.'
+        );
+    }
+    return (
+        'Disconnect and Connect Zoho Books in Site → Integrations so the token includes ZohoBooks.settings.ALL (Items). ' +
+        'The Zoho account must also have permission to manage Items in Books.'
+    );
+}
+
+function isZohoAuthorizationError(err) {
+    const msg = err && err.message ? String(err.message).toLowerCase() : '';
+    return (
+        msg.includes('not authorized') ||
+        msg.includes('unauthorized') ||
+        msg.includes('invalid oauth') ||
+        err?.status === 401 ||
+        err?.status === 403
+    );
+}
+
+async function probeItemsAccess() {
+    try {
+        await booksRequest('GET', '/books/v3/items', { query: { page: 1, per_page: 1 } });
+        return { ok: true };
+    } catch (err) {
+        return {
+            ok: false,
+            error: err && err.message ? String(err.message) : 'items_probe_failed',
+            authorization_error: isZohoAuthorizationError(err)
+        };
+    }
+}
+
 /** Verify OAuth credentials and organisation access. */
 async function testConnection() {
     if (!isConfigured()) {
@@ -314,16 +363,30 @@ async function testConnection() {
     const orgId = organizationId();
     const match =
         orgs.find((o) => String(o.organization_id) === String(orgId)) || null;
+    const itemsProbe = await probeItemsAccess();
+    const orgOk = !!match;
+    const itemsOk = !!itemsProbe.ok;
+    let message = match
+        ? `Connected to ${match.name || 'Zoho Books organisation'}.`
+        : `Token works but organisation ${orgId} was not found in this account.`;
+    if (orgOk && !itemsOk) {
+        message += ` Items API: ${itemsProbe.error || 'not authorized'}. ${zohoAuthRemediation()}`;
+    } else if (orgOk && itemsOk) {
+        message += ' Items API access OK.';
+    }
     return {
-        ok: !!match,
+        ok: orgOk && itemsOk,
+        org_access_ok: orgOk,
+        items_access_ok: itemsOk,
         configured: true,
         region: regionKey(),
         organization_id: orgId,
         organization_name: match ? match.name || match.organization_name || null : null,
         organizations_found: orgs.length,
-        message: match
-            ? `Connected to ${match.name || 'Zoho Books organisation'}.`
-            : `Token works but organisation ${orgId} was not found in this account.`
+        refresh_token_source: refreshTokenSource(),
+        items_access_error: itemsProbe.error || null,
+        remediation: orgOk && !itemsOk ? zohoAuthRemediation() : null,
+        message
     };
 }
 
@@ -356,5 +419,9 @@ module.exports = {
     booksWebHost,
     invoiceWebUrl,
     estimateWebUrl,
+    refreshTokenSource,
+    isZohoAuthorizationError,
+    zohoAuthRemediation,
+    probeItemsAccess,
     testConnection
 };

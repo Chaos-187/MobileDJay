@@ -10,7 +10,7 @@ const zohoBooks = require('./zoho-books');
 const OAUTH_PURPOSE = 'zoho_books';
 const STATE_TTL_MS = 15 * 60 * 1000;
 const SCOPES =
-    'ZohoBooks.contacts.ALL,ZohoBooks.invoices.ALL,ZohoBooks.customerpayments.ALL,ZohoBooks.estimates.ALL,ZohoBooks.items.ALL';
+    'ZohoBooks.contacts.ALL,ZohoBooks.invoices.ALL,ZohoBooks.customerpayments.ALL,ZohoBooks.estimates.ALL,ZohoBooks.settings.ALL';
 
 function apiPublicOrigin() {
     const explicit =
@@ -64,6 +64,10 @@ function canStartOAuth() {
     return hasOAuthClientCredentials() && zohoBooks.organizationId().length > 0;
 }
 
+function getRequestedScopes() {
+    return SCOPES;
+}
+
 function oauthStatus() {
     const row = portalDb.getZohoOAuthCredentials();
     const envToken = (process.env.ZOHO_BOOKS_REFRESH_TOKEN || '').trim();
@@ -73,6 +77,8 @@ function oauthStatus() {
         oauth_connected_by_user_id:
             row && row.connected_by_user_id ? row.connected_by_user_id : null,
         has_env_refresh_token: envToken.length > 0,
+        env_refresh_token_overrides_connect: envToken.length > 0,
+        oauth_scopes_requested: SCOPES,
         oauth_redirect_uri: oauthRedirectUri(),
         oauth_client_configured: hasOAuthClientCredentials(),
         oauth_ready: canStartOAuth()
@@ -214,6 +220,7 @@ async function handleOAuthCallback(req, res) {
 module.exports = {
     oauthRedirectUri,
     oauthStatus,
+    getRequestedScopes,
     canStartOAuth,
     buildAuthorizeUrl,
     disconnect,

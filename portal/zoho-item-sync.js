@@ -68,11 +68,17 @@ async function syncCatalogProductToZoho(productId) {
             synced_at: now
         };
     } catch (err) {
-        const msg = err && err.message ? String(err.message) : 'Zoho item sync failed';
+        let msg = err && err.message ? String(err.message) : 'Zoho item sync failed';
+        if (zohoBooks.isZohoAuthorizationError(err)) {
+            msg = `${msg}. ${zohoBooks.zohoAuthRemediation()}`;
+        }
         portalDb.updateCatalogProductZoho(productId, {
             zoho_item_sync_error: msg.slice(0, 500)
         });
-        throw err;
+        const wrapped = new Error(msg);
+        wrapped.code = err && err.code ? err.code : 'zoho_auth_failed';
+        wrapped.details = err && err.details ? err.details : undefined;
+        throw wrapped;
     }
 }
 
@@ -125,13 +131,22 @@ async function syncAllCatalogProductsToZoho() {
             });
         }
     }
-    return {
+    const failed = results.filter((r) => !r.ok && !r.skipped).length;
+    const authFailed = results.some(
+        (r) => r.error && String(r.error).toLowerCase().includes('not authorized')
+    );
+    const summary = {
         total: results.length,
         synced: results.filter((r) => r.ok && r.item_id).length,
-        failed: results.filter((r) => !r.ok && !r.skipped).length,
+        failed,
         skipped: results.filter((r) => r.skipped).length,
         results
     };
+    if (authFailed) {
+        summary.authorization_error = true;
+        summary.remediation = zohoBooks.zohoAuthRemediation();
+    }
+    return summary;
 }
 
 module.exports = {

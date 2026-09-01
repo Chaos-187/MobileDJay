@@ -28,7 +28,19 @@ Sync EYUP portal customers, catalog products, and booking quotes with **Zoho Boo
 
    - `ZohoBooks.estimates.ALL` (quotes for pending-deposit bookings)
 
-   - `ZohoBooks.items.ALL` (catalog product sync)
+   - `ZohoBooks.settings.ALL` (catalog **Items** — products/services live under Settings in Zoho Books OAuth; there is no `ZohoBooks.items.*` scope)
+
+In the Zoho API Console consent screen, these map roughly as:
+
+| API Console permission | OAuth scope |
+|------------------------|-------------|
+| Customers and Vendors | `ZohoBooks.contacts.ALL` |
+| Invoices | `ZohoBooks.invoices.ALL` |
+| Customer Payments | `ZohoBooks.customerpayments.ALL` |
+| Estimates | `ZohoBooks.estimates.ALL` |
+| Items (products/services) | `ZohoBooks.settings.ALL` |
+
+If product sync fails with an authorization error after Connect, **Disconnect → Connect** again so the token includes `settings`.
 
 
 
@@ -128,6 +140,10 @@ The refresh token is stored in the `portal_zoho_oauth` table. You do **not** nee
 
 
 
+**Important:** If `ZOHO_BOOKS_REFRESH_TOKEN` is set in server env, it **always overrides** the admin Connect token. Product sync needs `ZohoBooks.settings.ALL` on whichever token is active. Remove the env var (or regenerate it with settings scope) if Connect alone should control auth.
+
+
+
 ### 4. Disconnect / reconnect
 
 
@@ -136,7 +152,7 @@ The refresh token is stored in the `portal_zoho_oauth` table. You do **not** nee
 
 
 
-After adding **estimates** or **items** scopes, you must **Disconnect** and **Connect** again so Zoho grants the new permissions.
+After adding **estimates** or **settings** (items) scopes, you must **Disconnect** and **Connect** again so Zoho grants the new permissions.
 
 
 
@@ -172,7 +188,7 @@ Env takes precedence over the database token. Useful for CI or disaster recovery
 
 ```
 
-https://accounts.zoho.eu/oauth/v2/auth?scope=ZohoBooks.contacts.ALL,ZohoBooks.invoices.ALL,ZohoBooks.customerpayments.ALL,ZohoBooks.estimates.ALL,ZohoBooks.items.ALL&client_id=YOUR_CLIENT_ID&response_type=code&access_type=offline&redirect_uri=http://localhost&prompt=consent
+https://accounts.zoho.eu/oauth/v2/auth?scope=ZohoBooks.contacts.ALL,ZohoBooks.invoices.ALL,ZohoBooks.customerpayments.ALL,ZohoBooks.estimates.ALL,ZohoBooks.settings.ALL&client_id=YOUR_CLIENT_ID&response_type=code&access_type=offline&redirect_uri=http://localhost&prompt=consent
 
 ```
 

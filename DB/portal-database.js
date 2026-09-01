@@ -298,9 +298,7 @@ db.exec(`
     );
     CREATE INDEX IF NOT EXISTS idx_portal_oauth_states_hash ON portal_oauth_states(purpose, state_hash);
     CREATE INDEX IF NOT EXISTS idx_portal_oauth_states_expires ON portal_oauth_states(expires_at);
-`);
 
-db.exec(`
     CREATE TABLE IF NOT EXISTS admin_audit_log (
         id TEXT PRIMARY KEY,
         admin_user_id TEXT NOT NULL REFERENCES users(id),
@@ -822,6 +820,15 @@ const portalDb = {
         return id;
     },
 
+    getUserByEmail(email) {
+        const em = normalizeEmail(email);
+        return materializeUser(db.prepare('SELECT * FROM users WHERE email = ?').get(emailStorageKey(em)));
+    },
+
+    getUserById(id) {
+        return materializeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+    },
+
     appendAudit(adminUserId, action, entityType, entityId, detailsObj) {
         db.prepare(`
             INSERT INTO admin_audit_log (id, admin_user_id, action, entity_type, entity_id, details, created_at)
@@ -851,6 +858,70 @@ const portalDb = {
             SET payload_json = ?, updated_at = datetime('now'), updated_by_user_id = ?
             WHERE id = 'default'
         `).run(payloadJson, adminUserId || null);
+    },
+
+    getZohoOAuthCredentials() {
+        try {
+            return db
+                .prepare(
+                    "SELECT refresh_token, connected_at, connected_by_user_id, updated_at FROM portal_zoho_oauth WHERE id = 'default'"
+                )
+                .get();
+        } catch (err) {
+            if (err && (err.code === 'SQLITE_ERROR' || String(err.message || '').includes('no such table'))) {
+                return null;
+            }
+            throw err;
+        }
+    },
+
+    saveZohoRefreshToken(refreshToken, adminUserId) {
+        const now = nowIso();
+        db.prepare(
+            `INSERT INTO portal_zoho_oauth (id, refresh_token, connected_at, connected_by_user_id, updated_at)
+             VALUES ('default', ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               refresh_token = excluded.refresh_token,
+               connected_at = excluded.connected_at,
+               connected_by_user_id = excluded.connected_by_user_id,
+               updated_at = excluded.updated_at`
+        ).run(refreshToken, now, adminUserId, now);
+    },
+
+    clearZohoRefreshToken() {
+        const now = nowIso();
+        try {
+            return (
+                db.prepare(
+                    "UPDATE portal_zoho_oauth SET refresh_token = NULL, connected_at = NULL, connected_by_user_id = NULL, updated_at = ? WHERE id = 'default'"
+                ).run(now).changes > 0
+            );
+        } catch (err) {
+            if (err && (err.code === 'SQLITE_ERROR' || String(err.message || '').includes('no such table'))) {
+                return false;
+            }
+            throw err;
+        }
+    },
+
+    createOAuthState({ id, purpose, state_hash, admin_user_id, expires_at }) {
+        db.prepare(
+            'INSERT INTO portal_oauth_states (id, purpose, state_hash, admin_user_id, expires_at) VALUES (?, ?, ?, ?, ?)'
+        ).run(id, purpose, state_hash, admin_user_id, expires_at);
+    },
+
+    getOAuthStateByHash(stateHash, purpose) {
+        return db
+            .prepare('SELECT * FROM portal_oauth_states WHERE state_hash = ? AND purpose = ?')
+            .get(stateHash, purpose);
+    },
+
+    deleteOAuthState(id) {
+        return db.prepare('DELETE FROM portal_oauth_states WHERE id = ?').run(id).changes > 0;
+    },
+
+    purgeExpiredOAuthStates() {
+        return db.prepare('DELETE FROM portal_oauth_states WHERE expires_at < ?').run(nowIso()).changes;
     },
 
     countActiveAdmins() {
@@ -1132,72 +1203,6 @@ const portalDb = {
             `).run(id, key, firstName || null, lastName || null, tel, capJson, am || null, nowIso());
         }
         return { error: null, user: portalDb.getUserById(id), created: true };
-    },
-    getUserByEmail(email) {
-        const em = normalizeEmail(email);
-        return materializeUser(db.prepare('SELECT * FROM users WHERE email = ?').get(emailStorageKey(em)));
-    },
-
-    getUserById(id) {
-        return materializeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
-    },
-
-    getZohoOAuthCredentials() {
-        return db
-            .prepare(
-                `SELECT refresh_token, connected_at, connected_by_user_id, updated_at
-                 FROM portal_zoho_oauth WHERE id = 'default'`
-            )
-            .get();
-    },
-
-    saveZohoRefreshToken(refreshToken, adminUserId) {
-        const now = nowIso();
-        db.prepare(
-            `INSERT INTO portal_zoho_oauth (id, refresh_token, connected_at, connected_by_user_id, updated_at)
-             VALUES ('default', ?, ?, ?, ?)
-             ON CONFLICT(id) DO UPDATE SET
-               refresh_token = excluded.refresh_token,
-               connected_at = excluded.connected_at,
-               connected_by_user_id = excluded.connected_by_user_id,
-               updated_at = excluded.updated_at`
-        ).run(refreshToken, now, adminUserId, now);
-    },
-
-    clearZohoRefreshToken() {
-        const now = nowIso();
-        return (
-            db.prepare(
-                `UPDATE portal_zoho_oauth
-                 SET refresh_token = NULL, connected_at = NULL, connected_by_user_id = NULL, updated_at = ?
-                 WHERE id = 'default'`
-            ).run(now).changes > 0
-        );
-    },
-
-    createOAuthState({ id, purpose, state_hash, admin_user_id, expires_at }) {
-        db.prepare(
-            `INSERT INTO portal_oauth_states (id, purpose, state_hash, admin_user_id, expires_at)
-             VALUES (?, ?, ?, ?, ?)`
-        ).run(id, purpose, state_hash, admin_user_id, expires_at);
-    },
-
-    getOAuthStateByHash(stateHash, purpose) {
-        return db
-            .prepare(
-                `SELECT * FROM portal_oauth_states WHERE state_hash = ? AND purpose = ?`
-            )
-            .get(stateHash, purpose);
-    },
-
-    deleteOAuthState(id) {
-        return db.prepare(`DELETE FROM portal_oauth_states WHERE id = ?`).run(id).changes > 0;
-    },
-
-    purgeExpiredOAuthStates() {
-        return db
-            .prepare(`DELETE FROM portal_oauth_states WHERE expires_at < ?`)
-            .run(nowIso()).changes;
     },
 
     updateUserZohoSync(userId, patch = {}) {

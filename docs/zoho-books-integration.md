@@ -5,13 +5,78 @@ Sync EYUP portal customers and booking quotes with **Zoho Books** — contacts, 
 ## Prerequisites
 
 1. Zoho Books organisation with GBP (or matching catalog currency).
-2. OAuth **Server-based Application** in the [Zoho API Console](https://api-console.zoho.com) for your region (`zoho.com`, `zoho.eu`, etc.).
+2. OAuth **Server-based Application** in the Zoho API Console for your region:
+   - **EU:** [api-console.zoho.eu](https://api-console.zoho.eu)
+   - **US / global:** [api-console.zoho.com](https://api-console.zoho.com)
 3. Scopes (minimum):
    - `ZohoBooks.contacts.ALL`
    - `ZohoBooks.invoices.ALL`
    - `ZohoBooks.customerpayments.ALL`
 
-Generate a **refresh token** with the authorization code flow and store it on the API server (see Zoho Books API docs → OAuth).
+The portal API **does not expose an OAuth callback route**. It only stores a long-lived **refresh token** in `.env` and refreshes access tokens server-side. The redirect URI below is used **once** when you generate that refresh token.
+
+## OAuth setup (Server-based Application)
+
+### 1. Register the client
+
+In the API Console → **Add Client** → **Server-based Applications**:
+
+| Field | Value |
+|-------|--------|
+| **Client Name** | e.g. `EYUP Events Portal` |
+| **Homepage URL** | `https://eyupevents.uk` (or your site) |
+| **Authorized Redirect URIs** | `http://localhost` |
+
+Use **`http://localhost` exactly** (no path, no trailing slash). You can add `http://127.0.0.1` as a second URI if Zoho allows multiple entries.
+
+Do **not** use `https://requests.eyupevents.uk/...` unless we add a callback handler — the API does not serve one today.
+
+Copy the **Client ID** and **Client Secret**.
+
+### 2. Get an authorization code (browser, one time)
+
+Replace `YOUR_CLIENT_ID` and open this URL in a browser (EU example):
+
+```
+https://accounts.zoho.eu/oauth/v2/auth?scope=ZohoBooks.contacts.ALL,ZohoBooks.invoices.ALL,ZohoBooks.customerpayments.ALL&client_id=YOUR_CLIENT_ID&response_type=code&access_type=offline&redirect_uri=http://localhost&prompt=consent
+```
+
+For **US / `.com`**, use `https://accounts.zoho.com/oauth/v2/auth` with the same query parameters.
+
+Sign in and approve. The browser redirects to something like:
+
+```
+http://localhost/?code=1000.xxxxxxxxxxxxx&location=eu&accounts-server=...
+```
+
+The page may fail to load — that is expected. Copy the **`code`** query parameter from the address bar (it expires in a few minutes).
+
+### 3. Exchange the code for tokens
+
+EU example (must use the **same** `redirect_uri` as step 1):
+
+```bash
+curl -X POST "https://accounts.zoho.eu/oauth/v2/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "client_secret=YOUR_CLIENT_SECRET" \
+  -d "redirect_uri=http://localhost" \
+  -d "code=PASTE_CODE_FROM_BROWSER"
+```
+
+US / `.com` token URL: `https://accounts.zoho.com/oauth/v2/token`
+
+From the JSON response, save:
+
+- **`refresh_token`** → `ZOHO_BOOKS_REFRESH_TOKEN` (this is what the server uses ongoing)
+- **`access_token`** — short-lived; the portal refreshes this automatically
+
+If no `refresh_token` appears, repeat step 2 with `prompt=consent` and ensure `access_type=offline` is in the auth URL.
+
+### 4. Organisation ID
+
+In Zoho Books: **Settings → Organisation profile** → copy **Organization ID** → `ZOHO_BOOKS_ORGANIZATION_ID`.
 
 ## Environment variables
 

@@ -217,5 +217,7 @@ module.exports = {
     canStartOAuth,
     buildAuthorizeUrl,
     disconnect,
-    handleOAuthCallback
+    handleOAuthCallback,
+    /** @deprecated use handleOAuthCallback */
+    handleZohoOAuthCallback: handleOAuthCallback
 };

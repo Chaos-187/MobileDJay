@@ -139,8 +139,11 @@ Booking detail (`GET /admin/bookings/:id`) includes `zoho_books_configured` and 
 
 ## Admin UI
 
-- **Customer hub → Details** — Zoho Books panel, **Push to Zoho**.
+- **Site → Integrations → Zoho Books** — **Test connection** and **Sync all customers**.
+- **Customer hub → Details** — Zoho Books panel, **Push to Zoho** (single customer).
 - **Booking editor → Payments** — Create deposit / balance / full invoices; links open Zoho Books.
+
+Contacts also sync **automatically** when a customer is created or when name/email/phone is updated (if Zoho env vars are set).
 
 ## Payment sync (automatic)
 

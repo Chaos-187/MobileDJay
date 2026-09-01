@@ -230,6 +230,30 @@ function invoiceWebUrl(invoiceId) {
     return `${host}/app/${org}#/invoices/${encodeURIComponent(String(invoiceId))}`;
 }
 
+/** Verify OAuth credentials and organisation access. */
+async function testConnection() {
+    if (!isConfigured()) {
+        return { ok: false, configured: false, reason: 'not_configured' };
+    }
+    await refreshAccessToken();
+    const data = await booksRequest('GET', '/books/v3/organizations');
+    const orgs = data && Array.isArray(data.organizations) ? data.organizations : [];
+    const orgId = organizationId();
+    const match =
+        orgs.find((o) => String(o.organization_id) === String(orgId)) || null;
+    return {
+        ok: !!match,
+        configured: true,
+        region: regionKey(),
+        organization_id: orgId,
+        organization_name: match ? match.name || match.organization_name || null : null,
+        organizations_found: orgs.length,
+        message: match
+            ? `Connected to ${match.name || 'Zoho Books organisation'}.`
+            : `Token works but organisation ${orgId} was not found in this account.`
+    };
+}
+
 module.exports = {
     isConfigured,
     configSummary,
@@ -244,5 +268,6 @@ module.exports = {
     getInvoice,
     markInvoiceSent,
     createCustomerPayment,
-    invoiceWebUrl
+    invoiceWebUrl,
+    testConnection
 };

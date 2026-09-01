@@ -119,9 +119,51 @@ function zohoStatusForUser(user) {
     };
 }
 
+/** Push every customer account to Zoho Books (admin bulk action). */
+async function syncAllCustomersToZoho() {
+    if (!zohoBooks.isConfigured()) {
+        const err = new Error('Zoho Books is not configured');
+        err.code = 'service_unavailable';
+        throw err;
+    }
+    const users = portalDb.listUsers({ role: 'customer', limit: 500, offset: 0 });
+    const results = [];
+    for (const u of users) {
+        if (!u || !u.id) continue;
+        try {
+            const r = await syncCustomerToZoho(u.id);
+            results.push({
+                user_id: u.id,
+                email: u.email || null,
+                ok: !!r.ok,
+                contact_id: r.contact_id || null,
+                skipped: !!r.skipped,
+                reason: r.reason || null
+            });
+        } catch (err) {
+            results.push({
+                user_id: u.id,
+                email: u.email || null,
+                ok: false,
+                error: err && err.message ? String(err.message) : 'sync_failed'
+            });
+        }
+    }
+    const synced = results.filter((r) => r.ok && r.contact_id).length;
+    const failed = results.filter((r) => !r.ok && !r.skipped).length;
+    return {
+        total: results.length,
+        synced,
+        failed,
+        skipped: results.filter((r) => r.skipped).length,
+        results
+    };
+}
+
 module.exports = {
     syncCustomerToZoho,
     scheduleZohoContactSync,
+    syncAllCustomersToZoho,
     zohoStatusForUser,
     contactDisplayName
 };

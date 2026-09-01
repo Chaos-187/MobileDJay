@@ -25,6 +25,7 @@ const zohoBooks = require('./zoho-books');
 const {
     syncCustomerToZoho,
     scheduleZohoContactSync,
+    syncAllCustomersToZoho,
     zohoStatusForUser
 } = require('./zoho-contact-sync');
 const { createBookingZohoInvoice, zohoStatusForBooking } = require('./zoho-invoice-sync');
@@ -483,6 +484,63 @@ router.get('/integrations/status', (req, res) => {
         brevo_configured: brevoMail.isConfigured(),
         zoho_books: zohoBooks.configSummary()
     });
+});
+
+router.post('/zoho/test', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not configured (set ZOHO_BOOKS_* env vars)',
+            503
+        );
+    }
+    try {
+        const result = await zohoBooks.testConnection();
+        audit(req.portalUser.id, 'zoho.test', 'integration', 'zoho_books', {
+            ok: result.ok,
+            organization_id: result.organization_id
+        });
+        res.json(result);
+    } catch (err) {
+        console.error('[portal] admin/zoho/test', err);
+        return jsonError(
+            res,
+            err.code === 'zoho_auth_failed' ? 'service_unavailable' : 'upstream_error',
+            err.message || 'Zoho connection test failed',
+            err.code === 'zoho_auth_failed' ? 503 : 502,
+            err.details || {}
+        );
+    }
+});
+
+router.post('/zoho/sync-contacts', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not configured (set ZOHO_BOOKS_* env vars)',
+            503
+        );
+    }
+    try {
+        const summary = await syncAllCustomersToZoho();
+        audit(req.portalUser.id, 'zoho.sync_contacts', 'integration', 'zoho_books', {
+            total: summary.total,
+            synced: summary.synced,
+            failed: summary.failed
+        });
+        res.json(summary);
+    } catch (err) {
+        console.error('[portal] admin/zoho/sync-contacts', err);
+        return jsonError(
+            res,
+            'upstream_error',
+            err.message || 'Bulk contact sync failed',
+            502,
+            err.details || {}
+        );
+    }
 });
 
 router.post('/users/:id/send-email', (req, res) => {

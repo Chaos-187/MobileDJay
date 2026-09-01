@@ -2,7 +2,7 @@
 
 
 
-Sync EYUP portal customers and booking quotes with **Zoho Books** — contacts, invoices, and (optionally) recorded payments when Stripe or cash marks a booking payment as paid.
+Sync EYUP portal customers, catalog products, and booking quotes with **Zoho Books** — contacts, items, estimates (quotes), invoices, and (optionally) recorded payments when Stripe or cash marks a booking payment as paid.
 
 
 
@@ -102,6 +102,8 @@ Optional:
 
 | `ZOHO_BOOKS_ACCOUNTS_URL`, `ZOHO_BOOKS_API_BASE` | Region URL overrides |
 
+| `ZOHO_BOOKS_AUTO_ESTIMATES` | Set to `1` to auto-create Zoho quotes when pending-deposit bookings are created or updated |
+
 
 
 Restart the API after changing env vars.
@@ -131,6 +133,10 @@ The refresh token is stored in the `portal_zoho_oauth` table. You do **not** nee
 
 
 **Disconnect** removes the stored refresh token from the database. **Connect** again to obtain a new one (Zoho may require `prompt=consent` on re-authorization).
+
+
+
+After adding **estimates** or **items** scopes, you must **Disconnect** and **Connect** again so Zoho grants the new permissions.
 
 
 
@@ -260,6 +266,10 @@ OAuth-specific fields:
 
 | POST | `/admin/payments/:id/zoho/sync-payment` | Record paid portal payment in Books |
 
+| GET | `/admin/catalog/products/:id/zoho` | Product item sync status |
+
+| POST | `/admin/catalog/products/:id/zoho/sync` | Push single catalog product to Zoho Items |
+
 
 
 ## Data model
@@ -316,7 +326,37 @@ Contacts sync automatically when a **customer** is created or when name/email/ph
 
 | `zoho_full_invoice_id` | Full quote invoice |
 
+| `zoho_estimate_id` | Zoho quote (estimate) for pending-deposit bookings |
+
+| `zoho_estimate_synced_at` | Last successful quote sync |
+
+| `zoho_estimate_sync_error` | Last quote sync error |
+
 | `deposit_due_at` / `balance_due_at` | Optional explicit due dates (else derived) |
+
+
+
+### `catalog_products`
+
+
+
+| Column | Purpose |
+
+|--------|---------|
+
+| `zoho_item_id` | Linked Zoho Books item |
+
+| `zoho_item_synced_at` | Last successful item sync |
+
+| `zoho_item_sync_error` | Last item sync error |
+
+
+
+Products sync to Zoho Items automatically on **create** and **update** when Zoho is configured. Manual bulk: **Site → Integrations → Sync all products**, or **Products → Edit → Push to Zoho**.
+
+
+
+Invoice and estimate line items include `item_id` when the catalog product has been synced (`zoho_item_id`).
 
 
 
@@ -342,15 +382,37 @@ Contacts sync automatically when a **customer** is created or when name/email/ph
 
 
 
-- **Site → Integrations → Zoho Books** — **Connect**, **Test connection**, **Sync all customers**.
+- **Site → Integrations → Zoho Books** — **Connect**, **Test connection**, **Sync all customers**, **Sync all products**, **Sync pending quotes**.
 
 - **Customer hub → Details** — Zoho Books panel, **Push to Zoho** (single customer).
 
-- **Booking editor → Payments** — Create deposit / balance / full invoices; links open Zoho Books.
+- **Products** — **Zoho** column shows sync status; edit a product for **Push to Zoho**.
+
+- **Booking editor → Payments** — **Create quote in Zoho** (pending deposit), deposit / balance / full invoices; links open Zoho Books.
 
 
 
-Contacts also sync **automatically** when a customer is created or when name/email/phone is updated (if Zoho is configured).
+Contacts sync **automatically** when a customer is created or when name/email/phone is updated (if Zoho is configured). Catalog products sync on save. Optional auto-quotes: set `ZOHO_BOOKS_AUTO_ESTIMATES=1`.
+
+
+
+## Estimates (quotes)
+
+
+
+Create a Zoho **Estimate** when a booking has priced line items, deposit is not yet paid, and the booking is not cancelled.
+
+
+
+- Manual: booking **Payments** tab → **Create quote in Zoho**
+
+- Bulk: **Site → Integrations → Sync pending quotes**
+
+- Optional auto: `ZOHO_BOOKS_AUTO_ESTIMATES=1` on booking create/patch
+
+
+
+Admin status fields: `quote_in_zoho`, `estimate_id`, `estimate_url` on booking Zoho panel.
 
 
 

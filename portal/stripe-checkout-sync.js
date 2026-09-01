@@ -5,6 +5,7 @@
 const stripePortal = require('./stripe-portal');
 const { portalDb, nowIso } = require('../db/portal-database');
 const { schedulePaymentReceivedEmail } = require('./payment-received-email');
+const { scheduleZohoPaymentSync } = require('./zoho-payment-sync');
 
 function paymentIdFromSession(session) {
     return (
@@ -31,6 +32,7 @@ function applyCheckoutCompleted(session) {
     }
     if (payment.status === 'paid') {
         schedulePaymentReceivedEmail(payment.id);
+        scheduleZohoPaymentSync(payment.id);
         return { ok: true, duplicate: true, payment_id: payment.id };
     }
 
@@ -50,6 +52,7 @@ function applyCheckoutCompleted(session) {
     });
 
     schedulePaymentReceivedEmail(payment.id);
+    scheduleZohoPaymentSync(payment.id);
     return { ok: true, payment_id: payment.id, booking_id: payment.booking_id, status: 'paid' };
 }
 

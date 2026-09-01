@@ -1,0 +1,248 @@
+/**
+ * Zoho Books API client (OAuth2 refresh token + REST).
+ * @see docs/zoho-books-integration.md
+ */
+
+const REGION_MAP = {
+    com: {
+        accounts: 'https://accounts.zoho.com',
+        api: 'https://www.zohoapis.com'
+    },
+    eu: {
+        accounts: 'https://accounts.zoho.eu',
+        api: 'https://www.zohoapis.eu'
+    },
+    in: {
+        accounts: 'https://accounts.zoho.in',
+        api: 'https://www.zohoapis.in'
+    },
+    'com.au': {
+        accounts: 'https://accounts.zoho.com.au',
+        api: 'https://www.zohoapis.com.au'
+    },
+    jp: {
+        accounts: 'https://accounts.zoho.jp',
+        api: 'https://www.zohoapis.jp'
+    },
+    ca: {
+        accounts: 'https://accounts.zohocloud.ca',
+        api: 'https://www.zohoapis.ca'
+    }
+};
+
+function clientId() {
+    return process.env.ZOHO_BOOKS_CLIENT_ID || '';
+}
+
+function clientSecret() {
+    return process.env.ZOHO_BOOKS_CLIENT_SECRET || '';
+}
+
+function refreshToken() {
+    return process.env.ZOHO_BOOKS_REFRESH_TOKEN || '';
+}
+
+function organizationId() {
+    return process.env.ZOHO_BOOKS_ORGANIZATION_ID || '';
+}
+
+function regionKey() {
+    const raw = (process.env.ZOHO_BOOKS_REGION || 'eu').trim().toLowerCase();
+    return REGION_MAP[raw] ? raw : 'eu';
+}
+
+function accountsBaseUrl() {
+    if (process.env.ZOHO_BOOKS_ACCOUNTS_URL) {
+        return String(process.env.ZOHO_BOOKS_ACCOUNTS_URL).trim().replace(/\/$/, '');
+    }
+    return REGION_MAP[regionKey()].accounts;
+}
+
+function apiBaseUrl() {
+    if (process.env.ZOHO_BOOKS_API_BASE) {
+        return String(process.env.ZOHO_BOOKS_API_BASE).trim().replace(/\/$/, '');
+    }
+    return REGION_MAP[regionKey()].api;
+}
+
+function isConfigured() {
+    return (
+        clientId().length > 0 &&
+        clientSecret().length > 0 &&
+        refreshToken().length > 0 &&
+        organizationId().length > 0
+    );
+}
+
+function configSummary() {
+    return {
+        configured: isConfigured(),
+        region: regionKey(),
+        organization_id: organizationId() || null,
+        accounts_url: accountsBaseUrl(),
+        api_base: apiBaseUrl()
+    };
+}
+
+let cachedAccessToken = null;
+let cachedAccessTokenExpiresAt = 0;
+
+async function refreshAccessToken() {
+    const params = new URLSearchParams({
+        refresh_token: refreshToken(),
+        client_id: clientId(),
+        client_secret: clientSecret(),
+        grant_type: 'refresh_token'
+    });
+    const res = await fetch(`${accountsBaseUrl()}/oauth/v2/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.access_token) {
+        const msg =
+            (data && (data.error || data.message)) ||
+            `Zoho token refresh failed (${res.status})`;
+        const err = new Error(msg);
+        err.code = 'zoho_auth_failed';
+        err.status = res.status;
+        err.details = data;
+        throw err;
+    }
+    cachedAccessToken = data.access_token;
+    const expiresIn = Number(data.expires_in) || 3600;
+    cachedAccessTokenExpiresAt = Date.now() + Math.max(60, expiresIn - 120) * 1000;
+    return cachedAccessToken;
+}
+
+async function getAccessToken() {
+    if (cachedAccessToken && Date.now() < cachedAccessTokenExpiresAt) {
+        return cachedAccessToken;
+    }
+    return refreshAccessToken();
+}
+
+function zohoErrorFromBody(data, status) {
+    const msg =
+        (data && data.message) ||
+        (data && data.error && data.error.message) ||
+        (Array.isArray(data && data.errors) && data.errors[0] && data.errors[0].message) ||
+        `Zoho Books request failed (${status})`;
+    const err = new Error(msg);
+    err.code = 'zoho_api_error';
+    err.status = status;
+    err.details = data;
+    return err;
+}
+
+/**
+ * @param {'GET'|'POST'|'PUT'|'DELETE'} method
+ * @param {string} path - e.g. /books/v3/contacts
+ */
+async function booksRequest(method, path, { query = {}, body = null } = {}) {
+    if (!isConfigured()) {
+        const err = new Error('Zoho Books is not configured');
+        err.code = 'service_unavailable';
+        throw err;
+    }
+    const token = await getAccessToken();
+    const q = new URLSearchParams({ organization_id: organizationId(), ...query });
+    const url = `${apiBaseUrl()}${path}?${q.toString()}`;
+    const headers = {
+        Authorization: `Zoho-oauthtoken ${token}`
+    };
+    const opts = { method, headers };
+    if (body != null) {
+        headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(url, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw zohoErrorFromBody(data, res.status);
+    }
+    if (data && data.code != null && Number(data.code) !== 0) {
+        throw zohoErrorFromBody(data, res.status);
+    }
+    return data;
+}
+
+async function searchContactByEmail(email) {
+    const em = String(email || '').trim();
+    if (!em) return null;
+    const data = await booksRequest('GET', '/books/v3/contacts', {
+        query: { email: em, contact_type: 'customer' }
+    });
+    const contacts = data && Array.isArray(data.contacts) ? data.contacts : [];
+    return contacts.length ? contacts[0] : null;
+}
+
+async function getContact(contactId) {
+    const data = await booksRequest('GET', `/books/v3/contacts/${encodeURIComponent(contactId)}`);
+    return data && data.contact ? data.contact : null;
+}
+
+async function createContact(payload) {
+    const data = await booksRequest('POST', '/books/v3/contacts', { body: payload });
+    return data && data.contact ? data.contact : null;
+}
+
+async function updateContact(contactId, payload) {
+    const data = await booksRequest('PUT', `/books/v3/contacts/${encodeURIComponent(contactId)}`, {
+        body: payload
+    });
+    return data && data.contact ? data.contact : null;
+}
+
+async function createInvoice(payload) {
+    const data = await booksRequest('POST', '/books/v3/invoices', { body: payload });
+    return data && data.invoice ? data.invoice : null;
+}
+
+async function getInvoice(invoiceId) {
+    const data = await booksRequest('GET', `/books/v3/invoices/${encodeURIComponent(invoiceId)}`);
+    return data && data.invoice ? data.invoice : null;
+}
+
+async function markInvoiceSent(invoiceId) {
+    const data = await booksRequest('POST', `/books/v3/invoices/${encodeURIComponent(invoiceId)}/status/sent`);
+    return data && data.invoice ? data.invoice : null;
+}
+
+async function createCustomerPayment(payload) {
+    const data = await booksRequest('POST', '/books/v3/customerpayments', { body: payload });
+    return data && data.payment ? data.payment : null;
+}
+
+function invoiceWebUrl(invoiceId) {
+    if (!invoiceId) return null;
+    const org = organizationId();
+    const region = regionKey();
+    const host =
+        region === 'eu'
+            ? 'https://books.zoho.eu'
+            : region === 'in'
+              ? 'https://books.zoho.in'
+              : region === 'com.au'
+                ? 'https://books.zoho.com.au'
+                : 'https://books.zoho.com';
+    return `${host}/app/${org}#/invoices/${encodeURIComponent(String(invoiceId))}`;
+}
+
+module.exports = {
+    isConfigured,
+    configSummary,
+    accountsBaseUrl,
+    apiBaseUrl,
+    booksRequest,
+    searchContactByEmail,
+    getContact,
+    createContact,
+    updateContact,
+    createInvoice,
+    getInvoice,
+    markInvoiceSent,
+    createCustomerPayment,
+    invoiceWebUrl
+};

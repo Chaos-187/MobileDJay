@@ -231,6 +231,54 @@ try {
     /* exists */
 }
 
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN completed_at TEXT`);
+} catch (e) {
+    /* exists */
+}
+
+const zohoUserCols = [
+    'ALTER TABLE users ADD COLUMN zoho_contact_id TEXT',
+    'ALTER TABLE users ADD COLUMN zoho_contact_synced_at TEXT',
+    'ALTER TABLE users ADD COLUMN zoho_contact_sync_error TEXT'
+];
+for (const stmt of zohoUserCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+const zohoBookingCols = [
+    'ALTER TABLE bookings ADD COLUMN deposit_due_at TEXT',
+    'ALTER TABLE bookings ADD COLUMN balance_due_at TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_deposit_invoice_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_balance_invoice_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_full_invoice_id TEXT'
+];
+for (const stmt of zohoBookingCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+const zohoPaymentCols = [
+    'ALTER TABLE booking_payments ADD COLUMN zoho_invoice_id TEXT',
+    'ALTER TABLE booking_payments ADD COLUMN zoho_payment_id TEXT',
+    'ALTER TABLE booking_payments ADD COLUMN zoho_payment_synced_at TEXT',
+    'ALTER TABLE booking_payments ADD COLUMN zoho_sync_error TEXT'
+];
+for (const stmt of zohoPaymentCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
 db.exec(`
     CREATE TABLE IF NOT EXISTS admin_audit_log (
         id TEXT PRIMARY KEY,
@@ -1073,6 +1121,68 @@ const portalDb = {
         return materializeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
     },
 
+    updateUserZohoSync(userId, patch = {}) {
+        const allowed = ['zoho_contact_id', 'zoho_contact_synced_at', 'zoho_contact_sync_error'];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(userId);
+        return db.prepare(`UPDATE users SET ${setClause.join(', ')} WHERE id = ?`).run(...values).changes > 0;
+    },
+
+    updateBookingZohoInvoice(bookingId, kind, invoiceId) {
+        const col =
+            kind === 'deposit'
+                ? 'zoho_deposit_invoice_id'
+                : kind === 'balance'
+                  ? 'zoho_balance_invoice_id'
+                  : kind === 'full'
+                    ? 'zoho_full_invoice_id'
+                    : null;
+        if (!col) return false;
+        return db
+            .prepare(`UPDATE bookings SET ${col} = ?, updated_at = ? WHERE id = ?`)
+            .run(invoiceId || null, nowIso(), bookingId).changes > 0;
+    },
+
+    getBookingZohoInvoiceId(booking, kind) {
+        if (!booking) return null;
+        if (kind === 'deposit') return booking.zoho_deposit_invoice_id || null;
+        if (kind === 'balance') return booking.zoho_balance_invoice_id || null;
+        if (kind === 'full') return booking.zoho_full_invoice_id || null;
+        return null;
+    },
+
+    updateBookingPaymentZoho(paymentId, patch = {}) {
+        const allowed = [
+            'zoho_invoice_id',
+            'zoho_payment_id',
+            'zoho_payment_synced_at',
+            'zoho_sync_error'
+        ];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(paymentId);
+        return db
+            .prepare(`UPDATE booking_payments SET ${setClause.join(', ')} WHERE id = ?`)
+            .run(...values).changes > 0;
+    },
+
     getCustomerMediaPermissions(customerId) {
         return customerMediaPermissionsFromUser(portalDb.getUserById(customerId));
     },
@@ -1278,7 +1388,10 @@ const portalDb = {
             'newsletter_opt_in',
             'lead_metadata',
             'booking_pii_ciphertext',
-            'requests_event_slug'
+            'requests_event_slug',
+            'completed_at',
+            'deposit_due_at',
+            'balance_due_at'
         ];
         const normalized = { ...patch };
         if (normalized.services_required != null && typeof normalized.services_required !== 'string') {
@@ -1408,6 +1521,7 @@ const portalDb = {
         const {
             customer_id: customerId,
             status,
+            completed,
             start_from: startFrom,
             start_to: startTo,
             limit = 100,
@@ -1419,9 +1533,16 @@ const portalDb = {
             sql += ' AND customer_id = ?';
             params.push(customerId);
         }
-        if (status) {
+        if (status === 'completed') {
+            sql += ' AND completed_at IS NOT NULL AND TRIM(completed_at) != \'\'';
+        } else if (status) {
             sql += ' AND status = ?';
             params.push(status);
+        }
+        if (completed === true || completed === '1' || completed === 1) {
+            sql += ' AND completed_at IS NOT NULL AND TRIM(completed_at) != \'\'';
+        } else if (completed === false || completed === '0' || completed === 0) {
+            sql += ' AND (completed_at IS NULL OR TRIM(completed_at) = \'\')';
         }
         if (startFrom) {
             sql += ' AND start_datetime >= ?';
@@ -2210,6 +2331,115 @@ const portalDb = {
             )
             .get(bookingId, ...list);
         return Math.round(Number(row && row.total ? row.total : 0) * 100) / 100;
+    },
+
+    /** Admin: record cash (or other manual) payment against a booking. */
+    recordManualBookingPayment(bookingId, opts = {}) {
+        const booking = portalDb.getBookingById(bookingId);
+        if (!booking) return { error: 'not_found', message: 'Booking not found' };
+
+        const settlement = portalDb.bookingSettlementSnapshot(booking);
+        const currency =
+            booking.deposit_currency != null && String(booking.deposit_currency).trim()
+                ? String(booking.deposit_currency).trim().toUpperCase()
+                : 'GBP';
+        const now = nowIso();
+        const kindRaw = opts.kind != null ? String(opts.kind).trim().toLowerCase() : 'balance';
+        const kind = ['deposit', 'balance', 'full'].includes(kindRaw) ? kindRaw : 'balance';
+        const note =
+            opts.note != null && String(opts.note).trim()
+                ? String(opts.note).trim()
+                : 'Paid in cash';
+
+        let amount =
+            opts.amount != null && opts.amount !== '' ? Number(opts.amount) : null;
+
+        if (kind === 'deposit') {
+            if (amount == null || !Number.isFinite(amount)) {
+                amount =
+                    booking.deposit_amount != null && Number.isFinite(Number(booking.deposit_amount))
+                        ? Number(booking.deposit_amount)
+                        : 0;
+            }
+            if (amount <= 0.005) {
+                return {
+                    error: 'validation_error',
+                    message: 'Set a deposit amount before recording a cash deposit'
+                };
+            }
+            const depositPaid = booking.deposit_paid === 1 || booking.deposit_paid === true;
+            if (depositPaid) {
+                return { error: 'conflict', message: 'Deposit is already marked paid' };
+            }
+        } else if (kind === 'balance') {
+            if (amount == null || !Number.isFinite(amount)) {
+                amount = settlement.balance_remaining;
+            }
+            if (amount <= 0.005) {
+                return { error: 'conflict', message: 'No balance remaining to record' };
+            }
+        } else if (kind === 'full') {
+            if (amount == null || !Number.isFinite(amount)) {
+                amount =
+                    settlement.balance_remaining > 0.005
+                        ? settlement.balance_remaining
+                        : settlement.quote_total;
+            }
+            if (amount <= 0.005) {
+                return {
+                    error: 'validation_error',
+                    message: 'Quote total is zero — add line items before recording payment'
+                };
+            }
+        }
+
+        amount = Math.round(amount * 100) / 100;
+        const paymentId = uuid();
+        const paymentKind = kind === 'full' ? 'full' : kind;
+
+        const payment = db.transaction(() => {
+            portalDb.insertBookingPayment({
+                id: paymentId,
+                booking_id: bookingId,
+                customer_id: booking.customer_id,
+                kind: paymentKind,
+                status: 'paid',
+                amount,
+                currency,
+                paid_at: now,
+                metadata: {
+                    method: 'cash',
+                    note,
+                    recorded_by: opts.adminUserId || null
+                }
+            });
+
+            if (kind === 'deposit' || kind === 'full') {
+                const depPatch = {
+                    deposit_paid: 1,
+                    deposit_paid_at: now,
+                    deposit_note: note
+                };
+                if (
+                    kind === 'deposit' &&
+                    (booking.deposit_amount == null ||
+                        booking.deposit_amount === '' ||
+                        Number(booking.deposit_amount) <= 0)
+                ) {
+                    depPatch.deposit_amount = amount;
+                }
+                portalDb.updateBooking(bookingId, depPatch, { admin: true });
+            }
+
+            return portalDb.getBookingPaymentById(paymentId);
+        })();
+
+        const updatedBooking = portalDb.getBookingById(bookingId);
+        return {
+            payment,
+            booking: updatedBooking,
+            ...portalDb.bookingSettlementSnapshot(updatedBooking)
+        };
     },
 
     /** Quote total, recorded payments, and balance for admin/calendar UI. */

@@ -58,6 +58,7 @@ Short list of planned work tracked outside the domain spec docs.
 
 ## 7. Zoho Books integration (invoices & customers)
 
+- **Shipped (phase 1–3 foundation):** OAuth client (`portal/zoho-books.js`), contact sync, invoice creation, payment sync hooks, DB columns, admin API + backoffice UI. See [`docs/zoho-books-integration.md`](zoho-books-integration.md).
 - **Goal:** Sync portal customers and booking billing with **Zoho Books** — create/update **contacts (customers)**, raise **invoices** (deposit, balance, or full quote), and optionally record **payments** when Stripe marks a booking payment paid.
 - **Auth:** Zoho OAuth2 (organization-scoped refresh token) — env: **`ZOHO_BOOKS_CLIENT_ID`**, **`ZOHO_BOOKS_CLIENT_SECRET`**, **`ZOHO_BOOKS_REFRESH_TOKEN`**, **`ZOHO_BOOKS_ORGANIZATION_ID`**, **`ZOHO_BOOKS_REGION`** (`com` / `eu` / `in` / etc. for API base URL).
 - **Customer sync:** On portal user create/update (customer role) — map name, email, phone, billing address if stored; persist **`zoho_contact_id`** on **`portal_users`** (or PII extension table). Admin “Sync to Zoho” / retry on failure.

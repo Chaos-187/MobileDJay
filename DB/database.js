@@ -255,6 +255,12 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_event_guests_status ON event_guests(event_id, status);
 `);
 
+try {
+    db.exec(`ALTER TABLE event_guests ADD COLUMN device_id TEXT`);
+} catch (e) {
+    /* exists */
+}
+
 // Backfill share tokens for existing events
 {
     const missing = db.prepare(`SELECT id FROM events WHERE share_token IS NULL OR share_token = ''`).all();
@@ -760,7 +766,11 @@ const replyDb = {
 
     // Load every stored reply in the in-memory shape (oldest first)
     getAllLive: function() {
-        const rows = db.prepare('SELECT * FROM replies ORDER BY created_at ASC, id ASC').all();
+        const rows = db.prepare(`
+            SELECT r.*, e.slug AS event_slug, e.name AS event_name
+            FROM replies r LEFT JOIN events e ON e.id = r.event_id
+            ORDER BY r.created_at ASC, r.id ASC
+        `).all();
         return rows.map(row => ({
             id: row.id,
             customerName: row.customer_name,
@@ -769,7 +779,10 @@ const replyDb = {
             originalId: row.original_id,
             direct: row.direct === 1,
             displayed: row.displayed === 1,
-            timestamp: row.created_at
+            timestamp: row.created_at,
+            eventId: row.event_id,
+            eventSlug: row.event_slug || null,
+            eventName: row.event_name || null
         }));
     },
 
@@ -951,23 +964,50 @@ function normalizeGuestName(name) {
 
 // Event guest check-in and moderation
 const guestDb = {
-    checkIn: function(eventId, customerName) {
+    checkIn: function(eventId, customerName, deviceId) {
         const name = normalizeGuestName(customerName);
-        if (!name || !eventId) return null;
+        if (!name || !eventId) return { ok: false, error: 'invalid_name' };
+        const device =
+            deviceId != null && String(deviceId).trim()
+                ? String(deviceId).trim().slice(0, 64)
+                : null;
         const now = new Date().toISOString();
-        const stmt = db.prepare(`
-            INSERT INTO event_guests (event_id, customer_name, status, first_seen_at, last_seen_at)
-            VALUES (?, ?, 'active', ?, ?)
-            ON CONFLICT(event_id, customer_name) DO UPDATE SET
-                last_seen_at = excluded.last_seen_at,
-                customer_name = CASE
-                    WHEN length(event_guests.customer_name) >= length(excluded.customer_name)
-                    THEN event_guests.customer_name
-                    ELSE excluded.customer_name
-                END
-        `);
-        stmt.run(eventId, name, now, now);
-        return this.getByName(eventId, name);
+        const existing = db
+            .prepare(
+                `SELECT id, device_id FROM event_guests
+                 WHERE event_id = ? AND customer_name = ? COLLATE NOCASE`
+            )
+            .get(eventId, name);
+
+        if (existing) {
+            if (existing.device_id && device && existing.device_id !== device) {
+                return { ok: false, error: 'name_taken' };
+            }
+            db.prepare(
+                `UPDATE event_guests SET
+                    last_seen_at = ?,
+                    device_id = COALESCE(?, device_id),
+                    customer_name = CASE
+                        WHEN length(customer_name) >= length(?) THEN customer_name
+                        ELSE ?
+                    END
+                 WHERE id = ?`
+            ).run(now, device, name, name, existing.id);
+            return { ok: true, guest: this.getByName(eventId, name) };
+        }
+
+        try {
+            db.prepare(
+                `INSERT INTO event_guests (event_id, customer_name, status, first_seen_at, last_seen_at, device_id)
+                 VALUES (?, ?, 'active', ?, ?, ?)`
+            ).run(eventId, name, now, now, device);
+        } catch (e) {
+            if (String(e.message || e).includes('UNIQUE')) {
+                return { ok: false, error: 'name_taken' };
+            }
+            throw e;
+        }
+        return { ok: true, guest: this.getByName(eventId, name) };
     },
 
     syncFromActivity: function(eventId) {

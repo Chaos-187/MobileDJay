@@ -22,16 +22,17 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
+    const guestSession = window.MdjGuestSession;
+
     // Check if user already has a name stored and show appropriate view
-    const storedName = sessionStorage.getItem('customerName');
+    const storedName = guestSession ? guestSession.getGuestName(window.eventSlug) : sessionStorage.getItem('customerName');
     const urlParams = new URLSearchParams(window.location.search);
     const editMode = urlParams.get('edit') === 'true';
     
     if (storedName && !editMode) {
         customerNameInput.value = storedName;
         showOptionsView(storedName);
-        registerGuestCheckin(storedName);
-        // Check for replies and update bell
+        if (guestSession) guestSession.registerCheckin(storedName);
         checkForReplies(storedName);
     } else if (storedName && editMode) {
         // User wants to edit their name
@@ -40,25 +41,50 @@ document.addEventListener('DOMContentLoaded', function() {
         customerNameInput.select(); // Select all text for easy editing
         // Clear the edit parameter from URL
         window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+        showNameView();
     }
 
     // Handle name submission
     nameSubmitBtn.addEventListener('click', function() {
+        submitGuestName();
+    });
+
+    async function submitGuestName() {
         const customerName = customerNameInput.value.trim();
-        
+
         if (!customerName) {
             showError('Please enter your name');
             customerNameInput.focus();
             return;
         }
 
-        // Store name and show options
-        sessionStorage.setItem('customerName', customerName);
-        showOptionsView(customerName);
-        registerGuestCheckin(customerName);
-        // Check for replies and update bell
-        checkForReplies(customerName);
-    });
+        nameSubmitBtn.disabled = true;
+        try {
+            if (guestSession && window.eventSlug) {
+                const result = await guestSession.registerCheckin(customerName);
+                if (!result.ok && result.data && result.data.error === 'name_taken') {
+                    showError(
+                        result.data.message ||
+                            'That name is already in use at this event. Please choose another.'
+                    );
+                    customerNameInput.focus();
+                    customerNameInput.select();
+                    return;
+                }
+            }
+
+            if (guestSession) {
+                guestSession.setGuestName(window.eventSlug, customerName);
+            } else {
+                sessionStorage.setItem('customerName', customerName);
+            }
+            showOptionsView(customerName);
+            checkForReplies(customerName);
+        } finally {
+            nameSubmitBtn.disabled = false;
+        }
+    }
 
     // Handle Enter key in name input
     customerNameInput.addEventListener('keypress', function(e) {
@@ -75,10 +101,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function getStoredGuestName() {
+        return guestSession
+            ? guestSession.getGuestName(window.eventSlug)
+            : sessionStorage.getItem('customerName');
+    }
+
+    function rememberGuestName(name) {
+        if (guestSession) guestSession.setGuestName(window.eventSlug, name);
+        else sessionStorage.setItem('customerName', name);
+    }
+
     // Handle option card clicks
     optionCards.forEach(card => {
         card.addEventListener('click', function() {
-            const customerName = sessionStorage.getItem('customerName');
+            const customerName = getStoredGuestName();
             
             if (!customerName) {
                 showError('Please enter your name first');
@@ -151,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle bell icon click
     if (repliesBellBtn) {
         repliesBellBtn.addEventListener('click', function() {
-            const customerName = sessionStorage.getItem('customerName');
+            const customerName = getStoredGuestName();
             
             if (!customerName) {
                 showError('Please enter your name first');
@@ -170,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle back to menu button
     if (backToMenuBtn) {
         backToMenuBtn.addEventListener('click', function() {
-            const customerName = sessionStorage.getItem('customerName');
+            const customerName = getStoredGuestName();
             hideRepliesScreen();
             if (customerName && welcomeName) {
                 welcomeName.textContent = customerName;
@@ -181,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle refresh replies button
     if (refreshRepliesBtn) {
         refreshRepliesBtn.addEventListener('click', function() {
-            const customerName = sessionStorage.getItem('customerName');
+            const customerName = getStoredGuestName();
             if (customerName) {
                 loadReplies(customerName);
             }
@@ -199,6 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
             editNameBtn.style.display = 'inline-flex';
         }
         if (repliesBellBtn) {
+            repliesBellBtn.hidden = false;
             repliesBellBtn.style.display = 'block';
         }
     }
@@ -208,11 +246,11 @@ document.addEventListener('DOMContentLoaded', function() {
         repliesScreen.style.display = 'none';
         nameInputCard.style.display = 'block';
         customerNameInput.focus();
-        // Hide navbar actions when on name entry
         if (editNameBtn) {
             editNameBtn.style.display = 'none';
         }
         if (repliesBellBtn) {
+            repliesBellBtn.hidden = true;
             repliesBellBtn.style.display = 'none';
         }
     }
@@ -240,7 +278,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function checkForReplies(customerName) {
-        fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
+        const url = guestSession
+            ? guestSession.repliesUrl(customerName, window.eventSlug)
+            : `/api/customer/replies/${encodeURIComponent(customerName)}`;
+        fetch(url)
             .then(response => response.json())
             .then(replies => {
                 updateBellIcon(replies.length);
@@ -278,12 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const originalText = refreshRepliesBtn.innerHTML;
         refreshRepliesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
 
-        const activityUrl = `/api/customer/activity/${encodeURIComponent(customerName)}` +
-            (window.eventSlug ? `?eventSlug=${encodeURIComponent(window.eventSlug)}` : '');
+        const activityUrl = guestSession
+            ? guestSession.activityUrl(customerName, window.eventSlug)
+            : `/api/customer/activity/${encodeURIComponent(customerName)}` +
+              (window.eventSlug ? `?eventSlug=${encodeURIComponent(window.eventSlug)}` : '');
         fetch(activityUrl)
             .then(response => response.json())
             .then(data => {
-                displayChatMessages(data.replies || [], data.requests || []);
+                displayChatMessages(data.replies || [], data.requests || [], data.guestMessages || []);
                 updateBellIcon((data.replies || []).length);
             })
             .catch(error => {
@@ -303,11 +346,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    function displayChatMessages(replies, requests) {
-        // Merge DJ replies and the guest's own requests into one timeline
+    function displayChatMessages(replies, requests, guestMessages) {
+        guestMessages = guestMessages || [];
         const items = [
             ...replies.map(r => ({ kind: 'reply', timestamp: r.timestamp, data: r })),
-            ...requests.map(r => ({ kind: 'request', timestamp: r.timestamp, data: r }))
+            ...requests.map(r => ({ kind: 'request', timestamp: r.timestamp, data: r })),
+            ...guestMessages.map(m => ({ kind: 'guest_message', timestamp: m.timestamp, data: m }))
         ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
         if (items.length === 0) {
@@ -322,7 +366,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         chatMessages.innerHTML = items
-            .map(item => item.kind === 'reply' ? createChatBubble(item.data) : createRequestBubble(item.data))
+            .map(item => {
+                if (item.kind === 'reply') return createChatBubble(item.data);
+                if (item.kind === 'request') return createRequestBubble(item.data);
+                return createGuestMessageBubble(item.data);
+            })
             .join('');
         
         // Scroll to bottom of chat
@@ -389,17 +437,31 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
-    // Show error message function
-    function registerGuestCheckin(customerName) {
-        if (!window.eventSlug || !customerName) return;
-        fetch(`/api/event/${encodeURIComponent(window.eventSlug)}/guest-checkin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ customerName })
-        }).catch(() => {});
+    function createGuestMessageBubble(msg) {
+        const timestamp = new Date(msg.timestamp).toLocaleString();
+        const body = msg.message || '';
+        const plain = body.replace(/<[^>]+>/g, '').trim();
+        const preview = plain || (body.includes('<img') ? 'Message with image' : 'Message');
+        return `
+            <div class="mb-3">
+                <div class="d-flex justify-content-end">
+                    <div class="chat-bubble from-customer" style="max-width: 80%;">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            <strong>You sent</strong>
+                        </div>
+                        <p class="mb-1">${escapeHtml(preview)}</p>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            ${timestamp}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
-    function showError(message) {
+    // Show error message function
         const alert = document.createElement('div');
         alert.className = 'alert alert-danger alert-dismissible fade show position-fixed';
         alert.style.cssText = 'top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; min-width: 300px;';

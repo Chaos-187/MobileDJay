@@ -30,10 +30,33 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize replies functionality
     initializeReplies();
 
-    // Auto-fill customer name from session storage
-    if (customerNameInput && !customerNameInput.value && sessionStorage.getItem('customerName')) {
-        customerNameInput.value = sessionStorage.getItem('customerName');
+    const guestSession = window.MdjGuestSession;
+
+    function getStoredGuestName() {
+        if (customerNameInput && customerNameInput.value && String(customerNameInput.value).trim()) {
+            return String(customerNameInput.value).trim();
+        }
+        return guestSession
+            ? guestSession.getGuestName(window.eventSlug)
+            : sessionStorage.getItem('customerName') || '';
     }
+
+    function syncCustomerNameField() {
+        const name = getStoredGuestName();
+        if (customerNameInput && name) customerNameInput.value = name;
+        updateMessageBellVisibility();
+        return name;
+    }
+
+    function updateMessageBellVisibility() {
+        if (!repliesBellBtn) return;
+        const hasName = !!getStoredGuestName();
+        repliesBellBtn.hidden = !hasName;
+        repliesBellBtn.style.display = hasName ? '' : 'none';
+    }
+
+    // Auto-fill customer name from session storage
+    syncCustomerNameField();
 
     // Initialize inline GIF system
     initializeInlineGifSystem();
@@ -231,7 +254,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Save customer name to session storage
         if (customerNameInput && customerNameInput.value) {
-            sessionStorage.setItem('customerName', customerNameInput.value);
+            if (guestSession) guestSession.setGuestName(window.eventSlug, customerNameInput.value);
+            else sessionStorage.setItem('customerName', customerNameInput.value);
+            updateMessageBellVisibility();
         }
     }
 
@@ -368,17 +393,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // ============================================
     
     function initializeReplies() {
-        const customerName = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
-        
-        // Check for replies on load
+        const customerName = syncCustomerNameField();
+
         if (customerName) {
             checkForReplies(customerName);
+        } else {
+            updateMessageBellVisibility();
         }
         
         // Handle bell icon click
         if (repliesBellBtn) {
             repliesBellBtn.addEventListener('click', function() {
-                const name = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
+                const name = getStoredGuestName();
                 
                 if (!name) {
                     showError('Please enter your name first');
@@ -397,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle refresh replies button
         if (refreshRepliesBtn) {
             refreshRepliesBtn.addEventListener('click', function() {
-                const name = customerNameInput ? customerNameInput.value : sessionStorage.getItem('customerName');
+                const name = getStoredGuestName();
                 if (name) {
                     loadReplies(name);
                 }
@@ -445,7 +471,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function checkForReplies(customerName) {
-        fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
+        const url = guestSession
+            ? guestSession.repliesUrl(customerName, window.eventSlug)
+            : `/api/customer/replies/${encodeURIComponent(customerName)}`;
+        fetch(url)
             .then(response => response.json())
             .then(replies => {
                 updateBellIcon(replies.length);
@@ -490,11 +519,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const originalText = refreshRepliesBtn.innerHTML;
             refreshRepliesBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
 
-            fetch(`/api/customer/replies/${encodeURIComponent(customerName)}`)
+            fetch(
+                guestSession
+                    ? guestSession.activityUrl(customerName, window.eventSlug)
+                    : `/api/customer/activity/${encodeURIComponent(customerName)}` +
+                      (window.eventSlug ? `?eventSlug=${encodeURIComponent(window.eventSlug)}` : '')
+            )
                 .then(response => response.json())
-                .then(replies => {
-                    displayChatMessages(replies, customerName);
-                    updateBellIcon(replies.length);
+                .then(data => {
+                    displayChatMessages(data, customerName);
+                    updateBellIcon((data.replies || []).length);
                 })
                 .catch(error => {
                     console.error('Error fetching replies:', error);
@@ -516,10 +550,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function displayChatMessages(replies, customerName) {
+    function displayChatMessages(data, customerName) {
         if (!chatMessages) return;
-        
-        if (replies.length === 0) {
+
+        const replies = (data && data.replies) || (Array.isArray(data) ? data : []);
+        const requests = (data && data.requests) || [];
+        const guestMessages = (data && data.guestMessages) || [];
+        const items = [
+            ...replies.map(r => ({ kind: 'reply', timestamp: r.timestamp, data: r })),
+            ...requests.map(r => ({ kind: 'request', timestamp: r.timestamp, data: r })),
+            ...guestMessages.map(m => ({ kind: 'guest_message', timestamp: m.timestamp, data: m }))
+        ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        if (items.length === 0) {
             chatMessages.innerHTML = `
                 <div class="text-center py-5">
                     <i class="fas fa-comments fa-3x text-muted mb-3"></i>
@@ -530,10 +573,45 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const messagesHtml = replies.map(reply => createChatBubble(reply)).join('');
-        chatMessages.innerHTML = messagesHtml;
-        
-        // Scroll to bottom of chat
+        chatMessages.innerHTML = items
+            .map(item => {
+                if (item.kind === 'reply') return createChatBubble(item.data);
+                if (item.kind === 'request') {
+                    const r = item.data;
+                    const timestamp = new Date(r.timestamp).toLocaleString();
+                    const isKaraoke = (r.type || '').indexOf('karaoke') !== -1;
+                    const icon = isKaraoke ? 'microphone' : 'music';
+                    const label = isKaraoke ? 'Karaoke' : 'Song';
+                    return `
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-end">
+                                <div class="chat-bubble from-customer" style="max-width: 80%;">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="fas fa-${icon} me-2"></i>
+                                        <strong>You requested</strong>
+                                        <span class="badge bg-secondary ms-2 small">${label}</span>
+                                    </div>
+                                    <p class="mb-1">"${escapeHtmlReply(r.title || 'Unknown')}"${r.artist ? ' by ' + escapeHtmlReply(r.artist) : ''}</p>
+                                    ${r.message ? `<p class="mb-1 small fst-italic">"${escapeHtmlReply(r.message)}"</p>` : ''}
+                                    <small class="text-muted"><i class="fas fa-clock me-1"></i>${timestamp}</small>
+                                </div>
+                            </div>
+                        </div>`;
+                }
+                const timestamp = new Date(item.data.timestamp).toLocaleString();
+                const preview = (item.data.message || '').replace(/<[^>]+>/g, '').trim() || 'Message';
+                return `
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-end">
+                            <div class="chat-bubble from-customer" style="max-width: 80%;">
+                                <div class="d-flex align-items-center mb-1"><i class="fas fa-paper-plane me-2"></i><strong>You sent</strong></div>
+                                <p class="mb-1">${escapeHtmlReply(preview)}</p>
+                                <small class="text-muted"><i class="fas fa-clock me-1"></i>${timestamp}</small>
+                            </div>
+                        </div>
+                    </div>`;
+            })
+            .join('');
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
     

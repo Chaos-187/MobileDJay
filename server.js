@@ -359,6 +359,88 @@ function buildGuestConversation(eventId, customerName) {
     return items;
 }
 
+function resolveEventBySlug(eventSlug) {
+    if (eventSlug == null || !String(eventSlug).trim()) return null;
+    return eventDb.getBySlug(String(eventSlug).trim()) || null;
+}
+
+function resolveEventIdForReply(originalType, originalId) {
+    if (originalId == null || originalId === '') return null;
+    const id = parseInt(originalId, 10);
+    if (!Number.isFinite(id)) return null;
+    if (originalType === 'message') {
+        const m = djMessages.find((x) => Number(x.id) === id);
+        return m && m.eventId != null ? m.eventId : null;
+    }
+    const req = djRequests.find((x) => Number(x.id) === id);
+    return req && req.eventId != null ? req.eventId : null;
+}
+
+function getCustomerActivityPayload(customerName, eventSlug) {
+    const trimmed = (customerName || '').toString().trim();
+    if (!trimmed) {
+        return { replies: [], requests: [], guestMessages: [] };
+    }
+    const event = resolveEventBySlug(eventSlug);
+    if (event) {
+        const items = buildGuestConversation(event.id, trimmed);
+        return {
+            replies: items
+                .filter((i) => i.kind === 'reply')
+                .map((i) => ({
+                    id: i.id,
+                    customerName: trimmed,
+                    replyMessage: i.body,
+                    originalType: i.originalType,
+                    direct: !!i.direct,
+                    timestamp: i.timestamp,
+                    eventId: event.id,
+                    eventSlug: event.slug
+                })),
+            requests: items
+                .filter((i) => i.kind === 'request')
+                .map((i) => ({
+                    id: i.id,
+                    type: i.type,
+                    title: i.title,
+                    artist: i.artist,
+                    message: i.note,
+                    status: 'pending',
+                    timestamp: i.timestamp,
+                    eventId: event.id,
+                    eventSlug: event.slug
+                })),
+            guestMessages: items
+                .filter((i) => i.kind === 'message')
+                .map((i) => ({
+                    id: i.id,
+                    message: i.body,
+                    private: !!i.private,
+                    timestamp: i.timestamp,
+                    eventId: event.id,
+                    eventSlug: event.slug
+                }))
+        };
+    }
+
+    const name = trimmed.toLowerCase();
+    const replies = djReplies.filter((r) => (r.customerName || '').toLowerCase() === name);
+    const requests = djRequests
+        .filter((r) => r.customerName && r.customerName.toLowerCase() === name)
+        .map((r) => ({
+            id: r.id,
+            type: r.type,
+            title: r.song ? r.song.title : r.title,
+            artist: r.song ? r.song.artist : r.artist,
+            message: r.message || null,
+            status: r.status || 'pending',
+            timestamp: r.timestamp,
+            eventId: r.eventId,
+            eventSlug: r.eventSlug
+        }));
+    return { replies, requests, guestMessages: [] };
+}
+
 function enrichMessagesWithReplyStatus(messages, replies) {
     const repliedMessageIds = new Set(
         replies
@@ -1058,11 +1140,21 @@ app.post('/api/events/:id/theme-image', (req, res) => {
 // Guest checks in when they enter their name on the event landing page
 app.post('/api/event/:eventSlug/guest-checkin', getEventFromSlugJson, (req, res) => {
     const customerName = (req.body.customerName || '').toString().trim();
+    const deviceId = (req.body.deviceId || '').toString().trim();
     if (!customerName) {
         return res.status(400).json({ error: 'Name is required' });
     }
-    guestDb.checkIn(req.event.id, customerName);
-    res.json({ success: true });
+    const result = guestDb.checkIn(req.event.id, customerName, deviceId || null);
+    if (!result.ok) {
+        if (result.error === 'name_taken') {
+            return res.status(409).json({
+                error: 'name_taken',
+                message: 'That name is already in use at this event. Please choose another.'
+            });
+        }
+        return res.status(400).json({ error: result.error || 'checkin_failed' });
+    }
+    res.json({ success: true, guest: result.guest });
 });
 
 // DJ-only guest status (not used on guest pages)
@@ -1650,6 +1742,7 @@ app.post('/api/dj/reply', (req, res) => {
     }
     
     const isDirect = direct === true || direct === 'true';
+    const replyEventId = resolveEventIdForReply(originalType, originalId);
 
     // Create reply entry (always delivered to the guest's messages screen)
     const reply = {
@@ -1659,7 +1752,8 @@ app.post('/api/dj/reply', (req, res) => {
         originalId,
         timestamp: new Date().toISOString(),
         displayed: false,
-        direct: isDirect
+        direct: isDirect,
+        eventId: replyEventId
     };
     reply.id = replyDb.add(reply);
     djReplies.push(reply);
@@ -1686,34 +1780,14 @@ app.get('/api/dj/replies', (req, res) => {
 });
 
 app.get('/api/customer/replies/:customerName', (req, res) => {
-    const customerName = req.params.customerName;
-    const customerReplies = djReplies.filter(reply => 
-        reply.customerName.toLowerCase() === customerName.toLowerCase()
-    );
-    res.json(customerReplies);
+    const payload = getCustomerActivityPayload(req.params.customerName, req.query.eventSlug);
+    res.json(payload.replies);
 });
 
 // Full activity for a guest: DJ replies + their own song/karaoke requests,
 // so the messages screen can show a complete conversation timeline.
 app.get('/api/customer/activity/:customerName', (req, res) => {
-    const name = req.params.customerName.toLowerCase();
-    const eventSlug = req.query.eventSlug || null;
-
-    const replies = djReplies.filter(r => r.customerName.toLowerCase() === name);
-    const requests = djRequests
-        .filter(r => r.customerName && r.customerName.toLowerCase() === name)
-        .filter(r => !eventSlug || !r.eventSlug || r.eventSlug === eventSlug)
-        .map(r => ({
-            id: r.id,
-            type: r.type,
-            title: r.song ? r.song.title : r.title,
-            artist: r.song ? r.song.artist : r.artist,
-            message: r.message || null,
-            status: r.status || 'pending',
-            timestamp: r.timestamp
-        }));
-
-    res.json({ replies, requests });
+    res.json(getCustomerActivityPayload(req.params.customerName, req.query.eventSlug));
 });
 
 // Karaoke Spinner API endpoints

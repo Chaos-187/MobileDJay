@@ -12,7 +12,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const recentGrid = document.getElementById('recentGrid');
 
     const eventSlug = window.eventSlug;
-    const customerName = window.customerName || sessionStorage.getItem('customerName') || '';
+    const customerName =
+        window.customerName ||
+        (window.MdjGuestSession
+            ? window.MdjGuestSession.getGuestName(window.eventSlug)
+            : sessionStorage.getItem('customerName')) ||
+        '';
 
     /** Compressed image blob ready for upload. */
     let pendingBlob = null;

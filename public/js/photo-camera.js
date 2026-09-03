@@ -21,7 +21,12 @@
     const statusMsg = document.getElementById('statusMsg');
 
     const eventSlug = window.eventSlug;
-    const customerName = window.customerName || sessionStorage.getItem('customerName') || '';
+    const customerName =
+        window.customerName ||
+        (window.MdjGuestSession
+            ? window.MdjGuestSession.getGuestName(window.eventSlug)
+            : sessionStorage.getItem('customerName')) ||
+        '';
     const eventUrl = '/event/' + encodeURIComponent(eventSlug);
     const photoPageUrl = eventUrl + '/photo' + (customerName ? '?customerName=' + encodeURIComponent(customerName) : '');
 

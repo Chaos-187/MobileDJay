@@ -1,26 +1,25 @@
 {
-  "name": "MobileDJay",
-  "short_name": "MobileDJay",
-  "description": "Mobile DJ request app with GIF and media support",
+  "name": "EYUP EVENTS — Guest Requests",
+  "short_name": "EYUP EVENTS",
+  "description": "Song requests, karaoke, and messages for your event DJ",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#007bff",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "icons": [
     {
       "src": "/images/dj-bg.jpg",
       "sizes": "192x192",
-      "type": "image/jpeg"
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/dj-bg.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
     }
-  ],
-  "capabilities": [
-    "rich-text-input",
-    "media-input",
-    "gif-input",
-    "emoji-input"
-  ],
-  "rich_input": {
-    "supported_formats": ["image/gif", "image/jpeg", "image/png", "image/webp"],
-    "max_file_size": 10485760
-  }
+  ]
 }

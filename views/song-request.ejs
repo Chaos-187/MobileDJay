@@ -2,10 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <%- include('partials/guest-mobile-head', { themeColor: event && event.accent_color ? event.accent_color : '#0a0a0a' }) %>
     <title>Song Request - MobileDJay</title>
-    <meta name="theme-color" content="<%= event && event.accent_color ? event.accent_color : '#0a0a0a' %>">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -132,6 +130,7 @@
         window.eventSlug = '<%= eventSlug || "" %>';
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/guest-session.js"></script>
     <% if (event && event.show_tracks_played_guest && eventSlug) { %>
     <script src="/js/tracks-played-guest.js"></script>
     <% } %>

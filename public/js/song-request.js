@@ -9,9 +9,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Optional replies button on this page (may not exist). Declare explicitly to avoid ReferenceError.
     const checkRepliesBtn = document.getElementById('checkRepliesBtn');
 
-    // Auto-fill customer name from session storage (fallback)
-    if (!customerNameInput.value && sessionStorage.getItem('customerName')) {
-        customerNameInput.value = sessionStorage.getItem('customerName');
+    // Auto-fill customer name from guest session or session storage (fallback)
+    if (!customerNameInput.value) {
+        const guestSession = window.MdjGuestSession;
+        const storedName = guestSession
+            ? guestSession.getGuestName(window.eventSlug)
+            : sessionStorage.getItem('customerName');
+        if (storedName) customerNameInput.value = storedName;
     }
 
     // Search functionality

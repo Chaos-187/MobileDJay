@@ -7,9 +7,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const customerNameInput = document.getElementById('customerName');
     const form = document.getElementById('karaokeRequestForm');
 
-    // Auto-fill customer name from session storage (fallback)
-    if (!customerNameInput.value && sessionStorage.getItem('customerName')) {
-        customerNameInput.value = sessionStorage.getItem('customerName');
+    // Auto-fill customer name from guest session or session storage (fallback)
+    if (!customerNameInput.value) {
+        const guestSession = window.MdjGuestSession;
+        const storedName = guestSession
+            ? guestSession.getGuestName(window.eventSlug)
+            : sessionStorage.getItem('customerName');
+        if (storedName) customerNameInput.value = storedName;
     }
 
     // Search functionality

@@ -23,12 +23,19 @@ body.mdj-eyup-brand {
 }
 
 /* Fixed header offset (navbar is position:fixed) */
-body.mdj-eyup-brand {
-    padding-top: var(--mdj-eyup-nav-h);
+body.mdj-eyup-brand:not(.mdj-guest-hub-page) {
+    padding-top: calc(var(--mdj-eyup-nav-h) + env(safe-area-inset-top, 0px));
+    min-height: 100vh;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+}
+
+body.mdj-eyup-brand.mdj-guest-hub-page {
+    padding-top: 0 !important;
 }
 
 body.mdj-eyup-brand main.container {
-    max-height: calc(100vh - var(--mdj-eyup-nav-h));
+    max-height: calc(100dvh - var(--mdj-eyup-nav-h) - env(safe-area-inset-top, 0px));
 }
 
 /* DJ dashboard / event management: statutory footer pinned to viewport bottom */
@@ -145,6 +152,13 @@ body.mdj-eyup-brand:not(.mdj-dash-tools) main.container {
 
 body.mdj-eyup-brand:not(.mdj-dash-tools) main.container > .mdj-eyup-footer--compact {
     margin-top: auto;
+}
+
+/* Guest sub-pages (song/karaoke/chat): safe areas on Chrome mobile + Safari iOS */
+body.mdj-eyup-brand:not(.mdj-dash-tools):not(.mdj-guest-hub-page) main.container {
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
 }
 
 /* ─── DJ tooling (dashboard + event mgmt): EYUP-styled Bootstrap buttons ─── */
@@ -370,6 +384,9 @@ body.mdj-eyup-brand .mdj-site-navbar {
     -webkit-backdrop-filter: blur(10px);
     border-bottom: 2px solid var(--eyup-primary-orange);
     transition: var(--eyup-transition-medium);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
 }
 
 body.mdj-eyup-brand .mdj-site-navbar .nav-container {

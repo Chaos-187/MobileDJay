@@ -1,0 +1,20 @@
+<%
+  const mobileThemeColor =
+    typeof themeColor !== 'undefined' && themeColor ? themeColor : '#0a0a0a';
+  const mobileAppTitle =
+    typeof appTitle !== 'undefined' && appTitle ? appTitle : 'EYUP EVENTS';
+  const mobileViewport =
+    typeof viewportContent !== 'undefined' && viewportContent
+      ? viewportContent
+      : 'width=device-width, initial-scale=1.0, viewport-fit=cover';
+  const showManifest =
+    typeof includeManifest === 'undefined' ? true : !!includeManifest;
+%>
+<meta name="viewport" content="<%= mobileViewport %>">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="<%= mobileAppTitle %>">
+<meta name="theme-color" content="<%= mobileThemeColor %>">
+<meta name="format-detection" content="telephone=no">
+<% if (showManifest) { %><link rel="manifest" href="/manifest.json"><% } %>

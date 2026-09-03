@@ -43,8 +43,13 @@ function mapBookingLineItemsToZoho(lineItems) {
     return mapLineItemsToZoho(lineItems, { resolveItemId: resolveProductZohoItemId });
 }
 
+function mapBookingLineItemsToZohoWithoutItemIds(lineItems) {
+    return mapLineItemsToZoho(lineItems);
+}
+
 module.exports = {
     mapLineItemsToZoho,
     mapBookingLineItemsToZoho,
+    mapBookingLineItemsToZohoWithoutItemIds,
     resolveProductZohoItemId
 };

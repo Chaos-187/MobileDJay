@@ -4,7 +4,7 @@
 
 const zohoBooks = require('./zoho-books');
 const { syncCustomerToZoho } = require('./zoho-contact-sync');
-const { mapBookingLineItemsToZoho } = require('./zoho-line-items');
+const { mapBookingLineItemsToZoho, mapBookingLineItemsToZohoWithoutItemIds } = require('./zoho-line-items');
 const { portalDb } = require('../db/portal-database');
 
 function safeUpdateBookingZohoEstimate(bookingId, patch) {
@@ -38,6 +38,24 @@ function depositDueDate(booking) {
 function estimateReference(booking) {
     const ref = booking.reference || booking.id || 'booking';
     return `${ref}-quote`;
+}
+
+async function createZohoEstimatePayload(payload) {
+    const hasItemIds = (payload.line_items || []).some((li) => li.item_id);
+    try {
+        return await zohoBooks.createEstimate(payload);
+    } catch (err) {
+        if (!hasItemIds) throw err;
+        const stripped = {
+            ...payload,
+            line_items: (payload.line_items || []).map((li) => {
+                const next = { ...li };
+                delete next.item_id;
+                return next;
+            })
+        };
+        return await zohoBooks.createEstimate(stripped);
+    }
 }
 
 function autoEstimatesEnabled() {
@@ -113,14 +131,14 @@ async function createBookingZohoEstimate(bookingId, opts = {}) {
     const currency = booking.deposit_currency || 'GBP';
     const dueDate = depositDueDate(booking);
 
-    const estimatePayload = {
+    const buildEstimatePayload = (items) => ({
         customer_id: contactSync.contact_id,
         reference_number: estimateReference(booking),
         date: isoDateOnly(),
         expiry_date: dueDate,
         currency_code: currency,
-        line_items: zohoLineItems.length
-            ? zohoLineItems
+        line_items: items.length
+            ? items
             : [
                   {
                       name: booking.title || 'Event services',
@@ -130,10 +148,24 @@ async function createBookingZohoEstimate(bookingId, opts = {}) {
                   }
               ],
         notes: `Quote for ${booking.title || 'event'} (${booking.reference || booking.id})`
-    };
+    });
 
     try {
-        const estimate = await zohoBooks.createEstimate(estimatePayload);
+        let estimate = null;
+        try {
+            estimate = await zohoBooks.createEstimate(buildEstimatePayload(zohoLineItems));
+        } catch (firstErr) {
+            const hadItemIds = zohoLineItems.some((li) => li.item_id);
+            if (!hadItemIds) throw firstErr;
+            console.warn(
+                '[portal] zoho estimate retry without item_id',
+                bookingId,
+                firstErr.message || firstErr
+            );
+            estimate = await zohoBooks.createEstimate(
+                buildEstimatePayload(mapBookingLineItemsToZohoWithoutItemIds(lineItems))
+            );
+        }
         if (!estimate || !estimate.estimate_id) {
             throw new Error('Zoho did not return an estimate_id');
         }
@@ -156,7 +188,6 @@ async function createBookingZohoEstimate(bookingId, opts = {}) {
             ok: true,
             estimate_id: estimateId,
             estimate_url: zohoBooks.estimateWebUrl(estimateId),
-            estimate,
             quote_total: quote.quote_total,
             expiry_date: dueDate,
             customer_id: contactSync.contact_id
@@ -164,7 +195,7 @@ async function createBookingZohoEstimate(bookingId, opts = {}) {
     } catch (err) {
         let msg = err && err.message ? String(err.message) : 'Zoho estimate sync failed';
         if (zohoBooks.isZohoAuthorizationError && zohoBooks.isZohoAuthorizationError(err)) {
-            msg = `${msg}. ${zohoBooks.zohoAuthRemediation()}`;
+            msg = `${msg}. ${zohoBooks.zohoEstimatesAuthRemediation()}`;
         }
         safeUpdateBookingZohoEstimate(bookingId, {
             zoho_estimate_sync_error: msg.slice(0, 500)

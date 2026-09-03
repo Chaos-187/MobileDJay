@@ -318,14 +318,20 @@ function zohoAuthRemediation() {
     const source = refreshTokenSource();
     if (source === 'env') {
         return (
-            'ZOHO_BOOKS_REFRESH_TOKEN in server env overrides admin Connect and may lack ZohoBooks.settings.ALL. ' +
-            'Remove it and use Connect again, or regenerate the env token with settings scope.'
+            'ZOHO_BOOKS_REFRESH_TOKEN in server env overrides admin Connect and may lack required scopes. ' +
+            'Remove it and use Connect again, or regenerate the env token with settings + estimates scopes.'
         );
     }
     return (
-        'Disconnect and Connect Zoho Books in Site → Integrations so the token includes ZohoBooks.settings.ALL (Items). ' +
-        'The Zoho account must also have permission to manage Items in Books.'
+        'Disconnect and Connect Zoho Books in Site → Integrations so the token includes ' +
+        'ZohoBooks.settings.ALL (Items) and ZohoBooks.estimates.ALL (quotes). ' +
+        'The Zoho account must also have permission to manage Items and Estimates in Books.'
     );
+}
+
+function zohoEstimatesAuthRemediation() {
+    const base = zohoAuthRemediation();
+    return `${base} Quotes require ZohoBooks.estimates.ALL specifically.`;
 }
 
 function isZohoAuthorizationError(err) {
@@ -352,6 +358,19 @@ async function probeItemsAccess() {
     }
 }
 
+async function probeEstimatesAccess() {
+    try {
+        await booksRequest('GET', '/books/v3/estimates', { query: { page: 1, per_page: 1 } });
+        return { ok: true };
+    } catch (err) {
+        return {
+            ok: false,
+            error: err && err.message ? String(err.message) : 'estimates_probe_failed',
+            authorization_error: isZohoAuthorizationError(err)
+        };
+    }
+}
+
 /** Verify OAuth credentials and organisation access. */
 async function testConnection() {
     if (!isConfigured()) {
@@ -364,20 +383,34 @@ async function testConnection() {
     const match =
         orgs.find((o) => String(o.organization_id) === String(orgId)) || null;
     const itemsProbe = await probeItemsAccess();
+    const estimatesProbe = await probeEstimatesAccess();
     const orgOk = !!match;
     const itemsOk = !!itemsProbe.ok;
+    const estimatesOk = !!estimatesProbe.ok;
     let message = match
         ? `Connected to ${match.name || 'Zoho Books organisation'}.`
         : `Token works but organisation ${orgId} was not found in this account.`;
-    if (orgOk && !itemsOk) {
-        message += ` Items API: ${itemsProbe.error || 'not authorized'}. ${zohoAuthRemediation()}`;
-    } else if (orgOk && itemsOk) {
+    if (orgOk && itemsOk) {
         message += ' Items API access OK.';
+    } else if (orgOk && !itemsOk) {
+        message += ` Items API: ${itemsProbe.error || 'not authorized'}.`;
     }
+    if (orgOk && estimatesOk) {
+        message += ' Estimates API access OK.';
+    } else if (orgOk && !estimatesOk) {
+        message += ` Estimates API: ${estimatesProbe.error || 'not authorized'}. ${zohoEstimatesAuthRemediation()}`;
+    }
+    const remediation =
+        orgOk && (!itemsOk || !estimatesOk)
+            ? !estimatesOk
+                ? zohoEstimatesAuthRemediation()
+                : zohoAuthRemediation()
+            : null;
     return {
-        ok: orgOk && itemsOk,
+        ok: orgOk && itemsOk && estimatesOk,
         org_access_ok: orgOk,
         items_access_ok: itemsOk,
+        estimates_access_ok: estimatesOk,
         configured: true,
         region: regionKey(),
         organization_id: orgId,
@@ -385,7 +418,8 @@ async function testConnection() {
         organizations_found: orgs.length,
         refresh_token_source: refreshTokenSource(),
         items_access_error: itemsProbe.error || null,
-        remediation: orgOk && !itemsOk ? zohoAuthRemediation() : null,
+        estimates_access_error: estimatesProbe.error || null,
+        remediation,
         message
     };
 }
@@ -422,6 +456,8 @@ module.exports = {
     refreshTokenSource,
     isZohoAuthorizationError,
     zohoAuthRemediation,
+    zohoEstimatesAuthRemediation,
     probeItemsAccess,
+    probeEstimatesAccess,
     testConnection
 };

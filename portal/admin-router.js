@@ -52,7 +52,13 @@ const {
 const router = express.Router();
 
 function jsonError(res, code, message, status = 400, details = {}) {
-    res.status(status).json({ error: { code, message, details } });
+    let safeDetails = {};
+    try {
+        safeDetails = JSON.parse(JSON.stringify(details || {}));
+    } catch {
+        safeDetails = {};
+    }
+    res.status(status).json({ error: { code, message, details: safeDetails } });
 }
 
 function parseJsonField(raw) {
@@ -1329,11 +1335,13 @@ router.post('/bookings/:id/zoho/estimate', async (req, res) => {
                 ? 404
                 : err.code === 'conflict'
                   ? 409
-                  : err.code === 'validation_error'
+                    : err.code === 'validation_error'
                     ? 422
                     : err.code === 'service_unavailable' || err.code === 'zoho_auth_failed'
                       ? 503
-                      : 502;
+                      : err.code === 'zoho_api_error' || err.code === 'upstream_error'
+                        ? 502
+                        : 502;
         try {
             return jsonError(
                 res,

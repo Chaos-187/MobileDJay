@@ -126,8 +126,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!customerName) {
             e.preventDefault();
-            // Redirect back to home page if no customer name
-            window.location.href = '/';
+            window.location.href = window.eventSlug
+                ? '/event/' + encodeURIComponent(window.eventSlug)
+                : '/';
             return;
         }
 

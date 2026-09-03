@@ -86,9 +86,10 @@
   pointer-events: none;
   z-index: 1;
 }`);
-                parts.push(`${scope} .mdj-site-navbar, ${scope} main.container, ${scope} .mdj-scanlines { position: relative; z-index: 2; }`);
+                parts.push(`${scope} .mdj-site-navbar { z-index: 5001; }`);
+                parts.push(`${scope} main.container { position: relative; z-index: 2; }`);
             } else {
-                parts.push(`${scope} .mdj-site-navbar, ${scope} main.container, ${scope} .mdj-scanlines { position: relative; z-index: 1; }`);
+                parts.push(`${scope} main.container { position: relative; z-index: 1; }`);
             }
         } else if (t.bg_color) {
             parts.push(`${scope} {\n  background: ${t.bg_color} !important;\n}`);

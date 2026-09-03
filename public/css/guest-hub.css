@@ -1,5 +1,10 @@
 /* Guest event hub (index) — no top bar; messages on canvas; footer pinned */
 
+html:has(body.mdj-guest-hub-page) {
+    height: 100%;
+    height: 100dvh;
+}
+
 body.mdj-guest-hub-page,
 .guest-phone-screen.mdj-guest-hub-page {
     padding-top: 0 !important;
@@ -20,8 +25,8 @@ body.mdj-guest-hub-page main.container.mdj-guest-hub-main,
     max-width: 100%;
     /* Override global main.container max-height (100vh - 60px) — no navbar on guest hub */
     max-height: none !important;
-    height: auto;
     min-height: 0;
+    height: 100%;
     margin: 0 auto !important;
     padding: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.65rem)) clamp(0.75rem, 3vw, 1.25rem)
         max(0.35rem, env(safe-area-inset-bottom, 0px));
@@ -37,7 +42,7 @@ body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
     min-height: 0;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
+    overflow-x: visible;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     position: relative;
@@ -88,6 +93,7 @@ body.mdj-guest-hub-page .guest-hub-top,
     position: sticky;
     top: 0;
     z-index: 5;
+    overflow: visible;
     background: linear-gradient(
         180deg,
         rgba(10, 10, 10, 0.92) 0%,
@@ -130,6 +136,7 @@ body.mdj-guest-hub-page .guest-hub-messages-btn i,
 body.mdj-guest-hub-page .guest-hub-messages-label,
 .guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-label {
     line-height: 1;
+    white-space: nowrap;
 }
 
 body.mdj-guest-hub-page .guest-hub-messages-btn .nav-msg-badge,
@@ -506,31 +513,97 @@ body.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-subtitle,
 }
 
 @media (min-width: 768px) {
+    body.mdj-guest-hub-page main.container.mdj-guest-hub-main,
+    .guest-phone-screen.mdj-guest-hub-page main.container.mdj-guest-hub-main {
+        align-items: center;
+        justify-content: flex-start;
+        padding: clamp(1.5rem, 4vh, 2.5rem) clamp(1.5rem, 4vw, 3rem)
+            max(1rem, env(safe-area-inset-bottom, 0px));
+    }
+
     body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
     .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page {
-        max-width: 640px;
+        flex: 0 1 auto;
+        max-width: min(480px, 100%);
+        width: 100%;
+        padding: 1.35rem 1.5rem 1rem;
+        border-radius: 20px;
+        background: rgba(10, 10, 10, 0.82);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        max-height: calc(100dvh - 5.5rem);
+    }
+
+    body.mdj-guest-hub-page.mdj-guest-hub-menu-visible main.mdj-guest-hub-main > .index-page,
+    .guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-menu-visible main.mdj-guest-hub-main > .index-page {
+        justify-content: flex-start;
+        padding-top: 1.35rem;
+        padding-bottom: 1rem;
     }
 
     body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,
     .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact {
-        max-width: 640px;
+        flex: 0 0 auto;
+        width: 100%;
+        max-width: none;
+        margin-top: auto;
+        padding-top: 0.85rem;
+        padding-bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+        background: rgba(10, 10, 10, 0.92);
+    }
+
+    body.mdj-guest-hub-page .guest-hub-top,
+    .guest-phone-screen.mdj-guest-hub-page .guest-hub-top {
+        background: transparent;
+        padding-bottom: 0.5rem;
+    }
+
+    body.mdj-guest-hub-page .guest-hub-messages-btn,
+    .guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-btn {
+        width: auto;
+        height: auto;
+        padding: 0.55rem 1rem;
+        border-radius: var(--radius-pill, 50px);
+    }
+
+    body.mdj-guest-hub-page .guest-hub-messages-label,
+    .guest-phone-screen.mdj-guest-hub-page .guest-hub-messages-label {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: nowrap;
     }
 
     body.mdj-guest-hub-page .hero-section,
     .guest-phone-screen.mdj-guest-hub-page .hero-section {
         padding: 0.5rem 0 1.25rem;
     }
+
+    body.mdj-guest-hub-page .hero-title,
+    .guest-phone-screen.mdj-guest-hub-page .hero-title {
+        font-size: 1.85rem;
+    }
+
+    body.mdj-guest-hub-page .option-card,
+    .guest-phone-screen.mdj-guest-hub-page .option-card {
+        padding: 0.85rem 1rem;
+    }
+
+    body.mdj-guest-hub-page .option-card-title,
+    .guest-phone-screen.mdj-guest-hub-page .option-card-title {
+        font-size: 1rem;
+    }
 }
 
 @media (min-width: 1024px) {
     body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
     .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page {
-        max-width: 720px;
-    }
-
-    body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,
-    .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact {
-        max-width: 720px;
+        max-width: min(520px, 100%);
     }
 
     /* Keep guest hub as a vertical list on large screens (not the 3-column index grid) */

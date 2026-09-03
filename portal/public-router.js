@@ -1,7 +1,13 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const { getSiteSettings } = require('./site-settings-service');
 const stripePortal = require('./stripe-portal');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
+const { portalDb } = require('../db/portal-database');
+const { createPublicEnquiry } = require('./enquiries-public');
+const { catalogRoot } = require('./catalog-image-upload');
+const { catalogImageFilename } = require('./catalog-product-types');
 
 const router = express.Router();
 
@@ -51,5 +57,34 @@ router.get('/site-settings', (req, res, next) => {
         next(e);
     }
 });
+
+router.get('/catalog/image/:filename', (req, res) => {
+    const filename = catalogImageFilename(`/uploads/catalog/${req.params.filename || ''}`);
+    if (!filename || !/\.(jpe?g|png|webp|gif)$/i.test(filename)) {
+        return jsonError(res, 'not_found', 'Image not found', 404);
+    }
+    const filePath = path.join(catalogRoot, filename);
+    if (!fs.existsSync(filePath)) {
+        return jsonError(res, 'not_found', 'Image not found', 404);
+    }
+    res.set('Cache-Control', 'public, max-age=2592000, immutable');
+    res.sendFile(filePath);
+});
+
+router.get('/catalog/quote-products', (req, res, next) => {
+    try {
+        const payload = portalDb.listPublicQuoteCatalogGrouped();
+        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.json({
+            products: payload.products,
+            groups: payload.groups,
+            product_types: portalDb.listCatalogProductTypes()
+        });
+    } catch (e) {
+        next(e);
+    }
+});
+
+router.post('/enquiries', createPublicEnquiry);
 
 module.exports = router;

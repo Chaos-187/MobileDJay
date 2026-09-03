@@ -33,16 +33,12 @@ const archiver = require('archiver');
 const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
 const cors = require('cors');
+const { createPortalCorsOptions } = require('./portal/cors-config');
 const { eventDb, requestDb, messageDb, replyDb, photoDb, trackDb, guestDb, slideshowDb, settingsDb, ensureDefaultEvent } = require('./db/database');
 const portalRouter = require('./portal/router');
+const djWebAuth = require('./portal/dj-web-auth');
 const app = express();
 
-const portalCorsOrigins = (process.env.PORTAL_CORS_ORIGINS ||
-    'https://eyupevents.uk,https://www.eyupevents.uk,https://requests.eyupevents.uk'
-)
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
 const PORT = process.env.PORT || 3000;
 
 // Initialize DOMPurify
@@ -91,6 +87,11 @@ app.use('/uploads/themes', express.static(themesRoot, { maxAge: '7d' }));
 const slideshowRoot = path.join(uploadsRoot, 'slideshow');
 fs.mkdirSync(slideshowRoot, { recursive: true });
 app.use('/uploads/slideshow', express.static(slideshowRoot, { maxAge: '7d' }));
+
+// Product catalog images — uploads/catalog/
+const catalogImagesRoot = path.join(uploadsRoot, 'catalog');
+fs.mkdirSync(catalogImagesRoot, { recursive: true });
+app.use('/uploads/catalog', express.static(catalogImagesRoot, { maxAge: '30d' }));
 
 const slideshowStorage = multer.diskStorage({
     destination(req, file, cb) {
@@ -156,6 +157,43 @@ app.post('/api/v1/stripe', stripeWebhookRaw, handleStripeWebhook);
 
 app.use(express.json());
 
+function djAllowedEvents(user) {
+    return djWebAuth.filterEventsForUser(eventDb.getAll(), user);
+}
+
+function renderDjDashboard(req, res) {
+    const events = djAllowedEvents(req.portalUser);
+    const messages = djWebAuth.filterMessagesForUser(getDjInboxMessages(), req.portalUser, events);
+    const requests = djWebAuth.filterRequestsForUser(djRequests, req.portalUser, events);
+    res.render('dj-dashboard', {
+        events,
+        requests,
+        messages,
+        portalUser: djWebAuth.authUserPayload(req.portalUser),
+        assignedGigs: djWebAuth.getUpcomingGigsForUser(req.portalUser),
+        isAdmin: req.portalUser.role === 'admin'
+    });
+}
+
+// ==================== DJ portal sign-in (same accounts as eyupevents.uk/events) ====================
+app.get('/dj/login', (req, res) => {
+    const user = djWebAuth.loadPortalUser(req);
+    if (user && (user.role === 'dj' || user.role === 'admin')) {
+        return res.redirect(req.query.next && String(req.query.next).startsWith('/') ? req.query.next : '/dj');
+    }
+    const turnstileSiteKey =
+        (process.env.CLOUDFLARE_TURNSTILE_SITE_KEY || process.env.TURNSTILE_SITE_KEY || '').trim() ||
+        '0x4AAAAAADRESh0tEw6T6JKh';
+    res.render('dj-login', {
+        error: req.query.error,
+        nextUrl: req.query.next && String(req.query.next).startsWith('/') ? req.query.next : '/dj',
+        turnstileSiteKey
+    });
+});
+
+app.post('/dj/auth/login', (req, res) => djWebAuth.handleDjLogin(req, res));
+app.post('/dj/auth/logout', djWebAuth.requireDjApiAuth, (req, res) => djWebAuth.handleDjLogout(req, res));
+
 // ==================== Global App Settings ====================
 // DJ-wide configuration stored in SQLite (app_settings) instead of hard-coded values.
 const GLOBAL_SETTINGS_DEFAULTS = {
@@ -176,8 +214,18 @@ const GLOBAL_SETTINGS_DEFAULTS = {
     photo_slideshow_enabled: false,
     photo_slideshow_minutes: 5,
     // Banner style around showcased photos: party | neon | elegant | minimal
-    photo_banner_style: 'party'
+    photo_banner_style: 'party',
+    // Big-screen guest message card: classic | party | neon | elegant | minimal | celebration | retro
+    display_message_style: 'classic'
 };
+
+const DISPLAY_MESSAGE_STYLES = ['classic', 'party', 'neon', 'elegant', 'minimal', 'celebration', 'retro'];
+
+function resolveDisplayMessageStyle(event) {
+    const settings = getGlobalSettings();
+    const raw = (event && event.display_message_style) || settings.display_message_style || 'classic';
+    return DISPLAY_MESSAGE_STYLES.includes(raw) ? raw : 'classic';
+}
 
 // Base URL for shareable guest links: configured public URL if set, else the request host.
 function getPublicBaseUrl(req) {
@@ -215,20 +263,7 @@ function saveGlobalSettings(patch) {
 }
 
 // EYUP events portal JSON API (separate SQLite DB — does not touch song-request tables)
-app.use(
-    '/api/v1',
-    cors({
-        origin(origin, cb) {
-            if (!origin) return cb(null, true);
-            if (portalCorsOrigins.includes(origin)) return cb(null, true);
-            cb(null, false);
-        },
-        credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Authorization', 'Content-Type', 'X-Portal-Internal-Key']
-    }),
-    portalRouter
-);
+app.use('/api/v1', cors(createPortalCorsOptions()), portalRouter);
 
 // Global variables to store catalogues
 let songCatalogue = [];
@@ -300,42 +335,81 @@ function getEventFromSlugJson(req, res, next) {
 }
 
 function isGuestMessageForReply(m) {
-    return !m.isReply && m.type !== 'song-request' && m.type !== 'karaoke-request';
+    return (
+        !m.isReply &&
+        m.type !== 'song-request' &&
+        m.type !== 'karaoke-request' &&
+        m.type !== 'spinner-result'
+    );
+}
+
+function isDjInboxMessage(m) {
+    return isGuestMessageForReply(m) || m.type === 'spinner-result';
 }
 
 function filterDjInboxMessages(messages) {
-    return messages.filter(isGuestMessageForReply);
+    return messages.filter(isDjInboxMessage);
+}
+
+/** DJ-only inbox note when a spinner runs — never queued for the public message screen. */
+function queueSpinnerResultForDj(event, spinnerKind, messageText) {
+    const titles = {
+        karaoke: '🎤 Karaoke spinner',
+        guest: '👤 Guest spinner',
+        coin: '🪙 Heads or tails',
+        yesno: '❓ Yes or No'
+    };
+    const djDisplayMessage = {
+        customerName: titles[spinnerKind] || '🎲 Spinner',
+        message: messageText,
+        textMessage: messageText,
+        timestamp: new Date().toISOString(),
+        displayed: true,
+        private: true,
+        type: 'spinner-result',
+        eventId: event.id,
+        eventSlug: event.slug,
+        eventName: event.name
+    };
+    djDisplayMessage.id = messageDb.add(djDisplayMessage);
+    djMessages.push(djDisplayMessage);
 }
 
 function getDjInboxMessages() {
     return enrichMessagesWithReplyStatus(filterDjInboxMessages(djMessages), djReplies);
 }
 
-function buildGuestConversation(eventId, customerName) {
-    const name = customerName.toLowerCase();
+function buildCustomerTimeline(customerName, eventSlug = null, eventId = null) {
+    const name = String(customerName || '').trim().toLowerCase();
+    if (!name) return [];
     const items = [];
 
     for (const m of djMessages) {
         if (!isGuestMessageForReply(m)) continue;
         if ((m.customerName || '').toLowerCase() !== name) continue;
-        if (m.eventId != null && Number(m.eventId) !== Number(eventId)) continue;
+        if (eventId != null && m.eventId != null && Number(m.eventId) !== Number(eventId)) continue;
+        if (eventSlug && m.eventSlug && m.eventSlug !== eventSlug) continue;
         items.push({
             kind: 'message',
             id: m.id,
             timestamp: m.timestamp,
             body: m.message,
+            textMessage: m.textMessage,
+            hasMedia: !!m.hasMedia,
             private: !!m.private
         });
     }
 
     for (const r of djReplies) {
         if ((r.customerName || '').toLowerCase() !== name) continue;
-        if (r.eventId != null && Number(r.eventId) !== Number(eventId)) continue;
+        if (eventId != null && r.eventId != null && Number(r.eventId) !== Number(eventId)) continue;
+        if (eventSlug && r.eventSlug && r.eventSlug !== eventSlug) continue;
         items.push({
             kind: 'reply',
             id: r.id,
             timestamp: r.timestamp,
             body: r.replyMessage,
+            replyMessage: r.replyMessage,
             direct: !!r.direct,
             originalType: r.originalType || null
         });
@@ -343,7 +417,8 @@ function buildGuestConversation(eventId, customerName) {
 
     for (const req of djRequests) {
         if ((req.customerName || '').toLowerCase() !== name) continue;
-        if (req.eventId != null && Number(req.eventId) !== Number(eventId)) continue;
+        if (eventId != null && req.eventId != null && Number(req.eventId) !== Number(eventId)) continue;
+        if (eventSlug && req.eventSlug && req.eventSlug !== eventSlug) continue;
         items.push({
             kind: 'request',
             id: req.id,
@@ -351,7 +426,9 @@ function buildGuestConversation(eventId, customerName) {
             type: req.type,
             title: req.song ? req.song.title : req.title,
             artist: req.song ? req.song.artist : req.artist,
-            note: req.message || null
+            message: req.message || null,
+            note: req.message || null,
+            status: req.status || 'pending'
         });
     }
 
@@ -376,69 +453,165 @@ function resolveEventIdForReply(originalType, originalId) {
     return req && req.eventId != null ? req.eventId : null;
 }
 
+function buildGuestConversation(eventId, customerName) {
+    const event = eventDb.getById(eventId);
+    const eventSlug = event ? event.slug : null;
+    return buildCustomerTimeline(customerName, eventSlug, eventId);
+}
+
 function getCustomerActivityPayload(customerName, eventSlug) {
     const trimmed = (customerName || '').toString().trim();
     if (!trimmed) {
-        return { replies: [], requests: [], guestMessages: [] };
+        return { items: [], replies: [], requests: [], messages: [], guestMessages: [] };
     }
     const event = resolveEventBySlug(eventSlug);
-    if (event) {
-        const items = buildGuestConversation(event.id, trimmed);
-        return {
-            replies: items
-                .filter((i) => i.kind === 'reply')
-                .map((i) => ({
-                    id: i.id,
-                    customerName: trimmed,
-                    replyMessage: i.body,
-                    originalType: i.originalType,
-                    direct: !!i.direct,
-                    timestamp: i.timestamp,
-                    eventId: event.id,
-                    eventSlug: event.slug
-                })),
-            requests: items
-                .filter((i) => i.kind === 'request')
-                .map((i) => ({
-                    id: i.id,
-                    type: i.type,
-                    title: i.title,
-                    artist: i.artist,
-                    message: i.note,
-                    status: 'pending',
-                    timestamp: i.timestamp,
-                    eventId: event.id,
-                    eventSlug: event.slug
-                })),
-            guestMessages: items
-                .filter((i) => i.kind === 'message')
-                .map((i) => ({
-                    id: i.id,
-                    message: i.body,
-                    private: !!i.private,
-                    timestamp: i.timestamp,
-                    eventId: event.id,
-                    eventSlug: event.slug
-                }))
-        };
+    const items = buildCustomerTimeline(trimmed, eventSlug, event ? event.id : null);
+    const replies = items.filter((i) => i.kind === 'reply');
+    const requests = items.filter((i) => i.kind === 'request');
+    const messages = items.filter((i) => i.kind === 'message');
+    return { items, replies, requests, messages, guestMessages: messages };
+}
+
+async function submitGuestMessage(body, res, { json = false } = {}) {
+    const customerName = (body.customerName || '').trim();
+    const eventSlug = body.eventSlug || null;
+    let { message, messageText } = body;
+
+    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
+
+    if (!rejectGuestIfModerated(event, customerName, res, {
+        json,
+        eventSlug,
+        silentThankYou: {
+            customerName,
+            requestType: 'message',
+            details: { message: 'Your message' },
+            eventSlug: eventSlug || null
+        }
+    })) {
+        return null;
     }
 
-    const name = trimmed.toLowerCase();
-    const replies = djReplies.filter((r) => (r.customerName || '').toLowerCase() === name);
-    const requests = djRequests
-        .filter((r) => r.customerName && r.customerName.toLowerCase() === name)
-        .map((r) => ({
-            id: r.id,
-            type: r.type,
-            title: r.song ? r.song.title : r.title,
-            artist: r.song ? r.song.artist : r.artist,
-            message: r.message || null,
-            status: r.status || 'pending',
-            timestamp: r.timestamp,
-            eventId: r.eventId,
-            eventSlug: r.eventSlug
-        }));
-    return { replies, requests, guestMessages: [] };
+    if (!customerName) {
+        if (json) {
+            res.status(400).json({ error: 'customerName is required' });
+        } else {
+            res.redirect('/');
+        }
+        return null;
+    }
+
+    const rawDjOnly = body.djOnly;
+    const djOnly = rawDjOnly === '1' || rawDjOnly === 'on' || rawDjOnly === 'true' || rawDjOnly === true;
+
+    messageText = typeof messageText === 'string' ? messageText.trim() : '';
+    let richContent = typeof message === 'string' ? message : '';
+    if (!richContent.trim() && messageText) {
+        richContent = messageText;
+    }
+    const hasMedia = richContent.includes('<img');
+
+    const cleanMessage = DOMPurify.sanitize(richContent, {
+        ALLOWED_TAGS: ['img', 'br', 'p', 'div', 'span', 'strong', 'em', 'u', 'b', 'i'],
+        ALLOWED_ATTR: ['src', 'alt', 'style', 'class'],
+        ALLOW_DATA_ATTR: false,
+        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+    });
+
+    const textContent = DOMPurify.sanitize(richContent, {
+        ALLOWED_TAGS: [],
+        KEEP_CONTENT: true
+    }).trim();
+
+    const finalMessage = cleanMessage || (hasMedia ? richContent : '');
+
+    if (!finalMessage || (!textContent && !hasMedia)) {
+        if (json) {
+            res.status(400).json({ error: 'Please enter a message or add some media.' });
+        } else {
+            res.status(400).render('error', {
+                error: 'Please enter a message or add some media.',
+                customerName,
+                eventSlug: eventSlug || null
+            });
+        }
+        return null;
+    }
+
+    if (textContent.length > 500) {
+        if (json) {
+            res.status(400).json({ error: 'Message text is too long. Please keep it under 500 characters.' });
+        } else {
+            res.status(400).render('error', {
+                error: 'Message text is too long. Please keep it under 500 characters.',
+                customerName,
+                eventSlug: eventSlug || null
+            });
+        }
+        return null;
+    }
+
+    const djDisplayMessage = {
+        customerName,
+        message: finalMessage,
+        textMessage: textContent || (hasMedia ? 'Message with media' : 'Empty message'),
+        timestamp: new Date().toISOString(),
+        displayed: false,
+        private: !!djOnly,
+        hasMedia,
+        eventId: event ? event.id : null,
+        eventSlug: eventSlug || null,
+        eventName: event ? event.name : null
+    };
+    djDisplayMessage.id = messageDb.add(djDisplayMessage);
+    djMessages.push(djDisplayMessage);
+
+    try {
+        await sendToVirtualDJ(customerName, textContent || 'Message with inline GIFs/images');
+        console.log('Guest message sent:', {
+            customerName,
+            hasMedia,
+            messageLength: finalMessage.length,
+            djOnly,
+            eventSlug: eventSlug || null
+        });
+
+        if (json) {
+            res.json({
+                success: true,
+                message: {
+                    id: djDisplayMessage.id,
+                    kind: 'message',
+                    timestamp: djDisplayMessage.timestamp,
+                    body: djDisplayMessage.message,
+                    textMessage: djDisplayMessage.textMessage,
+                    hasMedia: djDisplayMessage.hasMedia,
+                    private: djDisplayMessage.private
+                }
+            });
+            return djDisplayMessage;
+        }
+
+        res.render('thank-you', {
+            customerName,
+            requestType: 'message',
+            details: { message: textContent || 'Message with inline GIFs/images' },
+            eventSlug: eventSlug || null
+        });
+        return djDisplayMessage;
+    } catch (error) {
+        console.error('Error sending message to VirtualDJ:', error);
+        if (json) {
+            res.status(500).json({ error: 'Failed to send message. Please try again.' });
+        } else {
+            res.status(500).render('error', {
+                error: 'Failed to send message. Please try again.',
+                customerName,
+                eventSlug: eventSlug || null
+            });
+        }
+        return null;
+    }
 }
 
 function enrichMessagesWithReplyStatus(messages, replies) {
@@ -477,12 +650,108 @@ function rejectGuestIfModerated(event, customerName, res, { json = false, eventS
     return false;
 }
 
-// Storage for karaoke spinner
-let karaokeSpinState = {
-    shouldSpin: false,
-    selectedSong: null,
-    timestamp: null
-};
+// Storage for karaoke spinner (per event slug — display + requests stay scoped to the gig)
+const karaokeSpinStateBySlug = {};
+
+function emptyKaraokeSpinState() {
+    return { shouldSpin: false, selectedSong: null, timestamp: null };
+}
+
+function getKaraokeSpinState(slug) {
+    if (!slug) return emptyKaraokeSpinState();
+    return karaokeSpinStateBySlug[slug] || emptyKaraokeSpinState();
+}
+
+function clearKaraokeSpinState(slug) {
+    if (slug) delete karaokeSpinStateBySlug[slug];
+}
+
+// Guest spinner (per event slug — same trigger / poll / animate pattern as karaoke)
+const guestSpinStateBySlug = {};
+
+function emptyGuestSpinState() {
+    return { shouldSpin: false, selectedGuest: null, timestamp: null };
+}
+
+function getGuestSpinState(slug) {
+    if (!slug) return emptyGuestSpinState();
+    return guestSpinStateBySlug[slug] || emptyGuestSpinState();
+}
+
+function clearGuestSpinState(slug) {
+    if (slug) delete guestSpinStateBySlug[slug];
+}
+
+// Coin (heads/tails) and yes/no binary spinners
+const coinSpinStateBySlug = {};
+const yesNoSpinStateBySlug = {};
+
+function emptyBinarySpinState() {
+    return { shouldSpin: false, result: null, timestamp: null };
+}
+
+function getCoinSpinState(slug) {
+    if (!slug) return emptyBinarySpinState();
+    return coinSpinStateBySlug[slug] || emptyBinarySpinState();
+}
+
+function clearCoinSpinState(slug) {
+    if (slug) delete coinSpinStateBySlug[slug];
+}
+
+function getYesNoSpinState(slug) {
+    if (!slug) return emptyBinarySpinState();
+    return yesNoSpinStateBySlug[slug] || emptyBinarySpinState();
+}
+
+function clearYesNoSpinState(slug) {
+    if (slug) delete yesNoSpinStateBySlug[slug];
+}
+
+function triggerCoinSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) return { error: 'eventSlug is required' };
+    const event = eventDb.getBySlug(slug);
+    if (!event) return { error: 'Event not found' };
+    const result = Math.random() < 0.5 ? 'heads' : 'tails';
+    coinSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        result,
+        timestamp: Date.now()
+    };
+    console.log('Coin spin triggered for event', slug, ':', result);
+    const label = result === 'heads' ? 'Heads' : 'Tails';
+    queueSpinnerResultForDj(event, 'coin', `Result: ${label}`);
+    return { success: true, result, eventSlug: slug, eventId: event.id };
+}
+
+function triggerYesNoSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) return { error: 'eventSlug is required' };
+    const event = eventDb.getBySlug(slug);
+    if (!event) return { error: 'Event not found' };
+    const result = Math.random() < 0.5 ? 'yes' : 'no';
+    yesNoSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        result,
+        timestamp: Date.now()
+    };
+    console.log('Yes/No spin triggered for event', slug, ':', result);
+    const label = result === 'yes' ? 'Yes' : 'No';
+    queueSpinnerResultForDj(event, 'yesno', `Result: ${label}`);
+    return { success: true, result, eventSlug: slug, eventId: event.id };
+}
+
+function getEligibleGuestsForEvent(event) {
+    return guestDb
+        .getByEvent(event.id)
+        .filter(
+            (g) =>
+                g.status !== 'banned' &&
+                g.customerName &&
+                !guestDb.isSyntheticName(g.customerName)
+        );
+}
 
 // Photo showcase trigger — DJ pushes a guest photo to the event display screen.
 // Keyed by event slug; the display polls and clears it after showing.
@@ -827,18 +1096,17 @@ function followRedirect(redirectUrl, postData, resolve, reject) {
 // ==================== Event Management API ====================
 
 // Get all events (for DJ dashboard)
-app.get('/api/events', (req, res) => {
-    const events = eventDb.getAll();
-    // Add stats to each event
-    const eventsWithStats = events.map(event => ({
+app.get('/api/events', djWebAuth.requireDjApiAuth, (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const events = djAllowedEvents(req.portalUser).map((event) => ({
         ...event,
         stats: eventDb.getStats(event.id)
     }));
-    res.json(eventsWithStats);
+    res.json(events);
 });
 
 // Create a new event
-app.post('/api/events', (req, res) => {
+app.post('/api/events', djWebAuth.requireAdminApiAuth, (req, res) => {
     const { name, description, venue, eventDate, 
             heading_color, text_color, bg_color, bg_image, accent_color, custom_css, logo_image,
             enable_song_requests, enable_karaoke_requests, enable_messages, enable_photos,
@@ -871,7 +1139,7 @@ app.post('/api/events', (req, res) => {
 });
 
 // Update an event
-app.put('/api/events/:id', (req, res) => {
+app.put('/api/events/:id', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id);
     const updates = req.body;
     
@@ -895,7 +1163,7 @@ app.put('/api/events/:id', (req, res) => {
 });
 
 // Cancel event — closes customer-facing request pages (sets is_active = 0). Does not delete data.
-app.post('/api/events/:id/cancel', (req, res) => {
+app.post('/api/events/:id/cancel', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id, 10);
     if (!Number.isFinite(eventId)) {
         return res.status(400).json({ error: 'Invalid event id' });
@@ -923,7 +1191,7 @@ app.post('/api/events/:id/cancel', (req, res) => {
 });
 
 // Postpone event — updates scheduled date (and optionally venue). Does not change is_active.
-app.post('/api/events/:id/postpone', (req, res) => {
+app.post('/api/events/:id/postpone', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id, 10);
     if (!Number.isFinite(eventId)) {
         return res.status(400).json({ error: 'Invalid event id' });
@@ -963,7 +1231,7 @@ app.post('/api/events/:id/postpone', (req, res) => {
 });
 
 // Delete an event
-app.delete('/api/events/:id', (req, res) => {
+app.delete('/api/events/:id', djWebAuth.requireAdminApiAuth, (req, res) => {
     const eventId = parseInt(req.params.id);
     
     try {
@@ -990,11 +1258,11 @@ app.get('/api/events/slug/:slug', (req, res) => {
 
 // ==================== Global Settings API ====================
 
-app.get('/api/settings', (req, res) => {
+app.get('/api/settings', djWebAuth.requireDjApiAuth, (req, res) => {
     res.json(getGlobalSettings());
 });
 
-app.put('/api/settings', (req, res) => {
+app.put('/api/settings', djWebAuth.requireAdminApiAuth, (req, res) => {
     try {
         const merged = saveGlobalSettings(req.body || {});
         res.json({ success: true, settings: merged });
@@ -1005,7 +1273,7 @@ app.put('/api/settings', (req, res) => {
 });
 
 // Current catalogue status for the settings page (counts + file info)
-app.get('/api/settings/catalogues', (req, res) => {
+app.get('/api/settings/catalogues', djWebAuth.requireAdminApiAuth, (req, res) => {
     function fileInfo(...candidates) {
         for (const p of candidates) {
             if (fs.existsSync(p)) {
@@ -1022,7 +1290,7 @@ app.get('/api/settings/catalogues', (req, res) => {
 });
 
 // Upload a new VirtualDJ song database XML — validated by parsing before it replaces the old one
-app.post('/api/settings/upload-song-database', catalogueUpload.single('file'), async (req, res) => {
+app.post('/api/settings/upload-song-database', djWebAuth.requireAdminApiAuth, catalogueUpload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
@@ -1045,7 +1313,7 @@ app.post('/api/settings/upload-song-database', catalogueUpload.single('file'), a
 });
 
 // Upload a new karaoke catalogue CSV — validated by parsing before it replaces the old one
-app.post('/api/settings/upload-karaoke-catalog', catalogueUpload.single('file'), async (req, res) => {
+app.post('/api/settings/upload-karaoke-catalog', djWebAuth.requireAdminApiAuth, catalogueUpload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
@@ -1068,7 +1336,7 @@ app.post('/api/settings/upload-karaoke-catalog', catalogueUpload.single('file'),
 });
 
 // Send a test message to VirtualDJ using the currently saved settings
-app.post('/api/settings/test-virtualdj', async (req, res) => {
+app.post('/api/settings/test-virtualdj', djWebAuth.requireAdminApiAuth, async (req, res) => {
     const settings = getGlobalSettings();
     if (!settings.virtualdj_enabled) {
         return res.status(400).json({ error: 'VirtualDJ integration is disabled — enable and save it first' });
@@ -1085,7 +1353,7 @@ app.post('/api/settings/test-virtualdj', async (req, res) => {
 // ==================== Event Share Links API ====================
 
 // All shareable links for an event (used by the DJ "Share" modal)
-app.get('/api/events/:id/links', (req, res) => {
+app.get('/api/events/:id/links', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1100,7 +1368,7 @@ app.get('/api/events/:id/links', (req, res) => {
 });
 
 // Rotate the gallery share token (invalidates previously shared gallery links)
-app.post('/api/events/:id/regenerate-share-token', (req, res) => {
+app.post('/api/events/:id/regenerate-share-token', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id, 10);
     const event = eventDb.getById(eventId);
     if (!event) {
@@ -1118,11 +1386,8 @@ app.post('/api/events/:id/regenerate-share-token', (req, res) => {
 
 // Upload a theme asset for an event (?kind=bg|logo|display_bg). Returns the public URL;
 // the client then saves that URL on the event via PUT /api/events/:id.
-app.post('/api/events/:id/theme-image', (req, res) => {
-    const event = eventDb.getById(parseInt(req.params.id, 10));
-    if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
-    }
+app.post('/api/events/:id/theme-image', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const event = req.event;
     themeUpload.single('image')(req, res, (err) => {
         if (err) {
             const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Image is too large (max 10 MB)' : (err.message || 'Upload failed');
@@ -1158,7 +1423,7 @@ app.post('/api/event/:eventSlug/guest-checkin', getEventFromSlugJson, (req, res)
 });
 
 // DJ-only guest status (not used on guest pages)
-app.get('/api/events/:id/guests/:customerName/status', (req, res) => {
+app.get('/api/events/:id/guests/:customerName/status', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1172,7 +1437,7 @@ app.get('/api/events/:id/guests/:customerName/status', (req, res) => {
 });
 
 // DJ: list guests who have signed up or interacted with an event
-app.get('/api/events/:id/guests', (req, res) => {
+app.get('/api/events/:id/guests', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1181,7 +1446,7 @@ app.get('/api/events/:id/guests', (req, res) => {
 });
 
 // DJ: full conversation timeline for a guest at an event
-app.get('/api/events/:id/guests/:customerName/conversation', (req, res) => {
+app.get('/api/events/:id/guests/:customerName/conversation', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1199,7 +1464,7 @@ app.get('/api/events/:id/guests/:customerName/conversation', (req, res) => {
 });
 
 // DJ: silence, ban, or reinstate a guest
-app.put('/api/events/:id/guests/moderate', (req, res) => {
+app.put('/api/events/:id/guests/moderate', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1227,6 +1492,27 @@ app.put('/api/events/:id/guests/moderate', (req, res) => {
     const guests = guestDb.getByEvent(event.id);
     const updated = guests.find(g => g.customerName.toLowerCase() === customerName.toLowerCase());
     res.json({ success: true, guest: updated || null });
+});
+
+// DJ: remove a guest from the event list (does not delete their requests/messages)
+app.post('/api/events/:id/guests/remove', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const event = eventDb.getById(parseInt(req.params.id, 10));
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const customerName = (req.body.customerName || '').toString().trim();
+    if (!customerName) {
+        return res.status(400).json({ error: 'customerName is required' });
+    }
+    if (guestDb.isSyntheticName(customerName)) {
+        guestDb.deleteFromEvent(event.id, customerName);
+        return res.json({ success: true });
+    }
+    const removed = guestDb.deleteFromEvent(event.id, customerName);
+    if (!removed) {
+        return res.status(404).json({ error: 'Guest not found on this event' });
+    }
+    res.json({ success: true });
 });
 
 // ==================== Photos API ====================
@@ -1293,7 +1579,7 @@ app.get('/api/event/:eventSlug/photos', getEventFromSlugJson, (req, res) => {
 });
 
 // DJ list including hidden photos
-app.get('/api/events/:id/photos', (req, res) => {
+app.get('/api/events/:id/photos', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1303,22 +1589,16 @@ app.get('/api/events/:id/photos', (req, res) => {
 });
 
 // DJ hide/unhide a photo (kept on disk, excluded from guest gallery)
-app.put('/api/photos/:id/hidden', (req, res) => {
-    const photo = photoDb.getById(parseInt(req.params.id, 10));
-    if (!photo) {
-        return res.status(404).json({ error: 'Photo not found' });
-    }
+app.put('/api/photos/:id/hidden', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessByPhotoId, (req, res) => {
+    const photo = req.photo;
     const hidden = req.body.hidden === true || req.body.hidden === 1 || req.body.hidden === '1' || req.body.hidden === 'true';
     photoDb.setHidden(photo.id, hidden);
     res.json({ success: true, hidden });
 });
 
 // DJ delete a photo (removes DB row + file on disk)
-app.delete('/api/photos/:id', (req, res) => {
-    const photo = photoDb.getById(parseInt(req.params.id, 10));
-    if (!photo) {
-        return res.status(404).json({ error: 'Photo not found' });
-    }
+app.delete('/api/photos/:id', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessByPhotoId, (req, res) => {
+    const photo = req.photo;
     photoDb.delete(photo.id);
     const filePath = path.join(photosRoot, String(photo.event_id), photo.filename);
     fs.unlink(filePath, (err) => {
@@ -1332,15 +1612,9 @@ app.delete('/api/photos/:id', (req, res) => {
 // ==================== Photo Showcase (DJ pushes a photo to the display) ====================
 
 // Trigger: show this photo on the event's display screen
-app.post('/api/photos/:id/showcase', (req, res) => {
-    const photo = photoDb.getById(parseInt(req.params.id, 10));
-    if (!photo) {
-        return res.status(404).json({ error: 'Photo not found' });
-    }
-    const event = eventDb.getById(photo.event_id);
-    if (!event) {
-        return res.status(404).json({ error: 'Event not found' });
-    }
+app.post('/api/photos/:id/showcase', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessByPhotoId, (req, res) => {
+    const photo = req.photo;
+    const event = req.event;
     photoShowcaseState[event.slug] = {
         photo: photoToJson(photo),
         eventName: event.name,
@@ -1401,7 +1675,7 @@ app.get('/api/display/:eventSlug/photo-showcase', (req, res) => {
 });
 
 // Clear: the display acknowledges it has shown the photo
-app.post('/api/display/:eventSlug/photo-showcase/clear', (req, res) => {
+app.post('/api/display/:eventSlug/photo-showcase/clear', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
     delete photoShowcaseState[req.params.eventSlug];
     res.json({ success: true });
 });
@@ -1412,7 +1686,7 @@ app.get('/api/display-prompts', (req, res) => {
     res.json(DISPLAY_PROMPTS);
 });
 
-app.post('/api/display/:eventSlug/prompt/:promptId', (req, res) => {
+app.post('/api/display/:eventSlug/prompt/:promptId', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
     const { eventSlug, promptId } = req.params;
     const prompt = DISPLAY_PROMPTS[promptId];
     if (!prompt) {
@@ -1436,8 +1710,181 @@ app.get('/api/display/:eventSlug/prompt', (req, res) => {
     res.json(state);
 });
 
-app.post('/api/display/:eventSlug/prompt/clear', (req, res) => {
+app.post('/api/display/:eventSlug/prompt/clear', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
     delete displayPromptState[req.params.eventSlug];
+    res.json({ success: true });
+});
+
+// Karaoke spinner — scoped to event display + request queue for that event
+function triggerKaraokeSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) {
+        return { error: 'eventSlug is required' };
+    }
+    const event = eventDb.getBySlug(slug);
+    if (!event) {
+        return { error: 'Event not found' };
+    }
+    if (karaokeCatalogue.length === 0) {
+        return { error: 'No karaoke songs available' };
+    }
+
+    const randomIndex = Math.floor(Math.random() * karaokeCatalogue.length);
+    const selectedSong = karaokeCatalogue[randomIndex];
+
+    karaokeSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        selectedSong,
+        timestamp: Date.now()
+    };
+
+    const request = {
+        type: 'karaoke',
+        customerName: '🎲 Random Spinner',
+        song: selectedSong,
+        message: 'Randomly selected by DJ karaoke spinner',
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+        eventId: event.id,
+        eventSlug: event.slug,
+        eventName: event.name
+    };
+    request.id = requestDb.add(request);
+    djRequests.push(request);
+
+    const diff = selectedSong.difficulty ? ` (${selectedSong.difficulty})` : '';
+    queueSpinnerResultForDj(
+        event,
+        'karaoke',
+        `Winning track: "${selectedSong.title}" by ${selectedSong.artist || 'Unknown'}${diff}. Added to the request queue.`
+    );
+
+    console.log('Karaoke spin triggered for event', slug, ':', selectedSong.title);
+    return { success: true, song: selectedSong, eventSlug: slug, eventId: event.id };
+}
+
+app.post('/api/display/:eventSlug/karaoke/trigger-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const result = triggerKaraokeSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code = result.error === 'Event not found' ? 404 : 400;
+        return res.status(code).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/karaoke/spin-status', (req, res) => {
+    res.json(getKaraokeSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/karaoke/clear-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    clearKaraokeSpinState(req.params.eventSlug);
+    res.json({ success: true });
+});
+
+function triggerGuestSpinForEvent(eventSlug) {
+    const slug = String(eventSlug || '').trim();
+    if (!slug) {
+        return { error: 'eventSlug is required' };
+    }
+    const event = eventDb.getBySlug(slug);
+    if (!event) {
+        return { error: 'Event not found' };
+    }
+    const guests = getEligibleGuestsForEvent(event);
+    if (!guests.length) {
+        return {
+            error: 'No guests on file for this event yet — guests appear after they request or message.'
+        };
+    }
+    const pick = guests[Math.floor(Math.random() * guests.length)];
+    const selectedGuest = {
+        id: pick.id,
+        customerName: pick.customerName,
+        requestCount: pick.requestCount || 0,
+        messageCount: pick.messageCount || 0,
+        photoCount: pick.photoCount || 0
+    };
+    guestSpinStateBySlug[slug] = {
+        shouldSpin: true,
+        selectedGuest,
+        timestamp: Date.now()
+    };
+    queueSpinnerResultForDj(event, 'guest', `Selected guest: ${selectedGuest.customerName}`);
+    console.log('Guest spin triggered for event', slug, ':', selectedGuest.customerName);
+    return { success: true, guest: selectedGuest, eventSlug: slug, eventId: event.id };
+}
+
+app.get('/api/display/:eventSlug/guest-spinner/guests', (req, res) => {
+    const event = eventDb.getBySlug(req.params.eventSlug);
+    if (!event) {
+        return res.status(404).json({ error: 'Event not found' });
+    }
+    const guests = getEligibleGuestsForEvent(event).map((g) => ({
+        id: g.id,
+        customerName: g.customerName,
+        requestCount: g.requestCount || 0,
+        messageCount: g.messageCount || 0,
+        photoCount: g.photoCount || 0
+    }));
+    res.json({ guests });
+});
+
+app.post('/api/display/:eventSlug/guest-spinner/trigger', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const result = triggerGuestSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code =
+            result.error === 'Event not found'
+                ? 404
+                : result.error.includes('No guests')
+                  ? 400
+                  : 400;
+        return res.status(code).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/guest-spinner/spin-status', (req, res) => {
+    res.json(getGuestSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/guest-spinner/clear-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    clearGuestSpinState(req.params.eventSlug);
+    res.json({ success: true });
+});
+
+app.post('/api/display/:eventSlug/coin-spinner/trigger', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const result = triggerCoinSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code = result.error === 'Event not found' ? 404 : 400;
+        return res.status(code).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/coin-spinner/spin-status', (req, res) => {
+    res.json(getCoinSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/coin-spinner/clear-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    clearCoinSpinState(req.params.eventSlug);
+    res.json({ success: true });
+});
+
+app.post('/api/display/:eventSlug/yesno-spinner/trigger', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const result = triggerYesNoSpinForEvent(req.params.eventSlug);
+    if (result.error) {
+        const code = result.error === 'Event not found' ? 404 : 400;
+        return res.status(code).json(result);
+    }
+    res.json(result);
+});
+
+app.get('/api/display/:eventSlug/yesno-spinner/spin-status', (req, res) => {
+    res.json(getYesNoSpinState(req.params.eventSlug));
+});
+
+app.post('/api/display/:eventSlug/yesno-spinner/clear-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    clearYesNoSpinState(req.params.eventSlug);
     res.json({ success: true });
 });
 
@@ -1480,7 +1927,7 @@ app.get('/api/event/:eventSlug/tracks-played', getEventFromSlugJson, (req, res) 
 });
 
 // DJ: list tracks for an event
-app.get('/api/events/:id/tracks-played', (req, res) => {
+app.get('/api/events/:id/tracks-played', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1490,7 +1937,7 @@ app.get('/api/events/:id/tracks-played', (req, res) => {
 });
 
 // DJ: manually log a track
-app.post('/api/events/:id/tracks-played', (req, res) => {
+app.post('/api/events/:id/tracks-played', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1511,7 +1958,7 @@ app.post('/api/events/:id/tracks-played', (req, res) => {
 });
 
 // DJ: log the current now-playing track for this event
-app.post('/api/events/:id/tracks-played/from-now-playing', (req, res) => {
+app.post('/api/events/:id/tracks-played/from-now-playing', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const event = eventDb.getById(parseInt(req.params.id, 10));
     if (!event) {
         return res.status(404).json({ error: 'Event not found' });
@@ -1526,54 +1973,57 @@ app.post('/api/events/:id/tracks-played/from-now-playing', (req, res) => {
     res.json({ success: true, track });
 });
 
-app.delete('/api/tracks-played/:id', (req, res) => {
-    const track = trackDb.getById(parseInt(req.params.id, 10));
-    if (!track) {
-        return res.status(404).json({ error: 'Track not found' });
-    }
+app.delete('/api/tracks-played/:id', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessByTrackId, (req, res) => {
+    const track = req.track;
     trackDb.delete(track.id);
     res.json({ success: true });
 });
 
 // ==================== DJ Routes ====================
-app.get('/dj', (req, res) => {
-    const events = eventDb.getAll();
-    const messages = getDjInboxMessages();
-    res.render('dj-dashboard', { events, requests: djRequests, messages });
-});
+app.get('/dj', djWebAuth.requireDjWebAuth, renderDjDashboard);
 
-app.get('/dj/events', (req, res) => {
-    const events = eventDb.getAll().map(event => ({
-        ...event,
-        stats: eventDb.getStats(event.id)
-    }));
-    res.render('event-management', { events });
+app.get('/dj/events', djWebAuth.requireDjWebAuth, (req, res) => {
+    const events = djAllowedEvents(req.portalUser)
+        .map((event) => ({
+            ...event,
+            stats: eventDb.getStats(event.id)
+        }))
+        .sort((a, b) => {
+            if (Boolean(a.is_active) !== Boolean(b.is_active)) {
+                return Number(b.is_active) - Number(a.is_active);
+            }
+            const dateA = a.event_date ? new Date(a.event_date).getTime() : 0;
+            const dateB = b.event_date ? new Date(b.event_date).getTime() : 0;
+            if (dateA !== dateB) return dateB - dateA;
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+    res.render('event-management', {
+        events,
+        portalUser: djWebAuth.authUserPayload(req.portalUser),
+        isAdmin: req.portalUser.role === 'admin',
+        globalDisplayMessageStyle: resolveDisplayMessageStyle(null)
+    });
 });
 
 // Global DJ configuration page (settings that apply to every event)
-app.get('/dj/settings', (req, res) => {
+app.get('/dj/settings', djWebAuth.requireAdminWebAuth, (req, res) => {
     res.render('dj-settings', { settings: getGlobalSettings() });
 });
 
 // DJ photo management for an event (hide/unhide/delete guest photos)
-app.get('/dj/photos/:eventSlug', (req, res) => {
-    const event = eventDb.getBySlug(req.params.eventSlug);
-    if (!event) {
-        return res.status(404).render('error', { error: 'Event not found', customerName: '', eventSlug: null });
-    }
+app.get('/dj/photos/:eventSlug', djWebAuth.requireDjWebAuth, djWebAuth.requireEventAccessBySlugParam('eventSlug'), (req, res) => {
+    const event = req.event;
     const photos = photoDb.getByEvent(event.id, true);
     res.render('dj-photos', { event, photos });
 });
 
 // Event-specific display config
-app.get('/dj/display-config/:eventSlug', (req, res) => {
-    const event = eventDb.getBySlug(req.params.eventSlug);
-    if (!event) {
-        return res.status(404).render('error', { error: 'Event not found', customerName: '', eventSlug: null });
-    }
+app.get('/dj/display-config/:eventSlug', djWebAuth.requireDjWebAuth, djWebAuth.requireEventAccessBySlugParam('eventSlug'), (req, res) => {
+    const event = req.event;
     res.render('display-config', {
         event,
-        displaySlides: slideshowDb.getByEvent(event.id)
+        displaySlides: slideshowDb.getByEvent(event.id),
+        resolvedMessageStyle: resolveDisplayMessageStyle(event)
     });
 });
 
@@ -1587,7 +2037,8 @@ app.get('/dj/display/:eventSlug', (req, res) => {
     res.render('dj-display', {
         event,
         messages: publicMessages,
-        displaySlides: slideshowDb.getByEvent(event.id)
+        displaySlides: slideshowDb.getByEvent(event.id),
+        resolvedMessageStyle: resolveDisplayMessageStyle(event)
     });
 });
 
@@ -1595,11 +2046,11 @@ app.get('/dj/display/:eventSlug', (req, res) => {
 app.get('/dj/display', (req, res) => {
     // Only pass non-private messages to the public display
     const publicMessages = djMessages.filter(msg => !msg.private);
-    res.render('dj-display', { event: null, messages: publicMessages });
+    res.render('dj-display', { event: null, messages: publicMessages, resolvedMessageStyle: 'classic' });
 });
 
 // API endpoint to update event display config
-app.put('/api/events/:id/display-config', (req, res) => {
+app.put('/api/events/:id/display-config', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = req.params.id;
     const updates = {
         display_show_qr: req.body.display_show_qr ? 1 : 0,
@@ -1611,8 +2062,11 @@ app.put('/api/events/:id/display-config', (req, res) => {
         display_bg_image: req.body.display_bg_image || null,
         display_bg_slideshow_enabled: req.body.display_bg_slideshow_enabled ? 1 : 0,
         display_bg_slideshow_seconds: Math.min(Math.max(parseInt(req.body.display_bg_slideshow_seconds, 10) || 15, 5), 300),
+        display_bg_overlay_opacity: Math.min(Math.max(parseInt(req.body.display_bg_overlay_opacity, 10) || 45, 0), 100),
+        display_show_waiting_message: (req.body.display_show_waiting_message === 1 || req.body.display_show_waiting_message === true || req.body.display_show_waiting_message === '1') ? 1 : 0,
         display_card_color: req.body.display_card_color || '#ffffff',
-        display_card_opacity: parseInt(req.body.display_card_opacity) || 85
+        display_card_opacity: parseInt(req.body.display_card_opacity) || 85,
+        display_message_style: req.body.display_message_style || null
     };
     
     const success = eventDb.update(eventId, updates);
@@ -1624,7 +2078,7 @@ app.put('/api/events/:id/display-config', (req, res) => {
 });
 
 // Display background slideshow images
-app.get('/api/events/:id/display-slideshow', (req, res) => {
+app.get('/api/events/:id/display-slideshow', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id, 10);
     const event = eventDb.getById(eventId);
     if (!event) {
@@ -1633,7 +2087,7 @@ app.get('/api/events/:id/display-slideshow', (req, res) => {
     res.json(slideshowDb.getByEvent(eventId));
 });
 
-app.post('/api/events/:id/display-slideshow', (req, res) => {
+app.post('/api/events/:id/display-slideshow', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id, 10);
     const event = eventDb.getById(eventId);
     if (!event) {
@@ -1653,7 +2107,7 @@ app.post('/api/events/:id/display-slideshow', (req, res) => {
     });
 });
 
-app.put('/api/events/:id/display-slideshow/reorder', (req, res) => {
+app.put('/api/events/:id/display-slideshow/reorder', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id, 10);
     const event = eventDb.getById(eventId);
     if (!event) {
@@ -1667,7 +2121,7 @@ app.put('/api/events/:id/display-slideshow/reorder', (req, res) => {
     res.json({ success: true, slides });
 });
 
-app.delete('/api/events/:id/display-slideshow/:slideId', (req, res) => {
+app.delete('/api/events/:id/display-slideshow/:slideId', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const eventId = parseInt(req.params.id, 10);
     const slideId = parseInt(req.params.slideId, 10);
     const event = eventDb.getById(eventId);
@@ -1689,32 +2143,47 @@ app.get('/karaoke-spinner', (req, res) => {
     res.render('karaoke-spinner');
 });
 
-// New API endpoint for dashboard data (for background refresh)
-app.get('/api/dj/dashboard-data', (req, res) => {
-    res.json({ 
-        requests: djRequests, 
-        messages: getDjInboxMessages()
+app.get('/guest-spinner', (req, res) => {
+    res.render('guest-spinner');
+});
+
+app.get('/coin-spinner', (req, res) => {
+    res.render('coin-spinner');
+});
+
+app.get('/yesno-spinner', (req, res) => {
+    res.render('yesno-spinner');
+});
+
+app.get('/api/dj/dashboard-data', djWebAuth.requireDjApiAuth, (req, res) => {
+    const events = djAllowedEvents(req.portalUser);
+    res.json({
+        requests: djWebAuth.filterRequestsForUser(djRequests, req.portalUser, events),
+        messages: djWebAuth.filterMessagesForUser(getDjInboxMessages(), req.portalUser, events)
     });
 });
 
 // API endpoint for DJ messages (supports includePrivate with secret)
-app.get('/api/dj/messages', (req, res) => {
+app.get('/api/dj/messages', djWebAuth.requireDjApiAuth, (req, res) => {
     const includePrivate = req.query.includePrivate === 'true';
+    const events = djAllowedEvents(req.portalUser);
 
     // Start with messages that haven't been marked displayed
-    const pending = djMessages.filter(msg => !msg.displayed);
+    const pending = djWebAuth.filterMessagesForUser(
+        djMessages.filter((msg) => !msg.displayed),
+        req.portalUser,
+        events
+    );
 
     if (includePrivate) {
-        // Return all pending messages (including private) when requested
         return res.json(pending);
     }
 
-    // Default: return only non-private pending messages
-    const publicPending = pending.filter(msg => !msg.private);
+    const publicPending = pending.filter((msg) => !msg.private);
     res.json(publicPending);
 });
 
-app.post('/api/dj/message/:id/mark-displayed', (req, res) => {
+app.post('/api/dj/message/:id/mark-displayed', djWebAuth.requireDjApiAuth, (req, res) => {
     const messageId = parseInt(req.params.id);
     const message = djMessages.find(msg => msg.id === messageId);
     if (message) {
@@ -1724,7 +2193,29 @@ app.post('/api/dj/message/:id/mark-displayed', (req, res) => {
     res.json({ success: true });
 });
 
-app.delete('/api/dj/request/:id', (req, res) => {
+app.delete('/api/dj/message/:id', djWebAuth.requireDjApiAuth, (req, res) => {
+    const messageId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(messageId)) {
+        return res.status(400).json({ error: 'Invalid message id' });
+    }
+    const message = djMessages.find((msg) => msg.id === messageId);
+    if (!message) {
+        return res.status(404).json({ error: 'Message not found' });
+    }
+    if (message.type !== 'spinner-result') {
+        return res.status(400).json({ error: 'Only spinner result notes can be removed here' });
+    }
+    if (!messageDb.delete(messageId)) {
+        return res.status(404).json({ error: 'Message not found' });
+    }
+    const idx = djMessages.findIndex((msg) => msg.id === messageId);
+    if (idx !== -1) {
+        djMessages.splice(idx, 1);
+    }
+    res.json({ success: true });
+});
+
+app.delete('/api/dj/request/:id', djWebAuth.requireDjApiAuth, (req, res) => {
     const requestId = parseInt(req.params.id);
     const index = djRequests.findIndex(req => req.id === requestId);
     if (index !== -1) {
@@ -1734,7 +2225,7 @@ app.delete('/api/dj/request/:id', (req, res) => {
     res.json({ success: true });
 });
 
-app.post('/api/dj/reply', (req, res) => {
+app.post('/api/dj/reply', djWebAuth.requireDjApiAuth, (req, res) => {
     const { customerName, replyMessage, originalType, originalId, direct } = req.body;
     
     if (!customerName || !replyMessage) {
@@ -1775,7 +2266,7 @@ app.post('/api/dj/reply', (req, res) => {
     res.json({ success: true, reply });
 });
 
-app.get('/api/dj/replies', (req, res) => {
+app.get('/api/dj/replies', djWebAuth.requireDjApiAuth, (req, res) => {
     res.json(djReplies);
 });
 
@@ -1784,10 +2275,17 @@ app.get('/api/customer/replies/:customerName', (req, res) => {
     res.json(payload.replies);
 });
 
-// Full activity for a guest: DJ replies + their own song/karaoke requests,
-// so the messages screen can show a complete conversation timeline.
+// Full activity for a guest: messages, DJ replies, and song/karaoke requests.
 app.get('/api/customer/activity/:customerName', (req, res) => {
-    res.json(getCustomerActivityPayload(req.params.customerName, req.query.eventSlug));
+    const customerName = decodeURIComponent(req.params.customerName || '').trim();
+    if (!customerName) {
+        return res.status(400).json({ error: 'customerName is required' });
+    }
+    res.json(getCustomerActivityPayload(customerName, req.query.eventSlug));
+});
+
+app.post('/api/customer/message', async (req, res) => {
+    await submitGuestMessage(req.body || {}, res, { json: true });
 });
 
 // Karaoke Spinner API endpoints
@@ -1795,65 +2293,56 @@ app.get('/api/karaoke/all', (req, res) => {
     res.json(karaokeCatalogue);
 });
 
-// Shared function to trigger karaoke spin
-function triggerKaraokeSpin() {
-    // Select a random karaoke song
-    if (karaokeCatalogue.length === 0) {
-        return { error: 'No karaoke songs available' };
-    }
-    
-    const randomIndex = Math.floor(Math.random() * karaokeCatalogue.length);
-    const selectedSong = karaokeCatalogue[randomIndex];
-    
-    karaokeSpinState = {
-        shouldSpin: true,
-        selectedSong: selectedSong,
-        timestamp: Date.now()
-    };
-    
-    // Add the randomly selected song to DJ requests
-    const request = {
-        type: 'karaoke',
-        customerName: '🎲 Random Spinner',
-        song: selectedSong,
-        message: 'Randomly selected by DJ spinner',
-        timestamp: new Date().toISOString(),
-        status: 'pending'
-    };
-    request.id = requestDb.add(request);
-    djRequests.push(request);
-    
-    console.log('Karaoke spin triggered:', selectedSong.title);
-    return { success: true, song: selectedSong };
+// Shared function to trigger karaoke spin (legacy + dashboard header — requires eventSlug)
+function triggerKaraokeSpin(eventSlug) {
+    return triggerKaraokeSpinForEvent(eventSlug);
 }
 
-app.post('/api/karaoke/trigger-spin', (req, res) => {
-    const result = triggerKaraokeSpin();
+app.post('/api/karaoke/trigger-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventSlugAccessFromRequest, (req, res) => {
+    const slug = req.body?.eventSlug != null ? String(req.body.eventSlug).trim() : '';
+    const result = triggerKaraokeSpin(slug);
     if (result.error) {
-        return res.status(400).json(result);
+        const status =
+            result.error === 'Event not found'
+                ? 404
+                : result.error === 'eventSlug is required'
+                  ? 422
+                  : 400;
+        return res.status(status).json(result);
     }
     res.json(result);
 });
 
 // GET endpoint for external devices (e.g., Stream Deck, automation)
-app.get('/api/karaoke/trigger-spin', (req, res) => {
-    const result = triggerKaraokeSpin();
+app.get('/api/karaoke/trigger-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventSlugAccessFromRequest, (req, res) => {
+    const slug = req.query.eventSlug != null ? String(req.query.eventSlug).trim() : '';
+    const result = triggerKaraokeSpin(slug);
     if (result.error) {
-        return res.status(400).json(result);
+        const status =
+            result.error === 'Event not found'
+                ? 404
+                : result.error === 'eventSlug is required'
+                  ? 422
+                  : 400;
+        return res.status(status).json(result);
     }
     res.json(result);
 });
 
-app.get('/api/karaoke/spin-status', (req, res) => {
-    res.json(karaokeSpinState);
+app.get('/api/karaoke/spin-status', djWebAuth.requireDjApiAuth, djWebAuth.requireEventSlugAccessFromRequest, (req, res) => {
+    const slug = req.query.eventSlug != null ? String(req.query.eventSlug).trim() : '';
+    if (!slug) {
+        return res.status(422).json({ error: 'eventSlug query parameter is required' });
+    }
+    res.json(getKaraokeSpinState(slug));
 });
 
-app.post('/api/karaoke/clear-spin', (req, res) => {
-    karaokeSpinState = {
-        shouldSpin: false,
-        selectedSong: null,
-        timestamp: null
-    };
+app.post('/api/karaoke/clear-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventSlugAccessFromRequest, (req, res) => {
+    const slug = req.body?.eventSlug != null ? String(req.body.eventSlug).trim() : '';
+    if (!slug) {
+        return res.status(422).json({ error: 'eventSlug is required' });
+    }
+    clearKaraokeSpinState(slug);
     res.json({ success: true });
 });
 
@@ -2237,101 +2726,7 @@ app.post('/submit-karaoke-request', async (req, res) => {
 });
 
 app.post('/submit-message', async (req, res) => {
-    const { customerName, eventSlug } = req.body;
-    let { message, messageText } = req.body;
-    
-    // Get event info if eventSlug provided
-    const event = eventSlug ? eventDb.getBySlug(eventSlug) : null;
-
-    if (!rejectGuestIfModerated(event, customerName, res, {
-        eventSlug,
-        silentThankYou: {
-            customerName,
-            requestType: 'message',
-            details: { message: 'Your message' },
-            eventSlug: eventSlug || null
-        }
-    })) {
-        return;
-    }
-    
-    // djOnly may be submitted as '1', 'on', 'true' or boolean
-    const rawDjOnly = req.body.djOnly;
-    const djOnly = rawDjOnly === '1' || rawDjOnly === 'on' || rawDjOnly === 'true' || rawDjOnly === true;
-
-    // Handle inline HTML content directly.
-    // Fall back to plain text mirror when rich payload is empty.
-    messageText = typeof messageText === 'string' ? messageText.trim() : '';
-    let richContent = typeof message === 'string' ? message : '';
-    if (!richContent.trim() && messageText) {
-        richContent = messageText;
-    }
-    let hasMedia = false;
-    
-    // Check if message contains inline images
-    hasMedia = richContent.includes('<img');
-    
-    // Sanitize HTML content while preserving inline images
-    const cleanMessage = DOMPurify.sanitize(richContent, {
-        ALLOWED_TAGS: ['img', 'br', 'p', 'div', 'span', 'strong', 'em', 'u', 'b', 'i'],
-        ALLOWED_ATTR: ['src', 'alt', 'style', 'class'],
-        ALLOW_DATA_ATTR: false,
-        ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
-    });
-
-    // Extract plain text content for VirtualDJ
-    const textContent = DOMPurify.sanitize(richContent, { 
-        ALLOWED_TAGS: [],
-        KEEP_CONTENT: true 
-    }).trim();
-
-    // If cleanMessage is empty but hasMedia is true, there might be an issue with sanitization
-    // Use the original richContent if cleanMessage got stripped but we know there's media
-    const finalMessage = cleanMessage || (hasMedia ? richContent : '');
-
-    // Store the message for DJ display
-    const djDisplayMessage = {
-        customerName,
-        message: finalMessage, // Rich HTML with inline images
-        textMessage: textContent || (hasMedia ? 'Message with media' : 'Empty message'),
-        timestamp: new Date().toISOString(),
-        displayed: false,
-        private: !!djOnly,
-        hasMedia: hasMedia,
-        eventId: event ? event.id : null,
-        eventSlug: eventSlug || null,
-        eventName: event ? event.name : null
-    };
-    djDisplayMessage.id = messageDb.add(djDisplayMessage);
-
-    djMessages.push(djDisplayMessage);
-
-    try {
-        // Send plain text version to VirtualDJ
-        await sendToVirtualDJ(customerName, textContent || 'Message with inline GIFs/images');
-        console.log('Inline message sent:', { 
-            customerName, 
-            hasMedia,
-            messageLength: finalMessage.length,
-            textLength: textContent.length,
-            djOnly,
-            containsImg: finalMessage.includes('<img')
-        });
-
-        res.render('thank-you', {
-            customerName,
-            requestType: 'message',
-            details: { message: textContent || 'Message with inline GIFs/images' },
-            eventSlug: eventSlug || null
-        });
-    } catch (error) {
-        console.error('Error sending message to VirtualDJ:', error);
-        res.status(500).render('error', {
-            error: 'Failed to send message. Please try again.',
-            customerName,
-            eventSlug: eventSlug || null
-        });
-    }
+    await submitGuestMessage(req.body || {}, res, { json: false });
 });
 
 // ============================================

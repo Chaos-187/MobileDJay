@@ -79,6 +79,7 @@ async function main() {
     const djHour = ensureProduct('mobile_dj_1hr', {
         name: 'Mobile DJ (hourly)',
         description: 'Professional mobile DJ — hourly rate',
+        product_type: 'mobile_dj',
         pricing_model: 'hourly',
         standalone_rate: 150,
         minimum_hours: 2,
@@ -88,6 +89,7 @@ async function main() {
     const karaoke = ensureProduct('karaoke', {
         name: 'Karaoke',
         description: 'Karaoke setup — standalone or add-on to DJ',
+        product_type: 'karaoke',
         pricing_model: 'hourly',
         standalone_rate: 120,
         capability_code: 'karaoke',
@@ -96,6 +98,7 @@ async function main() {
     ensureProduct('enhanced_lighting', {
         name: 'Enhanced lighting',
         description: 'DMX / enhanced lighting package',
+        product_type: 'lighting',
         pricing_model: 'hourly',
         standalone_rate: 80,
         capability_code: 'lighting',

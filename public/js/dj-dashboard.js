@@ -32,22 +32,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Trigger karaoke spin
+    // Trigger karaoke spin (header — uses same event target as Screen tab)
     function triggerKaraokeSpin() {
         const btn = triggerSpinBtn;
         const originalContent = btn.innerHTML;
-        
-        // Show loading state
+        const slug =
+            typeof window.mdjGetPromptTargetSlug === 'function'
+                ? window.mdjGetPromptTargetSlug()
+                : null;
+
+        if (!slug) {
+            showAlert('Select an event (or create one) before triggering the spinner.', 'warning');
+            return;
+        }
+
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Spinning...';
-        
-        fetch('/api/karaoke/trigger-spin', { method: 'POST' })
+
+        fetch('/api/karaoke/trigger-spin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ eventSlug: slug })
+        })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    showAlert(`Spin triggered! Selected: "${data.song.title}" by ${data.song.artist}`, 'success');
-                    // Refresh to show the new request
-                    setTimeout(() => refreshData(false), 1000);
+                    showAlert(
+                        `Spin triggered for this event! Selected: "${data.song.title}" by ${data.song.artist}`,
+                        'success'
+                    );
+                    refreshData(false);
                 } else {
                     showAlert(data.error || 'Failed to trigger spin', 'danger');
                 }
@@ -75,8 +90,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Fetch fresh data instead of reloading page
-        fetch('/api/dj/dashboard-data')
-            .then(response => response.json())
+        fetch('/api/dj/dashboard-data', { credentials: 'include' })
+            .then(response => {
+                if (response.status === 401) {
+                    window.location.href = '/dj/login?next=' + encodeURIComponent(window.location.pathname);
+                    return Promise.reject(new Error('Unauthorized'));
+                }
+                return response.json();
+            })
             .then(data => {
                 updateDashboard(data);
                 if (showFeedback) {
@@ -102,6 +123,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function refreshPage() {
         refreshData(true);
     }
+
+    window.mdjRefreshDashboard = function (showFeedback = false) {
+        refreshData(showFeedback);
+    };
 
     // Update dashboard content with fresh data
     function updateDashboard(data) {
@@ -200,17 +225,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // (needed for messages with inline media).
     function createMessageCard(message) {
         const needsReply = !!message.needsReply;
+        const isSpinnerResult = message.type === 'spinner-result';
         const name = escapeHtml(message.customerName);
         const nameAttr = escapeAttr(message.customerName);
         
         return `
-            <div class="card mb-2${needsReply ? ' message-needs-reply' : (!message.displayed ? '' : ' bg-light')}" data-message-id="${message.id}" data-event-id="${message.eventId || ''}" data-needs-reply="${needsReply ? '1' : '0'}">
+            <div class="card mb-2${needsReply ? ' message-needs-reply' : (!message.displayed ? '' : ' bg-light')}${isSpinnerResult ? ' message-spinner-result' : ''}" data-message-id="${message.id}" data-event-id="${message.eventId || ''}" data-needs-reply="${needsReply ? '1' : '0'}">
                 <div class="card-body py-2 message-card-body">
                     <div class="message-card-top">
                         <div class="message-card-meta">
                             <div class="d-flex align-items-center mb-1 flex-wrap gap-1">
                                 <strong class="me-1">${name}</strong>
                                 ${message.eventName ? `<span class="badge bg-dark" title="Event">${escapeHtml(message.eventName)}</span>` : ''}
+                                ${isSpinnerResult ? '<span class="badge bg-info text-dark" title="Spinner result"><i class="fas fa-dice me-1"></i>Spinner</span>' : ''}
                                 ${needsReply ? '<span class="badge bg-primary">Awaiting reply</span>' : ''}
                                 ${message.private ? '<span class="badge bg-purple-pill" title="Not shown on the display screen"><i class="fas fa-user-lock me-1"></i>DJ Only</span>' : ''}
                             </div>
@@ -220,13 +247,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             </small>
                         </div>
                         <div class="message-card-actions">
-                            ${!message.displayed ? `
+                            ${!isSpinnerResult && !message.displayed ? `
                                 <button class="btn btn-outline-primary btn-sm mark-displayed" 
                                         data-message-id="${message.id}"
                                         title="Mark displayed">
                                     <i class="fas fa-check"></i>
                                 </button>
                             ` : ''}
+                            ${!isSpinnerResult ? `
                             <button class="btn btn-success btn-sm reply-message" 
                                     data-customer-name="${nameAttr}"
                                     data-message-id="${message.id}"
@@ -234,9 +262,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     title="Reply">
                                 <i class="fas fa-reply"></i>
                             </button>
+                            ` : `
+                            <button class="btn btn-outline-secondary btn-sm remove-spinner-message" 
+                                    data-message-id="${message.id}"
+                                    title="Remove this result">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            `}
                         </div>
                     </div>
                     <div class="message-text small">${message.message}</div>
+                    ${!isSpinnerResult ? `
                     <div class="message-card-actions-bottom">
                         <button class="btn btn-success btn-sm reply-message" 
                                 data-customer-name="${nameAttr}"
@@ -245,6 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             <i class="fas fa-reply me-1"></i>Reply to ${name}
                         </button>
                     </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -322,6 +359,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const messageId = button.dataset.messageId;
             markMessageDisplayed(messageId);
         }
+        if (e.target.classList.contains('remove-spinner-message') || e.target.closest('.remove-spinner-message')) {
+            const button = e.target.classList.contains('remove-spinner-message')
+                ? e.target
+                : e.target.closest('.remove-spinner-message');
+            removeSpinnerMessage(button.dataset.messageId);
+        }
     });
 
     // Mark all messages as displayed
@@ -342,7 +385,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Remove request function
     function removeRequest(requestId, showAlert = true) {
         fetch(`/api/dj/request/${requestId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
@@ -381,7 +425,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mark message as displayed
     function markMessageDisplayed(messageId, showAlertMsg = true) {
         fetch(`/api/dj/message/${messageId}/mark-displayed`, {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
@@ -407,6 +452,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 showAlert('Failed to mark message', 'danger');
             }
         });
+    }
+
+    function removeSpinnerMessage(messageId) {
+        if (!messageId) return;
+        fetch(`/api/dj/message/${messageId}`, { method: 'DELETE', credentials: 'include' })
+            .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) {
+                    throw new Error(data.error || 'Failed to remove message');
+                }
+                const messageCard = document.querySelector(
+                    `#messagesList > .card[data-message-id="${messageId}"]`
+                );
+                if (messageCard) {
+                    messageCard.style.transition = 'all 0.3s ease';
+                    messageCard.style.transform = 'translateX(100%)';
+                    messageCard.style.opacity = '0';
+                    setTimeout(() => {
+                        messageCard.remove();
+                    }, 300);
+                }
+            })
+            .catch((error) => {
+                console.error('Error removing spinner message:', error);
+                showAlert(error.message || 'Failed to remove message', 'danger');
+            });
     }
 
     // Open reply modal
@@ -469,6 +540,7 @@ document.addEventListener('DOMContentLoaded', function() {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(replyData)
         })
         .then(response => response.json())
@@ -577,19 +649,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Spin Karaoke button handler
     if (spinKaraokeBtn) {
         spinKaraokeBtn.addEventListener('click', function() {
+            const slug =
+                typeof window.mdjGetPromptTargetSlug === 'function'
+                    ? window.mdjGetPromptTargetSlug()
+                    : null;
+            if (!slug) {
+                showAlert('Select an event before triggering the spinner.', 'warning');
+                return;
+            }
             const originalHtml = spinKaraokeBtn.innerHTML;
             spinKaraokeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Spinning...';
             spinKaraokeBtn.disabled = true;
-            
+
             fetch('/api/karaoke/trigger-spin', {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ eventSlug: slug })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     showAlert(`Karaoke spinner triggered! Selected: "${data.song.title}" by ${data.song.artist}`, 'success');
+                    refreshData(false);
                 } else {
-                    showAlert('Error triggering karaoke spinner', 'danger');
+                    showAlert(data.error || 'Error triggering karaoke spinner', 'danger');
                 }
             })
             .catch(error => {

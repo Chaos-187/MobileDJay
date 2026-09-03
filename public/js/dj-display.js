@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let isDisplayingMessage = false;
     let messageQueue = [];
     let refreshInterval;
+    const showWaitingMessage = window.displayScreenConfig?.showWaitingMessage !== false;
 
     // Spinner state
     let isSpinning = false;
@@ -52,6 +53,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize
     function init() {
+        if (!showWaitingMessage && waitingMessage) {
+            waitingMessage.style.display = 'none';
+        }
+
         startMessagePolling();
         setupKeyboardControls();
         setupMouseActivity();
@@ -59,6 +64,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initialize spinner
         loadKaraokeSongs();
         startSpinnerPolling();
+        loadEventGuestsForSpinner();
+        startGuestSpinnerPolling();
+        startCoinSpinnerPolling();
+        startYesNoSpinnerPolling();
         
         // Show control panel briefly on load
         setTimeout(() => {
@@ -173,7 +182,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Check if we should show waiting message
             if (messageQueue.length === 0) {
-                waitingMessage.style.display = 'block';
+                if (showWaitingMessage && waitingMessage) {
+                    waitingMessage.style.display = 'block';
+                }
                 updateStatus('Waiting for messages...');
             }
             
@@ -292,9 +303,27 @@ document.addEventListener('DOMContentLoaded', function() {
         if (document.hidden) {
             clearInterval(refreshInterval);
             clearInterval(spinPollInterval);
+            if (typeof guestSpinPollInterval !== 'undefined' && guestSpinPollInterval) {
+                clearInterval(guestSpinPollInterval);
+            }
+            if (typeof coinSpinPollInterval !== 'undefined' && coinSpinPollInterval) {
+                clearInterval(coinSpinPollInterval);
+            }
+            if (typeof yesNoSpinPollInterval !== 'undefined' && yesNoSpinPollInterval) {
+                clearInterval(yesNoSpinPollInterval);
+            }
         } else {
             startMessagePolling();
             startSpinnerPolling();
+            if (typeof startGuestSpinnerPolling === 'function') {
+                startGuestSpinnerPolling();
+            }
+            if (typeof startCoinSpinnerPolling === 'function') {
+                startCoinSpinnerPolling();
+            }
+            if (typeof startYesNoSpinnerPolling === 'function') {
+                startYesNoSpinnerPolling();
+            }
         }
     });
 
@@ -302,16 +331,18 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('beforeunload', function() {
         clearInterval(refreshInterval);
         clearInterval(spinPollInterval);
+        if (typeof guestSpinPollInterval !== 'undefined' && guestSpinPollInterval) {
+            clearInterval(guestSpinPollInterval);
+        }
+        if (typeof coinSpinPollInterval !== 'undefined' && coinSpinPollInterval) {
+            clearInterval(coinSpinPollInterval);
+        }
+        if (typeof yesNoSpinPollInterval !== 'undefined' && yesNoSpinPollInterval) {
+            clearInterval(yesNoSpinPollInterval);
+        }
     });
 
-    // Initialize the display
-    init();
-    animateFloatingIcons();
-
-    // Add welcome message for testing
-    setTimeout(() => {
-        updateStatus('DJ Message Display ready');
-    }, 2000);
+    // (init runs after spinner modules — see bottom of file)
 
     // ============================================
     // KARAOKE SPINNER FUNCTIONALITY
@@ -339,14 +370,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if DJ triggered a spin
     function checkForSpinTrigger() {
         if (isSpinning) return;
+        const slug = window.displayEventSlug;
+        if (!slug) return;
 
-        fetch('/api/karaoke/spin-status')
+        fetch('/api/display/' + encodeURIComponent(slug) + '/karaoke/spin-status')
             .then(response => response.json())
             .then(data => {
                 if (data.shouldSpin && data.selectedSong) {
                     startSpin(data.selectedSong);
-                    // Clear the trigger
-                    fetch('/api/karaoke/clear-spin', { method: 'POST' });
+                    fetch('/api/display/' + encodeURIComponent(slug) + '/karaoke/clear-spin', {
+                        method: 'POST'
+                    });
                 }
             })
             .catch(error => {
@@ -467,19 +501,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Create confetti animation
     function createConfetti() {
-        const colors = ['#ffc107', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4'];
-        
-        for (let i = 0; i < 100; i++) {
+        const colors = ['#ffc107', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#fff'];
+
+        for (let i = 0; i < 140; i++) {
             setTimeout(() => {
                 const confetti = document.createElement('div');
-                confetti.className = 'confetti';
+                confetti.className = 'confetti' + (Math.random() > 0.45 ? ' confetti--round' : '');
+                const w = 6 + Math.random() * 12;
                 confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.top = (-8 - Math.random() * 20) + 'vh';
+                confetti.style.width = w + 'px';
+                confetti.style.height = (Math.random() > 0.35 ? w : w * 2.2) + 'px';
                 confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.animationDuration = (2.2 + Math.random() * 2) + 's';
+                confetti.style.animationDelay = Math.random() * 0.45 + 's';
                 document.body.appendChild(confetti);
-                
-                setTimeout(() => confetti.remove(), 3000);
-            }, i * 30);
+
+                setTimeout(() => confetti.remove(), 4500);
+            }, i * 22);
         }
     }
 
@@ -506,6 +545,348 @@ document.addEventListener('DOMContentLoaded', function() {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ============================================
+    // GUEST SPINNER (same wheel UX as karaoke)
+    // ============================================
+    const guestSpinnerOverlay = document.getElementById('guestSpinnerOverlay');
+    const guestSpinnerSlot = document.getElementById('guestSpinnerSlot');
+    const guestSpinnerWaiting = document.getElementById('guestSpinnerWaiting');
+    const guestsList = document.getElementById('guestsList');
+    const guestWinnerDisplay = document.getElementById('guestWinnerDisplay');
+    const guestWinnerName = document.getElementById('guestWinnerName');
+    const guestWinnerSub = document.getElementById('guestWinnerSub');
+
+    let isGuestSpinning = false;
+    let guestSpinPollInterval;
+    let allEventGuests = [];
+
+    function loadEventGuestsForSpinner() {
+        const slug = window.displayEventSlug;
+        if (!slug) return;
+        fetch('/api/display/' + encodeURIComponent(slug) + '/guest-spinner/guests')
+            .then((response) => response.json())
+            .then((data) => {
+                allEventGuests = Array.isArray(data.guests) ? data.guests : [];
+            })
+            .catch((err) => console.error('Error loading event guests:', err));
+    }
+
+    function startGuestSpinnerPolling() {
+        if (!guestSpinnerOverlay) return;
+        guestSpinPollInterval = setInterval(checkForGuestSpinTrigger, CONFIG.spinPollInterval);
+    }
+
+    function checkForGuestSpinTrigger() {
+        if (isGuestSpinning) return;
+        const slug = window.displayEventSlug;
+        if (!slug) return;
+
+        fetch('/api/display/' + encodeURIComponent(slug) + '/guest-spinner/spin-status')
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.shouldSpin && data.selectedGuest) {
+                    if (
+                        !allEventGuests.some(
+                            (g) => g.id === data.selectedGuest.id
+                        )
+                    ) {
+                        allEventGuests = allEventGuests.concat([data.selectedGuest]);
+                    }
+                    startGuestSpin(data.selectedGuest);
+                    fetch('/api/display/' + encodeURIComponent(slug) + '/guest-spinner/clear-spin', {
+                        method: 'POST'
+                    });
+                }
+            })
+            .catch(() => {});
+    }
+
+    function guestStatsLine(g) {
+        const parts = [];
+        if (g.requestCount) parts.push(g.requestCount + ' request' + (g.requestCount === 1 ? '' : 's'));
+        if (g.messageCount) parts.push(g.messageCount + ' message' + (g.messageCount === 1 ? '' : 's'));
+        return parts.join(' · ');
+    }
+
+    function startGuestSpin(targetGuest) {
+        if (isGuestSpinning || !guestSpinnerOverlay || !guestsList) return;
+        isGuestSpinning = true;
+
+        if (spinSound) {
+            spinSound.currentTime = 0;
+            spinSound.play().catch(() => {});
+        }
+
+        guestSpinnerOverlay.classList.add('active');
+        guestSpinnerWaiting.style.display = 'none';
+        guestsList.style.display = 'block';
+
+        const targetIndex = prepareGuestsList(targetGuest);
+        // Allow layout before measuring scroll positions (same tick as karaoke)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                animateGuestSpin(targetGuest, targetIndex);
+            });
+        });
+    }
+
+    function prepareGuestsList(targetGuest) {
+        const pool = allEventGuests.length ? [...allEventGuests] : [targetGuest];
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        let displayGuests = [];
+        while (displayGuests.length < 50) {
+            displayGuests = displayGuests.concat(shuffled);
+        }
+        displayGuests = displayGuests.slice(0, 50);
+        const targetIndex = Math.max(displayGuests.length - 5, 0);
+        displayGuests.splice(targetIndex, 0, targetGuest);
+
+        guestsList.innerHTML = displayGuests
+            .map((g, i) => {
+                const stats = guestStatsLine(g);
+                return `
+            <div class="guest-item" data-guest-index="${i}">
+                <div class="guest-item-name">${escapeHtml(g.customerName)}</div>
+                ${stats ? `<div class="guest-item-stats">${escapeHtml(stats)}</div>` : ''}
+            </div>`;
+            })
+            .join('');
+        guestsList.style.transform = 'translateY(0)';
+        return targetIndex;
+    }
+
+    function animateGuestSpin(targetGuest, targetIndex) {
+        const items = guestsList.querySelectorAll('.guest-item');
+        const targetElement =
+            items[targetIndex] ||
+            guestsList.querySelector(`[data-guest-index="${targetIndex}"]`);
+        if (!targetElement || !guestSpinnerSlot) {
+            resetGuestSpinner();
+            return;
+        }
+
+        const targetOffset = targetElement.offsetTop;
+        const centerOffset = (guestSpinnerSlot.offsetHeight - 300) / 2;
+        const finalPosition = -(targetOffset - centerOffset);
+        const startTime = Date.now();
+
+        function animate() {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / CONFIG.spinDuration;
+            if (elapsed >= CONFIG.spinDuration) {
+                guestsList.style.transform = `translateY(${finalPosition}px)`;
+                finishGuestSpin(targetGuest);
+                return;
+            }
+            const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+            guestsList.style.transform = `translateY(${finalPosition * easeOutCubic}px)`;
+            requestAnimationFrame(animate);
+        }
+
+        guestsList.style.transform = 'translateY(0)';
+        guestsList.style.transition = 'none';
+        requestAnimationFrame(animate);
+    }
+
+    function finishGuestSpin(winner) {
+        setTimeout(() => showGuestWinner(winner), 800);
+    }
+
+    function showGuestWinner(guest) {
+        if (guestWinnerName) guestWinnerName.textContent = guest.customerName;
+        if (guestWinnerSub) {
+            const sub = guestStatsLine(guest);
+            guestWinnerSub.textContent = sub;
+            guestWinnerSub.style.display = sub ? '' : 'none';
+        }
+        if (guestWinnerDisplay) guestWinnerDisplay.classList.add('show');
+        createConfetti();
+        setTimeout(() => resetGuestSpinner(), CONFIG.winnerDisplayDuration);
+    }
+
+    function resetGuestSpinner() {
+        if (guestWinnerDisplay) guestWinnerDisplay.classList.remove('show');
+        if (guestSpinnerOverlay) guestSpinnerOverlay.classList.remove('active');
+        if (guestsList) {
+            guestsList.style.display = 'none';
+            guestsList.style.transition = '';
+        }
+        if (guestSpinnerWaiting) guestSpinnerWaiting.style.display = 'flex';
+        isGuestSpinning = false;
+        loadEventGuestsForSpinner();
+    }
+
+    // ============================================
+    // BINARY SPINNERS (coin + yes/no)
+    // ============================================
+    const COIN_SPINNER_OPTIONS = [
+        { key: 'heads', label: 'Heads', icon: 'fa-face-smile', modifier: 'heads' },
+        { key: 'tails', label: 'Tails', icon: 'fa-feather', modifier: 'tails' }
+    ];
+    const YESNO_SPINNER_OPTIONS = [
+        { key: 'yes', label: 'Yes', icon: 'fa-thumbs-up', modifier: 'yes' },
+        { key: 'no', label: 'No', icon: 'fa-thumbs-down', modifier: 'no' }
+    ];
+
+    function renderBinaryItemHtml(opt) {
+        const mod = opt.modifier ? ' binary-item--' + opt.modifier : '';
+        const icon = opt.icon
+            ? `<i class="fas ${opt.icon} binary-item-icon"></i>`
+            : '';
+        return `<div class="binary-item${mod}" data-key="${escapeHtml(opt.key)}">${icon}<div class="binary-item-label">${escapeHtml(opt.label)}</div></div>`;
+    }
+
+    function binaryOptionByKey(options, key) {
+        return options.find((o) => o.key === key);
+    }
+
+    function createBinarySpinnerController(cfg) {
+        let isActive = false;
+        let pollInterval;
+
+        function startPolling() {
+            if (!cfg.overlay) return null;
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = setInterval(checkTrigger, CONFIG.spinPollInterval);
+            return pollInterval;
+        }
+
+        function checkTrigger() {
+            if (isActive) return;
+            const slug = window.displayEventSlug;
+            if (!slug) return;
+
+            fetch(
+                '/api/display/' +
+                    encodeURIComponent(slug) +
+                    '/' +
+                    cfg.apiSegment +
+                    '/spin-status'
+            )
+                .then((r) => r.json())
+                .then((data) => {
+                    if (data.shouldSpin && data.result) {
+                        runSpin(data.result);
+                        fetch(
+                            '/api/display/' +
+                                encodeURIComponent(slug) +
+                                '/' +
+                                cfg.apiSegment +
+                                '/clear-spin',
+                            { method: 'POST' }
+                        );
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function runSpin(resultKey) {
+            if (isActive || !cfg.overlay || !cfg.listEl || !MdjBinarySpinner) return;
+            isActive = true;
+
+            if (spinSound) {
+                spinSound.currentTime = 0;
+                spinSound.play().catch(() => {});
+            }
+
+            cfg.overlay.classList.add('active');
+            cfg.waitingEl.style.display = 'none';
+            cfg.listEl.style.display = 'block';
+
+            const targetIndex = MdjBinarySpinner.prepareBinaryList(
+                cfg.options,
+                resultKey,
+                cfg.listEl,
+                renderBinaryItemHtml
+            );
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    MdjBinarySpinner.animateBinarySpin({
+                        listEl: cfg.listEl,
+                        slotEl: cfg.slotEl,
+                        targetIndex,
+                        spinDuration: CONFIG.spinDuration,
+                        onComplete: () => {
+                            setTimeout(() => showWinner(resultKey), 800);
+                        }
+                    });
+                });
+            });
+        }
+
+        function showWinner(resultKey) {
+            const opt = binaryOptionByKey(cfg.options, resultKey);
+            if (!opt || !cfg.winnerEl) return;
+            if (cfg.winnerTitleEl) cfg.winnerTitleEl.textContent = opt.label;
+            if (cfg.winnerIconEl && opt.icon) {
+                cfg.winnerIconEl.innerHTML = `<i class="fas ${opt.icon}"></i>`;
+            }
+            if (cfg.winnerEl) {
+                cfg.winnerEl.classList.remove('winner-result--yes', 'winner-result--no');
+                if (resultKey === 'yes') cfg.winnerEl.classList.add('winner-result--yes');
+                if (resultKey === 'no') cfg.winnerEl.classList.add('winner-result--no');
+            }
+            cfg.winnerEl.classList.add('show');
+            createConfetti();
+            setTimeout(reset, CONFIG.winnerDisplayDuration);
+        }
+
+        function reset() {
+            if (cfg.winnerEl) {
+                cfg.winnerEl.classList.remove('show', 'winner-result--yes', 'winner-result--no');
+            }
+            if (cfg.overlay) cfg.overlay.classList.remove('active');
+            if (cfg.listEl) {
+                cfg.listEl.style.display = 'none';
+                cfg.listEl.style.transition = '';
+            }
+            if (cfg.waitingEl) cfg.waitingEl.style.display = 'flex';
+            isActive = false;
+        }
+
+        return { startPolling, reset };
+    }
+
+    const coinSpinner = createBinarySpinnerController({
+        apiSegment: 'coin-spinner',
+        options: COIN_SPINNER_OPTIONS,
+        overlay: document.getElementById('coinSpinnerOverlay'),
+        slotEl: document.getElementById('coinSpinnerSlot'),
+        waitingEl: document.getElementById('coinSpinnerWaiting'),
+        listEl: document.getElementById('coinOptionsList'),
+        winnerEl: document.getElementById('coinWinnerDisplay'),
+        winnerTitleEl: document.getElementById('coinWinnerTitle'),
+        winnerIconEl: document.getElementById('coinWinnerIcon')
+    });
+
+    const yesNoSpinner = createBinarySpinnerController({
+        apiSegment: 'yesno-spinner',
+        options: YESNO_SPINNER_OPTIONS,
+        overlay: document.getElementById('yesNoSpinnerOverlay'),
+        slotEl: document.getElementById('yesNoSpinnerSlot'),
+        waitingEl: document.getElementById('yesNoSpinnerWaiting'),
+        listEl: document.getElementById('yesNoOptionsList'),
+        winnerEl: document.getElementById('yesNoWinnerDisplay'),
+        winnerTitleEl: document.getElementById('yesNoWinnerTitle'),
+        winnerIconEl: document.getElementById('yesNoWinnerIcon')
+    });
+
+    let coinSpinPollInterval;
+    let yesNoSpinPollInterval;
+
+    function startCoinSpinnerPolling() {
+        if (coinSpinner && coinSpinner.startPolling) {
+            coinSpinPollInterval = coinSpinner.startPolling();
+        }
+    }
+
+    function startYesNoSpinnerPolling() {
+        if (yesNoSpinner && yesNoSpinner.startPolling) {
+            yesNoSpinPollInterval = yesNoSpinner.startPolling();
+        }
     }
 
     // ============================================
@@ -825,4 +1206,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     startScreenPromptPolling();
+
+    // Initialize after karaoke + guest spinner modules are registered
+    init();
+    animateFloatingIcons();
+    setTimeout(() => {
+        updateStatus('DJ Message Display ready');
+    }, 2000);
 });

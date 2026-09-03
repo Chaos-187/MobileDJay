@@ -6,6 +6,7 @@
     <title>DJ Message Display - MobileDJay</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="/css/spinner-show.css?v=3" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -223,6 +224,153 @@
             100%{ transform: translateY(0) rotate(0deg); }
         }
 
+        /* ── Message display style themes (Edit Event → Display Screen) ── */
+        body.msg-style-classic .message-display:not(.reply):not(.has-media) {
+            /* Uses --card-bg from event card color settings */
+        }
+
+        body.msg-style-party .message-display:not(.reply):not(.has-media) {
+            background: linear-gradient(145deg, rgba(255, 107, 0, 0.97), rgba(255, 179, 64, 0.97));
+            border: none;
+            color: #fff;
+            box-shadow: 0 35px 80px rgba(0, 0, 0, 0.55), 0 0 48px rgba(255, 140, 0, 0.35);
+            position: relative;
+            overflow: visible;
+        }
+        body.msg-style-party .message-display:not(.reply):not(.has-media)::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 18px;
+            background: conic-gradient(#ff6b6b, #ffb340, #ffe45c, #6bff8f, #6be7ff, #b06bff, #ff6bd8, #ff6b6b);
+            z-index: -1;
+            animation: partyHue 4s linear infinite;
+        }
+        body.msg-style-party .message-display:not(.reply):not(.has-media) .message-content,
+        body.msg-style-party .message-display:not(.reply):not(.has-media) .message-from {
+            color: #fff;
+            text-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+        }
+        body.msg-style-party .message-display:not(.reply):not(.has-media) .message-icon {
+            color: #ffe45c;
+        }
+
+        body.msg-style-neon .message-display:not(.reply):not(.has-media) {
+            background: rgba(11, 11, 20, 0.96);
+            border: 2px solid #ff00e6;
+            color: #ff9df3;
+            box-shadow: 0 0 50px rgba(255, 0, 230, 0.55), 0 0 90px rgba(107, 231, 255, 0.22);
+        }
+        body.msg-style-neon .message-display.show:not(.reply):not(.has-media) {
+            animation: messageIn 650ms cubic-bezier(0.22, 1, 0.36, 1) both, neonMsgPulse 2.4s ease-in-out infinite 650ms;
+        }
+        @keyframes neonMsgPulse {
+            0%, 100% { box-shadow: 0 0 50px rgba(255, 0, 230, 0.55), 0 0 90px rgba(107, 231, 255, 0.22); }
+            50% { box-shadow: 0 0 75px rgba(107, 231, 255, 0.55), 0 0 110px rgba(255, 0, 230, 0.35); }
+        }
+        body.msg-style-neon .message-display:not(.reply):not(.has-media) .message-content {
+            color: #e8f8ff;
+            text-shadow: 0 0 12px rgba(107, 231, 255, 0.45);
+        }
+        body.msg-style-neon .message-display:not(.reply):not(.has-media) .message-from {
+            color: #ff9df3;
+            text-shadow: 0 0 10px rgba(255, 0, 230, 0.5);
+        }
+        body.msg-style-neon .message-display:not(.reply):not(.has-media) .message-icon {
+            color: #6be7ff;
+            filter: drop-shadow(0 0 8px rgba(107, 231, 255, 0.8));
+        }
+
+        body.msg-style-elegant .message-display:not(.reply):not(.has-media) {
+            background: linear-gradient(180deg, #fffdf4 0%, #f8f0d8 100%);
+            border: 6px double #d4af37;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.65), 0 0 40px rgba(212, 175, 55, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+        body.msg-style-elegant .message-display:not(.reply):not(.has-media)::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            background: linear-gradient(115deg, transparent 42%, rgba(255, 245, 200, 0.4) 50%, transparent 58%);
+            background-size: 250% 100%;
+            pointer-events: none;
+            animation: elegantShimmer 4.5s ease-in-out infinite;
+        }
+        body.msg-style-elegant .message-display:not(.reply):not(.has-media) .message-content {
+            font-family: Georgia, 'Times New Roman', serif;
+            color: #3d3210;
+            letter-spacing: 0.3px;
+        }
+        body.msg-style-elegant .message-display:not(.reply):not(.has-media) .message-from {
+            color: #8a6d1d;
+            font-family: Georgia, 'Times New Roman', serif;
+        }
+        body.msg-style-elegant .message-display:not(.reply):not(.has-media) .message-icon {
+            color: #d4af37;
+        }
+
+        body.msg-style-minimal .message-display:not(.reply):not(.has-media) {
+            background: rgba(20, 26, 34, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.75);
+        }
+        body.msg-style-minimal .message-display:not(.reply):not(.has-media) .message-content {
+            color: #f0f4f8;
+            font-weight: 700;
+        }
+        body.msg-style-minimal .message-display:not(.reply):not(.has-media) .message-from {
+            color: #9fb0c0;
+        }
+        body.msg-style-minimal .message-display:not(.reply):not(.has-media) .message-icon {
+            color: #6be7ff;
+        }
+
+        body.msg-style-celebration .message-display:not(.reply):not(.has-media) {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ffb340 35%, #ffe45c 65%, #6bff8f 100%);
+            border: 3px solid rgba(255, 255, 255, 0.65);
+            color: #fff;
+            box-shadow: 0 35px 80px rgba(0, 0, 0, 0.5);
+        }
+        body.msg-style-celebration .message-display.show:not(.reply):not(.has-media) {
+            animation: messageIn 650ms cubic-bezier(0.22, 1, 0.36, 1) both, celebrationWiggle 2s ease-in-out infinite 700ms;
+        }
+        @keyframes celebrationWiggle {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-4px) rotate(-0.6deg); }
+            75% { transform: translateY(-2px) rotate(0.6deg); }
+        }
+        body.msg-style-celebration .message-display:not(.reply):not(.has-media) .message-content,
+        body.msg-style-celebration .message-display:not(.reply):not(.has-media) .message-from {
+            color: #fff;
+            text-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+        }
+        body.msg-style-celebration .message-display:not(.reply):not(.has-media) .message-icon {
+            color: #fff;
+        }
+
+        body.msg-style-retro .message-display:not(.reply):not(.has-media) {
+            background: linear-gradient(160deg, rgba(45, 10, 80, 0.96), rgba(120, 20, 100, 0.96));
+            border: 2px solid #ff6bd8;
+            box-shadow: 0 0 40px rgba(255, 107, 216, 0.45), inset 0 0 30px rgba(107, 231, 255, 0.08);
+        }
+        body.msg-style-retro .message-display:not(.reply):not(.has-media) .message-content {
+            font-family: 'Orbitron', sans-serif;
+            color: #6be7ff;
+            text-shadow: 0 0 16px rgba(107, 231, 255, 0.55);
+            letter-spacing: 0.5px;
+        }
+        body.msg-style-retro .message-display:not(.reply):not(.has-media) .message-from {
+            color: #ff9df3;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.35rem;
+        }
+        body.msg-style-retro .message-display:not(.reply):not(.has-media) .message-icon {
+            color: #ff6bd8;
+            filter: drop-shadow(0 0 10px rgba(255, 107, 216, 0.7));
+        }
+
         /* Waiting message and misc styles unchanged */
         .waiting-message {
             position: fixed;
@@ -354,11 +502,12 @@
         .photo-showcase-frame {
             position: relative;
             background: #fff;
-            padding: 16px 16px 22px;
+            padding: 12px 12px 18px;
             border-radius: 10px;
             box-shadow: 0 40px 120px rgba(0, 0, 0, 0.7), 0 0 60px rgba(255, 215, 0, 0.25);
-            max-width: min(94vw, 1700px);
-            max-height: 94vh;
+            width: min(94vw, 1800px);
+            max-width: min(96vw, 1900px);
+            max-height: 92vh;
             transform: scale(0.4) rotate(-6deg);
             opacity: 0;
         }
@@ -381,9 +530,11 @@
 
         .photo-showcase-frame img {
             display: block;
+            width: 100%;
+            height: auto;
             max-width: 100%;
-            max-height: calc(94vh - 120px);
-            min-height: 40vh;
+            max-height: min(calc(86vh - 90px), calc(94vw * 1.15));
+            min-height: min(52vh, 820px);
             border-radius: 6px;
             object-fit: contain;
         }
@@ -583,241 +734,7 @@
         .photo-showcase-overlay.style-minimal .photo-showcase-caption { color: #c9d4e0; }
         .photo-showcase-overlay.style-minimal .photo-showcase-caption .who { color: #6be7ff; }
 
-        /* ============================================
-           KARAOKE SPINNER STYLES
-           ============================================ */
-        .spinner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-
-        .spinner-overlay.active {
-            display: flex;
-        }
-
-        .spinner-container {
-            width: 100%;
-            max-width: 1200px;
-            padding: 2rem;
-            position: relative;
-        }
-
-        .spinner-title {
-            text-align: center;
-            color: white;
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 2rem;
-            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            animation: spinnerPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes spinnerPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.9; transform: scale(1.02); }
-        }
-
-        .spinner-window {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 2rem;
-            border: 3px solid #ffc107;
-            box-shadow: 0 0 40px rgba(255, 193, 7, 0.3);
-            position: relative;
-            overflow: hidden;
-            min-height: 400px;
-        }
-
-        .spinner-slot {
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 15px;
-            padding: 2rem;
-            margin: 1rem 0;
-            position: relative;
-            overflow: hidden;
-            height: 300px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid rgba(255, 193, 7, 0.3);
-        }
-
-        .spinner-slot::before,
-        .spinner-slot::after {
-            content: '';
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #ffc107;
-            box-shadow: 0 0 10px #ffc107;
-            z-index: 10;
-        }
-
-        .spinner-slot::before { top: calc(50% - 150px); }
-        .spinner-slot::after { bottom: calc(50% - 150px); }
-
-        .songs-list {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            transition: transform 0.1s linear;
-        }
-
-        .song-item {
-            padding: 2rem;
-            text-align: center;
-            color: white;
-            height: 300px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .song-title {
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .song-artist {
-            font-size: 1.8rem;
-            color: #ffc107;
-            margin-bottom: 0.5rem;
-        }
-
-        .song-difficulty {
-            display: inline-block;
-            padding: 0.5rem 1.5rem;
-            background: #ff6b6b;
-            border-radius: 20px;
-            font-size: 1.2rem;
-            margin-top: 0.5rem;
-        }
-
-        .spinner-waiting {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-
-        .spinner-waiting i {
-            font-size: 5rem;
-            margin-bottom: 2rem;
-            animation: spinnerPulse 2s ease-in-out infinite;
-        }
-
-        /* Winner display - fullscreen overlay */
-        .winner-display {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, rgba(255, 193, 7, 0.97), rgba(255, 107, 107, 0.97));
-            backdrop-filter: blur(30px);
-            padding: 4rem;
-            text-align: center;
-            z-index: 3000;
-            transform: scale(0.5);
-            opacity: 0;
-        }
-
-        .winner-display.show {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            animation: winnerFullscreen 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-
-        @keyframes winnerFullscreen {
-            0% { transform: scale(0.3); opacity: 0; }
-            60% { transform: scale(1.08); opacity: 1; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .winner-icon {
-            font-size: 10rem;
-            color: white;
-            margin-bottom: 3rem;
-            animation: iconBounce 1s ease-in-out infinite;
-            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.5));
-        }
-
-        @keyframes iconBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        .winner-title-text {
-            font-size: 7rem;
-            font-weight: bold;
-            color: white;
-            margin-bottom: 2rem;
-            text-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-            animation: titlePulse 2s ease-in-out infinite;
-            line-height: 1.2;
-        }
-
-        @keyframes titlePulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-        }
-
-        .winner-artist {
-            font-size: 4.5rem;
-            color: rgba(255, 255, 255, 0.95);
-            margin-bottom: 2rem;
-            text-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .winner-difficulty {
-            display: inline-block;
-            padding: 1.5rem 3rem;
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 50px;
-            font-size: 2.5rem;
-            color: white;
-            margin-top: 2rem;
-            border: 3px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
-        }
-
-        .confetti {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            position: absolute;
-            animation: confettiFall 3s linear forwards;
-            opacity: 0;
-        }
-
-        @keyframes confettiFall {
-            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
+        /* Karaoke + guest spinner chrome: /css/spinner-show.css */
 
         /* ============================================
            DJ SCREEN PROMPTS — animated announcements
@@ -1103,6 +1020,7 @@
         }
         .screen-prompt-overlay.style-selfie .screen-prompt-title { color: #111; }
         .screen-prompt-overlay.style-selfie .screen-prompt-sub { color: #555; }
+
         .prompt-camera-flash {
             position: absolute;
             inset: 0;
@@ -1200,7 +1118,8 @@
     </div>
 
     <!-- Karaoke Spinner Overlay -->
-    <div class="spinner-overlay" id="spinnerOverlay">
+    <div class="spinner-overlay mdj-spinner-root spinner-theme-karaoke" id="spinnerOverlay">
+        <div class="mdj-spinner-rays" aria-hidden="true"></div>
         <div class="spinner-container">
             <h1 class="spinner-title">
                 <i class="fas fa-microphone-alt me-3"></i>
@@ -1210,6 +1129,8 @@
 
             <div class="spinner-window">
                 <div class="spinner-slot" id="spinnerSlot">
+                    <div class="mdj-slot-vignette" aria-hidden="true"></div>
+                    <div class="mdj-slot-highlight" aria-hidden="true"></div>
                     <div class="spinner-waiting" id="spinnerWaiting">
                         <i class="fas fa-dice"></i>
                         <div>Spinning...</div>
@@ -1222,12 +1143,103 @@
 
     <!-- Winner Display -->
     <div class="winner-display" id="winnerDisplay">
+        <div class="winner-label">It&apos;s karaoke time</div>
         <div class="winner-icon">
             <i class="fas fa-trophy"></i>
         </div>
         <div class="winner-title-text" id="winnerTitle"></div>
         <div class="winner-artist" id="winnerArtist"></div>
         <div class="winner-difficulty" id="winnerDifficulty"></div>
+    </div>
+
+    <!-- Guest Spinner Overlay -->
+    <div class="guest-spinner-overlay mdj-spinner-root spinner-theme-guest" id="guestSpinnerOverlay">
+        <div class="mdj-spinner-rays" aria-hidden="true"></div>
+        <div class="spinner-container">
+            <h1 class="spinner-title">
+                <i class="fas fa-users me-3"></i>
+                Random Guest Selector
+                <i class="fas fa-user-check ms-3"></i>
+            </h1>
+            <div class="guest-spinner-window">
+                <div class="guest-spinner-slot" id="guestSpinnerSlot">
+                    <div class="mdj-slot-vignette" aria-hidden="true"></div>
+                    <div class="mdj-slot-highlight" aria-hidden="true"></div>
+                    <div class="spinner-waiting" id="guestSpinnerWaiting">
+                        <i class="fas fa-dice"></i>
+                        <div>Spinning...</div>
+                    </div>
+                    <div class="guests-list" id="guestsList" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="guest-winner-display" id="guestWinnerDisplay">
+        <div class="winner-label">Selected guest</div>
+        <div class="winner-icon">
+            <i class="fas fa-user-check"></i>
+        </div>
+        <div class="guest-winner-name" id="guestWinnerName"></div>
+        <div class="guest-winner-sub" id="guestWinnerSub"></div>
+    </div>
+
+    <!-- Coin (heads/tails) spinner -->
+    <div class="coin-spinner-overlay mdj-spinner-root spinner-theme-coin" id="coinSpinnerOverlay">
+        <div class="mdj-spinner-rays" aria-hidden="true"></div>
+        <div class="spinner-container">
+            <h1 class="spinner-title">
+                <i class="fas fa-coins me-3"></i>
+                Heads or Tails
+                <i class="fas fa-scale-balanced ms-3"></i>
+            </h1>
+            <div class="spinner-window">
+                <div class="spinner-slot" id="coinSpinnerSlot">
+                    <div class="mdj-slot-vignette" aria-hidden="true"></div>
+                    <div class="mdj-slot-highlight" aria-hidden="true"></div>
+                    <div class="spinner-waiting" id="coinSpinnerWaiting">
+                        <i class="fas fa-dice"></i>
+                        <div>Flipping...</div>
+                    </div>
+                    <div class="binary-options-list" id="coinOptionsList" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="winner-display winner-display--coin" id="coinWinnerDisplay">
+        <div class="winner-label">The coin says</div>
+        <div class="winner-icon" id="coinWinnerIcon"><i class="fas fa-coins"></i></div>
+        <div class="winner-title-text" id="coinWinnerTitle"></div>
+    </div>
+
+    <!-- Yes / No spinner -->
+    <div class="yesno-spinner-overlay mdj-spinner-root spinner-theme-yesno" id="yesNoSpinnerOverlay">
+        <div class="mdj-spinner-rays" aria-hidden="true"></div>
+        <div class="spinner-container">
+            <h1 class="spinner-title">
+                <i class="fas fa-circle-question me-3"></i>
+                Yes or No
+                <i class="fas fa-bolt ms-3"></i>
+            </h1>
+            <div class="spinner-window">
+                <div class="spinner-slot" id="yesNoSpinnerSlot">
+                    <div class="mdj-slot-vignette" aria-hidden="true"></div>
+                    <div class="mdj-slot-highlight" aria-hidden="true"></div>
+                    <div class="spinner-waiting" id="yesNoSpinnerWaiting">
+                        <i class="fas fa-dice"></i>
+                        <div>Spinning...</div>
+                    </div>
+                    <div class="binary-options-list" id="yesNoOptionsList" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="winner-display winner-display--yesno" id="yesNoWinnerDisplay">
+        <div class="winner-label">The answer is</div>
+        <div class="winner-icon" id="yesNoWinnerIcon"><i class="fas fa-thumbs-up"></i></div>
+        <div class="winner-title-text" id="yesNoWinnerTitle"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
@@ -1246,8 +1258,11 @@
             bgSlideshowEnabled: <%= event.display_bg_slideshow_enabled ? 'true' : 'false' %>,
             bgSlideshowSeconds: <%= event.display_bg_slideshow_seconds || 15 %>,
             bgSlideshowImages: <%- JSON.stringify((typeof displaySlides !== 'undefined' ? displaySlides : []).map(function(s) { return s.imageUrl; })) %>,
+            bgOverlayOpacity: <%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %>,
+            showWaitingMessage: <%= (event.display_show_waiting_message === 0 || event.display_show_waiting_message === false || event.display_show_waiting_message === '0') ? 'false' : 'true' %>,
             cardColor: '<%= event.display_card_color || '#ffffff' %>',
             cardOpacity: <%= event.display_card_opacity || 85 %>,
+            messageStyle: '<%= typeof resolvedMessageStyle !== "undefined" ? resolvedMessageStyle : "classic" %>',
             eventSlug: '<%= event.slug %>'
         };
         <% } else { %>
@@ -1263,8 +1278,11 @@
             bgSlideshowEnabled: false,
             bgSlideshowSeconds: 15,
             bgSlideshowImages: [],
+            bgOverlayOpacity: 45,
+            showWaitingMessage: true,
             cardColor: '#ffffff',
             cardOpacity: 85,
+            messageStyle: 'classic',
             eventSlug: null
         };
         <% } %>
@@ -1280,10 +1298,24 @@
 
         const slideA = document.getElementById('displayBgSlideA');
         const slideB = document.getElementById('displayBgSlideB');
-        const gradientOverlay = 'linear-gradient(180deg, ' + bg1 + 'aa, ' + bg2 + 'aa)';
+
+        function colorWithAlpha(hex, opacityPercent) {
+            const h = (hex && /^#[0-9A-Fa-f]{6}$/.test(hex)) ? hex : '#000428';
+            const p = Math.max(0, Math.min(100, Number(opacityPercent) || 0));
+            if (p <= 0) return 'transparent';
+            const a = Math.round(p / 100 * 255).toString(16).padStart(2, '0');
+            return h + a;
+        }
+
+        function gradientOverlayForImages() {
+            const op = config.bgOverlayOpacity;
+            if (op <= 0) return '';
+            return 'linear-gradient(180deg, ' + colorWithAlpha(bg1, op) + ', ' + colorWithAlpha(bg2, op) + ')';
+        }
 
         function setSlideLayer(layer, imageUrl) {
-            layer.style.backgroundImage = gradientOverlay + (imageUrl ? ", url('" + imageUrl + "')" : '');
+            const overlay = gradientOverlayForImages();
+            layer.style.backgroundImage = (overlay ? overlay + ', ' : '') + (imageUrl ? "url('" + imageUrl + "')" : 'none');
             layer.classList.add('is-visible');
         }
 
@@ -1319,6 +1351,8 @@
         const g = parseInt(color.slice(3,5), 16);
         const b = parseInt(color.slice(5,7), 16);
         document.documentElement.style.setProperty('--card-bg', `rgba(${r},${g},${b},${opacity})`);
+
+        document.body.classList.add('msg-style-' + (config.messageStyle || 'classic'));
         
         // Show QR code if configured
         if (config.showQrCode && config.eventSlug) {
@@ -1336,6 +1370,11 @@
             });
         }
         
+        // Expose display config for dj-display.js
+        window.displayScreenConfig = {
+            showWaitingMessage: config.showWaitingMessage
+        };
+
         // Expose the event slug for dj-display.js (photo showcase polling)
         window.displayEventSlug = config.eventSlug;
 
@@ -1351,6 +1390,7 @@
         });
     })();
     </script>
-    <script src="/js/dj-display.js"></script>
+    <script src="/js/mdj-binary-spinner.js"></script>
+    <script src="/js/dj-display.js?v=7"></script>
 </body>
 </html>

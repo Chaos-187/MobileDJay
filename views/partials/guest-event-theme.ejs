@@ -1,0 +1,90 @@
+<% if (event) { %>
+<% 
+// Keep in sync with public/js/guest-event-theme.js
+const scope = 'body';
+const lines = [];
+const vars = [];
+const bgPos = (function(v) {
+  const allowed = ['center', 'top', 'bottom', 'left', 'right'];
+  const s = String(v || 'center').toLowerCase();
+  return allowed.includes(s) ? s : 'center';
+})(event.guest_bg_position);
+const bgOverlay = (function(v) {
+  if (v === null || v === undefined || v === '') return 45;
+  const n = parseInt(v, 10);
+  if (!Number.isFinite(n)) return 45;
+  return Math.max(0, Math.min(80, n));
+})(event.guest_bg_overlay);
+if (event.heading_color) vars.push('--event-heading-color: ' + event.heading_color + ';');
+if (event.text_color) vars.push('--event-text-color: ' + event.text_color + ';');
+if (event.bg_color) vars.push('--event-bg-color: ' + event.bg_color + ';');
+if (event.accent_color) vars.push('--event-accent-color: ' + event.accent_color + ';');
+if (event.accent_color) {
+  vars.push('--accent: ' + event.accent_color + ';');
+  vars.push('--accent-secondary: color-mix(in srgb, ' + event.accent_color + ' 65%, #ffffff);');
+  vars.push('--accent-gradient: linear-gradient(135deg, ' + event.accent_color + ' 0%, color-mix(in srgb, ' + event.accent_color + ' 65%, #ffffff) 100%);');
+  vars.push('--accent-glow: color-mix(in srgb, ' + event.accent_color + ' 35%, transparent);');
+}
+if (vars.length) lines.push(scope + ' { ' + vars.join(' ') + ' }');
+if (event.bg_color || event.bg_image) {
+  if (event.bg_image) {
+    var bgLayerPos = scope === 'body' ? 'fixed' : 'absolute';
+    lines.push(scope + ' { background-color: ' + (event.bg_color || '#0a0a0a') + ' !important; background-image: none !important; position: relative; }');
+    lines.push(scope + '::after { content: \'\'; position: ' + bgLayerPos + '; inset: 0; width: 100%; height: 100%; min-height: 100dvh; z-index: 0; pointer-events: none; background-image: url(\'' + event.bg_image + '\'); background-size: cover; background-position: ' + bgPos + ' center; background-repeat: no-repeat; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: translateZ(0); }');
+    if (bgOverlay > 0) {
+      var overlayPos = scope === 'body' ? 'fixed' : 'absolute';
+      lines.push(scope + '::before { content: \'\'; position: ' + overlayPos + '; inset: 0; width: 100%; height: 100%; min-height: 100dvh; background: rgba(0, 0, 0, ' + (bgOverlay / 100).toFixed(2) + '); pointer-events: none; z-index: 1; }');
+      lines.push(scope + ' main.container.mdj-guest-hub-main, ' + scope + ' .mdj-scanlines { position: relative; z-index: 2; }');
+    } else {
+      lines.push(scope + ' main.container.mdj-guest-hub-main, ' + scope + ' .mdj-scanlines { position: relative; z-index: 1; }');
+    }
+  } else if (event.bg_color) {
+    lines.push(scope + ' { background: ' + event.bg_color + ' !important; }');
+  }
+}
+if (event.text_color) {
+  lines.push(scope + ' { color: ' + event.text_color + '; }');
+  lines.push(scope + ' .hero-subtitle, ' + scope + ' .options-prompt, ' + scope + ' .option-card-desc, ' + scope + ' .mdj-company-foot__legal, ' + scope + ' .form-label { color: ' + event.text_color + '; }');
+}
+if (event.hero_title_color) {
+  lines.push(scope + ' .hero-title { color: ' + event.hero_title_color + ' !important; -webkit-text-fill-color: ' + event.hero_title_color + ' !important; background: none !important; background-clip: border-box !important; }');
+}
+if (event.heading_color) {
+  lines.push(scope + ' .option-card-title, ' + scope + ' .name-card-title { color: ' + event.heading_color + ' !important; }');
+}
+if (event.guest_card_color) {
+  lines.push(scope + ' .option-card, ' + scope + ' .name-card-inner { background: ' + event.guest_card_color + ' !important; }');
+}
+if (event.guest_card_shadow_color) {
+  lines.push(scope + ' .option-card, ' + scope + ' .name-card-inner { box-shadow: 0 12px 40px color-mix(in srgb, ' + event.guest_card_shadow_color + ' 50%, transparent) !important; }');
+}
+if (event.accent_color) {
+  const a = event.accent_color;
+  lines.push(scope + ' .btn-primary { background-color: ' + a + '; border-color: ' + a + '; }');
+  lines.push(scope + ' .btn-primary:hover { background-color: color-mix(in srgb, ' + a + ' 85%, black); border-color: color-mix(in srgb, ' + a + ' 85%, black); }');
+  lines.push(scope + ' .text-primary { color: ' + a + ' !important; }');
+  lines.push(scope + ' a { color: ' + a + '; }');
+  lines.push(scope + ' .hero-icon { background: linear-gradient(135deg, ' + a + ' 0%, color-mix(in srgb, ' + a + ' 65%, #ffffff) 100%) !important; box-shadow: 0 8px 32px color-mix(in srgb, ' + a + ' 40%, transparent) !important; }');
+  lines.push(scope + ' .guest-hub-messages-btn { background: color-mix(in srgb, ' + a + ' 14%, transparent) !important; border-color: color-mix(in srgb, ' + a + ' 45%, transparent) !important; }');
+  lines.push(scope + ' .option-card-icon--songs, ' + scope + ' .option-card-icon--karaoke, ' + scope + ' .option-card-icon--message { background: linear-gradient(135deg, color-mix(in srgb, ' + a + ' 22%, transparent), color-mix(in srgb, ' + a + ' 6%, transparent)) !important; color: ' + a + ' !important; box-shadow: 0 4px 16px color-mix(in srgb, ' + a + ' 18%, transparent) !important; }');
+  lines.push(scope + ' .option-card:hover .option-card-arrow { color: ' + a + '; }');
+  lines.push(scope + ' .btn-warning { background-color: ' + a + '; border-color: ' + a + '; color: #fff; }');
+  lines.push(scope + ' .btn-warning:hover, ' + scope + ' .btn-warning:focus { background-color: color-mix(in srgb, ' + a + ' 85%, black); border-color: color-mix(in srgb, ' + a + ' 85%, black); }');
+  lines.push('body.mdj-eyup-brand .mdj-site-navbar { background-color: ' + a + ' !important; border-bottom-color: ' + a + ' !important; }');
+}
+if (event.guest_show_option_desc === 0) {
+  lines.push(scope + ' .option-card-desc { display: none !important; }');
+}
+if (event.custom_css) lines.push(event.custom_css);
+%>
+<script id="eventThemeCss" type="text/plain"><%- lines.join('\n') %></script>
+<script>
+    (function() {
+        const themeCss = document.getElementById('eventThemeCss');
+        if (!themeCss) return;
+        const style = document.createElement('style');
+        style.textContent = themeCss.textContent;
+        document.head.appendChild(style);
+    })();
+</script>
+<% } %>

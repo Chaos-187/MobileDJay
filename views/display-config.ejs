@@ -90,6 +90,35 @@
             font-style: italic;
             margin-top: 0.5rem;
         }
+        .preview-message.style-party { background: linear-gradient(145deg, rgba(255,107,0,0.97), rgba(255,179,64,0.97)); border: 2px solid #ffb340; }
+        .preview-message.style-party .content, .preview-message.style-party .from { color: #fff !important; text-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+        .preview-message.style-neon { background: rgba(11,11,20,0.96); border: 2px solid #ff00e6; box-shadow: 0 0 20px rgba(255,0,230,0.5); }
+        .preview-message.style-neon .content { color: #e8f8ff !important; }
+        .preview-message.style-neon .from { color: #ff9df3 !important; }
+        .preview-message.style-elegant { background: linear-gradient(180deg, #fffdf4, #f8f0d8); border: 4px double #d4af37; }
+        .preview-message.style-elegant .content { color: #3d3210 !important; font-family: Georgia, serif; }
+        .preview-message.style-elegant .from { color: #8a6d1d !important; font-family: Georgia, serif; }
+        .preview-message.style-minimal { background: rgba(20,26,34,0.94); border: 1px solid rgba(255,255,255,0.22); }
+        .preview-message.style-minimal .content { color: #f0f4f8 !important; }
+        .preview-message.style-minimal .from { color: #9fb0c0 !important; }
+        .preview-message.style-celebration { background: linear-gradient(135deg, #ff6b6b, #ffb340, #ffe45c); border: 2px solid rgba(255,255,255,0.6); }
+        .preview-message.style-celebration .content, .preview-message.style-celebration .from { color: #fff !important; }
+        .preview-message.style-retro { background: linear-gradient(160deg, rgba(45,10,80,0.96), rgba(120,20,100,0.96)); border: 2px solid #ff6bd8; }
+        .preview-message.style-retro .content { color: #6be7ff !important; font-family: Orbitron, sans-serif; }
+        .preview-message.style-retro .from { color: #ff9df3 !important; font-family: Orbitron, sans-serif; }
+        .msg-style-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.5rem;
+            border: 2px solid transparent;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            margin-bottom: 0.25rem;
+        }
+        .msg-style-option:hover { background: rgba(255,255,255,0.04); }
+        .msg-style-option.selected { border-color: #667eea; background: rgba(102,126,234,0.12); }
+        .msg-style-card-controls.is-disabled { opacity: 0.45; pointer-events: none; }
         .btn-apply {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border: none;
@@ -279,6 +308,11 @@
                                         <label for="slideshowSeconds" class="form-label">Seconds per image</label>
                                         <input type="number" class="form-control" id="slideshowSeconds" min="5" max="300" value="<%= event.display_bg_slideshow_seconds || 15 %>">
                                     </div>
+                                    <div class="col-12">
+                                        <label for="bgOverlayOpacity" class="form-label">Image overlay opacity: <span id="bgOverlayOpacityValue"><%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %></span>%</label>
+                                        <input type="range" class="form-range" id="bgOverlayOpacity" min="0" max="100" value="<%= event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45 %>">
+                                        <small class="text-muted">How strongly the gradient tints slideshow and background images. Lower = more vivid photos; 0 = no tint.</small>
+                                    </div>
                                 </div>
                                 <ul class="slideshow-list mb-3" id="displaySlideshowList"></ul>
                                 <input type="file" id="displaySlideshowFile" accept="image/*" class="d-none">
@@ -291,17 +325,39 @@
                             </div>
                         </div>
 
+                        <!-- Message Display Settings -->
+                        <div class="config-section">
+                            <h6><i class="fas fa-comment-dots me-2"></i>Message Display</h6>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="showWaitingMessage" <%= (event.display_show_waiting_message === 0 || event.display_show_waiting_message === false || event.display_show_waiting_message === '0') ? '' : 'checked' %>>
+                                <label class="form-check-label" for="showWaitingMessage">Show idle message when waiting</label>
+                                <small class="text-muted d-block">When off, only the background is shown until a customer message arrives.</small>
+                            </div>
+                        </div>
+
                         <!-- Message Card Settings -->
                         <div class="config-section">
                             <h6><i class="fas fa-comment me-2"></i>Message Card Settings</h6>
+
+                            <label class="form-label">Message display style</label>
+                            <div id="messageStyleOptions" class="mb-3">
+                                <% const resolvedMsg = typeof resolvedMessageStyle !== 'undefined' ? resolvedMessageStyle : 'classic'; %>
+                                <% ['classic','party','neon','elegant','minimal','celebration','retro'].forEach(function(st) { %>
+                                <div class="msg-style-option<%= resolvedMsg === st ? ' selected' : '' %>" data-value="<%= st %>">
+                                    <input type="radio" name="messageStyle" value="<%= st %>" class="form-check-input mt-0"<%= resolvedMsg === st ? ' checked' : '' %>>
+                                    <span class="small text-capitalize"><%= st %></span>
+                                </div>
+                                <% }); %>
+                            </div>
                             
-                            <div class="row mb-3">
+                            <div class="row mb-3 msg-style-card-controls" id="cardColorControls">
                                 <div class="col-6">
                                     <label for="cardBgColor" class="form-label">Card Background</label>
                                     <div class="input-group">
                                         <input type="color" class="form-control form-control-color" id="cardBgColor" value="<%= event.display_card_color || '#ffffff' %>">
                                         <input type="text" class="form-control" id="cardBgColorText" value="<%= event.display_card_color || '#ffffff' %>" maxlength="7">
                                     </div>
+                                    <small class="text-muted">Classic theme only</small>
                                 </div>
                                 <div class="col-6">
                                     <label for="cardOpacity" class="form-label">Opacity</label>
@@ -438,12 +494,49 @@
             document.getElementById('cardOpacityValue').textContent = this.value;
             updatePreview();
         });
+
+        document.getElementById('bgOverlayOpacity').addEventListener('input', function() {
+            document.getElementById('bgOverlayOpacityValue').textContent = this.value;
+            updatePreview();
+        });
+
+        function getSelectedMessageStyle() {
+            return (document.querySelector('input[name="messageStyle"]:checked') || {}).value || 'classic';
+        }
+
+        function syncMessageStyleCardControls() {
+            const isClassic = getSelectedMessageStyle() === 'classic';
+            const controls = document.getElementById('cardColorControls');
+            if (controls) controls.classList.toggle('is-disabled', !isClassic);
+        }
+
+        document.querySelectorAll('#messageStyleOptions .msg-style-option').forEach(opt => {
+            opt.addEventListener('click', function() {
+                document.querySelectorAll('#messageStyleOptions .msg-style-option').forEach(o => {
+                    o.classList.remove('selected');
+                    o.querySelector('input').checked = false;
+                });
+                this.classList.add('selected');
+                this.querySelector('input').checked = true;
+                syncMessageStyleCardControls();
+                updatePreview();
+            });
+        });
+        syncMessageStyleCardControls();
         
         // Other inputs
         document.getElementById('showQrCode').addEventListener('change', updatePreview);
         document.getElementById('qrLabel').addEventListener('input', updatePreview);
         document.getElementById('bgImage').addEventListener('input', updatePreview);
         
+        function displayColorWithAlpha(hex, opacityPercent) {
+            const h = (hex && /^#[0-9A-Fa-f]{6}$/.test(hex)) ? hex : '#000428';
+            const p = Math.max(0, Math.min(100, Number(opacityPercent) || 0));
+            if (p <= 0) return 'transparent';
+            const a = Math.round(p / 100 * 255).toString(16).padStart(2, '0');
+            return h + a;
+        }
+
         // Update preview
         function updatePreview() {
             const showQr = document.getElementById('showQrCode').checked;
@@ -453,12 +546,16 @@
             const bgColor1 = document.getElementById('bgColor1').value;
             const bgColor2 = document.getElementById('bgColor2').value;
             const bgImage = document.getElementById('bgImage').value;
+            const bgOverlayOpacity = parseInt(document.getElementById('bgOverlayOpacity').value, 10);
             const cardBgColor = document.getElementById('cardBgColor').value;
             const cardOpacity = document.getElementById('cardOpacity').value;
             
             // Update background
             if (bgImage) {
-                previewContainer.style.background = `linear-gradient(180deg, ${bgColor1}aa, ${bgColor2}aa), url('${bgImage}')`;
+                const overlay = Number.isFinite(bgOverlayOpacity) && bgOverlayOpacity > 0
+                    ? `linear-gradient(180deg, ${displayColorWithAlpha(bgColor1, bgOverlayOpacity)}, ${displayColorWithAlpha(bgColor2, bgOverlayOpacity)}), `
+                    : '';
+                previewContainer.style.background = `${overlay}url('${bgImage.replace(/'/g, "\\'")}')`;
                 previewContainer.style.backgroundSize = 'cover';
                 previewContainer.style.backgroundPosition = 'center';
             } else {
@@ -466,8 +563,14 @@
             }
             
             // Update message card
-            const opacity = Math.round(cardOpacity * 2.55).toString(16).padStart(2, '0');
-            previewMessage.style.background = cardBgColor + opacity;
+            const msgStyle = getSelectedMessageStyle();
+            previewMessage.className = 'preview-message style-' + msgStyle;
+            if (msgStyle === 'classic') {
+                const opacity = Math.round(cardOpacity * 2.55).toString(16).padStart(2, '0');
+                previewMessage.style.background = cardBgColor + opacity;
+            } else {
+                previewMessage.style.background = '';
+            }
             
             // Update QR code
             if (showQr) {
@@ -502,8 +605,11 @@
                 display_bg_image: document.getElementById('bgImage').value || null,
                 display_bg_slideshow_enabled: document.getElementById('slideshowEnabled').checked,
                 display_bg_slideshow_seconds: parseInt(document.getElementById('slideshowSeconds').value, 10) || 15,
+                display_bg_overlay_opacity: parseInt(document.getElementById('bgOverlayOpacity').value, 10) || 0,
+                display_show_waiting_message: document.getElementById('showWaitingMessage').checked ? 1 : 0,
                 display_card_color: document.getElementById('cardBgColor').value,
-                display_card_opacity: document.getElementById('cardOpacity').value
+                display_card_opacity: document.getElementById('cardOpacity').value,
+                display_message_style: getSelectedMessageStyle()
             };
             
             try {
@@ -555,6 +661,9 @@
                 document.getElementById('bgImage').value = '';
                 document.getElementById('slideshowEnabled').checked = false;
                 document.getElementById('slideshowSeconds').value = 15;
+                document.getElementById('bgOverlayOpacity').value = 45;
+                document.getElementById('bgOverlayOpacityValue').textContent = '45';
+                document.getElementById('showWaitingMessage').checked = true;
                 document.getElementById('cardBgColor').value = '#ffffff';
                 document.getElementById('cardBgColorText').value = '#ffffff';
                 document.getElementById('cardOpacity').value = 85;

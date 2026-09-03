@@ -28,7 +28,6 @@
             : sessionStorage.getItem('customerName')) ||
         '';
     const eventUrl = '/event/' + encodeURIComponent(eventSlug);
-    const photoPageUrl = eventUrl + '/photo' + (customerName ? '?customerName=' + encodeURIComponent(customerName) : '');
 
     let cameraStream = null;
     let facingMode = 'environment';
@@ -229,8 +228,7 @@
                     (err2 && err2.name === 'NotAllowedError'
                         ? 'Camera access was blocked.<br>Allow camera permission and reload.'
                         : 'Could not start the camera on this device.') +
-                    '<div class="actions"><a href="' + photoPageUrl + '">Upload a photo instead</a>' +
-                    '<a class="secondary" href="' + eventUrl + '">Back</a></div>'
+                    '<div class="actions"><a class="secondary" href="' + eventUrl + '">Back</a></div>'
                 );
                 return;
             }
@@ -404,8 +402,7 @@
     } else {
         showStatus(
             'The live camera needs a secure (HTTPS) connection.' +
-            '<div class="actions"><a href="' + photoPageUrl + '">Upload a photo instead</a>' +
-            '<a class="secondary" href="' + eventUrl + '">Back</a></div>'
+            '<div class="actions"><a class="secondary" href="' + eventUrl + '">Back</a></div>'
         );
     }
 })();

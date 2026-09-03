@@ -1,3 +1,4 @@
+// @ts-nocheck — large SQLite bootstrap script; TS misparses SQL inside template literals.
 const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
@@ -83,6 +84,13 @@ db.exec(`
         booking_id TEXT PRIMARY KEY REFERENCES bookings(id) ON DELETE CASCADE,
         author_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
         body TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS booking_dj_tracks (
+        booking_id TEXT PRIMARY KEY REFERENCES bookings(id) ON DELETE CASCADE,
+        author_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        tracks TEXT NOT NULL DEFAULT '[]',
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 `);
@@ -224,7 +232,90 @@ try {
     /* exists */
 }
 
+try {
+    db.exec(`ALTER TABLE bookings ADD COLUMN completed_at TEXT`);
+} catch (e) {
+    /* exists */
+}
+
+const zohoUserCols = [
+    'ALTER TABLE users ADD COLUMN zoho_contact_id TEXT',
+    'ALTER TABLE users ADD COLUMN zoho_contact_synced_at TEXT',
+    'ALTER TABLE users ADD COLUMN zoho_contact_sync_error TEXT'
+];
+for (const stmt of zohoUserCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+const zohoBookingCols = [
+    'ALTER TABLE bookings ADD COLUMN deposit_due_at TEXT',
+    'ALTER TABLE bookings ADD COLUMN balance_due_at TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_deposit_invoice_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_balance_invoice_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_full_invoice_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_estimate_id TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_estimate_synced_at TEXT',
+    'ALTER TABLE bookings ADD COLUMN zoho_estimate_sync_error TEXT'
+];
+for (const stmt of zohoBookingCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+const zohoPaymentCols = [
+    'ALTER TABLE booking_payments ADD COLUMN zoho_invoice_id TEXT',
+    'ALTER TABLE booking_payments ADD COLUMN zoho_payment_id TEXT',
+    'ALTER TABLE booking_payments ADD COLUMN zoho_payment_synced_at TEXT',
+    'ALTER TABLE booking_payments ADD COLUMN zoho_sync_error TEXT'
+];
+for (const stmt of zohoPaymentCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
+const zohoCatalogCols = [
+    'ALTER TABLE catalog_products ADD COLUMN zoho_item_id TEXT',
+    'ALTER TABLE catalog_products ADD COLUMN zoho_item_synced_at TEXT',
+    'ALTER TABLE catalog_products ADD COLUMN zoho_item_sync_error TEXT'
+];
+for (const stmt of zohoCatalogCols) {
+    try {
+        db.exec(stmt);
+    } catch (e) {
+        /* exists */
+    }
+}
+
 db.exec(`
+    CREATE TABLE IF NOT EXISTS portal_zoho_oauth (
+        id TEXT PRIMARY KEY CHECK (id = 'default'),
+        refresh_token TEXT,
+        connected_at TEXT,
+        connected_by_user_id TEXT REFERENCES users(id),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS portal_oauth_states (
+        id TEXT PRIMARY KEY,
+        purpose TEXT NOT NULL,
+        state_hash TEXT NOT NULL,
+        admin_user_id TEXT NOT NULL REFERENCES users(id),
+        expires_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_portal_oauth_states_hash ON portal_oauth_states(purpose, state_hash);
+    CREATE INDEX IF NOT EXISTS idx_portal_oauth_states_expires ON portal_oauth_states(expires_at);
+
     CREATE TABLE IF NOT EXISTS admin_audit_log (
         id TEXT PRIMARY KEY,
         admin_user_id TEXT NOT NULL REFERENCES users(id),
@@ -286,6 +377,8 @@ db.exec(`
         allows_addons INTEGER NOT NULL DEFAULT 1 CHECK(allows_addons IN (0,1)),
         is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
         sort_order INTEGER NOT NULL DEFAULT 0,
+        product_type TEXT NOT NULL DEFAULT 'general',
+        image_url TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -322,6 +415,34 @@ db.exec(`
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_booking_line_items_booking ON booking_line_items(booking_id, sort_order);
+
+    CREATE TABLE IF NOT EXISTS enquiries (
+        id TEXT PRIMARY KEY,
+        status TEXT NOT NULL DEFAULT 'new'
+            CHECK(status IN ('new','read','quoted','converted','archived')),
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        email TEXT NOT NULL COLLATE NOCASE,
+        phone TEXT,
+        event_type TEXT,
+        event_date TEXT,
+        guest_count_range TEXT,
+        venue TEXT,
+        message TEXT,
+        hear_about TEXT,
+        newsletter_opt_in INTEGER NOT NULL DEFAULT 0 CHECK(newsletter_opt_in IN (0,1)),
+        services_required TEXT,
+        quote_line_items TEXT,
+        quote_subtotal REAL,
+        quote_total REAL,
+        lead_metadata TEXT,
+        admin_notes TEXT,
+        booking_id TEXT REFERENCES bookings(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_enquiries_status_created ON enquiries(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_enquiries_email ON enquiries(email);
 `);
 
 try {
@@ -329,6 +450,53 @@ try {
 } catch (e) {
     /* exists */
 }
+try {
+    db.exec(`ALTER TABLE catalog_products ADD COLUMN product_type TEXT NOT NULL DEFAULT 'general'`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE catalog_products ADD COLUMN image_url TEXT`);
+} catch (e) {
+    /* exists */
+}
+
+const {
+    normalizeProductType,
+    labelForProductType,
+    sortOrderForProductType,
+    listKnownProductTypes,
+    resolveCatalogImageUrl,
+    normalizeCatalogImageStorage,
+    inferProductType,
+    publicCatalogImageUrl
+} = require('../portal/catalog-product-types');
+
+function repairStoredCatalogImageUrls() {
+    try {
+        const rows = db
+            .prepare(
+                `SELECT id, image_url FROM catalog_products WHERE image_url IS NOT NULL AND trim(image_url) != ''`
+            )
+            .all();
+        const fix = db.prepare(`UPDATE catalog_products SET image_url = ? WHERE id = ?`);
+        let changed = 0;
+        for (const row of rows) {
+            const normalized = normalizeCatalogImageStorage(row.image_url);
+            if (normalized && normalized !== row.image_url) {
+                fix.run(normalized, row.id);
+                changed += 1;
+            }
+        }
+        if (changed > 0) {
+            console.log(`[portal] Normalized ${changed} catalog product image_url value(s) to /uploads/catalog/…`);
+        }
+    } catch (e) {
+        console.warn('[portal] catalog image_url repair skipped', e.message);
+    }
+}
+
+repairStoredCatalogImageUrls();
 
 function clampHoursToProductMinimum(product, hours) {
     const min =
@@ -370,13 +538,30 @@ function computeCatalogLineSubtotal({ pricing_model: pricingModel, quantity, hou
     return Math.round(Math.max(0, total) * 100) / 100;
 }
 
-function materializeCatalogProduct(row, { addons = null } = {}) {
+function materializeCatalogProduct(row, { addons = null, resolveImage = false } = {}) {
     if (!row) return row;
+    const storedType = normalizeProductType(row.product_type);
+    const effectiveType = inferProductType({
+        product_type: row.product_type,
+        capability_code: row.capability_code,
+        code: row.code,
+        name: row.name
+    });
     const out = {
         ...row,
+        product_type: storedType,
+        product_type_effective: effectiveType,
+        product_type_label: labelForProductType(
+            storedType !== 'general' ? storedType : effectiveType
+        ),
         allows_addons: row.allows_addons === 1,
-        is_active: row.is_active === 1
+        is_active: row.is_active === 1,
+        image_url: normalizeCatalogImageStorage(row.image_url),
+        image_url_public: row.image_url ? resolveCatalogImageUrl(row.image_url) : null
     };
+    if (resolveImage && out.image_url) {
+        out.image_url = out.image_url_public;
+    }
     if (addons != null) out.addons = addons;
     return out;
 }
@@ -652,6 +837,15 @@ const portalDb = {
         return id;
     },
 
+    getUserByEmail(email) {
+        const em = normalizeEmail(email);
+        return materializeUser(db.prepare('SELECT * FROM users WHERE email = ?').get(emailStorageKey(em)));
+    },
+
+    getUserById(id) {
+        return materializeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+    },
+
     appendAudit(adminUserId, action, entityType, entityId, detailsObj) {
         db.prepare(`
             INSERT INTO admin_audit_log (id, admin_user_id, action, entity_type, entity_id, details, created_at)
@@ -681,6 +875,70 @@ const portalDb = {
             SET payload_json = ?, updated_at = datetime('now'), updated_by_user_id = ?
             WHERE id = 'default'
         `).run(payloadJson, adminUserId || null);
+    },
+
+    getZohoOAuthCredentials() {
+        try {
+            return db
+                .prepare(
+                    "SELECT refresh_token, connected_at, connected_by_user_id, updated_at FROM portal_zoho_oauth WHERE id = 'default'"
+                )
+                .get();
+        } catch (err) {
+            if (err && (err.code === 'SQLITE_ERROR' || String(err.message || '').includes('no such table'))) {
+                return null;
+            }
+            throw err;
+        }
+    },
+
+    saveZohoRefreshToken(refreshToken, adminUserId) {
+        const now = nowIso();
+        db.prepare(
+            `INSERT INTO portal_zoho_oauth (id, refresh_token, connected_at, connected_by_user_id, updated_at)
+             VALUES ('default', ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               refresh_token = excluded.refresh_token,
+               connected_at = excluded.connected_at,
+               connected_by_user_id = excluded.connected_by_user_id,
+               updated_at = excluded.updated_at`
+        ).run(refreshToken, now, adminUserId, now);
+    },
+
+    clearZohoRefreshToken() {
+        const now = nowIso();
+        try {
+            return (
+                db.prepare(
+                    "UPDATE portal_zoho_oauth SET refresh_token = NULL, connected_at = NULL, connected_by_user_id = NULL, updated_at = ? WHERE id = 'default'"
+                ).run(now).changes > 0
+            );
+        } catch (err) {
+            if (err && (err.code === 'SQLITE_ERROR' || String(err.message || '').includes('no such table'))) {
+                return false;
+            }
+            throw err;
+        }
+    },
+
+    createOAuthState({ id, purpose, state_hash, admin_user_id, expires_at }) {
+        db.prepare(
+            'INSERT INTO portal_oauth_states (id, purpose, state_hash, admin_user_id, expires_at) VALUES (?, ?, ?, ?, ?)'
+        ).run(id, purpose, state_hash, admin_user_id, expires_at);
+    },
+
+    getOAuthStateByHash(stateHash, purpose) {
+        return db
+            .prepare('SELECT * FROM portal_oauth_states WHERE state_hash = ? AND purpose = ?')
+            .get(stateHash, purpose);
+    },
+
+    deleteOAuthState(id) {
+        return db.prepare('DELETE FROM portal_oauth_states WHERE id = ?').run(id).changes > 0;
+    },
+
+    purgeExpiredOAuthStates() {
+        return db.prepare('DELETE FROM portal_oauth_states WHERE expires_at < ?').run(nowIso()).changes;
     },
 
     countActiveAdmins() {
@@ -963,13 +1221,120 @@ const portalDb = {
         }
         return { error: null, user: portalDb.getUserById(id), created: true };
     },
-    getUserByEmail(email) {
-        const em = normalizeEmail(email);
-        return materializeUser(db.prepare('SELECT * FROM users WHERE email = ?').get(emailStorageKey(em)));
+
+    updateUserZohoSync(userId, patch = {}) {
+        const allowed = ['zoho_contact_id', 'zoho_contact_synced_at', 'zoho_contact_sync_error'];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(userId);
+        return db.prepare(`UPDATE users SET ${setClause.join(', ')} WHERE id = ?`).run(...values).changes > 0;
     },
 
-    getUserById(id) {
-        return materializeUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id));
+    updateBookingZohoInvoice(bookingId, kind, invoiceId) {
+        const col =
+            kind === 'deposit'
+                ? 'zoho_deposit_invoice_id'
+                : kind === 'balance'
+                  ? 'zoho_balance_invoice_id'
+                  : kind === 'full'
+                    ? 'zoho_full_invoice_id'
+                    : null;
+        if (!col) return false;
+        return db
+            .prepare(`UPDATE bookings SET ${col} = ?, updated_at = ? WHERE id = ?`)
+            .run(invoiceId || null, nowIso(), bookingId).changes > 0;
+    },
+
+    getBookingZohoInvoiceId(booking, kind) {
+        if (!booking) return null;
+        if (kind === 'deposit') return booking.zoho_deposit_invoice_id || null;
+        if (kind === 'balance') return booking.zoho_balance_invoice_id || null;
+        if (kind === 'full') return booking.zoho_full_invoice_id || null;
+        return null;
+    },
+
+    updateBookingZohoEstimate(bookingId, patch = {}) {
+        const allowed = ['zoho_estimate_id', 'zoho_estimate_synced_at', 'zoho_estimate_sync_error'];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(bookingId);
+        return db
+            .prepare(`UPDATE bookings SET ${setClause.join(', ')} WHERE id = ?`)
+            .run(...values).changes > 0;
+    },
+
+    updateCatalogProductZoho(productId, patch = {}) {
+        const allowed = ['zoho_item_id', 'zoho_item_synced_at', 'zoho_item_sync_error'];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(productId);
+        return db
+            .prepare(`UPDATE catalog_products SET ${setClause.join(', ')} WHERE id = ?`)
+            .run(...values).changes > 0;
+    },
+
+    listBookingsPendingZohoEstimate() {
+        return db
+            .prepare(
+                `SELECT b.* FROM bookings b
+                 WHERE b.status != 'cancelled'
+                   AND (b.deposit_paid IS NULL OR b.deposit_paid = 0)
+                   AND (b.zoho_estimate_id IS NULL OR trim(b.zoho_estimate_id) = '')
+                   AND EXISTS (
+                     SELECT 1 FROM booking_line_items li
+                     WHERE li.booking_id = b.id AND li.line_subtotal > 0
+                   )
+                 ORDER BY b.created_at DESC`
+            )
+            .all()
+            .map((row) => materializeBooking(row));
+    },
+
+    updateBookingPaymentZoho(paymentId, patch = {}) {
+        const allowed = [
+            'zoho_invoice_id',
+            'zoho_payment_id',
+            'zoho_payment_synced_at',
+            'zoho_sync_error'
+        ];
+        const setClause = [];
+        const values = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            setClause.push(`${key} = ?`);
+            values.push(patch[key] === undefined ? null : patch[key]);
+        }
+        if (setClause.length === 0) return false;
+        setClause.push('updated_at = ?');
+        values.push(nowIso());
+        values.push(paymentId);
+        return db
+            .prepare(`UPDATE booking_payments SET ${setClause.join(', ')} WHERE id = ?`)
+            .run(...values).changes > 0;
     },
 
     getCustomerMediaPermissions(customerId) {
@@ -1132,6 +1497,21 @@ const portalDb = {
         ).get(bookingId, djUserId);
     },
 
+    /** Mobile DJ app: slugs of guest request events linked to this DJ's assigned bookings. */
+    getDjAssignedRequestsEventSlugs(djUserId) {
+        const rows = db.prepare(`
+            SELECT DISTINCT b.requests_event_slug AS slug
+            FROM bookings b
+            INNER JOIN booking_assignments a ON a.booking_id = b.id AND a.dj_user_id = ?
+            WHERE b.status != 'cancelled'
+              AND b.requests_event_slug IS NOT NULL
+              AND TRIM(b.requests_event_slug) != ''
+        `).all(djUserId);
+        return rows
+            .map((r) => String(r.slug || '').trim().toLowerCase())
+            .filter(Boolean);
+    },
+
     /** Partial update — DJ scope or full admin booking fields (+ JSON coercion). */
     updateBooking(bookingId, patch, { admin = false } = {}) {
         const djCols = [
@@ -1162,7 +1542,10 @@ const portalDb = {
             'newsletter_opt_in',
             'lead_metadata',
             'booking_pii_ciphertext',
-            'requests_event_slug'
+            'requests_event_slug',
+            'completed_at',
+            'deposit_due_at',
+            'balance_due_at'
         ];
         const normalized = { ...patch };
         if (normalized.services_required != null && typeof normalized.services_required !== 'string') {
@@ -1292,6 +1675,7 @@ const portalDb = {
         const {
             customer_id: customerId,
             status,
+            completed,
             start_from: startFrom,
             start_to: startTo,
             limit = 100,
@@ -1303,9 +1687,16 @@ const portalDb = {
             sql += ' AND customer_id = ?';
             params.push(customerId);
         }
-        if (status) {
+        if (status === 'completed') {
+            sql += ' AND completed_at IS NOT NULL AND TRIM(completed_at) != \'\'';
+        } else if (status) {
             sql += ' AND status = ?';
             params.push(status);
+        }
+        if (completed === true || completed === '1' || completed === 1) {
+            sql += ' AND completed_at IS NOT NULL AND TRIM(completed_at) != \'\'';
+        } else if (completed === false || completed === '0' || completed === 0) {
+            sql += ' AND (completed_at IS NULL OR TRIM(completed_at) = \'\')';
         }
         if (startFrom) {
             sql += ' AND start_datetime >= ?';
@@ -1344,6 +1735,52 @@ const portalDb = {
                 VALUES (?, ?, ?, ?)
             `).run(bookingId, authorUserId, body, t);
         }
+    },
+
+    getDjTracks(bookingId) {
+        const row = db.prepare('SELECT * FROM booking_dj_tracks WHERE booking_id = ?').get(bookingId);
+        if (!row) {
+            return { tracks: [], updated_at: null, author_user_id: null };
+        }
+        let tracks = [];
+        try {
+            const parsed = JSON.parse(row.tracks || '[]');
+            if (Array.isArray(parsed)) {
+                tracks = parsed
+                    .map((t) => (t == null ? '' : String(t).trim()))
+                    .filter(Boolean);
+            }
+        } catch {
+            tracks = [];
+        }
+        return {
+            tracks,
+            updated_at: row.updated_at || null,
+            author_user_id: row.author_user_id || null
+        };
+    },
+
+    upsertDjTracks(bookingId, authorUserId, tracksIn) {
+        const tracks = Array.isArray(tracksIn)
+            ? tracksIn
+                  .map((t) => (t == null ? '' : String(t).trim()))
+                  .filter(Boolean)
+                  .slice(0, 200)
+            : [];
+        const payload = JSON.stringify(tracks);
+        const t = nowIso();
+        const row = db.prepare('SELECT booking_id FROM booking_dj_tracks WHERE booking_id = ?').get(bookingId);
+        if (row) {
+            db.prepare(
+                'UPDATE booking_dj_tracks SET tracks = ?, author_user_id = ?, updated_at = ? WHERE booking_id = ?'
+            ).run(payload, authorUserId, t, bookingId);
+        } else {
+            db.prepare(`
+                INSERT INTO booking_dj_tracks (booking_id, author_user_id, tracks, updated_at)
+                VALUES (?, ?, ?, ?)
+            `).run(bookingId, authorUserId, payload, t);
+        }
+        return this.getDjTracks(bookingId);
     },
 
     /** Admin/seed: create booking — contact-form parity fields optional */
@@ -1479,8 +1916,9 @@ const portalDb = {
         db.prepare(`
             INSERT INTO catalog_products (
                 id, code, name, description, pricing_model, standalone_rate, minimum_hours, currency,
-                capability_code, allows_addons, is_active, sort_order, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                capability_code, allows_addons, is_active, sort_order, product_type, image_url,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             id,
             String(row.code).trim().toLowerCase(),
@@ -1500,6 +1938,8 @@ const portalDb = {
             row.allows_addons === false || row.allows_addons === 0 ? 0 : 1,
             row.is_active === false || row.is_active === 0 ? 0 : 1,
             Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
+            normalizeProductType(row.product_type),
+            normalizeCatalogImageStorage(row.image_url),
             t,
             t
         );
@@ -1520,7 +1960,9 @@ const portalDb = {
             'capability_code',
             'allows_addons',
             'is_active',
-            'sort_order'
+            'sort_order',
+            'product_type',
+            'image_url'
         ];
         const sets = [];
         const params = [];
@@ -1543,6 +1985,10 @@ const portalDb = {
             } else if (key === 'allows_addons' || key === 'is_active') {
                 val = val ? 1 : 0;
             } else if (key === 'sort_order') val = Number(val) || 0;
+            else if (key === 'product_type') val = normalizeProductType(val);
+            else if (key === 'image_url') {
+                val = normalizeCatalogImageStorage(val);
+            }
             sets.push(`${key} = ?`);
             params.push(val);
         }
@@ -1763,6 +2209,8 @@ const portalDb = {
                 minimum_hours: full.minimum_hours != null ? full.minimum_hours : null,
                 currency: full.currency || 'GBP',
                 capability_code: full.capability_code || null,
+                product_type: full.product_type || 'general',
+                image_url: full.image_url || null,
                 allows_addons: full.allows_addons !== false,
                 is_active: full.is_active !== false,
                 sort_order: full.sort_order != null ? full.sort_order : 0,
@@ -1809,6 +2257,11 @@ const portalDb = {
                 capability_code:
                     row.capability_code != null && String(row.capability_code).trim()
                         ? String(row.capability_code).trim().toLowerCase()
+                        : null,
+                product_type: normalizeProductType(row.product_type),
+                image_url:
+                    row.image_url != null && String(row.image_url).trim()
+                        ? String(row.image_url).trim()
                         : null,
                 allows_addons: !(row.allows_addons === false || row.allows_addons === 0),
                 is_active: !(row.is_active === false || row.is_active === 0),
@@ -2034,6 +2487,115 @@ const portalDb = {
         return Math.round(Number(row && row.total ? row.total : 0) * 100) / 100;
     },
 
+    /** Admin: record cash (or other manual) payment against a booking. */
+    recordManualBookingPayment(bookingId, opts = {}) {
+        const booking = portalDb.getBookingById(bookingId);
+        if (!booking) return { error: 'not_found', message: 'Booking not found' };
+
+        const settlement = portalDb.bookingSettlementSnapshot(booking);
+        const currency =
+            booking.deposit_currency != null && String(booking.deposit_currency).trim()
+                ? String(booking.deposit_currency).trim().toUpperCase()
+                : 'GBP';
+        const now = nowIso();
+        const kindRaw = opts.kind != null ? String(opts.kind).trim().toLowerCase() : 'balance';
+        const kind = ['deposit', 'balance', 'full'].includes(kindRaw) ? kindRaw : 'balance';
+        const note =
+            opts.note != null && String(opts.note).trim()
+                ? String(opts.note).trim()
+                : 'Paid in cash';
+
+        let amount =
+            opts.amount != null && opts.amount !== '' ? Number(opts.amount) : null;
+
+        if (kind === 'deposit') {
+            if (amount == null || !Number.isFinite(amount)) {
+                amount =
+                    booking.deposit_amount != null && Number.isFinite(Number(booking.deposit_amount))
+                        ? Number(booking.deposit_amount)
+                        : 0;
+            }
+            if (amount <= 0.005) {
+                return {
+                    error: 'validation_error',
+                    message: 'Set a deposit amount before recording a cash deposit'
+                };
+            }
+            const depositPaid = booking.deposit_paid === 1 || booking.deposit_paid === true;
+            if (depositPaid) {
+                return { error: 'conflict', message: 'Deposit is already marked paid' };
+            }
+        } else if (kind === 'balance') {
+            if (amount == null || !Number.isFinite(amount)) {
+                amount = settlement.balance_remaining;
+            }
+            if (amount <= 0.005) {
+                return { error: 'conflict', message: 'No balance remaining to record' };
+            }
+        } else if (kind === 'full') {
+            if (amount == null || !Number.isFinite(amount)) {
+                amount =
+                    settlement.balance_remaining > 0.005
+                        ? settlement.balance_remaining
+                        : settlement.quote_total;
+            }
+            if (amount <= 0.005) {
+                return {
+                    error: 'validation_error',
+                    message: 'Quote total is zero — add line items before recording payment'
+                };
+            }
+        }
+
+        amount = Math.round(amount * 100) / 100;
+        const paymentId = uuid();
+        const paymentKind = kind === 'full' ? 'full' : kind;
+
+        const payment = db.transaction(() => {
+            portalDb.insertBookingPayment({
+                id: paymentId,
+                booking_id: bookingId,
+                customer_id: booking.customer_id,
+                kind: paymentKind,
+                status: 'paid',
+                amount,
+                currency,
+                paid_at: now,
+                metadata: {
+                    method: 'cash',
+                    note,
+                    recorded_by: opts.adminUserId || null
+                }
+            });
+
+            if (kind === 'deposit' || kind === 'full') {
+                const depPatch = {
+                    deposit_paid: 1,
+                    deposit_paid_at: now,
+                    deposit_note: note
+                };
+                if (
+                    kind === 'deposit' &&
+                    (booking.deposit_amount == null ||
+                        booking.deposit_amount === '' ||
+                        Number(booking.deposit_amount) <= 0)
+                ) {
+                    depPatch.deposit_amount = amount;
+                }
+                portalDb.updateBooking(bookingId, depPatch, { admin: true });
+            }
+
+            return portalDb.getBookingPaymentById(paymentId);
+        })();
+
+        const updatedBooking = portalDb.getBookingById(bookingId);
+        return {
+            payment,
+            booking: updatedBooking,
+            ...portalDb.bookingSettlementSnapshot(updatedBooking)
+        };
+    },
+
     /** Quote total, recorded payments, and balance for admin/calendar UI. */
     bookingSettlementSnapshot(booking) {
         if (!booking || !booking.id) {
@@ -2237,6 +2799,391 @@ const portalDb = {
             }
             return { ...r, details };
         });
+    },
+
+    normalizeEnquiryQuoteLineItems(itemsIn) {
+        const items = Array.isArray(itemsIn) ? itemsIn : [];
+        const normalized = [];
+        const keyToIndex = new Map();
+
+        items.forEach((raw, index) => {
+            const productId = raw && raw.product_id != null ? String(raw.product_id).trim() : '';
+            if (!productId) return;
+            const product = db.prepare('SELECT * FROM catalog_products WHERE id = ? AND is_active = 1').get(productId);
+            if (!product) {
+                throw new Error(`Unknown or inactive product: ${productId}`);
+            }
+            const pricingContext = raw.pricing_context === 'addon' ? 'addon' : 'standalone';
+            const clientKey =
+                raw.client_key != null && String(raw.client_key).trim()
+                    ? String(raw.client_key).trim()
+                    : `eq-${index}`;
+            let parentClientKey =
+                raw.parent_client_key != null && String(raw.parent_client_key).trim()
+                    ? String(raw.parent_client_key).trim()
+                    : null;
+            if (pricingContext === 'addon' && !parentClientKey) {
+                throw new Error('Add-on line items require a parent line');
+            }
+            if (pricingContext === 'addon' && parentClientKey && !keyToIndex.has(parentClientKey)) {
+                throw new Error('Add-on parent line not found');
+            }
+
+            let unitRate = Number(raw.unit_rate);
+            if (!Number.isFinite(unitRate)) {
+                if (pricingContext === 'addon' && parentClientKey) {
+                    const parentIdx = keyToIndex.get(parentClientKey);
+                    const parentLine = normalized[parentIdx];
+                    if (parentLine) {
+                        const link = db
+                            .prepare(
+                                `SELECT addon_rate FROM catalog_product_addons
+                                 WHERE parent_product_id = ? AND addon_product_id = ?`
+                            )
+                            .get(parentLine.product_id, product.id);
+                        if (link) unitRate = Number(link.addon_rate);
+                    }
+                }
+                if (!Number.isFinite(unitRate)) unitRate = Number(product.standalone_rate) || 0;
+            }
+
+            const pricingModel =
+                pricingContext === 'addon'
+                    ? (() => {
+                          if (parentClientKey) {
+                              const parentIdx = keyToIndex.get(parentClientKey);
+                              const parentLine = normalized[parentIdx];
+                              if (parentLine) {
+                                  const link = db
+                                      .prepare(
+                                          `SELECT addon_pricing_model FROM catalog_product_addons
+                                           WHERE parent_product_id = ? AND addon_product_id = ?`
+                                      )
+                                      .get(parentLine.product_id, product.id);
+                                  if (link && link.addon_pricing_model) return link.addon_pricing_model;
+                              }
+                          }
+                          return product.pricing_model;
+                      })()
+                    : product.pricing_model;
+
+            let hoursOut = raw.hours != null && raw.hours !== '' ? Number(raw.hours) : null;
+            if (pricingModel === 'hourly') {
+                hoursOut = clampHoursToProductMinimum(product, hoursOut);
+                if (!Number.isFinite(hoursOut) || hoursOut <= 0) hoursOut = null;
+            } else {
+                hoursOut = null;
+            }
+
+            const lineSubtotal = computeCatalogLineSubtotal({
+                pricing_model: pricingModel,
+                quantity: raw.quantity,
+                hours: hoursOut,
+                unit_rate: unitRate,
+                discount_type: raw.discount_type,
+                discount_value: raw.discount_value
+            });
+
+            const line = {
+                client_key: clientKey,
+                parent_client_key: parentClientKey,
+                product_id: product.id,
+                product_name: product.name,
+                pricing_context: pricingContext,
+                pricing_model: pricingModel,
+                quantity: Number.isFinite(Number(raw.quantity)) ? Number(raw.quantity) : 1,
+                hours: hoursOut,
+                unit_rate: unitRate,
+                discount_type: ['none', 'percent', 'fixed'].includes(raw.discount_type)
+                    ? raw.discount_type
+                    : 'none',
+                discount_value: Number.isFinite(Number(raw.discount_value)) ? Number(raw.discount_value) : 0,
+                line_subtotal: lineSubtotal,
+                label:
+                    raw.label != null && String(raw.label).trim()
+                        ? String(raw.label).trim()
+                        : String(product.name),
+                sort_order: Number.isFinite(Number(raw.sort_order)) ? Number(raw.sort_order) : index
+            };
+            keyToIndex.set(clientKey, normalized.length);
+            normalized.push(line);
+        });
+
+        const quote = portalDb.summarizeBookingQuote(
+            normalized.map((l) => ({ line_subtotal: l.line_subtotal }))
+        );
+        return {
+            quote_line_items: normalized,
+            quote_subtotal: quote.quote_subtotal,
+            quote_total: quote.quote_total
+        };
+    },
+
+    materializeEnquiry(row) {
+        if (!row) return null;
+        let servicesRequired = null;
+        if (row.services_required != null && String(row.services_required).trim()) {
+            try {
+                servicesRequired = JSON.parse(row.services_required);
+            } catch {
+                servicesRequired = row.services_required;
+            }
+        }
+        let quoteLineItems = null;
+        if (row.quote_line_items != null && String(row.quote_line_items).trim()) {
+            try {
+                quoteLineItems = JSON.parse(row.quote_line_items);
+            } catch {
+                quoteLineItems = null;
+            }
+        }
+        let leadMetadata = null;
+        if (row.lead_metadata != null && String(row.lead_metadata).trim()) {
+            try {
+                leadMetadata = JSON.parse(row.lead_metadata);
+            } catch {
+                leadMetadata = null;
+            }
+        }
+        return {
+            id: row.id,
+            status: row.status || 'new',
+            first_name: row.first_name,
+            last_name: row.last_name,
+            email: row.email,
+            phone: row.phone || null,
+            event_type: row.event_type || null,
+            event_date: row.event_date || null,
+            guest_count_range: row.guest_count_range || null,
+            venue: row.venue || null,
+            message: row.message || null,
+            hear_about: row.hear_about || null,
+            newsletter_opt_in: row.newsletter_opt_in === 1,
+            services_required: servicesRequired,
+            quote_line_items: quoteLineItems,
+            quote_subtotal:
+                row.quote_subtotal != null && Number.isFinite(Number(row.quote_subtotal))
+                    ? Number(row.quote_subtotal)
+                    : null,
+            quote_total:
+                row.quote_total != null && Number.isFinite(Number(row.quote_total))
+                    ? Number(row.quote_total)
+                    : null,
+            lead_metadata: leadMetadata,
+            admin_notes: row.admin_notes || null,
+            booking_id: row.booking_id || null,
+            created_at: row.created_at,
+            updated_at: row.updated_at
+        };
+    },
+
+    insertEnquiry(row) {
+        const id = row.id || uuid();
+        const t = nowIso();
+        const servicesJson =
+            row.services_required != null
+                ? JSON.stringify(
+                      Array.isArray(row.services_required)
+                          ? row.services_required
+                          : row.services_required
+                  )
+                : null;
+        const quoteItemsJson =
+            row.quote_line_items != null ? JSON.stringify(row.quote_line_items) : null;
+        const leadJson = row.lead_metadata != null ? JSON.stringify(row.lead_metadata) : null;
+        db.prepare(`
+            INSERT INTO enquiries (
+                id, status, first_name, last_name, email, phone, event_type, event_date,
+                guest_count_range, venue, message, hear_about, newsletter_opt_in,
+                services_required, quote_line_items, quote_subtotal, quote_total,
+                lead_metadata, admin_notes, booking_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+            id,
+            row.status && ['new', 'read', 'quoted', 'converted', 'archived'].includes(row.status)
+                ? row.status
+                : 'new',
+            String(row.first_name || '').trim(),
+            String(row.last_name || '').trim(),
+            normalizeEmail(row.email),
+            row.phone != null ? String(row.phone) : null,
+            row.event_type != null ? String(row.event_type) : null,
+            row.event_date != null ? String(row.event_date) : null,
+            row.guest_count_range != null ? String(row.guest_count_range) : null,
+            row.venue != null ? String(row.venue) : null,
+            row.message != null ? String(row.message) : null,
+            row.hear_about != null ? String(row.hear_about) : null,
+            row.newsletter_opt_in ? 1 : 0,
+            servicesJson,
+            quoteItemsJson,
+            row.quote_subtotal != null && Number.isFinite(Number(row.quote_subtotal))
+                ? Number(row.quote_subtotal)
+                : null,
+            row.quote_total != null && Number.isFinite(Number(row.quote_total))
+                ? Number(row.quote_total)
+                : null,
+            leadJson,
+            row.admin_notes != null ? String(row.admin_notes) : null,
+            row.booking_id != null ? String(row.booking_id) : null,
+            t,
+            t
+        );
+        return portalDb.getEnquiryById(id);
+    },
+
+    getEnquiryById(id) {
+        const row = db.prepare('SELECT * FROM enquiries WHERE id = ?').get(id);
+        return row ? portalDb.materializeEnquiry(row) : null;
+    },
+
+    listEnquiries({ status, q, limit = 100, offset = 0 } = {}) {
+        const clauses = [];
+        const params = [];
+        if (status && ['new', 'read', 'quoted', 'converted', 'archived'].includes(status)) {
+            clauses.push('status = ?');
+            params.push(status);
+        }
+        if (q && String(q).trim()) {
+            const like = `%${String(q).trim()}%`;
+            clauses.push(
+                `(first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR venue LIKE ? OR message LIKE ?)`
+            );
+            params.push(like, like, like, like, like);
+        }
+        let sql = 'SELECT * FROM enquiries';
+        if (clauses.length) sql += ` WHERE ${clauses.join(' AND ')}`;
+        sql += ' ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?';
+        params.push(Number(limit) || 100, Number(offset) || 0);
+        return db.prepare(sql).all(...params).map((r) => portalDb.materializeEnquiry(r));
+    },
+
+    updateEnquiry(id, patch) {
+        const existing = db.prepare('SELECT id FROM enquiries WHERE id = ?').get(id);
+        if (!existing) return null;
+        const allowed = [
+            'status',
+            'admin_notes',
+            'booking_id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'event_type',
+            'event_date',
+            'guest_count_range',
+            'venue',
+            'message',
+            'hear_about',
+            'newsletter_opt_in'
+        ];
+        const sets = [];
+        const params = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            let val = patch[key];
+            if (key === 'status') {
+                if (!['new', 'read', 'quoted', 'converted', 'archived'].includes(val)) continue;
+            } else if (key === 'newsletter_opt_in') {
+                val = val ? 1 : 0;
+            } else if (key === 'email') {
+                val = normalizeEmail(val);
+            } else if (val != null) {
+                val = String(val);
+            }
+            sets.push(`${key} = ?`);
+            params.push(val);
+        }
+        if (!sets.length) return portalDb.getEnquiryById(id);
+        sets.push('updated_at = ?');
+        params.push(nowIso());
+        params.push(id);
+        db.prepare(`UPDATE enquiries SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+        return portalDb.getEnquiryById(id);
+    },
+
+    listPublicQuoteCatalogProducts() {
+        const products = portalDb.listCatalogProducts({ activeOnly: true });
+        return products.map((p) => portalDb.materializePublicQuoteProduct(p.id));
+    },
+
+    materializePublicQuoteProduct(productId) {
+        const full = portalDb.getCatalogProductById(productId);
+        if (!full) return null;
+        const productType = inferProductType(full);
+        return {
+            id: full.id,
+            name: full.name,
+            description: full.description || '',
+            product_type: productType,
+            product_type_label: labelForProductType(productType),
+            pricing_model: full.pricing_model,
+            standalone_rate: Number(full.standalone_rate) || 0,
+            minimum_hours:
+                full.minimum_hours != null && Number.isFinite(Number(full.minimum_hours))
+                    ? Number(full.minimum_hours)
+                    : null,
+            currency: full.currency || 'GBP',
+            allows_addons: !!full.allows_addons,
+            image_url: publicCatalogImageUrl(full),
+            addons: (full.addons || []).map((a) => ({
+                addon_product_id: a.addon_product_id,
+                addon_name: a.addon_name,
+                addon_rate: Number(a.addon_rate) || 0,
+                addon_pricing_model: a.addon_pricing_model || a.addon_default_pricing_model || null
+            }))
+        };
+    },
+
+    listPublicQuoteCatalogGrouped() {
+        const products = portalDb
+            .listPublicQuoteCatalogProducts()
+            .filter(Boolean)
+            .sort((a, b) => {
+                const typeDiff = sortOrderForProductType(a.product_type) - sortOrderForProductType(b.product_type);
+                if (typeDiff !== 0) return typeDiff;
+                return String(a.name).localeCompare(String(b.name));
+            });
+        const groupMap = new Map();
+        products.forEach((p) => {
+            const code = p.product_type || 'general';
+            if (!groupMap.has(code)) {
+                groupMap.set(code, {
+                    code,
+                    label: labelForProductType(code),
+                    sort_order: sortOrderForProductType(code),
+                    products: []
+                });
+            }
+            groupMap.get(code).products.push(p);
+        });
+        const groups = [...groupMap.values()].sort((a, b) => a.sort_order - b.sort_order);
+        return { products, groups };
+    },
+
+    listCatalogProductTypes() {
+        const rows = db
+            .prepare(
+                `SELECT DISTINCT product_type FROM catalog_products
+                 WHERE product_type IS NOT NULL AND TRIM(product_type) != ''`
+            )
+            .all();
+        const seen = new Set();
+        const out = [];
+        listKnownProductTypes().forEach((t) => {
+            seen.add(t.code);
+            out.push({ ...t });
+        });
+        rows.forEach((r) => {
+            const code = normalizeProductType(r.product_type);
+            if (seen.has(code)) return;
+            seen.add(code);
+            out.push({
+                code,
+                label: labelForProductType(code),
+                sort_order: sortOrderForProductType(code)
+            });
+        });
+        return out.sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
     }
 };
 

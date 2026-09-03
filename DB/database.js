@@ -187,9 +187,36 @@ try {
 try {
     db.exec(`ALTER TABLE events ADD COLUMN logo_image TEXT`);
 } catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN hero_title_color TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_card_color TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_card_shadow_color TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_menu_compact INTEGER DEFAULT 1`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_show_option_desc INTEGER DEFAULT 1`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_hero_compact INTEGER DEFAULT 0`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_bg_overlay INTEGER DEFAULT 45`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN guest_bg_position TEXT DEFAULT 'center'`);
+} catch (e) { /* Column already exists */ }
 // Per-event photo popup banner style (NULL = use global setting)
 try {
     db.exec(`ALTER TABLE events ADD COLUMN photo_banner_style TEXT`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN display_message_style TEXT`);
 } catch (e) { /* Column already exists */ }
 try {
     // Secret token protecting the customer-facing gallery link (/gallery/:slug/:token)
@@ -206,6 +233,12 @@ try {
 } catch (e) { /* Column already exists */ }
 try {
     db.exec(`ALTER TABLE events ADD COLUMN display_bg_slideshow_seconds INTEGER DEFAULT 15`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN display_bg_overlay_opacity INTEGER DEFAULT 45`);
+} catch (e) { /* Column already exists */ }
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN display_show_waiting_message INTEGER DEFAULT 1`);
 } catch (e) { /* Column already exists */ }
 
 // Display screen background slideshow images (ordered per event)
@@ -448,20 +481,34 @@ const eventDb = {
     update: function(id, updates) {
         const allowedFields = ['name', 'description', 'venue', 'event_date', 'is_active', 
                                'heading_color', 'text_color', 'bg_color', 'bg_image', 'accent_color', 'custom_css', 'logo_image',
+                               'hero_title_color', 'guest_card_color', 'guest_card_shadow_color',
+                               'guest_menu_compact', 'guest_show_option_desc', 'guest_hero_compact',
+                               'guest_bg_overlay', 'guest_bg_position',
                                'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',
                                'enable_tips', 'enable_photos', 'tip_provider', 'tip_payment_link', 'tip_links',
                                'display_show_qr', 'display_qr_position', 'display_qr_size', 'display_qr_label',
                                'display_bg_color1', 'display_bg_color2', 'display_bg_image',
                                'display_bg_slideshow_enabled', 'display_bg_slideshow_seconds',
-                               'display_card_color', 'display_card_opacity', 'photo_banner_style',
+                               'display_bg_overlay_opacity', 'display_show_waiting_message',
+                               'display_card_color', 'display_card_opacity', 'display_message_style', 'photo_banner_style',
                                'show_tracks_played_guest', 'show_public'];
+        const intFlagFields = new Set([
+            'is_active', 'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',
+            'enable_tips', 'enable_photos', 'show_tracks_played_guest', 'show_public',
+            'display_show_qr', 'display_bg_slideshow_enabled', 'display_show_waiting_message',
+            'guest_menu_compact', 'guest_show_option_desc', 'guest_hero_compact'
+        ]);
         const setClause = [];
         const values = [];
         
         for (const [key, value] of Object.entries(updates)) {
             if (allowedFields.includes(key)) {
                 setClause.push(`${key} = ?`);
-                values.push(value);
+                if (intFlagFields.has(key)) {
+                    values.push(value === 1 || value === true || value === '1' ? 1 : 0);
+                } else {
+                    values.push(value);
+                }
             }
         }
         
@@ -962,11 +1009,29 @@ function normalizeGuestName(name) {
     return (name || '').toString().trim().slice(0, 50);
 }
 
+/** System / spinner labels — not real event guests */
+function isSyntheticGuestName(customerName) {
+    const n = normalizeGuestName(customerName).toLowerCase();
+    if (!n) return true;
+    const markers = [
+        'random spinner',
+        'karaoke spinner',
+        'guest spinner',
+        'heads or tails',
+        'yes or no'
+    ];
+    return markers.some((m) => n.includes(m));
+}
+
 // Event guest check-in and moderation
 const guestDb = {
+    isSyntheticName: isSyntheticGuestName,
+
     checkIn: function(eventId, customerName, deviceId) {
         const name = normalizeGuestName(customerName);
-        if (!name || !eventId) return { ok: false, error: 'invalid_name' };
+        if (!name || !eventId || isSyntheticGuestName(name)) {
+            return { ok: false, error: 'invalid_name' };
+        }
         const device =
             deviceId != null && String(deviceId).trim()
                 ? String(deviceId).trim().slice(0, 64)
@@ -1017,7 +1082,9 @@ const guestDb = {
                 SELECT TRIM(customer_name) AS customer_name, created_at AS ts
                 FROM requests WHERE event_id = ? AND TRIM(customer_name) != ''
                 UNION ALL
-                SELECT TRIM(customer_name), created_at FROM messages WHERE event_id = ? AND TRIM(customer_name) != ''
+                SELECT TRIM(customer_name), created_at FROM messages
+                WHERE event_id = ? AND TRIM(customer_name) != ''
+                  AND COALESCE(type, '') != 'spinner-result'
                 UNION ALL
                 SELECT TRIM(customer_name), created_at FROM photos
                 WHERE event_id = ? AND customer_name IS NOT NULL AND TRIM(customer_name) != ''
@@ -1039,7 +1106,17 @@ const guestDb = {
                 END
         `);
         for (const row of rows) {
+            if (isSyntheticGuestName(row.customer_name)) continue;
             upsert.run(eventId, row.customer_name, row.first_seen, row.last_seen);
+        }
+
+        const stale = db.prepare(
+            'SELECT customer_name FROM event_guests WHERE event_id = ?'
+        ).all(eventId);
+        for (const row of stale) {
+            if (isSyntheticGuestName(row.customer_name)) {
+                this.deleteFromEvent(eventId, row.customer_name);
+            }
         }
     },
 
@@ -1092,7 +1169,10 @@ const guestDb = {
         `).all(eventId);
         const countMessages = db.prepare(`
             SELECT LOWER(TRIM(customer_name)) AS key, COUNT(*) AS n
-            FROM messages WHERE event_id = ? AND (is_reply IS NULL OR is_reply = 0) GROUP BY LOWER(TRIM(customer_name))
+            FROM messages
+            WHERE event_id = ? AND (is_reply IS NULL OR is_reply = 0)
+              AND COALESCE(type, '') != 'spinner-result'
+            GROUP BY LOWER(TRIM(customer_name))
         `).all(eventId);
         const countPhotos = db.prepare(`
             SELECT LOWER(TRIM(customer_name)) AS key, COUNT(*) AS n
@@ -1108,7 +1188,9 @@ const guestDb = {
         const msgMap = toMap(countMessages);
         const photoMap = toMap(countPhotos);
 
-        return guests.map((row) => {
+        return guests
+            .filter((row) => !isSyntheticGuestName(row.customer_name))
+            .map((row) => {
             const resolved = this._resolveStatus(row);
             const key = row.customer_name.toLowerCase();
             return {
@@ -1125,6 +1207,16 @@ const guestDb = {
                 photoCount: photoMap[key] || 0
             };
         });
+    },
+
+    deleteFromEvent: function(eventId, customerName) {
+        const name = normalizeGuestName(customerName);
+        if (!name || !eventId) return false;
+        const result = db.prepare(`
+            DELETE FROM event_guests
+            WHERE event_id = ? AND customer_name = ? COLLATE NOCASE
+        `).run(eventId, name);
+        return result.changes > 0;
     },
 
     setSilenced: function(eventId, customerName, durationMinutes, note = null) {

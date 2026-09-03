@@ -1,5 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const { portalDb, uuid, normalizeEmail } = require('../db/portal-database');
 const { hashPassword, validatePortalPasswordPlain } = require('./auth-tokens');
 const { formatMusicPlanSummary, parsePayloadRow, emptyPlaylist, normalizePlaylist } = require('./music-plan');
@@ -19,11 +21,44 @@ const { createBookingPaymentCheckout } = require('./booking-checkout');
 const { refundBookingPayment } = require('./refund-booking-payment');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 const { balanceDueCalendarFields } = require('./customer-payment-schedule');
+const zohoBooks = require('./zoho-books');
+const zohoOAuth = require('./zoho-oauth');
+const {
+    syncCustomerToZoho,
+    scheduleZohoContactSync,
+    syncAllCustomersToZoho,
+    zohoStatusForUser
+} = require('./zoho-contact-sync');
+const { createBookingZohoInvoice, zohoStatusForBooking } = require('./zoho-invoice-sync');
+const { syncPaymentToZoho, scheduleZohoPaymentSync } = require('./zoho-payment-sync');
+const {
+    createBookingZohoEstimate,
+    syncAllPendingEstimates,
+    scheduleZohoEstimateSync
+} = require('./zoho-estimate-sync');
+const {
+    syncCatalogProductToZoho,
+    syncAllCatalogProductsToZoho,
+    scheduleZohoItemSync,
+    zohoStatusForProduct
+} = require('./zoho-item-sync');
+const { catalogImageUpload, catalogRoot } = require('./catalog-image-upload');
+const {
+    resolveCatalogImageUrl,
+    normalizeCatalogImageStorage,
+    catalogImageFilename
+} = require('./catalog-product-types');
 
 const router = express.Router();
 
 function jsonError(res, code, message, status = 400, details = {}) {
-    res.status(status).json({ error: { code, message, details } });
+    let safeDetails = {};
+    try {
+        safeDetails = JSON.parse(JSON.stringify(details || {}));
+    } catch {
+        safeDetails = {};
+    }
+    res.status(status).json({ error: { code, message, details: safeDetails } });
 }
 
 function parseJsonField(raw) {
@@ -190,9 +225,12 @@ router.post('/users', async (req, res) => {
         if (generatedPlain) {
             out.temporary_password = generatedPlain;
             out._warning = 'Store or email this password now; it will not be shown again.';
-        } else if (role === 'customer' && passwordHash == null) {
+        } else         if (role === 'customer' && passwordHash == null) {
             out._hint =
                 'Customer created without a password. Send a welcome email with a magic sign-in link from the Emails tab.';
+        }
+        if (role === 'customer') {
+            scheduleZohoContactSync(id);
         }
         res.status(201).json(out);
     } catch (err) {
@@ -206,7 +244,57 @@ router.get('/users/:id', (req, res) => {
     if (!user) {
         return jsonError(res, 'not_found', 'User not found', 404);
     }
-    res.json(publicUser(user));
+    res.json({ ...publicUser(user), zoho: zohoStatusForUser(user) });
+});
+
+router.get('/users/:id/zoho', (req, res) => {
+    const user = portalDb.getUserById(req.params.id);
+    if (!user) {
+        return jsonError(res, 'not_found', 'User not found', 404);
+    }
+    res.json({
+        user_id: user.id,
+        role: user.role,
+        ...zohoStatusForUser(user)
+    });
+});
+
+router.post('/users/:id/zoho/sync', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    const user = portalDb.getUserById(req.params.id);
+    if (!user) {
+        return jsonError(res, 'not_found', 'User not found', 404);
+    }
+    if (user.role !== 'customer') {
+        return jsonError(res, 'validation_error', 'Only customer accounts sync to Zoho Books', 422);
+    }
+    try {
+        const result = await syncCustomerToZoho(req.params.id);
+        audit(req.portalUser.id, 'user.zoho_sync', 'user', req.params.id, {
+            contact_id: result.contact_id || null
+        });
+        res.json({
+            ok: true,
+            user_id: req.params.id,
+            ...zohoStatusForUser(portalDb.getUserById(req.params.id))
+        });
+    } catch (err) {
+        console.error('[portal] admin/users zoho sync', err);
+        return jsonError(
+            res,
+            err.code === 'zoho_auth_failed' ? 'service_unavailable' : 'upstream_error',
+            err.message || 'Zoho contact sync failed',
+            err.code === 'zoho_auth_failed' ? 503 : 502,
+            err.details || {}
+        );
+    }
 });
 
 router.patch('/users/:id', async (req, res) => {
@@ -237,7 +325,17 @@ router.patch('/users/:id', async (req, res) => {
         return jsonError(res, 'validation_error', 'No valid fields to update', 422);
     }
     audit(req.portalUser.id, 'user.patch', 'user', userId, { keys: Object.keys(patch) });
-    res.json(publicUser(portalDb.getUserById(userId)));
+    const updated = portalDb.getUserById(userId);
+    if (
+        updated &&
+        updated.role === 'customer' &&
+        ['email', 'first_name', 'last_name', 'phone'].some((k) =>
+            Object.prototype.hasOwnProperty.call(patch, k)
+        )
+    ) {
+        scheduleZohoContactSync(userId);
+    }
+    res.json(publicUser(updated));
 });
 
 const CUSTOMER_EMAIL_TEMPLATES = new Set([
@@ -395,6 +493,164 @@ router.get('/email-templates', (req, res) => {
         brevo_configured: brevoMail.isConfigured(),
         templates: brevoMail.listConfiguredTemplates()
     });
+});
+
+router.get('/integrations/status', (req, res) => {
+    res.json({
+        stripe_configured: stripePortal.isConfigured(),
+        stripe_webhook_configured: stripePortal.isWebhookConfigured(),
+        brevo_configured: brevoMail.isConfigured(),
+        zoho_books: {
+            ...zohoBooks.configSummary(),
+            ...zohoOAuth.oauthStatus()
+        }
+    });
+});
+
+router.get('/zoho/oauth/start', (req, res) => {
+    if (!zohoOAuth.canStartOAuth()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Set ZOHO_BOOKS_CLIENT_ID, ZOHO_BOOKS_CLIENT_SECRET, and ZOHO_BOOKS_ORGANIZATION_ID on the API server, then restart.',
+            503
+        );
+    }
+    try {
+        const authorize_url = zohoOAuth.buildAuthorizeUrl(req.portalUser.id);
+        res.json({
+            authorize_url,
+            redirect_uri: zohoOAuth.oauthRedirectUri()
+        });
+    } catch (err) {
+        return jsonError(
+            res,
+            err.code || 'upstream_error',
+            err.message || 'Could not start Zoho OAuth',
+            err.code === 'service_unavailable' ? 503 : 502
+        );
+    }
+});
+
+router.post('/zoho/oauth/disconnect', (req, res) => {
+    zohoOAuth.disconnect();
+    audit(req.portalUser.id, 'zoho.oauth_disconnect', 'integration', 'zoho_books', {});
+    res.json({ ok: true, disconnected: true });
+});
+
+router.post('/zoho/test', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Set client ID, secret, and organisation ID, then use Connect Zoho Books in Site → Integrations.',
+            503
+        );
+    }
+    try {
+        const result = await zohoBooks.testConnection();
+        audit(req.portalUser.id, 'zoho.test', 'integration', 'zoho_books', {
+            ok: result.ok,
+            organization_id: result.organization_id
+        });
+        res.json(result);
+    } catch (err) {
+        console.error('[portal] admin/zoho/test', err);
+        return jsonError(
+            res,
+            err.code === 'zoho_auth_failed' ? 'service_unavailable' : 'upstream_error',
+            err.message || 'Zoho connection test failed',
+            err.code === 'zoho_auth_failed' ? 503 : 502,
+            err.details || {}
+        );
+    }
+});
+
+router.post('/zoho/sync-contacts', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    try {
+        const summary = await syncAllCustomersToZoho();
+        audit(req.portalUser.id, 'zoho.sync_contacts', 'integration', 'zoho_books', {
+            total: summary.total,
+            synced: summary.synced,
+            failed: summary.failed
+        });
+        res.json(summary);
+    } catch (err) {
+        console.error('[portal] admin/zoho/sync-contacts', err);
+        return jsonError(
+            res,
+            'upstream_error',
+            err.message || 'Bulk contact sync failed',
+            502,
+            err.details || {}
+        );
+    }
+});
+
+router.post('/zoho/sync-items', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    try {
+        const summary = await syncAllCatalogProductsToZoho();
+        audit(req.portalUser.id, 'zoho.sync_items', 'integration', 'zoho_books', {
+            total: summary.total,
+            synced: summary.synced,
+            failed: summary.failed
+        });
+        res.json(summary);
+    } catch (err) {
+        console.error('[portal] admin/zoho/sync-items', err);
+        return jsonError(
+            res,
+            'upstream_error',
+            err.message || 'Bulk item sync failed',
+            502,
+            err.details || {}
+        );
+    }
+});
+
+router.post('/zoho/sync-estimates', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    try {
+        const summary = await syncAllPendingEstimates();
+        audit(req.portalUser.id, 'zoho.sync_estimates', 'integration', 'zoho_books', {
+            total: summary.total,
+            synced: summary.synced,
+            failed: summary.failed
+        });
+        res.json(summary);
+    } catch (err) {
+        console.error('[portal] admin/zoho/sync-estimates', err);
+        return jsonError(
+            res,
+            'upstream_error',
+            err.message || 'Bulk estimate sync failed',
+            502,
+            err.details || {}
+        );
+    }
 });
 
 router.post('/users/:id/send-email', (req, res) => {
@@ -679,6 +935,7 @@ router.post('/bookings', (req, res) => {
         booking = portalDb.getBookingById(bookingId);
         const line_items = portalDb.getBookingLineItems(bookingId);
         const quote = portalDb.summarizeBookingQuote(line_items);
+        scheduleZohoEstimateSync(bookingId);
         res.status(201).json({ ...booking, assignments: [], line_items, ...quote });
     } catch (err) {
         console.error('[portal] admin/bookings POST', err);
@@ -716,7 +973,9 @@ router.get('/bookings/:id', (req, res) => {
         photo_gallery: photoGallerySummary(booking),
         ...quote,
         ...portalDb.bookingSettlementSnapshot(booking),
-        stripe_configured: stripePortal.isConfigured()
+        stripe_configured: stripePortal.isConfigured(),
+        zoho_books_configured: zohoBooks.isConfigured(),
+        zoho: zohoStatusForBooking(booking)
     });
 });
 
@@ -919,6 +1178,47 @@ router.post('/bookings/:id/payments/checkout', async (req, res) => {
     return jsonError(res, result.code, result.message, result.status, result.details || {});
 });
 
+router.post('/bookings/:id/payments/manual', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const body = req.body || {};
+    const result = portalDb.recordManualBookingPayment(req.params.id, {
+        kind: body.kind,
+        amount: body.amount,
+        note: body.note,
+        adminUserId: req.portalUser.id
+    });
+    if (result.error) {
+        const status =
+            result.error === 'not_found'
+                ? 404
+                : result.error === 'conflict'
+                  ? 409
+                  : 422;
+        return jsonError(res, result.error, result.message || 'Could not record payment', status);
+    }
+    audit(req.portalUser.id, 'booking.payment_manual', 'booking', req.params.id, {
+        payment_id: result.payment && result.payment.id,
+        kind: body.kind || 'balance',
+        amount: result.payment && result.payment.amount
+    });
+    if (result.payment && result.payment.id) {
+        scheduleZohoPaymentSync(result.payment.id);
+    }
+    const line_items = portalDb.getBookingLineItems(req.params.id);
+    const quote = portalDb.summarizeBookingQuote(line_items);
+    res.json({
+        payment: result.payment,
+        booking: result.booking,
+        line_items,
+        ...quote,
+        ...portalDb.bookingSettlementSnapshot(result.booking),
+        stripe_configured: stripePortal.isConfigured()
+    });
+});
+
 router.post('/payments/:id/refund', async (req, res) => {
     const result = await refundBookingPayment(req.params.id, {
         adminUserId: req.portalUser.id,
@@ -933,6 +1233,182 @@ router.post('/payments/:id/refund', async (req, res) => {
         return res.json(result.body);
     }
     return jsonError(res, result.code, result.message, result.status, result.details || {});
+});
+
+router.get('/bookings/:id/zoho', (req, res) => {
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    res.json({
+        booking_id: booking.id,
+        reference: booking.reference,
+        ...zohoStatusForBooking(booking)
+    });
+});
+
+router.post('/bookings/:id/zoho/invoice', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const body = req.body || {};
+    const kind = body.kind != null ? String(body.kind).trim().toLowerCase() : 'balance';
+    try {
+        const result = await createBookingZohoInvoice(req.params.id, {
+            kind,
+            force: !!body.force,
+            mark_sent: body.mark_sent !== false
+        });
+        audit(req.portalUser.id, 'booking.zoho_invoice', 'booking', req.params.id, {
+            kind,
+            invoice_id: result.invoice_id,
+            already_exists: !!result.already_exists
+        });
+        res.json({
+            ...result,
+            booking: portalDb.getBookingById(req.params.id),
+            zoho: zohoStatusForBooking(portalDb.getBookingById(req.params.id))
+        });
+    } catch (err) {
+        console.error('[portal] admin/bookings zoho invoice', err);
+        const status =
+            err.code === 'not_found'
+                ? 404
+                : err.code === 'conflict'
+                  ? 409
+                  : err.code === 'validation_error'
+                    ? 422
+                    : err.code === 'service_unavailable'
+                      ? 503
+                      : 502;
+        return jsonError(
+            res,
+            err.code || 'upstream_error',
+            err.message || 'Could not create Zoho invoice',
+            status,
+            err.details || {}
+        );
+    }
+});
+
+router.post('/bookings/:id/zoho/estimate', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    const booking = portalDb.getBookingById(req.params.id);
+    if (!booking) {
+        return jsonError(res, 'not_found', 'Booking not found', 404);
+    }
+    const body = req.body || {};
+    try {
+        const result = await createBookingZohoEstimate(req.params.id, {
+            force: !!body.force,
+            mark_sent: body.mark_sent !== false
+        });
+        audit(req.portalUser.id, 'booking.zoho_estimate', 'booking', req.params.id, {
+            estimate_id: result.estimate_id,
+            already_exists: !!result.already_exists
+        });
+        res.json({
+            ...result,
+            booking: portalDb.getBookingById(req.params.id),
+            zoho: zohoStatusForBooking(portalDb.getBookingById(req.params.id))
+        });
+    } catch (err) {
+        console.error('[portal] admin/bookings zoho estimate', err);
+        const status =
+            err.code === 'not_found'
+                ? 404
+                : err.code === 'conflict'
+                  ? 409
+                    : err.code === 'validation_error'
+                    ? 422
+                    : err.code === 'service_unavailable' || err.code === 'zoho_auth_failed'
+                      ? 503
+                      : err.code === 'zoho_api_error' || err.code === 'upstream_error'
+                        ? 502
+                        : 502;
+        try {
+            return jsonError(
+                res,
+                err.code || 'upstream_error',
+                err.message || 'Could not create Zoho estimate',
+                status,
+                err.details || {}
+            );
+        } catch (sendErr) {
+            console.error('[portal] admin/bookings zoho estimate response', sendErr);
+            if (!res.headersSent) {
+                res.status(status).json({
+                    error: {
+                        code: err.code || 'upstream_error',
+                        message: err.message || 'Could not create Zoho estimate'
+                    }
+                });
+            }
+        }
+    }
+});
+
+router.post('/payments/:id/zoho/sync-payment', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    const payment = portalDb.getBookingPaymentById(req.params.id);
+    if (!payment) {
+        return jsonError(res, 'not_found', 'Payment not found', 404);
+    }
+    try {
+        const result = await syncPaymentToZoho(req.params.id);
+        if (!result.ok && result.skipped) {
+            return jsonError(
+                res,
+                'validation_error',
+                result.reason || 'Payment could not be synced',
+                422,
+                result
+            );
+        }
+        audit(req.portalUser.id, 'payment.zoho_sync', 'booking', payment.booking_id, {
+            payment_id: payment.id,
+            zoho_payment_id: result.payment_id || null
+        });
+        res.json({
+            ok: true,
+            payment_id: payment.id,
+            booking_id: payment.booking_id,
+            ...result,
+            payment: portalDb.getBookingPaymentById(req.params.id)
+        });
+    } catch (err) {
+        console.error('[portal] admin/payments zoho sync', err);
+        return jsonError(
+            res,
+            'upstream_error',
+            err.message || 'Zoho payment sync failed',
+            502,
+            err.details || {}
+        );
+    }
 });
 
 router.patch('/bookings/:id/requests-event', (req, res) => {
@@ -984,6 +1460,7 @@ router.patch('/bookings/:id', (req, res) => {
     const updated = portalDb.getBookingById(req.params.id);
     const items = portalDb.getBookingLineItems(req.params.id);
     const quote = portalDb.summarizeBookingQuote(items);
+    scheduleZohoEstimateSync(req.params.id);
     res.json({ ...updated, line_items: items, ...quote });
 });
 
@@ -1102,6 +1579,10 @@ router.get('/catalog/products', (req, res) => {
     res.json({ products });
 });
 
+router.get('/catalog/product-types', (req, res) => {
+    res.json({ product_types: portalDb.listCatalogProductTypes() });
+});
+
 router.post('/catalog/products', (req, res) => {
     const body = req.body || {};
     if (!body.code || !body.name) {
@@ -1115,7 +1596,8 @@ router.post('/catalog/products', (req, res) => {
         audit(req.portalUser.id, 'catalog_product.create', 'catalog_product', product.id, {
             code: product.code
         });
-        res.status(201).json(product);
+        scheduleZohoItemSync(product.id);
+        res.status(201).json({ ...product, zoho: zohoStatusForProduct(product) });
     } catch (err) {
         console.error('[portal] admin/catalog/products POST', err);
         return jsonError(res, 'internal_error', 'Product creation failed', 500);
@@ -1127,7 +1609,56 @@ router.get('/catalog/products/:id', (req, res) => {
     if (!product) {
         return jsonError(res, 'not_found', 'Product not found', 404);
     }
-    res.json(product);
+    res.json({ ...product, zoho: zohoStatusForProduct(product) });
+});
+
+router.get('/catalog/products/:id/zoho', (req, res) => {
+    const product = portalDb.getCatalogProductById(req.params.id);
+    if (!product) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    res.json({
+        product_id: product.id,
+        code: product.code,
+        ...zohoStatusForProduct(product)
+    });
+});
+
+router.post('/catalog/products/:id/zoho/sync', async (req, res) => {
+    if (!zohoBooks.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Zoho Books is not connected. Use Site → Integrations → Connect Zoho Books.',
+            503
+        );
+    }
+    const product = portalDb.getCatalogProductById(req.params.id);
+    if (!product) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    try {
+        const result = await syncCatalogProductToZoho(req.params.id);
+        audit(req.portalUser.id, 'catalog_product.zoho_sync', 'catalog_product', req.params.id, {
+            item_id: result.item_id || null
+        });
+        const refreshed = portalDb.getCatalogProductById(req.params.id);
+        res.json({
+            ok: true,
+            ...result,
+            product: refreshed,
+            zoho: zohoStatusForProduct(refreshed)
+        });
+    } catch (err) {
+        console.error('[portal] admin/catalog/products zoho sync', err);
+        return jsonError(
+            res,
+            'upstream_error',
+            err.message || 'Zoho item sync failed',
+            502,
+            err.details || {}
+        );
+    }
 });
 
 router.patch('/catalog/products/:id', (req, res) => {
@@ -1138,7 +1669,9 @@ router.patch('/catalog/products/:id', (req, res) => {
     audit(req.portalUser.id, 'catalog_product.patch', 'catalog_product', req.params.id, {
         keys: Object.keys(req.body || {})
     });
-    res.json(product);
+    scheduleZohoItemSync(req.params.id);
+    const refreshed = portalDb.getCatalogProductById(req.params.id);
+    res.json({ ...refreshed, zoho: zohoStatusForProduct(refreshed) });
 });
 
 router.delete('/catalog/products/:id', (req, res) => {
@@ -1185,6 +1718,222 @@ router.delete('/catalog/products/:id/addons/:addonProductId', (req, res) => {
         addon_product_id: req.params.addonProductId
     });
     res.status(204).send();
+});
+
+function unlinkCatalogImageFile(imageUrl) {
+    const filename = catalogImageFilename(imageUrl);
+    if (!filename) return;
+    const filePath = path.join(catalogRoot, filename);
+    try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (e) {
+        console.warn('[portal] catalog image unlink', filePath, e.message);
+    }
+}
+
+router.post('/catalog/products/:id/image', (req, res) => {
+    const existing = portalDb.getCatalogProductById(req.params.id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    catalogImageUpload.single('image')(req, res, (err) => {
+        if (err) {
+            return jsonError(res, 'validation_error', err.message || 'Image upload failed', 422);
+        }
+        if (!req.file) {
+            return jsonError(res, 'validation_error', 'image file is required', 422);
+        }
+        const imageUrl = `/uploads/catalog/${req.file.filename}`;
+        if (existing.image_url && existing.image_url !== imageUrl) {
+            unlinkCatalogImageFile(existing.image_url);
+        }
+        const product = portalDb.updateCatalogProduct(req.params.id, { image_url: imageUrl });
+        audit(req.portalUser.id, 'catalog_product.image', 'catalog_product', req.params.id, {
+            image_url: imageUrl
+        });
+        const storedImageUrl = normalizeCatalogImageStorage(product.image_url);
+        res.json({
+            ...product,
+            image_url: storedImageUrl,
+            image_url_public: resolveCatalogImageUrl(storedImageUrl)
+        });
+    });
+});
+
+router.delete('/catalog/products/:id/image', (req, res) => {
+    const existing = portalDb.getCatalogProductById(req.params.id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    if (existing.image_url) unlinkCatalogImageFile(existing.image_url);
+    const product = portalDb.updateCatalogProduct(req.params.id, { image_url: null });
+    audit(req.portalUser.id, 'catalog_product.image_clear', 'catalog_product', req.params.id, {});
+    res.json(product);
+});
+
+// --- Enquiries (contact form leads) ---
+
+router.get('/enquiries', (req, res) => {
+    const status = req.query.status || null;
+    const q = req.query.q || null;
+    const limit = req.query.limit;
+    const offset = req.query.offset;
+    const enquiries = portalDb.listEnquiries({ status, q, limit, offset });
+    res.json({ enquiries });
+});
+
+router.get('/enquiries/:id', (req, res) => {
+    const enquiry = portalDb.getEnquiryById(req.params.id);
+    if (!enquiry) {
+        return jsonError(res, 'not_found', 'Enquiry not found', 404);
+    }
+    res.json(enquiry);
+});
+
+router.patch('/enquiries/:id', (req, res) => {
+    const existing = portalDb.getEnquiryById(req.params.id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Enquiry not found', 404);
+    }
+    const patch = req.body || {};
+    const allowedPatch = {};
+    if (patch.status !== undefined) allowedPatch.status = patch.status;
+    if (patch.admin_notes !== undefined) allowedPatch.admin_notes = patch.admin_notes;
+    const updated = portalDb.updateEnquiry(req.params.id, allowedPatch);
+    audit(req.portalUser.id, 'enquiry.patch', 'enquiry', req.params.id, {
+        keys: Object.keys(allowedPatch)
+    });
+    res.json(updated);
+});
+
+router.post('/enquiries/:id/convert-to-booking', (req, res) => {
+    try {
+        const enquiry = portalDb.getEnquiryById(req.params.id);
+        if (!enquiry) {
+            return jsonError(res, 'not_found', 'Enquiry not found', 404);
+        }
+        if (enquiry.booking_id) {
+            return jsonError(res, 'conflict', 'Enquiry already converted to a booking', 409, {
+                booking_id: enquiry.booking_id
+            });
+        }
+
+        const body = req.body || {};
+        const r = portalDb.upsertCustomerForBooking({
+            email: enquiry.email,
+            first_name: enquiry.first_name,
+            last_name: enquiry.last_name,
+            phone: enquiry.phone
+        });
+        if (r.error) {
+            return jsonError(
+                res,
+                'validation_error',
+                'Email is already in use by a non-customer account',
+                422,
+                { code: r.error }
+            );
+        }
+        const customerId = r.user.id;
+
+        const eventDate = enquiry.event_date || '';
+        const defaultStart = eventDate ? `${eventDate}T18:00:00.000Z` : new Date().toISOString();
+        const defaultEnd = eventDate ? `${eventDate}T23:59:00.000Z` : defaultStart;
+        const title =
+            body.title && String(body.title).trim()
+                ? String(body.title).trim()
+                : `${enquiry.event_type || 'Event'} — ${enquiry.first_name} ${enquiry.last_name}`.trim();
+        const startDatetime =
+            body.start_datetime && String(body.start_datetime).trim()
+                ? String(body.start_datetime).trim()
+                : defaultStart;
+        const endDatetime =
+            body.end_datetime && String(body.end_datetime).trim()
+                ? String(body.end_datetime).trim()
+                : defaultEnd;
+        const reference =
+            body.reference && String(body.reference).trim()
+                ? String(body.reference).trim()
+                : generateUniqueReference();
+        const existingRef = portalDb.db.prepare('SELECT 1 AS ok FROM bookings WHERE reference = ?').get(reference);
+        if (existingRef) {
+            return jsonError(res, 'conflict', 'reference already in use', 409);
+        }
+
+        const bookingId = uuid();
+        const contactName = `${enquiry.first_name} ${enquiry.last_name}`.trim();
+        portalDb.insertBooking({
+            id: bookingId,
+            customer_id: customerId,
+            title,
+            start_datetime: startDatetime,
+            end_datetime: endDatetime,
+            venue: enquiry.venue || '',
+            service: Array.isArray(enquiry.services_required)
+                ? enquiry.services_required.join(', ')
+                : '',
+            status: 'pending',
+            reference,
+            contact_name: contactName,
+            guest_count_range: enquiry.guest_count_range,
+            event_type: enquiry.event_type,
+            services_required: enquiry.services_required,
+            enquiry_message: enquiry.message,
+            hear_about: enquiry.hear_about,
+            newsletter_opt_in: enquiry.newsletter_opt_in,
+            lead_metadata: enquiry.lead_metadata
+        });
+
+        if (Array.isArray(enquiry.quote_line_items) && enquiry.quote_line_items.length) {
+            const lineItems = enquiry.quote_line_items.map((line, index) => ({
+                client_key: line.client_key || `eq-${index}`,
+                parent_client_key: line.parent_client_key || undefined,
+                product_id: line.product_id,
+                pricing_context: line.pricing_context || 'standalone',
+                quantity: line.quantity,
+                hours: line.hours,
+                unit_rate: line.unit_rate,
+                discount_type: line.discount_type,
+                discount_value: line.discount_value,
+                label: line.label,
+                sort_order: index
+            }));
+            portalDb.replaceBookingLineItems(bookingId, lineItems);
+        }
+
+        audit(req.portalUser.id, 'booking.create', 'booking', bookingId, {
+            reference,
+            from_enquiry_id: enquiry.id
+        });
+
+        let booking = portalDb.getBookingById(bookingId);
+        try {
+            createRequestsEventForBooking(booking);
+        } catch (linkErr) {
+            console.error('[portal] admin/enquiries convert requests event link', linkErr);
+        }
+        booking = portalDb.getBookingById(bookingId);
+        const lineItems = portalDb.getBookingLineItems(bookingId);
+        const quote = portalDb.summarizeBookingQuote(lineItems);
+
+        portalDb.updateEnquiry(enquiry.id, {
+            status: 'converted',
+            booking_id: bookingId
+        });
+
+        audit(req.portalUser.id, 'enquiry.convert', 'enquiry', enquiry.id, {
+            booking_id: bookingId,
+            reference
+        });
+
+        res.status(201).json({
+            enquiry_id: enquiry.id,
+            booking: { ...booking, line_items: lineItems, ...quote }
+        });
+    } catch (err) {
+        console.error('[portal] admin/enquiries/convert-to-booking', err);
+        return jsonError(res, 'internal_error', 'Could not convert enquiry to booking', 500);
+    }
 });
 
 module.exports = router;

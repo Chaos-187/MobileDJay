@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=4" rel="stylesheet">
     <style>
         .event-card {
             transition: all 0.3s ease;
@@ -24,8 +25,275 @@
             border-color: #28a745;
             border-width: 2px;
         }
-        .event-card.inactive {
-            opacity: 0.6;
+
+        /* Compact event list (replaces card grid) */
+        .mdj-events-lede {
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+            color: rgba(240, 240, 245, 0.55);
+            margin-bottom: 1.25rem;
+            line-height: 1.5;
+            max-width: 42rem;
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-lede {
+            color: #6c757d;
+        }
+
+        .mdj-events-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            position: sticky;
+            top: var(--mdj-eyup-nav-h, 74px);
+            z-index: 5;
+            padding: 0.85rem 0 1rem;
+            background: linear-gradient(180deg, rgba(10, 10, 10, 0.98) 0%, rgba(10, 10, 10, 0.94) 85%, transparent 100%);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-toolbar {
+            background: linear-gradient(180deg, rgba(244, 246, 249, 0.98) 0%, rgba(244, 246, 249, 0.92) 80%, transparent 100%);
+        }
+
+        .mdj-events-toolbar-left {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.65rem;
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .mdj-events-search {
+            flex: 1 1 220px;
+            min-width: 0;
+            max-width: 320px;
+            font-family: var(--font-mono);
+            font-size: 0.82rem;
+        }
+
+        .mdj-events-filters {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .mdj-events-filter {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            border-radius: 999px;
+            padding: 0.35rem 0.75rem;
+            border: 1px solid rgba(255, 102, 0, 0.28);
+            color: rgba(240, 240, 245, 0.72);
+            background: rgba(255, 102, 0, 0.06);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-filter {
+            color: #495057;
+            background: #ffffff;
+            border-color: rgba(0, 0, 0, 0.12);
+        }
+
+        .mdj-events-filter.active {
+            color: var(--eyup-primary-black, #0a0a0a);
+            background: var(--eyup-primary-orange, #ff6600);
+            border-color: var(--eyup-primary-orange, #ff6600);
+            font-weight: 700;
+        }
+
+        .mdj-events-filter-count {
+            display: inline-block;
+            min-width: 1.1rem;
+            margin-left: 0.2rem;
+            opacity: 0.85;
+        }
+
+        .mdj-events-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .mdj-event-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 1rem 1.5rem;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border: 1px solid rgba(255, 102, 0, 0.18);
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.03);
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-event-row {
+            background: #ffffff;
+            border-color: rgba(0, 0, 0, 0.08);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+        }
+
+        .mdj-event-row.is-active {
+            border-left: 3px solid #28a745;
+        }
+
+        .mdj-event-row.is-inactive {
+            border-left: 3px solid rgba(108, 117, 125, 0.55);
+        }
+
+        .mdj-event-row__main {
+            min-width: 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+        }
+
+        .mdj-event-row__status {
+            flex-shrink: 0;
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 50%;
+            margin-top: 0.45rem;
+            background: #6c757d;
+        }
+
+        .mdj-event-row.is-active .mdj-event-row__status {
+            background: #28a745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.18);
+        }
+
+        .mdj-event-row__body {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .mdj-event-row__title {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.4rem 0.65rem;
+            margin: 0 0 0.45rem;
+            font-size: 1.02rem;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
+        .mdj-event-row__subline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem 1.1rem;
+        }
+
+        .mdj-event-row__meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.45rem 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: rgba(240, 240, 245, 0.58);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-event-row__meta {
+            color: #6c757d;
+        }
+
+        .mdj-event-row__meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            min-width: 0;
+        }
+
+        .mdj-event-row__slug {
+            font-family: var(--font-mono);
+            opacity: 0.85;
+        }
+
+        .mdj-event-row__features {
+            display: inline-flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.35rem;
+            margin-top: 0;
+        }
+
+        .mdj-event-row__feature {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.65rem;
+            height: 1.65rem;
+            border-radius: 2px;
+            font-size: 0.75rem;
+            opacity: 0.92;
+        }
+
+        .mdj-event-row__actions {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .mdj-event-row__actions .btn {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            letter-spacing: 0.03em;
+            padding: 0.45rem 0.7rem;
+            white-space: nowrap;
+        }
+
+        .mdj-event-row__actions .dropdown-toggle::after {
+            display: none;
+        }
+
+        .mdj-events-empty-filter {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: rgba(240, 240, 245, 0.55);
+        }
+
+        body.mdj-dash-tools:not(.dark-mode) .mdj-events-empty-filter {
+            color: #6c757d;
+        }
+
+        @media (max-width: 768px) {
+            .mdj-event-row {
+                grid-template-columns: 1fr;
+                gap: 0.85rem;
+                padding: 1rem;
+            }
+
+            .mdj-event-row__actions {
+                flex-wrap: wrap;
+                justify-content: flex-start;
+                padding-top: 0.65rem;
+                border-top: 1px solid rgba(255, 102, 0, 0.12);
+            }
+
+            body.mdj-dash-tools:not(.dark-mode) .mdj-event-row__actions {
+                border-top-color: rgba(0, 0, 0, 0.08);
+            }
+
+            .mdj-events-search {
+                max-width: none;
+                flex-basis: 100%;
+            }
+
+            .mdj-event-row__subline {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.55rem;
+            }
         }
 
         /* Bigger edit modal — room for options + live previews */
@@ -121,32 +389,34 @@
             position: relative;
             background: #fff;
             border-radius: 6px;
-            padding: 8px 8px 6px;
-            width: 46%;
+            padding: 10px 10px 8px;
+            width: 74%;
+            max-width: 100%;
         }
         .pp-frame .pp-img {
             aspect-ratio: 4 / 3;
+            min-height: 88px;
             border-radius: 4px;
             background: linear-gradient(160deg, #3a6073, #16222a);
             display: flex;
             align-items: center;
             justify-content: center;
             color: rgba(255, 255, 255, 0.5);
-            font-size: 1.6rem;
+            font-size: 2rem;
         }
         .pp-frame .pp-caption {
             text-align: center;
-            font-size: 0.6rem;
+            font-size: 0.68rem;
             color: #333;
-            padding-top: 4px;
+            padding-top: 5px;
         }
         .pp-frame .pp-banner {
             position: absolute;
-            top: -12px;
+            top: -14px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 0.62rem;
-            padding: 0.2rem 0.8rem;
+            font-size: 0.68rem;
+            padding: 0.25rem 0.95rem;
             z-index: 1;
         }
         .photo-preview.pp-style-neon .pp-frame { background: #0b0b14; border: 1.5px solid #ff00e6; box-shadow: 0 0 18px rgba(255,0,230,0.6); }
@@ -156,27 +426,163 @@
         .photo-preview.pp-style-minimal .pp-frame { background: #141a22; border: 1px solid rgba(255,255,255,0.25); }
         .photo-preview.pp-style-minimal .pp-caption { color: #c9d4e0; }
 
-        /* Guest page preview */
-        .guest-preview {
-            border-radius: 10px;
-            border: 1px solid rgba(128, 128, 128, 0.35);
-            overflow: hidden;
-            padding: 1.1rem 1rem;
-            text-align: center;
-            background: #fff;
-            background-size: cover;
-            background-position: center;
-        }
-        .guest-preview .gp-logo img { max-height: 44px; max-width: 60%; margin-bottom: 0.5rem; }
-        .guest-preview .gp-heading { font-weight: 800; font-size: 1.05rem; margin-bottom: 0.25rem; }
-        .guest-preview .gp-text { font-size: 0.8rem; margin-bottom: 0.7rem; }
-        .guest-preview .gp-btn {
+        /* Message display style previews (dp-card) */
+        .msg-style-preview {
             display: inline-block;
-            padding: 0.4rem 1.2rem;
-            border-radius: 0.5rem;
-            color: #fff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 8px;
             font-weight: 700;
-            font-size: 0.8rem;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            max-width: 110px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .msg-style-preview.classic { background: rgba(255,255,255,0.9); color: #111; border: 1px solid rgba(0,0,0,0.12); }
+        .msg-style-preview.party { background: linear-gradient(135deg, #ff6b00, #ffb340); color: #fff; }
+        .msg-style-preview.neon { background: #12001a; border: 2px solid #ff00e6; color: #ff9df3; box-shadow: 0 0 8px rgba(255,0,230,0.6); }
+        .msg-style-preview.elegant { background: linear-gradient(180deg, #fffdf4, #f8f0d8); color: #3d3210; border: 2px double #d4af37; font-family: Georgia, serif; }
+        .msg-style-preview.minimal { background: #141a22; color: #f0f4f8; border: 1px solid rgba(255,255,255,0.25); }
+        .msg-style-preview.celebration { background: linear-gradient(135deg, #ff6b6b, #ffe45c, #6bff8f); color: #fff; }
+        .msg-style-preview.retro { background: linear-gradient(160deg, #2d0a50, #781464); color: #6be7ff; border: 1px solid #ff6bd8; font-family: Orbitron, sans-serif; font-size: 0.65rem; }
+
+        .dp-card.dp-style-classic { /* rgba set by JS */ }
+        .dp-card.dp-style-party { background: linear-gradient(145deg, rgba(255,107,0,0.97), rgba(255,179,64,0.97)) !important; border: 2px solid #ffb340; }
+        .dp-card.dp-style-party .dp-msg, .dp-card.dp-style-party .dp-from { color: #fff !important; text-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+        .dp-card.dp-style-neon { background: rgba(11,11,20,0.96) !important; border: 1.5px solid #ff00e6; box-shadow: 0 0 14px rgba(255,0,230,0.55); }
+        .dp-card.dp-style-neon .dp-msg { color: #e8f8ff !important; }
+        .dp-card.dp-style-neon .dp-from { color: #ff9df3 !important; }
+        .dp-card.dp-style-elegant { background: linear-gradient(180deg, #fffdf4, #f8f0d8) !important; border: 3px double #d4af37; }
+        .dp-card.dp-style-elegant .dp-msg { color: #3d3210 !important; font-family: Georgia, serif; }
+        .dp-card.dp-style-elegant .dp-from { color: #8a6d1d !important; font-family: Georgia, serif; }
+        .dp-card.dp-style-minimal { background: rgba(20,26,34,0.94) !important; border: 1px solid rgba(255,255,255,0.22); }
+        .dp-card.dp-style-minimal .dp-msg { color: #f0f4f8 !important; }
+        .dp-card.dp-style-minimal .dp-from { color: #9fb0c0 !important; }
+        .dp-card.dp-style-celebration { background: linear-gradient(135deg, #ff6b6b, #ffb340, #ffe45c) !important; border: 2px solid rgba(255,255,255,0.6); }
+        .dp-card.dp-style-celebration .dp-msg, .dp-card.dp-style-celebration .dp-from { color: #fff !important; }
+        .dp-card.dp-style-retro { background: linear-gradient(160deg, rgba(45,10,80,0.96), rgba(120,20,100,0.96)) !important; border: 1.5px solid #ff6bd8; }
+        .dp-card.dp-style-retro .dp-msg { color: #6be7ff !important; font-family: Orbitron, sans-serif; font-size: 0.78rem; }
+        .dp-card.dp-style-retro .dp-from { color: #ff9df3 !important; font-family: Orbitron, sans-serif; }
+
+        .message-style-card-controls.is-disabled { opacity: 0.45; pointer-events: none; }
+
+        /* Guest hub phone preview (theme tab) */
+        .guest-theme-preview-col {
+            position: sticky;
+            top: 0.5rem;
+        }
+        .guest-phone-device {
+            margin: 0 auto;
+            width: min(100%, 300px);
+            padding: 10px;
+            border-radius: 34px;
+            background: linear-gradient(160deg, #3d3d42 0%, #1c1c1f 45%, #0f0f11 100%);
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.45),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+                inset 0 2px 4px rgba(255, 255, 255, 0.06);
+        }
+        .guest-phone-device__shell {
+            position: relative;
+            border-radius: 26px;
+            overflow: hidden;
+            height: min(620px, 62vh);
+            min-height: 480px;
+            background: #0a0a0a;
+            box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.85);
+        }
+        .guest-phone-device__notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 38%;
+            max-width: 120px;
+            height: 22px;
+            background: #0a0a0a;
+            border-radius: 0 0 14px 14px;
+            z-index: 20;
+            pointer-events: none;
+        }
+        .guest-phone-screen {
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            font-size: 14px;
+            color: var(--text-primary, #f0f0f5);
+            position: relative;
+        }
+        .guest-phone-screen .mdj-scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 40;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.1) 0px,
+                rgba(0, 0, 0, 0.1) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            opacity: 0.28;
+        }
+        .guest-phone-screen .name-input-group .form-control,
+        .guest-phone-screen .name-input-group .btn {
+            pointer-events: none;
+        }
+        .guest-phone-screen .option-card {
+            pointer-events: none;
+            cursor: default;
+        }
+        #editTabTheme .guest-theme-preview-hint {
+            font-size: 0.72rem;
+            opacity: 0.65;
+            margin-top: 0.35rem;
+            text-align: center;
+        }
+        .guest-theme-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .guest-theme-preset {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.35rem;
+            padding: 0.45rem 0.55rem 0.5rem;
+            min-width: 5.5rem;
+            border: 2px solid rgba(128, 128, 128, 0.35);
+            border-radius: 0.55rem;
+            background: rgba(128, 128, 128, 0.06);
+            cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+            text-align: center;
+        }
+        .guest-theme-preset:hover {
+            border-color: rgba(255, 107, 0, 0.55);
+            transform: translateY(-1px);
+        }
+        .guest-theme-preset.selected {
+            border-color: #ff6b00;
+            background: rgba(255, 107, 0, 0.1);
+        }
+        .guest-theme-preset__swatches {
+            display: flex;
+            height: 1.25rem;
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+        }
+        .guest-theme-preset__swatches span {
+            flex: 1;
+        }
+        .guest-theme-preset__name {
+            font-size: 0.72rem;
+            font-weight: 600;
+            line-height: 1.2;
+            opacity: 0.9;
         }
         .event-url {
             font-family: monospace;
@@ -222,59 +628,7 @@
             body.mdj-eyup-brand .mdj-events-mgmt-navbar .mdj-nav-controls .btn { min-width: 40px; }
         }
 
-        /* Dark mode */
-        body.dark-mode {
-            background: #0f1720;
-            color: #e6eef8;
-        }
-        body.dark-mode .card {
-            background: #101419;
-            border-color: rgba(255,255,255,0.03);
-            color: #d7e6f5;
-            box-shadow: none;
-        }
-        body.dark-mode .card-header {
-            background: rgba(255,255,255,0.03);
-            border-color: rgba(255,255,255,0.06);
-        }
-        body.dark-mode .card-footer {
-            background: rgba(255,255,255,0.02);
-            border-color: rgba(255,255,255,0.06);
-        }
-        body.dark-mode .event-url {
-            background: rgba(255,255,255,0.05);
-            color: #cfe8ff;
-        }
-        body.dark-mode .modal-content {
-            background: #101419;
-            color: #d7e6f5;
-        }
-        body.dark-mode .modal-header,
-        body.dark-mode .modal-footer {
-            border-color: rgba(255,255,255,0.1);
-        }
-        body.dark-mode .form-control,
-        body.dark-mode .form-select {
-            background: #0b1114;
-            color: #d7e6f5;
-            border-color: rgba(255,255,255,0.1);
-        }
-        body.dark-mode .text-muted {
-            color: #98a9bf !important;
-        }
-        body.dark-mode .btn-outline-light {
-            color: #fff;
-            border-color: rgba(255,255,255,0.12);
-        }
-        body.dark-mode .btn-outline-secondary {
-            color: #c7d5e6;
-            border-color: rgba(255,255,255,0.06);
-        }
-        body.dark-mode .btn-outline-primary {
-            color: #cfe8ff;
-            border-color: rgba(79, 174, 255, 0.18);
-        }
-        body.dark-mode .badge { opacity: 0.95; }
+        /* Theme surfaces: dj-dash-theme.css */
 
         /*
          Global style.css is a dark theme (light text). Bootstrap modals stay light unless
@@ -446,8 +800,9 @@
             align-items: center;
         }
     </style>
+    <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
 </head>
-<body class="mdj-eyup-brand mdj-dash-tools mdj-events-mgmt-page">
+<body class="mdj-eyup-brand mdj-dash-tools mdj-events-mgmt-page dark-mode">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">Event Management</h1>
 
@@ -459,135 +814,139 @@
                 <span class="logo-subtitle"><i class="fas fa-calendar-alt" aria-hidden="true"></i> Event Management</span>
             </div>
             <div class="mdj-nav-controls">
-                <a href="/dj" class="btn btn-outline-light btn-sm" title="Back to Dashboard">
+                <a href="/dj" class="btn btn-outline-light btn-sm" title="Back to dashboard">
                     <i class="fas fa-arrow-left"></i>
                 </a>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createEventModal">
-                    <i class="fas fa-plus me-1"></i>Create Event
-                </button>
-                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
+                <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global settings">
                     <i class="fas fa-gear"></i>
                 </a>
+                <% } %>
                 <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
                     <i class="fas fa-moon"></i>
                 </button>
+                <% if (portalUser) { %>
+                <button type="button" class="btn btn-outline-light btn-sm" id="djLogoutBtn" title="Sign out"><i class="fas fa-sign-out-alt"></i></button>
+                <% } %>
             </div>
         </div>
     </nav>
 
     <main class="container mdj-dash-main">
         <div class="mdj-dash-scroll">
-        <div id="eventsList" class="row g-3">
+        <% if (events && events.length > 0) { %>
+            <% const activeEventCount = events.filter(function(e) { return e.is_active; }).length; %>
+            <% const inactiveEventCount = events.length - activeEventCount; %>
+            <p class="mdj-events-lede mb-0">Find an event quickly — active gigs show by default. Use search or filters when the list grows.</p>
+            <div class="mdj-events-toolbar">
+                <div class="mdj-events-toolbar-left">
+                    <input type="search" class="form-control form-control-sm mdj-events-search" id="eventsSearch" placeholder="Search name, venue, slug…" autocomplete="off" aria-label="Search events">
+                    <div class="mdj-events-filters" role="group" aria-label="Filter events by status">
+                        <button type="button" class="btn btn-sm mdj-events-filter active" data-filter="active">Active <span class="mdj-events-filter-count"><%= activeEventCount %></span></button>
+                        <button type="button" class="btn btn-sm mdj-events-filter" data-filter="inactive">Inactive <span class="mdj-events-filter-count"><%= inactiveEventCount %></span></button>
+                        <button type="button" class="btn btn-sm mdj-events-filter" data-filter="all">All <span class="mdj-events-filter-count"><%= events.length %></span></button>
+                    </div>
+                </div>
+                <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                    <i class="fas fa-plus me-1"></i>New event
+                </button>
+                <% } %>
+            </div>
+            <div id="eventsEmptyFilter" class="mdj-events-empty-filter d-none" role="status">
+                <i class="fas fa-search mb-2 d-block"></i>
+                No events match your search or filter.
+            </div>
+        <% } %>
+
+        <div id="eventsList" class="mdj-events-list">
             <% if (events && events.length === 0) { %>
-                <div class="col-12">
-                    <div class="card text-center">
-                        <div class="card-body py-5">
-                            <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
-                            <h5 class="text-muted">No events yet</h5>
-                            <p class="text-muted">Create your first event to get a unique URL for customers</p>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
-                                <i class="fas fa-plus me-2"></i>Create Event
-                            </button>
-                        </div>
+                <div class="card text-center">
+                    <div class="card-body py-5">
+                        <i class="fas fa-calendar-plus fa-3x text-muted mb-3"></i>
+                        <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                        <h5 class="text-muted">No events yet</h5>
+                        <p class="text-muted">Create your first event to get a unique URL for customers</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createEventModal">
+                            <i class="fas fa-plus me-2"></i>Create Event
+                        </button>
+                        <% } else { %>
+                        <h5 class="text-muted">No assigned request events</h5>
+                        <p class="text-muted mb-0">Events appear here when your booking is linked to a requests event in the EYUP portal.</p>
+                        <p class="mt-2"><a href="https://eyupevents.uk/events/dj.html" target="_blank" rel="noopener">View your DJ portal</a></p>
+                        <% } %>
                     </div>
                 </div>
             <% } else if (events) { %>
                 <% events.forEach(function(event) { %>
-                    <div class="col-md-6 col-xl-4 col-xxl-3">
-                        <div class="card event-card <%= event.is_active ? 'active' : 'inactive' %>" data-event-id="<%= event.id %>">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0">
-                                    <% if (event.is_active) { %>
-                                        <span class="badge bg-success me-2">Active</span>
-                                    <% } else { %>
-                                        <span class="badge bg-secondary me-2">Inactive</span>
-                                    <% } %>
-                                    <% if (event.show_public) { %>
-                                        <span class="badge bg-primary me-2" title="Listed on public events page"><i class="fas fa-globe me-1"></i>Public</span>
-                                    <% } %>
+                    <% const searchBlob = [event.name, event.venue, event.slug, event.description].filter(Boolean).join(' ').toLowerCase(); %>
+                    <article class="mdj-event-row <%= event.is_active ? 'is-active' : 'is-inactive' %>" data-event-id="<%= event.id %>" data-active="<%= event.is_active ? '1' : '0' %>" data-search="<%= searchBlob.replace(/"/g, '&quot;') %>">
+                        <div class="mdj-event-row__main">
+                            <span class="mdj-event-row__status" aria-hidden="true"></span>
+                            <div class="mdj-event-row__body">
+                                <h2 class="mdj-event-row__title">
                                     <%= event.name %>
-                                </h6>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item edit-event" href="#" data-event-id="<%= event.id %>"><i class="fas fa-edit me-2"></i>Edit</a></li>
-                                        <li><a class="dropdown-item toggle-event" href="#" data-event-id="<%= event.id %>" data-active="<%= event.is_active %>">
-                                            <i class="fas fa-<%= event.is_active ? 'pause' : 'play' %> me-2"></i><%= event.is_active ? 'Deactivate' : 'Activate' %>
-                                        </a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger delete-event" href="#" data-event-id="<%= event.id %>"><i class="fas fa-trash me-2"></i>Delete</a></li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <% if (event.description) { %>
-                                    <p class="card-text small text-muted mb-2"><%= event.description %></p>
-                                <% } %>
-                                <% if (event.venue) { %>
-                                    <p class="card-text small mb-2"><i class="fas fa-map-marker-alt me-2"></i><%= event.venue %></p>
-                                <% } %>
-                                <% if (event.event_date) { %>
-                                    <p class="card-text small mb-2"><i class="fas fa-clock me-2"></i><%= new Date(event.event_date).toLocaleDateString() %></p>
-                                <% } %>
-                                
-                                <!-- Feature toggles display -->
-                                <div class="mb-2">
-                                    <% if (event.enable_song_requests) { %><span class="badge bg-success me-1"><i class="fas fa-music me-1"></i>Songs</span><% } %>
-                                    <% if (event.enable_karaoke_requests) { %><span class="badge bg-info me-1"><i class="fas fa-microphone me-1"></i>Karaoke</span><% } %>
-                                    <% if (event.enable_messages) { %><span class="badge bg-warning text-dark me-1"><i class="fas fa-envelope me-1"></i>Messages</span><% } %>
-                                    <% if (event.enable_photos) { %><span class="badge me-1" style="background:#a855f7;"><i class="fas fa-camera me-1"></i>Photos</span><% } %>
-                                </div>
-                                
-                                <div class="mt-3">
-                                    <label class="form-label small fw-bold">Customer URL:</label>
-                                    <div class="input-group input-group-sm">
-                                        <input type="text" class="form-control event-url" value="/event/<%= event.slug %>" readonly>
-                                        <button class="btn btn-outline-secondary copy-url" type="button" data-url="/event/<%= event.slug %>" title="Copy URL">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                        <button class="btn btn-outline-primary show-qr" type="button" data-slug="<%= event.slug %>" data-name="<%= event.name %>" title="Show QR Code">
-                                            <i class="fas fa-qrcode"></i>
-                                        </button>
+                                    <% if (event.show_public) { %>
+                                        <span class="badge bg-primary" title="Listed on public events page"><i class="fas fa-globe"></i></span>
+                                    <% } %>
+                                    <% if (!event.is_active) { %>
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    <% } %>
+                                </h2>
+                                <div class="mdj-event-row__subline">
+                                    <div class="mdj-event-row__meta">
+                                        <% if (event.event_date) { %>
+                                            <span><i class="fas fa-calendar-day"></i><%= new Date(event.event_date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) %></span>
+                                        <% } %>
+                                        <% if (event.venue) { %>
+                                            <span><i class="fas fa-map-marker-alt"></i><%= event.venue %></span>
+                                        <% } %>
+                                        <span class="mdj-event-row__slug"><i class="fas fa-link"></i>/<%= event.slug %></span>
+                                        <% if (event.stats && event.stats.totalPhotos) { %>
+                                            <span><i class="fas fa-images"></i><%= event.stats.totalPhotos %> photos</span>
+                                        <% } %>
+                                    </div>
+                                    <div class="mdj-event-row__features" aria-label="Enabled features">
+                                        <% if (event.enable_song_requests) { %><span class="mdj-event-row__feature bg-success text-white" title="Song requests"><i class="fas fa-music"></i></span><% } %>
+                                        <% if (event.enable_karaoke_requests) { %><span class="mdj-event-row__feature bg-info text-dark" title="Karaoke"><i class="fas fa-microphone"></i></span><% } %>
+                                        <% if (event.enable_messages) { %><span class="mdj-event-row__feature bg-warning text-dark" title="Messages"><i class="fas fa-envelope"></i></span><% } %>
+                                        <% if (event.enable_photos) { %><span class="mdj-event-row__feature text-white" style="background:#a855f7;" title="Guest photos"><i class="fas fa-camera"></i></span><% } %>
                                     </div>
                                 </div>
-                                
-                                <div class="mt-3">
-                                    <a href="/event/<%= event.slug %>" target="_blank" class="btn btn-sm btn-outline-success w-100">
-                                        <i class="fas fa-external-link-alt me-2"></i>Open Event Page
-                                    </a>
-                                </div>
-                                
-                                <!-- Display buttons -->
-                                <div class="mt-2 d-flex gap-1">
-                                    <a href="/dj/display/<%= event.slug %>" target="_blank" class="btn btn-sm btn-primary flex-grow-1" title="Open Display for this event">
-                                        <i class="fas fa-tv me-1"></i>Display
-                                    </a>
-                                    <button type="button" class="btn btn-sm btn-outline-primary edit-display" data-event-id="<%= event.id %>" title="Configure Display">
-                                        <i class="fas fa-cog"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Share + photos -->
-                                <div class="mt-2 d-flex gap-1">
-                                    <button type="button" class="btn btn-sm btn-outline-info flex-grow-1 share-links" data-event-id="<%= event.id %>" data-name="<%= event.name %>" title="Share event links">
-                                        <i class="fas fa-share-nodes me-1"></i>Share Links
-                                    </button>
-                                    <% if (event.enable_photos) { %>
-                                    <a href="/dj/photos/<%= event.slug %>" class="btn btn-sm btn-outline-light" title="Manage photos" style="border-color:#a855f7; color:#c084fc;">
-                                        <i class="fas fa-images"></i><% if (event.stats && event.stats.totalPhotos) { %> <%= event.stats.totalPhotos %><% } %>
-                                    </a>
-                                    <% } %>
-                                </div>
-                            </div>
-                            <div class="card-footer bg-transparent">
-                                <small class="text-muted">
-                                    Created: <%= new Date(event.created_at).toLocaleDateString() %>
-                                </small>
                             </div>
                         </div>
-                    </div>
+                        <div class="mdj-event-row__actions">
+                            <button type="button" class="btn btn-outline-secondary btn-sm copy-url" data-url="/event/<%= event.slug %>" title="Copy guest URL">
+                                <i class="fas fa-copy"></i><span class="d-none d-xl-inline ms-1">Copy</span>
+                            </button>
+                            <a href="/dj/display/<%= event.slug %>" target="_blank" rel="noopener" class="btn btn-primary btn-sm" title="Open display screen">
+                                <i class="fas fa-tv"></i><span class="d-none d-xl-inline ms-1">Display</span>
+                            </a>
+                            <button type="button" class="btn btn-outline-primary btn-sm edit-event" data-event-id="<%= event.id %>" title="Edit event">
+                                <i class="fas fa-edit"></i><span class="d-none d-xl-inline ms-1">Edit</span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle mdj-event-row__menu-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/event/<%= event.slug %>" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-2"></i>Open guest page</a></li>
+                                    <li><a class="dropdown-item" href="/dj?event=<%= event.id %>"><i class="fas fa-headphones me-2"></i>Open in dashboard</a></li>
+                                    <li><button type="button" class="dropdown-item share-links" data-event-id="<%= event.id %>" data-name="<%= event.name %>"><i class="fas fa-share-nodes me-2"></i>Share links</button></li>
+                                    <li><button type="button" class="dropdown-item show-qr" data-slug="<%= event.slug %>" data-name="<%= event.name %>"><i class="fas fa-qrcode me-2"></i>QR code</button></li>
+                                    <li><button type="button" class="dropdown-item edit-display" data-event-id="<%= event.id %>"><i class="fas fa-cog me-2"></i>Display settings</button></li>
+                                    <% if (event.enable_photos) { %>
+                                    <li><a class="dropdown-item" href="/dj/photos/<%= event.slug %>"><i class="fas fa-images me-2"></i>Manage photos<% if (event.stats && event.stats.totalPhotos) { %> (<%= event.stats.totalPhotos %>)<% } %></a></li>
+                                    <% } %>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item toggle-event" href="#" data-event-id="<%= event.id %>" data-active="<%= event.is_active ? '1' : '0' %>">
+                                        <i class="fas fa-<%= event.is_active ? 'pause' : 'play' %> me-2"></i><%= event.is_active ? 'Deactivate' : 'Activate' %>
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger delete-event" href="#" data-event-id="<%= event.id %>"><i class="fas fa-trash me-2"></i>Delete</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </article>
                 <% }); %>
             <% } %>
         </div>
@@ -876,82 +1235,244 @@
 
                             <!-- ── Tab 2: Guest Page Theme ── -->
                             <div class="tab-pane fade" id="editTabTheme" role="tabpanel">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
-                                        <div class="row">
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventHeadingColor" class="form-label">Heading Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#007bff">
-                                                    <input type="text" class="form-control" id="editEventHeadingColorText" value="#007bff" maxlength="7">
-                                                </div>
-                                            </div>
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventTextColor" class="form-label">Text Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#212529">
-                                                    <input type="text" class="form-control" id="editEventTextColorText" value="#212529" maxlength="7">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventBgColor" class="form-label">Background Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#ffffff">
-                                                    <input type="text" class="form-control" id="editEventBgColorText" value="#ffffff" maxlength="7">
-                                                </div>
-                                            </div>
-                                            <div class="col-6 mb-3">
-                                                <label for="editEventAccentColor" class="form-label">Accent/Button Color</label>
-                                                <div class="input-group">
-                                                    <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#0d6efd">
-                                                    <input type="text" class="form-control" id="editEventAccentColorText" value="#0d6efd" maxlength="7">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="editEventCustomCss" class="form-label">Custom CSS <span class="badge bg-secondary">Advanced</span></label>
-                                            <textarea class="form-control font-monospace" id="editEventCustomCss" rows="4" placeholder=".navbar { ... }"></textarea>
-                                            <div class="form-text">Add custom CSS rules for advanced styling</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6 class="text-muted mb-3"><i class="fas fa-images me-2"></i>Images</h6>
-                                        <div class="mb-3">
-                                            <label for="editEventBgImage" class="form-label">Background Image</label>
-                                            <div class="img-upload-row mb-1">
-                                                <img id="editBgImageThumb" class="img-thumb" src="" alt="" style="display: none;">
-                                                <input type="url" class="form-control" id="editEventBgImage" placeholder="https://... or upload →">
-                                                <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="bg" data-target="editEventBgImage" data-thumb="editBgImageThumb" title="Upload image">
-                                                    <i class="fas fa-upload"></i>
+                                <div class="row g-4 align-items-start">
+                                    <div class="col-lg-7">
+                                        <div class="guest-theme-toolbar mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                                <h6 class="text-muted mb-0"><i class="fas fa-swatchbook me-2"></i>Built-in themes</h6>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="guestThemeRestoreBtn" title="Clear custom colors, background image, and CSS">
+                                                    <i class="fas fa-undo me-1"></i>Restore EYUP defaults
                                                 </button>
                                             </div>
-                                            <div class="form-text">Shown behind the guest request pages. Leave empty for solid color.</div>
+                                            <div class="guest-theme-presets" id="guestThemePresets" role="list" aria-label="Built-in guest page themes"></div>
+                                            <p class="form-text mb-0 mt-2">Click a theme to fill the controls below. Save Changes to publish. Logo is kept when restoring defaults.</p>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="editEventLogoImage" class="form-label">Event Logo</label>
-                                            <div class="img-upload-row mb-1">
-                                                <img id="editLogoImageThumb" class="img-thumb" src="" alt="" style="display: none;">
-                                                <input type="url" class="form-control" id="editEventLogoImage" placeholder="https://... or upload →">
-                                                <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="logo" data-target="editEventLogoImage" data-thumb="editLogoImageThumb" title="Upload logo">
-                                                    <i class="fas fa-upload"></i>
-                                                </button>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-3"><i class="fas fa-fill-drip me-2"></i>Colors</h6>
+                                                <p class="form-text mb-3">Each control maps to the same element on the live guest hub. Clear a hex field to use the EYUP default for that element.</p>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventHeroTitleColor" class="form-label">Event title</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventHeroTitleColor" value="#ff6b00">
+                                                            <input type="text" class="form-control" id="editEventHeroTitleColorText" value="" placeholder="Default (orange gradient)" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventHeadingColor" class="form-label">Menu option titles</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventHeadingColor" value="#f0f0f5">
+                                                            <input type="text" class="form-control" id="editEventHeadingColorText" value="" placeholder="Default" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventTextColor" class="form-label">Subtitles &amp; descriptions</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventTextColor" value="#f0f0f5">
+                                                            <input type="text" class="form-control" id="editEventTextColorText" value="" placeholder="Default" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventAccentColor" class="form-label">Icons &amp; buttons</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventAccentColor" value="#ff6b00">
+                                                            <input type="text" class="form-control" id="editEventAccentColorText" value="" placeholder="Default" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventBgColor" class="form-label">Page background</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventBgColor" value="#0a0a0a">
+                                                            <input type="text" class="form-control" id="editEventBgColorText" value="" placeholder="Default" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventGuestCardColor" class="form-label">Menu card panels</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventGuestCardColor" value="#1a1a1a">
+                                                            <input type="text" class="form-control" id="editEventGuestCardColorText" value="" placeholder="Default (glass)" maxlength="22">
+                                                        </div>
+                                                        <div class="form-text">Hex or rgba, e.g. <code>rgba(0,0,0,0.45)</code></div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-6 mb-3">
+                                                        <label for="editEventGuestCardShadowColor" class="form-label">Menu card shadow</label>
+                                                        <div class="input-group">
+                                                            <input type="color" class="form-control form-control-color" id="editEventGuestCardShadowColor" value="#000000">
+                                                            <input type="text" class="form-control" id="editEventGuestCardShadowColorText" value="" placeholder="Default" maxlength="7">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="editEventCustomCss" class="form-label">Custom CSS <span class="badge bg-secondary">Advanced</span></label>
+                                                    <textarea class="form-control font-monospace" id="editEventCustomCss" rows="5" placeholder=".hero-title { letter-spacing: 0.05em; }&#10;.option-card { border-radius: 1rem; }"></textarea>
+                                                    <div class="form-text">Same rules as the live guest hub. Use <code>body</code> for page-wide styles — the preview maps that automatically. Target <code>.option-card</code>, <code>.hero-title</code>, <code>.options-grid</code>, etc.</div>
+                                                </div>
                                             </div>
-                                            <div class="form-text">Displayed at the top of the guest landing page (PNG/SVG with transparency works best).</div>
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted mb-3"><i class="fas fa-images me-2"></i>Images</h6>
+                                                <div class="mb-3">
+                                                    <label for="editEventBgImage" class="form-label">Background Image</label>
+                                                    <div class="img-upload-row mb-1">
+                                                        <img id="editBgImageThumb" class="img-thumb" src="" alt="" style="display: none;">
+                                                        <input type="url" class="form-control" id="editEventBgImage" placeholder="https://... or upload →">
+                                                        <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="bg" data-target="editEventBgImage" data-thumb="editBgImageThumb" title="Upload image">
+                                                            <i class="fas fa-upload"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="form-text">Shown behind the guest hub and request pages. Leave empty for solid color.</div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="editEventLogoImage" class="form-label">Event Logo</label>
+                                                    <div class="img-upload-row mb-1">
+                                                        <img id="editLogoImageThumb" class="img-thumb" src="" alt="" style="display: none;">
+                                                        <input type="url" class="form-control" id="editEventLogoImage" placeholder="https://... or upload →">
+                                                        <button type="button" class="btn btn-outline-primary theme-upload-btn" data-kind="logo" data-target="editEventLogoImage" data-thumb="editLogoImageThumb" title="Upload logo">
+                                                            <i class="fas fa-upload"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="form-text">Hero logo on the guest landing page (PNG/SVG with transparency works best).</div>
+                                                </div>
+                                                <div id="themeUploadStatus" class="small" aria-live="polite"></div>
+                                                <h6 class="text-muted mb-3 mt-3"><i class="fas fa-sliders-h me-2"></i>Layout</h6>
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="editGuestMenuCompact" checked>
+                                                    <label class="form-check-label" for="editGuestMenuCompact">Compact menu cards</label>
+                                                </div>
+                                                <div class="form-check form-switch mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="editGuestShowOptionDesc" checked>
+                                                    <label class="form-check-label" for="editGuestShowOptionDesc">Show option descriptions</label>
+                                                </div>
+                                                <div class="form-check form-switch mb-3">
+                                                    <input class="form-check-input" type="checkbox" id="editGuestHeroCompact">
+                                                    <label class="form-check-label" for="editGuestHeroCompact">Compact hero (smaller title &amp; logo)</label>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="editGuestBgOverlay" class="form-label">Background dim: <span id="editGuestBgOverlayValue">45</span>%</label>
+                                                    <input type="range" class="form-range" id="editGuestBgOverlay" min="0" max="80" value="45">
+                                                    <div class="form-text">Darkens the background image so text and cards stay readable.</div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="editGuestBgPosition" class="form-label">Background position</label>
+                                                    <select class="form-select form-select-sm" id="editGuestBgPosition">
+                                                        <option value="center">Center</option>
+                                                        <option value="top">Top</option>
+                                                        <option value="bottom">Bottom</option>
+                                                        <option value="left">Left</option>
+                                                        <option value="right">Right</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-0 mt-2">
+                                                    <label class="form-label d-flex align-items-center gap-2">
+                                                        <input type="checkbox" class="form-check-input mt-0" id="editGuestPreviewShowNameCard">
+                                                        Preview name step
+                                                    </label>
+                                                    <div class="form-text">Off shows the options menu (same as after a guest enters their name).</div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div id="themeUploadStatus" class="small" aria-live="polite"></div>
                                     </div>
-                                </div>
-
-                                <hr class="my-3">
-                                <div class="screen-preview-label"><i class="fas fa-eye me-1"></i>Live example — guest landing page</div>
-                                <div class="guest-preview" id="guestPreview">
-                                    <div class="gp-logo" id="gpLogo" style="display: none;"><img id="gpLogoImg" src="" alt="Event logo"></div>
-                                    <div class="gp-heading" id="gpHeading">Your Event Name</div>
-                                    <div class="gp-text" id="gpText">Welcome! Pick an option below to get involved.</div>
-                                    <span class="gp-btn" id="gpBtn"><i class="fas fa-music me-1"></i>Request a Song</span>
+                                    <div class="col-lg-5 guest-theme-preview-col">
+                                        <div class="screen-preview-label text-center"><i class="fas fa-mobile-alt me-1"></i>Live preview — guest hub</div>
+                                        <div class="guest-phone-device" aria-hidden="false">
+                                            <div class="guest-phone-device__shell">
+                                                <div class="guest-phone-device__notch" aria-hidden="true"></div>
+                                                <div class="guest-phone-screen mdj-eyup-brand mdj-guest-hub-page mdj-guest-hub-compact" id="guestPreviewScreen">
+                                                    <div class="mdj-scanlines" aria-hidden="true"></div>
+                                                    <style id="guestPreviewThemeStyle"></style>
+                                                    <main class="container mdj-guest-hub-main">
+                                                        <div class="index-page">
+                                                            <div class="guest-hub-top">
+                                                                <button type="button" class="nav-msg-btn guest-hub-messages-btn" tabindex="-1" aria-hidden="true">
+                                                                    <i class="fas fa-comment-dots"></i>
+                                                                    <span class="guest-hub-messages-label">Messages</span>
+                                                                </button>
+                                                            </div>
+                                                            <header class="hero-section">
+                                                                <div class="hero-event-logo" id="gpLogoWrap" style="display: none;">
+                                                                    <img id="gpLogoImg" src="" alt="">
+                                                                </div>
+                                                                <div class="hero-icon" id="gpHeroIcon">
+                                                                    <i class="fas fa-headphones-alt"></i>
+                                                                </div>
+                                                                <h1 class="hero-title" id="gpHeading">Your Event Name</h1>
+                                                                <p class="hero-subtitle" id="gpSubtitle">Make your requests and send messages to the DJ!</p>
+                                                            </header>
+                                                            <div class="name-card" id="gpNameCard" style="display: none;">
+                                                                <div class="name-card-inner">
+                                                                    <div class="name-card-icon"><i class="fas fa-user-circle"></i></div>
+                                                                    <h2 class="name-card-title">What's your name?</h2>
+                                                                    <div class="name-input-group">
+                                                                        <input type="text" class="form-control form-control-lg" value="Alex" readonly tabindex="-1" aria-hidden="true">
+                                                                        <button type="button" class="btn btn-primary btn-lg name-submit-btn" tabindex="-1" aria-hidden="true"><i class="fas fa-arrow-right"></i></button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div id="gpOptionsSection">
+                                                                <p class="options-prompt">What would you like to do?</p>
+                                                                <div class="options-grid">
+                                                                    <div class="option-card" data-gp-feature="song">
+                                                                        <div class="option-card-icon option-card-icon--songs"><i class="fas fa-music"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Song Request</h3>
+                                                                            <p class="option-card-desc">Browse and request songs from our music library</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="karaoke">
+                                                                        <div class="option-card-icon option-card-icon--karaoke"><i class="fas fa-microphone"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Karaoke Request</h3>
+                                                                            <p class="option-card-desc">Find your favorite karaoke songs to sing along</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="message">
+                                                                        <div class="option-card-icon option-card-icon--message"><i class="fas fa-paper-plane"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Send Message</h3>
+                                                                            <p class="option-card-desc">Send a custom message or special request to the DJ</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="photo" style="display: none;">
+                                                                        <div class="option-card-icon option-card-icon--photo"><i class="fas fa-camera"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Event Cam</h3>
+                                                                            <p class="option-card-desc">Open the camera and snap a photo for the event album</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                    <div class="option-card" data-gp-feature="tip" style="display: none;">
+                                                                        <div class="option-card-icon option-card-icon--tip"><i class="fas fa-hand-holding-dollar"></i></div>
+                                                                        <div class="option-card-content">
+                                                                            <h3 class="option-card-title">Tip the DJ</h3>
+                                                                            <p class="option-card-desc">Show your appreciation with a tip!</p>
+                                                                        </div>
+                                                                        <div class="option-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <footer class="mdj-eyup-footer mdj-eyup-footer--compact" aria-hidden="true">
+                                                            <div class="mdj-footer-container">
+                                                                <div class="mdj-company-foot">
+                                                                    <p class="mdj-company-foot__legal">&copy; 2026 EYUP EVENTS UK LTD · Co. no. 17186451 · All rights reserved</p>
+                                                                </div>
+                                                            </div>
+                                                        </footer>
+                                                    </main>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p class="guest-theme-preview-hint">Scroll inside the phone to see the full guest screen.</p>
+                                    </div>
                                 </div>
                             </div>
 
@@ -980,6 +1501,12 @@
                                         <div class="mb-3">
                                             <label for="editDisplayQrLabel" class="form-label">QR Label</label>
                                             <input type="text" class="form-control" id="editDisplayQrLabel" placeholder="Scan to Request Songs!">
+                                        </div>
+                                        <h6 class="text-muted mb-3 mt-2"><i class="fas fa-comment-dots me-2"></i>Messages</h6>
+                                        <div class="form-check form-switch mb-3">
+                                            <input class="form-check-input" type="checkbox" id="editDisplayShowWaitingMessage">
+                                            <label class="form-check-label" for="editDisplayShowWaitingMessage">Show idle message when waiting</label>
+                                            <div class="form-text">When off, the display shows only your background until a customer message arrives.</div>
                                         </div>
                                     </div>
                                     <div class="col-md-6">
@@ -1014,14 +1541,15 @@
                                         <div class="row">
                                             <div class="col-6 mb-3">
                                                 <label for="editDisplayCardColor" class="form-label">Card Background</label>
-                                                <div class="input-group">
+                                                <div class="input-group message-style-card-controls" id="editDisplayCardControls">
                                                     <input type="color" class="form-control form-control-color" id="editDisplayCardColor" value="#ffffff">
                                                     <input type="text" class="form-control" id="editDisplayCardColorText" value="#ffffff" maxlength="7">
                                                 </div>
+                                                <div class="form-text">Used by the Classic theme only.</div>
                                             </div>
                                             <div class="col-6 mb-3">
                                                 <label for="editDisplayCardOpacity" class="form-label">Opacity: <span id="editDisplayCardOpacityValue">85</span>%</label>
-                                                <input type="range" class="form-range" id="editDisplayCardOpacity" min="50" max="100" value="85">
+                                                <input type="range" class="form-range message-style-card-controls" id="editDisplayCardOpacity" min="50" max="100" value="85">
                                             </div>
                                         </div>
                                         <a href="#" id="editOpenDisplayLink" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -1045,6 +1573,11 @@
                                                 <label for="editDisplaySlideshowSeconds" class="form-label">Seconds per image</label>
                                                 <input type="number" class="form-control" id="editDisplaySlideshowSeconds" min="5" max="300" value="15">
                                             </div>
+                                            <div class="col-12">
+                                                <label for="editDisplayBgOverlayOpacity" class="form-label">Image overlay opacity: <span id="editDisplayBgOverlayOpacityValue">45</span>%</label>
+                                                <input type="range" class="form-range" id="editDisplayBgOverlayOpacity" min="0" max="100" value="45">
+                                                <div class="form-text">How strongly the gradient tints slideshow and background images. Lower = more vivid photos; 0 = no tint.</div>
+                                            </div>
                                         </div>
                                         <ul class="slideshow-list mb-3" id="editDisplaySlideshowList">
                                             <li class="text-muted small">Open an event to manage slideshow images.</li>
@@ -1062,6 +1595,52 @@
                                 <hr class="my-3">
                                 <div class="row">
                                     <div class="col-lg-5">
+                                        <h6 class="text-muted mb-2"><i class="fas fa-comment-dots me-2"></i>Message Display Style</h6>
+                                        <p class="small text-muted mb-2">Theme for guest messages on the big screen display.</p>
+                                        <div id="editMessageStyleOptions">
+                                            <div class="banner-style-option" data-value="">
+                                                <input type="radio" name="editMessageStyle" value="" class="form-check-input mt-0">
+                                                <span class="msg-style-preview classic"><i class="fas fa-globe me-1"></i>Global</span>
+                                                <span class="small text-muted">Use the style from Global Settings</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="classic">
+                                                <input type="radio" name="editMessageStyle" value="classic" class="form-check-input mt-0">
+                                                <span class="msg-style-preview classic">Classic</span>
+                                                <span class="small text-muted">Custom card colour — clean &amp; flexible</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="party">
+                                                <input type="radio" name="editMessageStyle" value="party" class="form-check-input mt-0">
+                                                <span class="msg-style-preview party">Party</span>
+                                                <span class="small text-muted">Rainbow edge &amp; warm glow</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="neon">
+                                                <input type="radio" name="editMessageStyle" value="neon" class="form-check-input mt-0">
+                                                <span class="msg-style-preview neon">Neon</span>
+                                                <span class="small text-muted">Glowing club vibes</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="elegant">
+                                                <input type="radio" name="editMessageStyle" value="elegant" class="form-check-input mt-0">
+                                                <span class="msg-style-preview elegant">Elegant</span>
+                                                <span class="small text-muted">Gold &amp; shimmer — weddings &amp; formal</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="minimal">
+                                                <input type="radio" name="editMessageStyle" value="minimal" class="form-check-input mt-0">
+                                                <span class="msg-style-preview minimal">Minimal</span>
+                                                <span class="small text-muted">Clean &amp; understated</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="celebration">
+                                                <input type="radio" name="editMessageStyle" value="celebration" class="form-check-input mt-0">
+                                                <span class="msg-style-preview celebration">Celebration</span>
+                                                <span class="small text-muted">Bold rainbow — birthdays &amp; milestones</span>
+                                            </div>
+                                            <div class="banner-style-option" data-value="retro">
+                                                <input type="radio" name="editMessageStyle" value="retro" class="form-check-input mt-0">
+                                                <span class="msg-style-preview retro">Retro</span>
+                                                <span class="small text-muted">Synthwave — 80s night</span>
+                                            </div>
+                                        </div>
+
+                                        <hr class="my-3">
                                         <h6 class="text-muted mb-2"><i class="fas fa-camera me-2"></i>Photo Popup Banner</h6>
                                         <p class="small text-muted mb-2">Style of the banner and frame when guest photos pop up on this event's display.</p>
                                         <div id="editBannerStyleOptions">
@@ -1182,7 +1761,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/display-slideshow-admin.js"></script>
+    <script src="/js/guest-event-theme.js?v=3"></script>
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -1201,8 +1782,9 @@
                 }
             }
 
-            const saved = localStorage.getItem('djDashboardDarkMode') === 'true';
-            setMode(saved);
+            const saved = localStorage.getItem('djDashboardDarkMode');
+            const enabled = saved === null ? true : saved === 'true';
+            setMode(enabled);
 
             toggle.addEventListener('click', function() {
                 const enabled = document.body.classList.toggle('dark-mode');
@@ -1211,7 +1793,53 @@
             });
         }
 
-        // Modal instances
+        document.getElementById('djLogoutBtn')?.addEventListener('click', function () {
+            if (typeof window.mdjLogout === 'function') window.mdjLogout();
+        });
+
+        // Event list search + status filter
+        (function initEventsListFilter() {
+            const searchInput = document.getElementById('eventsSearch');
+            const filterBtns = document.querySelectorAll('.mdj-events-filter');
+            const rows = document.querySelectorAll('.mdj-event-row');
+            const emptyState = document.getElementById('eventsEmptyFilter');
+            if (!rows.length || !filterBtns.length) return;
+
+            let currentFilter = localStorage.getItem('mdjEventsFilter') || 'active';
+
+            function applyEventsListFilter() {
+                const q = (searchInput?.value || '').trim().toLowerCase();
+                let visible = 0;
+                rows.forEach(function(row) {
+                    const active = row.dataset.active === '1';
+                    const matchesFilter =
+                        currentFilter === 'all' ||
+                        (currentFilter === 'active' && active) ||
+                        (currentFilter === 'inactive' && !active);
+                    const matchesSearch = !q || (row.dataset.search || '').includes(q);
+                    const show = matchesFilter && matchesSearch;
+                    row.classList.toggle('d-none', !show);
+                    if (show) visible++;
+                });
+                if (emptyState) emptyState.classList.toggle('d-none', visible > 0);
+            }
+
+            filterBtns.forEach(function(btn) {
+                btn.classList.toggle('active', btn.dataset.filter === currentFilter);
+                btn.addEventListener('click', function() {
+                    currentFilter = btn.dataset.filter;
+                    localStorage.setItem('mdjEventsFilter', currentFilter);
+                    filterBtns.forEach(function(b) { b.classList.toggle('active', b === btn); });
+                    applyEventsListFilter();
+                });
+            });
+
+            searchInput?.addEventListener('input', applyEventsListFilter);
+            applyEventsListFilter();
+        })();
+
+        const mdjIsAdmin = <%= typeof isAdmin !== 'undefined' && isAdmin ? 'true' : 'false' %>;
+
         const createEventModal = new bootstrap.Modal(document.getElementById('createEventModal'));
         const editEventModal = new bootstrap.Modal(document.getElementById('editEventModal'));
 
@@ -1225,7 +1853,8 @@
         const qrCodeModal = new bootstrap.Modal(document.getElementById('qrCodeModal'));
 
         // Pre-check the create-modal feature toggles from global "New Event Defaults"
-        fetch('/api/settings')
+        if (mdjIsAdmin) {
+        mdjFetch('/api/settings')
             .then(res => res.json())
             .then(settings => {
                 document.getElementById('eventEnableSongRequests').checked = settings.default_enable_song_requests !== false;
@@ -1236,13 +1865,17 @@
                 document.getElementById('tipConfigFields').style.display = settings.default_enable_tips ? 'block' : 'none';
             })
             .catch(() => { /* fall back to hard-coded checked states */ });
+        }
 
         // Sync color pickers with text inputs
         function setupColorSync(colorId, textId) {
             const colorInput = document.getElementById(colorId);
             const textInput = document.getElementById(textId);
             if (colorInput && textInput) {
-                colorInput.addEventListener('input', () => textInput.value = colorInput.value);
+                colorInput.addEventListener('input', () => {
+                    textInput.value = colorInput.value;
+                    textInput.dispatchEvent(new Event('input', { bubbles: true }));
+                });
                 textInput.addEventListener('input', () => {
                     if (/^#[0-9A-Fa-f]{6}$/.test(textInput.value)) {
                         colorInput.value = textInput.value;
@@ -1258,10 +1891,13 @@
         setupColorSync('eventAccentColor', 'eventAccentColorText');
         
         // Setup color sync for edit modal
+        setupColorSync('editEventHeroTitleColor', 'editEventHeroTitleColorText');
         setupColorSync('editEventHeadingColor', 'editEventHeadingColorText');
         setupColorSync('editEventTextColor', 'editEventTextColorText');
         setupColorSync('editEventBgColor', 'editEventBgColorText');
         setupColorSync('editEventAccentColor', 'editEventAccentColorText');
+        setupColorSync('editEventGuestCardColor', 'editEventGuestCardColorText');
+        setupColorSync('editEventGuestCardShadowColor', 'editEventGuestCardShadowColorText');
         setupColorSync('editDisplayBgColor1', 'editDisplayBgColor1Text');
         setupColorSync('editDisplayBgColor2', 'editDisplayBgColor2Text');
         setupColorSync('editDisplayCardColor', 'editDisplayCardColorText');
@@ -1276,6 +1912,36 @@
 
         // ── Photo banner style picker (per event; '' = use global setting) ──
         const editBannerOptions = document.querySelectorAll('#editBannerStyleOptions .banner-style-option');
+        const GLOBAL_MESSAGE_STYLE = '<%= typeof globalDisplayMessageStyle !== "undefined" ? globalDisplayMessageStyle : "classic" %>';
+
+        function resolveEditMessageStyle(value) {
+            return value || GLOBAL_MESSAGE_STYLE || 'classic';
+        }
+
+        function syncMessageStyleCardControls() {
+            const style = resolveEditMessageStyle(
+                (document.querySelector('input[name="editMessageStyle"]:checked') || {}).value
+            );
+            const isClassic = style === 'classic';
+            document.querySelectorAll('.message-style-card-controls').forEach(el => {
+                el.classList.toggle('is-disabled', !isClassic);
+            });
+        }
+
+        const editMessageOptions = document.querySelectorAll('#editMessageStyleOptions .banner-style-option');
+        function selectEditMessageStyle(value) {
+            editMessageOptions.forEach(opt => {
+                const isSelected = opt.dataset.value === value;
+                opt.classList.toggle('selected', isSelected);
+                opt.querySelector('input').checked = isSelected;
+            });
+            syncMessageStyleCardControls();
+            updateDisplayPreview();
+        }
+        editMessageOptions.forEach(opt => {
+            opt.addEventListener('click', () => selectEditMessageStyle(opt.dataset.value));
+        });
+
         function selectEditBannerStyle(value) {
             editBannerOptions.forEach(opt => {
                 const isSelected = opt.dataset.value === value;
@@ -1291,20 +1957,233 @@
             opt.addEventListener('click', () => selectEditBannerStyle(opt.dataset.value));
         });
 
+        function isEventFlagOn(value, defaultOn) {
+            if (value === 0 || value === false || value === '0') return false;
+            if (value === 1 || value === true || value === '1') return true;
+            return defaultOn !== false;
+        }
+
+        // Guest theme — same rules as index.ejs (scoped for preview)
+        const GUEST_THEME_LEGACY = { text: '#212529', bg: '#ffffff', accent: '#0d6efd' };
+        const GUEST_THEME_PICKER = { text: '#f0f0f5', bg: '#0a0a0a', accent: '#ff6b00' };
+
+        function normalizeGuestThemeStored(value, key) {
+            const v = (value || '').trim();
+            if (!v) return '';
+            if (GUEST_THEME_LEGACY[key] && v.toLowerCase() === GUEST_THEME_LEGACY[key].toLowerCase()) return '';
+            return v;
+        }
+
+        function readGuestThemeField(textId) {
+            const raw = (document.getElementById(textId).value || '').trim();
+            if (!raw) return null;
+            if (/^#[0-9A-Fa-f]{6}$/.test(raw)) return raw;
+            if (/^rgba?\(/i.test(raw)) return raw;
+            return null;
+        }
+
+        function loadGuestThemeEditorFields(event) {
+            applyGuestThemeValues({
+                hero_title_color: (event.hero_title_color || '').trim(),
+                heading_color: (event.heading_color || '').trim(),
+                text_color: normalizeGuestThemeStored(event.text_color, 'text'),
+                bg_color: normalizeGuestThemeStored(event.bg_color, 'bg'),
+                accent_color: normalizeGuestThemeStored(event.accent_color, 'accent'),
+                guest_card_color: (event.guest_card_color || '').trim(),
+                guest_card_shadow_color: (event.guest_card_shadow_color || '').trim()
+            });
+            document.getElementById('editGuestMenuCompact').checked = event.guest_menu_compact !== 0;
+            document.getElementById('editGuestShowOptionDesc').checked = event.guest_show_option_desc !== 0;
+            document.getElementById('editGuestHeroCompact').checked = event.guest_hero_compact === 1;
+            const overlay = event.guest_bg_overlay != null && event.guest_bg_overlay !== ''
+                ? Math.max(0, Math.min(80, parseInt(event.guest_bg_overlay, 10) || 45))
+                : 45;
+            document.getElementById('editGuestBgOverlay').value = overlay;
+            document.getElementById('editGuestBgOverlayValue').textContent = overlay;
+            document.getElementById('editGuestBgPosition').value = event.guest_bg_position || 'center';
+        }
+
+        const GUEST_THEME_FIELD_MAP = [
+            { key: 'hero_title_color', colorId: 'editEventHeroTitleColor', textId: 'editEventHeroTitleColorText', picker: 'accent' },
+            { key: 'heading_color', colorId: 'editEventHeadingColor', textId: 'editEventHeadingColorText', picker: 'text' },
+            { key: 'text_color', colorId: 'editEventTextColor', textId: 'editEventTextColorText', picker: 'text' },
+            { key: 'bg_color', colorId: 'editEventBgColor', textId: 'editEventBgColorText', picker: 'bg' },
+            { key: 'accent_color', colorId: 'editEventAccentColor', textId: 'editEventAccentColorText', picker: 'accent' },
+            { key: 'guest_card_color', colorId: 'editEventGuestCardColor', textId: 'editEventGuestCardColorText', picker: 'bg' },
+            { key: 'guest_card_shadow_color', colorId: 'editEventGuestCardShadowColor', textId: 'editEventGuestCardShadowColorText', picker: 'bg' }
+        ];
+
+        function applyGuestThemeValues(theme) {
+            const t = theme || {};
+            GUEST_THEME_FIELD_MAP.forEach(({ key, colorId, textId, picker }) => {
+                const val = (t[key] || '').trim();
+                document.getElementById(textId).value = val;
+                const colorEl = document.getElementById(colorId);
+                if (val && /^#[0-9A-Fa-f]{6}$/.test(val)) {
+                    colorEl.value = val;
+                } else {
+                    colorEl.value = GUEST_THEME_PICKER[picker] || GUEST_THEME_PICKER.text;
+                }
+            });
+            updateGuestPreview();
+        }
+
+        function restoreGuestThemeDefaults() {
+            applyGuestThemeValues({});
+            document.getElementById('editEventCustomCss').value = '';
+            document.getElementById('editEventBgImage').value = '';
+            document.getElementById('editEventBgImage').dispatchEvent(new Event('change'));
+            document.getElementById('editGuestMenuCompact').checked = true;
+            document.getElementById('editGuestShowOptionDesc').checked = true;
+            document.getElementById('editGuestHeroCompact').checked = false;
+            document.getElementById('editGuestBgOverlay').value = 45;
+            document.getElementById('editGuestBgOverlayValue').textContent = '45';
+            document.getElementById('editGuestBgPosition').value = 'center';
+            highlightGuestThemePreset('eyup');
+        }
+
+        function applyGuestLayoutPreviewClasses() {
+            const preview = document.getElementById('guestPreviewScreen');
+            if (!preview) return;
+            preview.classList.toggle('mdj-guest-hub-compact', document.getElementById('editGuestMenuCompact').checked);
+            preview.classList.toggle('mdj-guest-hub-no-desc', !document.getElementById('editGuestShowOptionDesc').checked);
+            preview.classList.toggle('mdj-guest-hub-hero-compact', document.getElementById('editGuestHeroCompact').checked);
+        }
+
+        function highlightGuestThemePreset(presetId) {
+            document.querySelectorAll('.guest-theme-preset').forEach(btn => {
+                btn.classList.toggle('selected', presetId && btn.dataset.presetId === presetId);
+            });
+        }
+
+        function guestThemeValuesMatchPreset(presetTheme) {
+            const pt = presetTheme || {};
+            return GUEST_THEME_FIELD_MAP.every(({ key, textId }) => {
+                const current = (document.getElementById(textId).value || '').trim();
+                const expected = (pt[key] || '').trim();
+                return current.toLowerCase() === expected.toLowerCase();
+            });
+        }
+
+        function syncGuestThemePresetHighlight() {
+            const presets = window.GUEST_THEME_PRESETS || [];
+            let matched = null;
+            for (const p of presets) {
+                if (guestThemeValuesMatchPreset(p.theme)) {
+                    matched = p.id;
+                    break;
+                }
+            }
+            highlightGuestThemePreset(matched);
+        }
+
+        function renderGuestThemePresets() {
+            const container = document.getElementById('guestThemePresets');
+            if (!container || !window.GUEST_THEME_PRESETS) return;
+            container.innerHTML = '';
+            window.GUEST_THEME_PRESETS.forEach(preset => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'guest-theme-preset';
+                btn.dataset.presetId = preset.id;
+                btn.setAttribute('role', 'listitem');
+                btn.title = 'Apply ' + preset.name + ' theme';
+                const sw = document.createElement('span');
+                sw.className = 'guest-theme-preset__swatches';
+                (preset.swatch || ['#0a0a0a', '#ff6b00', '#fff']).forEach(hex => {
+                    const s = document.createElement('span');
+                    s.style.background = hex;
+                    sw.appendChild(s);
+                });
+                const label = document.createElement('span');
+                label.className = 'guest-theme-preset__name';
+                label.textContent = preset.name;
+                btn.appendChild(sw);
+                btn.appendChild(label);
+                btn.addEventListener('click', () => {
+                    applyGuestThemeValues(preset.theme || {});
+                    highlightGuestThemePreset(preset.id);
+                });
+                container.appendChild(btn);
+            });
+        }
+
+        document.getElementById('guestThemeRestoreBtn')?.addEventListener('click', () => {
+            if (confirm('Reset theme colors, background image, and custom CSS to EYUP defaults?\n\nYour event logo is kept. Click Save Changes to update the live guest page.')) {
+                restoreGuestThemeDefaults();
+            }
+        });
+
+        renderGuestThemePresets();
+
         // ── Live example previews ──
+        function escapeCssUrl(url) {
+            return window.escapeGuestThemeCssUrl ? window.escapeGuestThemeCssUrl(url) : String(url);
+        }
+
         function updateGuestPreview() {
-            const preview = document.getElementById('guestPreview');
-            const bgColor = document.getElementById('editEventBgColorText').value || '#ffffff';
-            const bgImage = document.getElementById('editEventBgImage').value.trim();
-            preview.style.backgroundColor = bgColor;
-            preview.style.backgroundImage = bgImage ? `linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url('${bgImage}')` : 'none';
-            document.getElementById('gpHeading').style.color = document.getElementById('editEventHeadingColorText').value || '#007bff';
-            document.getElementById('gpHeading').textContent = document.getElementById('editEventName').value.trim() || 'Your Event Name';
-            document.getElementById('gpText').style.color = document.getElementById('editEventTextColorText').value || '#212529';
-            document.getElementById('gpBtn').style.background = document.getElementById('editEventAccentColorText').value || '#0d6efd';
+            const themeStyle = document.getElementById('guestPreviewThemeStyle');
+            if (!themeStyle || typeof window.buildGuestEventThemeCss !== 'function') return;
+
+            let customCss = (document.getElementById('editEventCustomCss').value || '').trim();
+            if (customCss) customCss = customCss.replace(/\bbody\b/g, '#guestPreviewScreen');
+
+            const theme = {
+                hero_title_color: readGuestThemeField('editEventHeroTitleColorText'),
+                heading_color: readGuestThemeField('editEventHeadingColorText'),
+                text_color: readGuestThemeField('editEventTextColorText'),
+                bg_color: readGuestThemeField('editEventBgColorText'),
+                accent_color: readGuestThemeField('editEventAccentColorText'),
+                guest_card_color: readGuestThemeField('editEventGuestCardColorText'),
+                guest_card_shadow_color: readGuestThemeField('editEventGuestCardShadowColorText'),
+                bg_image: document.getElementById('editEventBgImage').value.trim() || null,
+                guest_menu_compact: document.getElementById('editGuestMenuCompact').checked ? 1 : 0,
+                guest_show_option_desc: document.getElementById('editGuestShowOptionDesc').checked ? 1 : 0,
+                guest_hero_compact: document.getElementById('editGuestHeroCompact').checked ? 1 : 0,
+                guest_bg_overlay: parseInt(document.getElementById('editGuestBgOverlay').value, 10) || 0,
+                guest_bg_position: document.getElementById('editGuestBgPosition').value || 'center',
+                custom_css: customCss
+            };
+
+            applyGuestLayoutPreviewClasses();
+            themeStyle.textContent = window.buildGuestEventThemeCss('#guestPreviewScreen', theme);
+
+            const eventName = document.getElementById('editEventName').value.trim() || 'Your Event Name';
+            document.getElementById('gpHeading').textContent = eventName;
+            document.getElementById('gpSubtitle').textContent = 'Make your requests and send messages to the DJ!';
+
             const logo = document.getElementById('editEventLogoImage').value.trim();
-            document.getElementById('gpLogo').style.display = logo ? '' : 'none';
-            if (logo) document.getElementById('gpLogoImg').src = logo;
+            document.getElementById('gpLogoWrap').style.display = logo ? '' : 'none';
+            document.getElementById('gpHeroIcon').style.display = logo ? 'none' : '';
+            if (logo) {
+                document.getElementById('gpLogoImg').src = logo;
+                document.getElementById('gpLogoImg').alt = eventName + ' logo';
+            }
+
+            const showName = document.getElementById('editGuestPreviewShowNameCard').checked;
+            document.getElementById('gpNameCard').style.display = showName ? '' : 'none';
+            document.getElementById('gpOptionsSection').style.display = showName ? 'none' : '';
+
+            const featureMap = {
+                song: document.getElementById('editEventEnableSongRequests').checked,
+                karaoke: document.getElementById('editEventEnableKaraokeRequests').checked,
+                message: document.getElementById('editEventEnableMessages').checked,
+                photo: document.getElementById('editEventEnablePhotos').checked,
+                tip: document.getElementById('editEventEnableTips').checked
+            };
+            document.querySelectorAll('#guestPreviewScreen [data-gp-feature]').forEach(el => {
+                const on = featureMap[el.dataset.gpFeature];
+                el.style.display = on ? '' : 'none';
+            });
+            syncGuestThemePresetHighlight();
+        }
+
+        function displayColorWithAlpha(hex, opacityPercent) {
+            const h = (hex && /^#[0-9A-Fa-f]{6}$/i.test(hex)) ? hex : '#000428';
+            const p = Math.max(0, Math.min(100, Number(opacityPercent) || 0));
+            if (p <= 0) return 'transparent';
+            const a = Math.round(p / 100 * 255).toString(16).padStart(2, '0');
+            return h + a;
         }
 
         function updateDisplayPreview() {
@@ -1312,8 +2191,12 @@
             const bg1 = document.getElementById('editDisplayBgColor1Text').value || '#000428';
             const bg2 = document.getElementById('editDisplayBgColor2Text').value || '#004e92';
             const bgImage = document.getElementById('editDisplayBgImage').value.trim();
+            const overlayOpacity = parseInt(document.getElementById('editDisplayBgOverlayOpacity').value, 10);
+            const overlay = Number.isFinite(overlayOpacity) && overlayOpacity > 0
+                ? `linear-gradient(180deg, ${displayColorWithAlpha(bg1, overlayOpacity)}, ${displayColorWithAlpha(bg2, overlayOpacity)})`
+                : '';
             preview.style.background = bgImage
-                ? `linear-gradient(180deg, ${bg1}aa, ${bg2}aa), url('${bgImage}') center/cover`
+                ? `${overlay ? overlay + ', ' : ''}url('${bgImage.replace(/'/g, "\\'")}') center/cover`
                 : `linear-gradient(180deg, ${bg1}, ${bg2})`;
 
             const qr = document.getElementById('dpQr');
@@ -1322,20 +2205,49 @@
 
             const cardColor = document.getElementById('editDisplayCardColorText').value || '#ffffff';
             const opacity = (parseInt(document.getElementById('editDisplayCardOpacity').value, 10) || 85) / 100;
-            const r = parseInt(cardColor.slice(1, 3), 16), g = parseInt(cardColor.slice(3, 5), 16), b = parseInt(cardColor.slice(5, 7), 16);
-            document.getElementById('dpCard').style.background = `rgba(${r},${g},${b},${opacity})`;
+            const msgStyle = resolveEditMessageStyle(
+                (document.querySelector('input[name="editMessageStyle"]:checked') || {}).value
+            );
+            const dpCard = document.getElementById('dpCard');
+            dpCard.className = 'dp-card dp-style-' + msgStyle;
+            if (msgStyle === 'classic') {
+                const r = parseInt(cardColor.slice(1, 3), 16), g = parseInt(cardColor.slice(3, 5), 16), b = parseInt(cardColor.slice(5, 7), 16);
+                dpCard.style.background = `rgba(${r},${g},${b},${opacity})`;
+            } else {
+                dpCard.style.background = '';
+            }
         }
 
+        document.getElementById('editDisplayBgOverlayOpacity')?.addEventListener('input', function() {
+            document.getElementById('editDisplayBgOverlayOpacityValue').textContent = this.value;
+            updateDisplayPreview();
+        });
+
+        document.getElementById('editGuestBgOverlay')?.addEventListener('input', function() {
+            document.getElementById('editGuestBgOverlayValue').textContent = this.value;
+            updateGuestPreview();
+        });
+
+        document.getElementById('editTabThemeBtn')?.addEventListener('shown.bs.tab', updateGuestPreview);
+
         // Any relevant field updates its preview as you type/pick
-        ['editEventName', 'editEventHeadingColor', 'editEventHeadingColorText', 'editEventTextColor', 'editEventTextColorText',
+        ['editEventName', 'editEventDescription', 'editEventHeroTitleColor', 'editEventHeroTitleColorText',
+         'editEventHeadingColor', 'editEventHeadingColorText', 'editEventTextColor', 'editEventTextColorText',
          'editEventBgColor', 'editEventBgColorText', 'editEventAccentColor', 'editEventAccentColorText',
-         'editEventBgImage', 'editEventLogoImage'].forEach(id => {
+         'editEventGuestCardColor', 'editEventGuestCardColorText',
+         'editEventGuestCardShadowColor', 'editEventGuestCardShadowColorText',
+         'editEventBgImage', 'editEventLogoImage', 'editEventCustomCss',
+         'editEventEnableSongRequests', 'editEventEnableKaraokeRequests', 'editEventEnableMessages',
+         'editEventEnablePhotos', 'editEventEnableTips', 'editGuestPreviewShowNameCard',
+         'editGuestMenuCompact', 'editGuestShowOptionDesc', 'editGuestHeroCompact',
+         'editGuestBgOverlay', 'editGuestBgPosition'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('input', updateGuestPreview);
             el.addEventListener('change', updateGuestPreview);
         });
         ['editDisplayShowQr', 'editDisplayQrPosition', 'editDisplayBgColor1', 'editDisplayBgColor1Text',
          'editDisplayBgColor2', 'editDisplayBgColor2Text', 'editDisplayBgImage',
+         'editDisplayBgOverlayOpacity',
          'editDisplayCardColor', 'editDisplayCardColorText', 'editDisplayCardOpacity'].forEach(id => {
             const el = document.getElementById(id);
             el.addEventListener('input', updateDisplayPreview);
@@ -1381,7 +2293,7 @@
                     try {
                         const formData = new FormData();
                         formData.append('image', file);
-                        const res = await fetch(`/api/events/${eventId}/theme-image?kind=${kind}`, {
+                        const res = await mdjFetch(`/api/events/${eventId}/theme-image?kind=${kind}`, {
                             method: 'POST',
                             body: formData
                         });
@@ -1472,6 +2384,10 @@
 
         // Create event
         document.getElementById('saveEventBtn').addEventListener('click', async function() {
+            if (!mdjIsAdmin) {
+                alert('Only admins can create events.');
+                return;
+            }
             const name = document.getElementById('eventName').value.trim();
             if (!name) {
                 alert('Event name is required');
@@ -1499,7 +2415,7 @@
             };
 
             try {
-                const response = await fetch('/api/events', {
+                const response = await mdjFetch('/api/events', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -1521,9 +2437,9 @@
         // Edit event (optionally opening straight onto a specific tab)
         async function openEditModal(eventId, tabBtnId) {
                 try {
-                    const response = await fetch(`/api/events`);
+                    const response = await mdjFetch(`/api/events?_=${Date.now()}`);
                     const events = await response.json();
-                    const event = events.find(e => e.id == eventId);
+                    const event = events.find(e => String(e.id) === String(eventId));
                     if (event) {
                         document.getElementById('editEventId').value = event.id;
                         document.getElementById('editEventName').value = event.name;
@@ -1531,20 +2447,7 @@
                         document.getElementById('editEventVenue').value = event.venue || '';
                         document.getElementById('editEventDate').value = event.event_date ? event.event_date.split('T')[0] : '';
                         
-                        // Load CSS fields
-                        const headingColor = event.heading_color || '#007bff';
-                        const textColor = event.text_color || '#212529';
-                        const bgColor = event.bg_color || '#ffffff';
-                        const accentColor = event.accent_color || '#0d6efd';
-                        
-                        document.getElementById('editEventHeadingColor').value = headingColor;
-                        document.getElementById('editEventHeadingColorText').value = headingColor;
-                        document.getElementById('editEventTextColor').value = textColor;
-                        document.getElementById('editEventTextColorText').value = textColor;
-                        document.getElementById('editEventBgColor').value = bgColor;
-                        document.getElementById('editEventBgColorText').value = bgColor;
-                        document.getElementById('editEventAccentColor').value = accentColor;
-                        document.getElementById('editEventAccentColorText').value = accentColor;
+                        loadGuestThemeEditorFields(event);
                         document.getElementById('editEventBgImage').value = event.bg_image || '';
                         document.getElementById('editEventBgImage').dispatchEvent(new Event('change'));
                         document.getElementById('editEventLogoImage').value = event.logo_image || '';
@@ -1552,7 +2455,8 @@
                         document.getElementById('editEventCustomCss').value = event.custom_css || '';
 
                         // Load display screen config
-                        document.getElementById('editDisplayShowQr').checked = event.display_show_qr !== 0;
+                        document.getElementById('editDisplayShowQr').checked = isEventFlagOn(event.display_show_qr, true);
+                        document.getElementById('editDisplayShowWaitingMessage').checked = isEventFlagOn(event.display_show_waiting_message, true);
                         document.getElementById('editDisplayQrPosition').value = event.display_qr_position || 'top-right';
                         document.getElementById('editDisplayQrSize').value = event.display_qr_size || 120;
                         document.getElementById('editDisplayQrSizeValue').textContent = event.display_qr_size || 120;
@@ -1572,6 +2476,9 @@
                         document.getElementById('editDisplayBgImage').dispatchEvent(new Event('change'));
                         document.getElementById('editDisplaySlideshowEnabled').checked = event.display_bg_slideshow_enabled === 1;
                         document.getElementById('editDisplaySlideshowSeconds').value = event.display_bg_slideshow_seconds || 15;
+                        const bgOverlayOpacity = event.display_bg_overlay_opacity != null ? event.display_bg_overlay_opacity : 45;
+                        document.getElementById('editDisplayBgOverlayOpacity').value = bgOverlayOpacity;
+                        document.getElementById('editDisplayBgOverlayOpacityValue').textContent = bgOverlayOpacity;
                         document.getElementById('editOpenDisplayLink').href = '/dj/display/' + event.slug;
                         displaySlideshowAdmin.setEventId(event.id);
                         displaySlideshowAdmin.load();
@@ -1601,6 +2508,7 @@
                         tipLinks.forEach(link => createTipLinkRow(editContainer, link));
 
                         // Photo banner style + live previews
+                        selectEditMessageStyle(event.display_message_style || '');
                         selectEditBannerStyle(event.photo_banner_style || '');
                         updateGuestPreview();
                         updateDisplayPreview();
@@ -1636,10 +2544,18 @@
                 description: document.getElementById('editEventDescription').value.trim(),
                 venue: document.getElementById('editEventVenue').value.trim(),
                 event_date: document.getElementById('editEventDate').value || null,
-                heading_color: document.getElementById('editEventHeadingColorText').value || null,
-                text_color: document.getElementById('editEventTextColorText').value || null,
-                bg_color: document.getElementById('editEventBgColorText').value || null,
-                accent_color: document.getElementById('editEventAccentColorText').value || null,
+                heading_color: document.getElementById('editEventHeadingColorText').value.trim() || null,
+                text_color: document.getElementById('editEventTextColorText').value.trim() || null,
+                bg_color: document.getElementById('editEventBgColorText').value.trim() || null,
+                accent_color: document.getElementById('editEventAccentColorText').value.trim() || null,
+                hero_title_color: document.getElementById('editEventHeroTitleColorText').value.trim() || null,
+                guest_card_color: document.getElementById('editEventGuestCardColorText').value.trim() || null,
+                guest_card_shadow_color: document.getElementById('editEventGuestCardShadowColorText').value.trim() || null,
+                guest_menu_compact: document.getElementById('editGuestMenuCompact').checked ? 1 : 0,
+                guest_show_option_desc: document.getElementById('editGuestShowOptionDesc').checked ? 1 : 0,
+                guest_hero_compact: document.getElementById('editGuestHeroCompact').checked ? 1 : 0,
+                guest_bg_overlay: parseInt(document.getElementById('editGuestBgOverlay').value, 10) || 0,
+                guest_bg_position: document.getElementById('editGuestBgPosition').value || 'center',
                 bg_image: document.getElementById('editEventBgImage').value.trim() || null,
                 logo_image: document.getElementById('editEventLogoImage').value.trim() || null,
                 custom_css: document.getElementById('editEventCustomCss').value.trim() || null,
@@ -1652,6 +2568,7 @@
                 enable_tips: document.getElementById('editEventEnableTips').checked ? 1 : 0,
                 tip_links: getTipLinks('editTipLinksContainer'),
                 display_show_qr: document.getElementById('editDisplayShowQr').checked ? 1 : 0,
+                display_show_waiting_message: document.getElementById('editDisplayShowWaitingMessage').checked ? 1 : 0,
                 display_qr_position: document.getElementById('editDisplayQrPosition').value,
                 display_qr_size: parseInt(document.getElementById('editDisplayQrSize').value, 10) || 120,
                 display_qr_label: document.getElementById('editDisplayQrLabel').value.trim() || 'Scan to Request Songs!',
@@ -1660,13 +2577,15 @@
                 display_bg_image: document.getElementById('editDisplayBgImage').value.trim() || null,
                 display_bg_slideshow_enabled: document.getElementById('editDisplaySlideshowEnabled').checked ? 1 : 0,
                 display_bg_slideshow_seconds: parseInt(document.getElementById('editDisplaySlideshowSeconds').value, 10) || 15,
+                display_bg_overlay_opacity: parseInt(document.getElementById('editDisplayBgOverlayOpacity').value, 10) || 0,
                 display_card_color: document.getElementById('editDisplayCardColorText').value || '#ffffff',
                 display_card_opacity: parseInt(document.getElementById('editDisplayCardOpacity').value, 10) || 85,
+                display_message_style: (document.querySelector('input[name="editMessageStyle"]:checked') || {}).value || null,
                 photo_banner_style: (document.querySelector('input[name="editBannerStyle"]:checked') || {}).value || null
             };
 
             try {
-                const response = await fetch(`/api/events/${eventId}`, {
+                const response = await mdjFetch(`/api/events/${eventId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -1692,7 +2611,7 @@
                 const currentActive = this.dataset.active === '1';
                 
                 try {
-                    const response = await fetch(`/api/events/${eventId}`, {
+                    const response = await mdjFetch(`/api/events/${eventId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ is_active: currentActive ? 0 : 1 })
@@ -1718,7 +2637,7 @@
                 }
                 
                 try {
-                    const response = await fetch(`/api/events/${eventId}`, {
+                    const response = await mdjFetch(`/api/events/${eventId}`, {
                         method: 'DELETE'
                     });
                     const result = await response.json();
@@ -1839,7 +2758,7 @@
             shareLinksLoading.style.display = 'block';
             shareLinksList.style.display = 'none';
             try {
-                const res = await fetch(`/api/events/${eventId}/links`);
+                const res = await mdjFetch(`/api/events/${eventId}/links`);
                 const links = await res.json();
                 renderShareLinks(links);
             } catch (err) {
@@ -1860,7 +2779,7 @@
             if (!shareEventId) return;
             if (!confirm('Regenerate the gallery link? Anyone with the old link will lose access.')) return;
             try {
-                const res = await fetch(`/api/events/${shareEventId}/regenerate-share-token`, { method: 'POST' });
+                const res = await mdjFetch(`/api/events/${shareEventId}/regenerate-share-token`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
                     loadShareLinks(shareEventId);

@@ -81,48 +81,157 @@
             color: #0056b3;
         }
 
-        /* Dark mode overrides for DJ dashboard */
-        body.dark-mode {
-            background: #0f1720;
-            color: #e6eef8;
-        }
-        body.dark-mode.mdj-eyup-brand .mdj-dashboard-navbar.mdj-site-navbar {
-            background: rgba(6, 10, 16, 0.98);
-            border-bottom-color: var(--eyup-primary-orange);
+        /* Dashboard navbar dark tint — see dj-dash-theme.css */
+
+        body.mdj-eyup-brand.mdj-dashboard-page {
+            --mdj-eyup-nav-h: 96px;
         }
 
-        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .nav-container {
-            flex-wrap: wrap;
-            row-gap: 10px;
+        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar .mdj-dash-nav-container {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.65rem;
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
-        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .logo {
-            flex: 0 1 auto;
-            min-width: 0;
-        }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event {
+
+        body.mdj-eyup-brand .mdj-dash-nav-top {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            flex: 1 1 200px;
+            justify-content: space-between;
+            gap: 0.75rem;
             min-width: 0;
         }
+
+        body.mdj-eyup-brand .mdj-dash-nav-brand {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 8px;
+            text-decoration: none;
+            flex-shrink: 0;
+            min-width: 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-brand .logo-text {
+            font-family: var(--font-retro);
+            font-size: clamp(0.72rem, 2.5vw, 1.1rem);
+            color: var(--eyup-white);
+            text-shadow: 0 0 10px var(--eyup-primary-orange);
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-brand .logo-accent {
+            font-family: var(--font-futuristic);
+            font-size: clamp(0.68rem, 2.2vw, 0.95rem);
+            color: var(--eyup-primary-orange);
+            font-weight: 700;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick .btn {
+            min-width: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.65rem;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick .mdj-dash-nav-spin {
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-quick .dropdown-toggle::after {
+            display: none;
+        }
+
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dash-nav-event {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            width: 100%;
+            min-width: 0;
+        }
+
         body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event-label {
             font-family: var(--font-mono);
-            font-size: 0.72rem;
-            letter-spacing: 0.05em;
-            color: rgba(240, 240, 245, 0.55);
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(240, 240, 245, 0.5);
             white-space: nowrap;
+            flex-shrink: 0;
         }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event .form-select.form-select-sm {
+
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dash-nav-event .form-select.form-select-sm {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: none;
             background: rgba(255, 255, 255, 0.07);
             color: var(--eyup-off-white);
             border: 1px solid rgba(255, 102, 0, 0.35);
+            border-radius: 2px;
             font-family: var(--font-mono);
-            font-size: 0.75rem;
+            font-size: 0.78rem;
+            padding-top: 0.4rem;
+            padding-bottom: 0.4rem;
         }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dashboard-nav-event .form-select.form-select-sm:focus {
+
+        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-dash-nav-event .form-select.form-select-sm:focus {
             border-color: var(--eyup-primary-orange);
             box-shadow: 0 0 0 0.18rem rgba(255, 102, 0, 0.22);
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu {
+            min-width: 13.5rem;
+            background: rgba(14, 14, 14, 0.98);
+            border: 1px solid rgba(255, 102, 0, 0.28);
+            border-radius: 2px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+            padding: 0.35rem 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: 0.03em;
+            color: var(--eyup-off-white);
+            padding: 0.55rem 0.85rem;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item:hover,
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item:focus {
+            background: rgba(255, 102, 0, 0.12);
+            color: var(--eyup-light-orange);
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item.text-muted {
+            color: rgba(240, 240, 245, 0.45) !important;
+            font-size: 0.72rem;
+            pointer-events: none;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-divider {
+            border-color: rgba(255, 102, 0, 0.18);
+            margin: 0.35rem 0;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item.text-danger {
+            color: #ffb3b8 !important;
+        }
+
+        body.mdj-eyup-brand .mdj-dash-nav-menu .dropdown-item.text-danger:hover {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ffd0d3 !important;
         }
 
         /*
@@ -137,72 +246,87 @@
             color: #5c6570 !important;
         }
 
-        body.mdj-eyup-brand .mdj-site-navbar.mdj-dashboard-navbar.mdj-site-navbar--minimal .mdj-nav-controls {
-            margin-left: auto;
+        /* Compact dashboard tabs */
+        .mdj-dash-tabs {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            border-bottom-color: rgba(255, 102, 0, 0.22);
+            gap: 0.15rem;
+        }
+
+        .mdj-dash-tabs::-webkit-scrollbar {
+            display: none;
+        }
+
+        .mdj-dash-tabs .nav-item {
             flex-shrink: 0;
         }
 
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn {
-            min-width: 48px;
+        .mdj-dash-tabs .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 0.85rem;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            border-radius: 2px 2px 0 0;
+            border: 1px solid transparent;
+        }
+
+        .mdj-dash-tabs .nav-link.active {
+            font-weight: 700;
+        }
+
+        .mdj-dash-tab-count {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: .5rem;
-        }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn.btn-lg {
-            padding: .45rem .9rem;
-            font-size: 0.95rem;
-        }
-        body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn i { margin-right: .4rem; }
-
-        @media (max-width: 768px) {
-            body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn { min-width: 40px; }
-            body.mdj-eyup-brand .mdj-dashboard-navbar .mdj-nav-controls .btn.btn-lg { padding: .35rem .6rem; }
+            min-width: 1.35rem;
+            padding: 0.08rem 0.35rem;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            line-height: 1.2;
+            background: rgba(0, 0, 0, 0.18);
         }
 
-        body.dark-mode .card {
-            background: #101419;
-            color: #d7e6f5;
-            box-shadow: none;
-            border-color: rgba(255,255,255,0.03);
+        .mdj-dash-tabs .nav-link:not(.active) .mdj-dash-tab-count {
+            background: rgba(255, 102, 0, 0.14);
         }
-        body.dark-mode .request-timestamp,
-        body.dark-mode .text-muted { color: #98a9bf !important; }
-        body.dark-mode .btn-outline-light { color: #fff; border-color: rgba(255,255,255,0.12); }
-        body.dark-mode .badge { opacity: 0.95; }
-        body.dark-mode .message-preview {
-            background: rgba(255,255,255,0.03);
-            border-left-color: rgba(59,130,246,0.9);
-            color: #d7e6f5;
-        }
-        body.dark-mode .bg-light,
-        body.dark-mode .card.bg-light {
-            background-color: #0b1114 !important;
-            color: #d7e6f5 !important;
-            border-color: rgba(255,255,255,0.03) !important;
-        }
-        body.dark-mode .event-url {
-            background: rgba(255,255,255,0.05);
-            color: #cfe8ff;
-        }
-        body.dark-mode .modal-content {
-            background: #101419;
-            color: #d7e6f5;
-        }
-        body.dark-mode .modal-header,
-        body.dark-mode .modal-footer {
-            border-color: rgba(255,255,255,0.1);
-        }
-        body.dark-mode .form-control,
-        body.dark-mode .form-select {
-            background: #0b1114;
-            color: #d7e6f5;
-            border-color: rgba(255,255,255,0.1);
-        }
-        body.dark-mode .btn-outline-primary { color: #cfe8ff; border-color: rgba(79,174,255,0.18); }
-        body.dark-mode .btn-outline-secondary { color: #c7d5e6; border-color: rgba(255,255,255,0.06); }
 
-        /* Photos tab grid */
+        body.dark-mode .mdj-dash-tabs .nav-link:not(.active) .mdj-dash-tab-count {
+            color: var(--eyup-light-orange);
+        }
+
+        .mdj-dash-section-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 0.85rem;
+        }
+
+        @media (max-width: 576px) {
+            body.mdj-eyup-brand.mdj-dashboard-page {
+                --mdj-eyup-nav-h: 88px;
+            }
+
+            body.mdj-eyup-brand .mdj-dash-nav-quick .mdj-dash-nav-spin-label {
+                display: none;
+            }
+
+            .mdj-dash-tabs .mdj-dash-tab-label {
+                display: none;
+            }
+
+            .mdj-dash-tabs .nav-link {
+                padding: 0.5rem 0.7rem;
+            }
+        }
+
         .dash-photo-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -245,21 +369,7 @@
             left: 0.35rem;
         }
 
-        /* Nav tabs styling */
-        .nav-tabs .nav-link {
-            color: #6c757d;
-        }
-        .nav-tabs .nav-link.active {
-            font-weight: 600;
-        }
-        body.dark-mode .nav-tabs .nav-link {
-            color: #98a9bf;
-        }
-        body.dark-mode .nav-tabs .nav-link.active {
-            background: #101419;
-            color: #cfe8ff;
-            border-color: rgba(255,255,255,0.1);
-        }
+        /* Nav tabs styling — non-dashboard tabs use dj-dash-theme.css */
 
         /* Screen prompts panel */
         .prompt-btn-grid {
@@ -332,6 +442,26 @@
             color: #222;
             border-color: #ddd;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .prompt-trigger-btn.prompt-karaoke-spinner {
+            background: linear-gradient(135deg, #5c2d00, #ff9500);
+            color: #fff;
+            border-color: rgba(255, 200, 100, 0.5);
+        }
+        .prompt-trigger-btn.prompt-guest-spinner {
+            background: linear-gradient(135deg, #1a237e, #5c6bc0);
+            color: #fff;
+            border-color: rgba(255, 213, 79, 0.45);
+        }
+        .prompt-trigger-btn.prompt-coin-spinner {
+            background: linear-gradient(135deg, #5d4037, #ffb300);
+            color: #fff;
+            border-color: rgba(255, 236, 179, 0.5);
+        }
+        .prompt-trigger-btn.prompt-yesno-spinner {
+            background: linear-gradient(135deg, #1b5e20, #c62828);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.35);
         }
         .prompt-trigger-btn.triggered .prompt-btn-icon i::before {
             content: "\f00c";
@@ -527,21 +657,13 @@
         .mdj-dash-messages-list .message-card-actions-bottom .reply-message {
             flex: 1 1 auto;
         }
-        body.dark-mode .mdj-dash-messages-panel {
-            border-left-color: rgba(255, 255, 255, 0.08);
-        }
-        body.dark-mode .mdj-dash-messages-header {
-            border-bottom-color: rgba(255, 255, 255, 0.06);
-        }
         .mdj-dash-messages-list .message-needs-reply {
             border-left: 3px solid #0d6efd;
             background: rgba(13, 110, 253, 0.07) !important;
             box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.15);
         }
-        body.dark-mode .mdj-dash-messages-list .message-needs-reply {
-            background: rgba(13, 110, 253, 0.14) !important;
-            border-left-color: #4fa8ff;
-            box-shadow: 0 0 0 1px rgba(79, 168, 255, 0.2);
+        .mdj-dash-messages-list .message-spinner-result {
+            border-left: 3px solid #0dcaf0;
         }
 
         @media (max-width: 991.98px) {
@@ -556,26 +678,55 @@
                 padding-top: 1rem;
                 max-height: 42vh;
             }
-            body.dark-mode .mdj-dash-messages-panel {
-                border-top-color: rgba(255, 255, 255, 0.08);
-            }
         }
     </style>
+    <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
 </head>
-<body class="mdj-eyup-brand mdj-dash-tools mdj-dashboard-page">
+<body class="mdj-eyup-brand mdj-dash-tools mdj-dashboard-page dark-mode">
     <div class="mdj-scanlines" aria-hidden="true"></div>
     <h1 class="visually-hidden">DJ Dashboard</h1>
 
     <nav class="mdj-site-navbar mdj-site-navbar--minimal mdj-dashboard-navbar" aria-label="DJ dashboard">
-        <div class="nav-container">
-            <div class="logo" role="img" aria-label="EYUP EVENTS">
-                <span class="logo-text">EYUP</span>
-                <span class="logo-accent">EVENTS</span>
-                <span class="logo-subtitle"><i class="fas fa-headphones" aria-hidden="true"></i> DJ Dashboard</span>
+        <div class="nav-container mdj-dash-nav-container">
+            <div class="mdj-dash-nav-top">
+                <a href="/dj" class="mdj-dash-nav-brand" aria-label="EYUP EVENTS DJ Dashboard">
+                    <span class="logo-text">EYUP</span>
+                    <span class="logo-accent">EVENTS</span>
+                </a>
+                <div class="mdj-dash-nav-quick">
+                    <button id="triggerSpinBtn" class="btn btn-warning btn-sm mdj-dash-nav-spin" type="button" title="Trigger karaoke spin">
+                        <i class="fas fa-dice"></i><span class="mdj-dash-nav-spin-label">Spin</span>
+                    </button>
+                    <button id="refreshBtn" class="btn btn-outline-light btn-sm" type="button" title="Refresh">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" id="djNavMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" title="More options">
+                            <i class="fas fa-bars"></i><span class="visually-hidden">Menu</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end mdj-dash-nav-menu" aria-labelledby="djNavMenuBtn">
+                            <li><a class="dropdown-item" href="/dj/events"><i class="fas fa-calendar-alt fa-fw"></i> Event management</a></li>
+                            <li><a class="dropdown-item" href="/karaoke-spinner" id="karaokeSpinnerDisplayLink" target="_blank" rel="noopener"><i class="fas fa-tv fa-fw"></i> Karaoke spinner display</a></li>
+                            <li><a class="dropdown-item" href="/guest-spinner" id="guestSpinnerDisplayLink" target="_blank" rel="noopener"><i class="fas fa-users fa-fw"></i> Guest spinner display</a></li>
+                            <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                            <li><a class="dropdown-item" href="/dj/settings"><i class="fas fa-gear fa-fw"></i> Global settings</a></li>
+                            <% } %>
+                            <% if (portalUser) { %>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><span class="dropdown-item text-muted"><i class="fas fa-user-circle fa-fw"></i> <%= [portalUser.first_name, portalUser.last_name].filter(Boolean).join(' ') || portalUser.email %></span></li>
+                            <li><button type="button" class="dropdown-item" id="darkModeToggle"><i class="fas fa-moon fa-fw"></i><span id="darkModeLabel">Dark mode</span></button></li>
+                            <li><button type="button" class="dropdown-item text-danger" id="djLogoutBtn"><i class="fas fa-sign-out-alt fa-fw"></i> Sign out</button></li>
+                            <% } else { %>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><button type="button" class="dropdown-item" id="darkModeToggle"><i class="fas fa-moon fa-fw"></i><span id="darkModeLabel">Dark mode</span></button></li>
+                            <% } %>
+                        </ul>
+                    </div>
+                </div>
             </div>
-            <div class="mdj-dashboard-nav-event">
-                <label for="activeEventSelect" class="mdj-dashboard-nav-event-label mb-0 d-none d-sm-inline">Event:</label>
-                <select id="activeEventSelect" class="form-select form-select-sm" style="min-width: 180px; max-width: 250px;">
+            <div class="mdj-dash-nav-event">
+                <label for="activeEventSelect" class="mdj-dashboard-nav-event-label mb-0">Event</label>
+                <select id="activeEventSelect" class="form-select form-select-sm">
                     <option value="all">All Events</option>
                     <% events.forEach(function(event) { %>
                         <option value="<%= event.id %>" data-slug="<%= event.slug %>"<%= event.is_active ? '' : ' class="mdj-dash-event-opt--inactive"' %>>
@@ -584,57 +735,72 @@
                     <% }); %>
                 </select>
             </div>
-            <div class="mdj-nav-controls">
-                <a href="/dj/events" class="btn btn-info btn-sm" title="Event Management">
-                    <i class="fas fa-calendar-alt me-1"></i><span class="d-none d-md-inline">Events</span>
-                </a>
-                <button id="triggerSpinBtn" class="btn btn-warning btn-sm" title="Trigger Karaoke Spin">
-                    <i class="fas fa-dice me-1"></i><span class="d-none d-md-inline">Spin!</span>
-                </button>
-                <a href="/karaoke-spinner" class="btn btn-outline-warning btn-sm" target="_blank" title="Open Spinner Display">
-                    <i class="fas fa-external-link-alt me-1"></i><span class="d-none d-md-inline">Spinner</span>
-                </a>
-                <a href="/dj/settings" class="btn btn-outline-light btn-sm" title="Global Settings">
-                    <i class="fas fa-gear me-1"></i><span class="d-none d-md-inline">Settings</span>
-                </a>
-                <button id="darkModeToggle" class="btn btn-outline-light btn-sm" title="Toggle dark mode" type="button">
-                    <i class="fas fa-moon"></i>
-                </button>
-                <button id="refreshBtn" class="btn btn-outline-light btn-sm" title="Refresh">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-            </div>
         </div>
     </nav>
 
     <main class="container-fluid mdj-dash-main">
+        <% if (typeof assignedGigs !== 'undefined' && assignedGigs && assignedGigs.length > 0) { %>
+        <div class="alert alert-info py-2 mb-3 mdj-dash-gigs-banner" role="status">
+            <strong><i class="fas fa-calendar-check me-1"></i>Your upcoming gigs</strong>
+            <ul class="mb-0 mt-1 small ps-3">
+                <% assignedGigs.forEach(function(gig) { %>
+                <li>
+                    <%= gig.title || gig.reference || 'Booking' %>
+                    <% if (gig.start_datetime) { %> — <%= new Date(gig.start_datetime).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) %><% } %>
+                    <% if (gig.requests_event_slug) { %>
+                        <span class="text-muted">(requests: <%= gig.requests_event_slug %>)</span>
+                    <% } else { %>
+                        <span class="text-warning">— not linked to a requests event yet</span>
+                    <% } %>
+                </li>
+                <% }); %>
+            </ul>
+        </div>
+        <% } %>
+        <% if (events.length === 0 && portalUser && !isAdmin) { %>
+        <div class="alert alert-warning mb-3" role="alert">
+            <strong>No request events assigned yet.</strong>
+            When office links your booking to a requests event slug, it will appear here.
+            <a href="https://eyupevents.uk/events/dj.html" class="alert-link" target="_blank" rel="noopener">Open the DJ portal</a>
+            for your schedule and booking details.
+        </div>
+        <% } %>
         <div class="mdj-dash-layout">
         <div class="mdj-dash-primary mdj-dash-scroll">
         <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs mb-4" id="dashboardTabs" role="tablist">
+        <ul class="nav nav-tabs mdj-dash-tabs mb-3" id="dashboardTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab">
-                    <i class="fas fa-music me-2"></i>Requests (<span id="requestCount"><%= requests.length %></span>)
+                <button class="nav-link active" id="requests-tab" data-bs-toggle="tab" data-bs-target="#requests" type="button" role="tab" aria-controls="requests" aria-selected="true">
+                    <i class="fas fa-music" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Requests</span>
+                    <span class="mdj-dash-tab-count" id="requestCount"><%= requests.length %></span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="guests-tab" data-bs-toggle="tab" data-bs-target="#guests" type="button" role="tab">
-                    <i class="fas fa-users me-2"></i>Guests (<span id="guestCount">0</span>)
+                <button class="nav-link" id="guests-tab" data-bs-toggle="tab" data-bs-target="#guests" type="button" role="tab" aria-controls="guests" aria-selected="false">
+                    <i class="fas fa-users" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Guests</span>
+                    <span class="mdj-dash-tab-count" id="guestCount">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab">
-                    <i class="fas fa-camera me-2"></i>Photos (<span id="photoCount">0</span>)
+                <button class="nav-link" id="photos-tab" data-bs-toggle="tab" data-bs-target="#photos" type="button" role="tab" aria-controls="photos" aria-selected="false">
+                    <i class="fas fa-camera" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Photos</span>
+                    <span class="mdj-dash-tab-count" id="photoCount">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="tracks-tab" data-bs-toggle="tab" data-bs-target="#tracks" type="button" role="tab">
-                    <i class="fas fa-compact-disc me-2"></i>Tracks (<span id="trackCount">0</span>)
+                <button class="nav-link" id="tracks-tab" data-bs-toggle="tab" data-bs-target="#tracks" type="button" role="tab" aria-controls="tracks" aria-selected="false">
+                    <i class="fas fa-compact-disc" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Tracks</span>
+                    <span class="mdj-dash-tab-count" id="trackCount">0</span>
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="screen-tab" data-bs-toggle="tab" data-bs-target="#screen" type="button" role="tab">
-                    <i class="fas fa-tv me-2"></i>Screen
+                <button class="nav-link" id="screen-tab" data-bs-toggle="tab" data-bs-target="#screen" type="button" role="tab" aria-controls="screen" aria-selected="false">
+                    <i class="fas fa-tv" aria-hidden="true"></i>
+                    <span class="mdj-dash-tab-label">Screen</span>
                 </button>
             </li>
         </ul>
@@ -642,10 +808,9 @@
         <div class="tab-content" id="dashboardTabContent">
             <!-- Requests Tab -->
             <div class="tab-pane fade show active" id="requests" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3><i class="fas fa-music me-2"></i>Song & Karaoke Requests</h3>
-                    <button id="clearAllRequests" class="btn btn-outline-danger">
-                        <i class="fas fa-trash me-2"></i>Clear All
+                <div class="mdj-dash-section-bar">
+                    <button id="clearAllRequests" class="btn btn-outline-danger btn-sm">
+                        <i class="fas fa-trash me-1"></i>Clear all
                     </button>
                 </div>
 
@@ -803,15 +968,47 @@
                 <div id="promptBtnGrid" class="prompt-btn-grid">
                     <span class="text-muted small">Loading prompts…</span>
                 </div>
+
+                <hr class="my-4 opacity-25">
+
+                <h5 class="h6 text-uppercase text-muted mb-2">
+                    <i class="fas fa-dice me-1"></i>Spinners
+                </h5>
+                <p class="text-muted small mb-3">
+                    Karaoke spinner runs on the event display and adds the winning track to this event's request queue.
+                    Guest spinner picks a random guest. Coin and Yes/No use the same wheel on the display for quick crowd decisions.
+                </p>
+                <div id="spinnerBtnGrid" class="prompt-btn-grid">
+                    <button type="button" id="screenKaraokeSpinBtn" class="btn prompt-trigger-btn prompt-karaoke-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-microphone-lines"></i></span>
+                        <span class="prompt-btn-label">Karaoke spinner</span>
+                        <span class="prompt-btn-sub">Random track on display</span>
+                    </button>
+                    <button type="button" id="screenGuestSpinBtn" class="btn prompt-trigger-btn prompt-guest-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-user-check"></i></span>
+                        <span class="prompt-btn-label">Guest spinner</span>
+                        <span class="prompt-btn-sub">Random guest on screen</span>
+                    </button>
+                    <button type="button" id="screenCoinSpinBtn" class="btn prompt-trigger-btn prompt-coin-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-coins"></i></span>
+                        <span class="prompt-btn-label">Heads or tails</span>
+                        <span class="prompt-btn-sub">Flip on the display</span>
+                    </button>
+                    <button type="button" id="screenYesNoSpinBtn" class="btn prompt-trigger-btn prompt-yesno-spinner" disabled>
+                        <span class="prompt-btn-icon"><i class="fas fa-circle-question"></i></span>
+                        <span class="prompt-btn-label">Yes or no</span>
+                        <span class="prompt-btn-sub">Quick answer on screen</span>
+                    </button>
+                </div>
             </div>
         </div>
         </div>
 
         <aside class="mdj-dash-messages-panel" aria-label="Guest messages">
             <div class="mdj-dash-messages-header d-flex justify-content-between align-items-center gap-2">
-                <h4><i class="fas fa-envelope me-2"></i>Messages (<span id="messageCount"><%= messages.filter(function(m){ return m.needsReply; }).length %></span>)</h4>
-                <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm flex-shrink-0">
-                    <i class="fas fa-check me-1"></i><span class="d-none d-xl-inline">Mark All</span>
+                <h4 class="mb-0"><i class="fas fa-envelope me-2"></i><span class="d-none d-md-inline">Messages </span><span class="mdj-dash-tab-count" id="messageCount"><%= messages.filter(function(m){ return m.needsReply; }).length %></span></h4>
+                <button id="markAllDisplayed" class="btn btn-outline-secondary btn-sm flex-shrink-0" title="Mark all displayed">
+                    <i class="fas fa-check"></i><span class="d-none d-lg-inline ms-1">Mark all</span>
                 </button>
             </div>
             <div id="messagesList" class="mdj-dash-messages-list">
@@ -825,7 +1022,8 @@
                 <% } else { %>
                     <% let sortedMessages = messages.slice().sort(function(a,b){ return new Date(b.timestamp) - new Date(a.timestamp); }); %>
                     <% sortedMessages.forEach(function(message) { %>
-                        <div class="card mb-2<%= message.needsReply ? ' message-needs-reply' : (message.displayed ? ' bg-light' : '') %>" data-message-id="<%= message.id %>" data-event-id="<%= message.eventId || '' %>" data-needs-reply="<%= message.needsReply ? '1' : '0' %>">
+                        <% const isSpinnerResult = message.type === 'spinner-result'; %>
+                        <div class="card mb-2<%= message.needsReply ? ' message-needs-reply' : (message.displayed ? ' bg-light' : '') %><%= isSpinnerResult ? ' message-spinner-result' : '' %>" data-message-id="<%= message.id %>" data-event-id="<%= message.eventId || '' %>" data-needs-reply="<%= message.needsReply ? '1' : '0' %>">
                             <div class="card-body py-2 message-card-body">
                                 <div class="message-card-top">
                                     <div class="message-card-meta">
@@ -833,6 +1031,9 @@
                                             <strong class="me-1"><%= message.customerName %></strong>
                                             <% if (message.eventName) { %>
                                                 <span class="badge bg-dark" title="Event"><%= message.eventName %></span>
+                                            <% } %>
+                                            <% if (isSpinnerResult) { %>
+                                                <span class="badge bg-info text-dark" title="Spinner result"><i class="fas fa-dice me-1"></i>Spinner</span>
                                             <% } %>
                                             <% if (message.needsReply) { %>
                                                 <span class="badge bg-primary">Awaiting reply</span>
@@ -847,13 +1048,14 @@
                                         </small>
                                     </div>
                                     <div class="message-card-actions">
-                                        <% if (!message.displayed) { %>
+                                        <% if (!isSpinnerResult && !message.displayed) { %>
                                             <button class="btn btn-outline-primary btn-sm mark-displayed" 
                                                     data-message-id="<%= message.id %>"
                                                     title="Mark displayed">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                         <% } %>
+                                        <% if (!isSpinnerResult) { %>
                                         <button class="btn btn-success btn-sm reply-message" 
                                                 data-customer-name="<%= message.customerName %>"
                                                 data-message-id="<%= message.id %>"
@@ -861,9 +1063,17 @@
                                                 title="Reply">
                                             <i class="fas fa-reply"></i>
                                         </button>
+                                        <% } else { %>
+                                        <button class="btn btn-outline-secondary btn-sm remove-spinner-message" 
+                                                data-message-id="<%= message.id %>"
+                                                title="Remove this result">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                        <% } %>
                                     </div>
                                 </div>
                                 <div class="message-text small"><%- message.message %></div>
+                                <% if (!isSpinnerResult) { %>
                                 <div class="message-card-actions-bottom">
                                     <button class="btn btn-success btn-sm reply-message" 
                                             data-customer-name="<%= message.customerName %>"
@@ -872,6 +1082,7 @@
                                         <i class="fas fa-reply me-1"></i>Reply to <%= message.customerName %>
                                     </button>
                                 </div>
+                                <% } %>
                             </div>
                         </div>
                     <% }); %>
@@ -956,7 +1167,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    <script src="/js/dj-dashboard.js"></script>
+    <script src="/js/dj-api.js?v=1"></script>
+    <script src="/js/dj-dashboard.js?v=3"></script>
+
+    <script>
+    document.getElementById('djLogoutBtn')?.addEventListener('click', function () {
+        if (typeof window.mdjLogout === 'function') window.mdjLogout();
+    });
+    </script>
 
     <script>
     // Dark mode toggle and Event management
@@ -967,19 +1185,20 @@
             function setMode(enabled) {
                 if (enabled) {
                     document.body.classList.add('dark-mode');
-                    if (label) label.textContent = 'Dark';
+                    if (label) label.textContent = 'Light mode';
                     const icon = toggle.querySelector('i');
                     if (icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); }
                 } else {
                     document.body.classList.remove('dark-mode');
-                    if (label) label.textContent = 'Light';
+                    if (label) label.textContent = 'Dark mode';
                     const icon = toggle.querySelector('i');
                     if (icon) { icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
                 }
             }
 
-            const saved = localStorage.getItem('djDashboardDarkMode') === 'true';
-            setMode(saved);
+            const saved = localStorage.getItem('djDashboardDarkMode');
+            const enabled = saved === null ? true : saved === 'true';
+            setMode(enabled);
 
             toggle.addEventListener('click', function() {
                 const enabled = document.body.classList.toggle('dark-mode');
@@ -993,6 +1212,10 @@
         
         // Load saved event selection — default to first active event so screen prompts work out of the box
         let savedEventId = localStorage.getItem('djActiveEventId') || 'all';
+        const urlEventId = new URLSearchParams(window.location.search).get('event');
+        if (urlEventId && eventSelect.querySelector('option[value="' + urlEventId.replace(/"/g, '') + '"]')) {
+            savedEventId = urlEventId;
+        }
         const allEventOptions = Array.from(eventSelect.options).filter(o => o.value !== 'all');
         const firstActiveOption = allEventOptions.find(o => !o.classList.contains('mdj-dash-event-opt--inactive'));
         if (savedEventId === 'all' && firstActiveOption) {
@@ -1096,14 +1319,43 @@
             return allEventOptions[0] ? eventNames[allEventOptions[0].value] : null;
         }
 
+        function getPromptTargetEventId() {
+            const id = eventSelect.value;
+            if (id !== 'all') return id;
+            if (firstActiveOption) return firstActiveOption.value;
+            return allEventOptions[0] ? allEventOptions[0].value : null;
+        }
+
+        window.mdjGetPromptTargetSlug = getPromptTargetSlug;
+        window.mdjGetPromptTargetEventId = getPromptTargetEventId;
+        window.mdjGetPromptTargetName = getPromptTargetName;
+
+        function refreshDashboardNow() {
+            if (typeof window.mdjRefreshDashboard === 'function') {
+                window.mdjRefreshDashboard(false);
+            }
+        }
+
         function updateDisplayLink() {
             const link = document.getElementById('openDisplayLink');
-            const slug = getSelectedEventSlug();
+            const slug = getSelectedEventSlug() || getPromptTargetSlug();
+            const spinnerLink = document.getElementById('karaokeSpinnerDisplayLink');
+            const guestSpinnerLink = document.getElementById('guestSpinnerDisplayLink');
             if (slug) {
                 link.href = '/dj/display/' + slug;
                 link.style.display = '';
+                if (spinnerLink) {
+                    spinnerLink.href =
+                        '/karaoke-spinner?event=' + encodeURIComponent(slug);
+                }
+                if (guestSpinnerLink) {
+                    guestSpinnerLink.href =
+                        '/guest-spinner?event=' + encodeURIComponent(slug);
+                }
             } else {
                 link.style.display = 'none';
+                if (spinnerLink) spinnerLink.href = '/karaoke-spinner';
+                if (guestSpinnerLink) guestSpinnerLink.href = '/guest-spinner';
             }
         }
 
@@ -1144,7 +1396,7 @@
             card.querySelector('.photo-showcase').addEventListener('click', async function() {
                 const icon = this.querySelector('i');
                 try {
-                    const res = await fetch(`/api/photos/${photo.id}/showcase`, { method: 'POST' });
+                    const res = await mdjFetch(`/api/photos/${photo.id}/showcase`, { method: 'POST' });
                     const data = await res.json();
                     if (data.success) {
                         icon.classList.replace('fa-tv', 'fa-check');
@@ -1156,7 +1408,7 @@
             });
             card.querySelector('.photo-toggle-hidden').addEventListener('click', async () => {
                 try {
-                    const res = await fetch(`/api/photos/${photo.id}/hidden`, {
+                    const res = await mdjFetch(`/api/photos/${photo.id}/hidden`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ hidden: !photo.hidden })
@@ -1170,7 +1422,7 @@
             card.querySelector('.photo-delete').addEventListener('click', async () => {
                 if (!confirm('Delete this photo permanently? This cannot be undone.')) return;
                 try {
-                    const res = await fetch(`/api/photos/${photo.id}`, { method: 'DELETE' });
+                    const res = await mdjFetch(`/api/photos/${photo.id}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
                         card.remove();
@@ -1189,7 +1441,7 @@
             try {
                 const eventIds = selected === 'all' ? Object.keys(eventNames) : [selected];
                 const lists = await Promise.all(eventIds.map(id =>
-                    fetch(`/api/events/${id}/photos`).then(r => r.ok ? r.json() : [])
+                    mdjFetch(`/api/events/${id}/photos`).then(r => r.ok ? r.json() : [])
                 ));
                 const photos = lists.flat().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 photoCount.textContent = photos.length;
@@ -1240,11 +1492,23 @@
                 btn.disabled = !hasEvent;
                 btn.title = hasEvent ? 'Show on display screen' : 'Create an event first';
             });
+
+            const karaokeSpinBtn = document.getElementById('screenKaraokeSpinBtn');
+            const guestSpinBtn = document.getElementById('screenGuestSpinBtn');
+            const coinSpinBtn = document.getElementById('screenCoinSpinBtn');
+            const yesNoSpinBtn = document.getElementById('screenYesNoSpinBtn');
+            [karaokeSpinBtn, guestSpinBtn, coinSpinBtn, yesNoSpinBtn].forEach(btn => {
+                if (!btn) return;
+                btn.disabled = !hasEvent;
+                btn.title = hasEvent
+                    ? 'Trigger on event display'
+                    : 'Select or create an event first';
+            });
         }
 
         async function loadPromptButtons() {
             try {
-                const prompts = await fetch('/api/display-prompts').then(r => r.json());
+                const prompts = await mdjFetch('/api/display-prompts').then(r => r.json());
                 promptBtnGrid.innerHTML = '';
                 Object.entries(prompts).forEach(([id, p]) => {
                     const btn = document.createElement('button');
@@ -1275,7 +1539,7 @@
             const wasDisabled = btn.disabled;
             btn.disabled = true;
             try {
-                const res = await fetch(`/api/display/${encodeURIComponent(slug)}/prompt/${encodeURIComponent(promptId)}`, { method: 'POST' });
+                const res = await mdjFetch(`/api/display/${encodeURIComponent(slug)}/prompt/${encodeURIComponent(promptId)}`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
                     btn.classList.add('triggered');
@@ -1294,6 +1558,144 @@
 
         loadPromptButtons();
         updateDisplayLink();
+
+        async function triggerScreenKaraokeSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await mdjFetch(
+                    `/api/display/${encodeURIComponent(slug)}/karaoke/trigger-spin`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success && data.song) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                    refreshDashboardNow();
+                } else {
+                    alert(data.error || 'Could not trigger karaoke spinner');
+                }
+            } catch (err) {
+                console.error('Karaoke spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        async function triggerScreenGuestSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await mdjFetch(
+                    `/api/display/${encodeURIComponent(slug)}/guest-spinner/trigger`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                    refreshDashboardNow();
+                } else {
+                    alert(data.error || 'Could not pick a guest');
+                }
+            } catch (err) {
+                console.error('Guest spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        const screenKaraokeSpinBtn = document.getElementById('screenKaraokeSpinBtn');
+        const screenGuestSpinBtn = document.getElementById('screenGuestSpinBtn');
+        if (screenKaraokeSpinBtn) {
+            screenKaraokeSpinBtn.addEventListener('click', () =>
+                triggerScreenKaraokeSpin(screenKaraokeSpinBtn)
+            );
+        }
+        if (screenGuestSpinBtn) {
+            screenGuestSpinBtn.addEventListener('click', () =>
+                triggerScreenGuestSpin(screenGuestSpinBtn)
+            );
+        }
+
+        async function triggerScreenCoinSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await mdjFetch(
+                    `/api/display/${encodeURIComponent(slug)}/coin-spinner/trigger`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                    refreshDashboardNow();
+                } else {
+                    alert(data.error || 'Could not flip coin');
+                }
+            } catch (err) {
+                console.error('Coin spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        async function triggerScreenYesNoSpin(btn) {
+            const slug = getPromptTargetSlug();
+            if (!slug) {
+                alert('No events available. Create an event first.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const res = await mdjFetch(
+                    `/api/display/${encodeURIComponent(slug)}/yesno-spinner/trigger`,
+                    { method: 'POST' }
+                );
+                const data = await res.json();
+                if (data.success) {
+                    btn.classList.add('triggered');
+                    setTimeout(() => btn.classList.remove('triggered'), 2000);
+                    refreshDashboardNow();
+                } else {
+                    alert(data.error || 'Could not spin yes/no');
+                }
+            } catch (err) {
+                console.error('Yes/No spin failed:', err);
+                alert('Could not reach the server.');
+            } finally {
+                updatePromptButtonsState();
+            }
+        }
+
+        const screenCoinSpinBtn = document.getElementById('screenCoinSpinBtn');
+        const screenYesNoSpinBtn = document.getElementById('screenYesNoSpinBtn');
+        if (screenCoinSpinBtn) {
+            screenCoinSpinBtn.addEventListener('click', () =>
+                triggerScreenCoinSpin(screenCoinSpinBtn)
+            );
+        }
+        if (screenYesNoSpinBtn) {
+            screenYesNoSpinBtn.addEventListener('click', () =>
+                triggerScreenYesNoSpin(screenYesNoSpinBtn)
+            );
+        }
 
         // ── Tracks played tab ──────────────────────────────────────────
         const tracksList = document.getElementById('tracksList');
@@ -1343,7 +1745,7 @@
             card.querySelector('.track-delete').addEventListener('click', async () => {
                 if (!confirm('Remove this track from the played list?')) return;
                 try {
-                    const res = await fetch(`/api/tracks-played/${track.id}`, { method: 'DELETE' });
+                    const res = await mdjFetch(`/api/tracks-played/${track.id}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) loadTracks();
                 } catch (err) {
@@ -1364,7 +1766,7 @@
                     return;
                 }
                 const lists = await Promise.all(eventIds.map(id =>
-                    fetch(`/api/events/${id}/tracks-played`).then(r => r.ok ? r.json() : [])
+                    mdjFetch(`/api/events/${id}/tracks-played`).then(r => r.ok ? r.json() : [])
                 ));
                 const tracks = lists.flat().sort((a, b) => new Date(b.playedAt) - new Date(a.playedAt));
                 trackCount.textContent = tracks.length;
@@ -1395,7 +1797,7 @@
                 played_at = new Date(playedAtRaw).toISOString();
             }
             try {
-                const res = await fetch(`/api/events/${eventId}/tracks-played`, {
+                const res = await mdjFetch(`/api/events/${eventId}/tracks-played`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title, artist, played_at })
@@ -1421,7 +1823,7 @@
                 return;
             }
             try {
-                const res = await fetch(`/api/events/${eventId}/tracks-played/from-now-playing`, { method: 'POST' });
+                const res = await mdjFetch(`/api/events/${eventId}/tracks-played/from-now-playing`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
                     loadTracks();
@@ -1464,13 +1866,24 @@
         async function moderateGuest(eventId, customerName, action, durationMinutes) {
             const body = { customerName, action };
             if (durationMinutes) body.durationMinutes = durationMinutes;
-            const res = await fetch(`/api/events/${eventId}/guests/moderate`, {
+            const res = await mdjFetch(`/api/events/${eventId}/guests/moderate`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Moderation failed');
+            return data;
+        }
+
+        async function removeGuestFromEvent(eventId, customerName) {
+            const res = await mdjFetch(`/api/events/${eventId}/guests/remove`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customerName })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Could not remove guest');
             return data;
         }
 
@@ -1612,6 +2025,26 @@
                 actions.prepend(unmuteBtn);
             }
 
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-outline-secondary btn-sm';
+            removeBtn.title = 'Remove from guest list';
+            removeBtn.innerHTML = '<i class="fas fa-user-minus"></i>';
+            removeBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const msg =
+                    `Remove ${guest.customerName} from this event's guest list?\n\n` +
+                    'Their past requests and messages stay in the system; they can appear again if they interact with the event.';
+                if (!confirm(msg)) return;
+                try {
+                    await removeGuestFromEvent(eventId, guest.customerName);
+                    loadGuests();
+                } catch (err) {
+                    alert(err.message);
+                }
+            });
+            actions.appendChild(removeBtn);
+
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.guest-actions') || e.target.closest('.guest-silence-panel')) return;
                 openGuestConversation(eventId, guest.customerName);
@@ -1668,7 +2101,7 @@
             guestConversationTimeline.innerHTML = '<span class="text-muted small">Loading…</span>';
             guestConversationModal.show();
             try {
-                const res = await fetch(`/api/events/${eventId}/guests/${encodeURIComponent(customerName)}/conversation`);
+                const res = await mdjFetch(`/api/events/${eventId}/guests/${encodeURIComponent(customerName)}/conversation`);
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || 'Failed to load conversation');
                 if (!data.items || data.items.length === 0) {
@@ -1708,7 +2141,7 @@
                     return;
                 }
                 const lists = await Promise.all(eventIds.map(id =>
-                    fetch(`/api/events/${id}/guests`).then(r => r.ok ? r.json() : [])
+                    mdjFetch(`/api/events/${id}/guests`).then(r => r.ok ? r.json() : [])
                 ));
                 const guests = lists.flat().sort((a, b) => new Date(b.lastSeenAt) - new Date(a.lastSeenAt));
                 guestCount.textContent = guests.length;

@@ -15,84 +15,37 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     
-    <% if (event) { %>
-    <script id="eventThemeCss" type="text/plain">
-:root {
-<% if (event.heading_color) { %>--event-heading-color: <%= event.heading_color %>;<% } %>
-<% if (event.text_color) { %>--event-text-color: <%= event.text_color %>;<% } %>
-<% if (event.bg_color) { %>--event-bg-color: <%= event.bg_color %>;<% } %>
-<% if (event.accent_color) { %>--event-accent-color: <%= event.accent_color %>;<% } %>
-}
-<% if (event.bg_color || event.bg_image) { %>
-body {
-<% if (event.bg_color) { %>background-color: <%= event.bg_color %>;<% } %>
-<% if (event.bg_image) { %>
-background-image: url('<%= event.bg_image %>');
-background-size: cover;
-background-position: center;
-background-attachment: fixed;
-<% } %>
-}
-<% } %>
-<% if (event.text_color) { %>
-body, .card-text, p, .lead { color: <%= event.text_color %>; }
-<% } %>
-<% if (event.heading_color) { %>
-h1, h2, h3, h4, h5, h6, .card-title, .display-4 { color: <%= event.heading_color %> !important; }
-<% } %>
-<% if (event.accent_color) { %>
-body.mdj-eyup-brand .mdj-site-navbar { background-color: <%= event.accent_color %> !important; border-bottom-color: <%= event.accent_color %> !important; }
-.btn-primary { background-color: <%= event.accent_color %>; border-color: <%= event.accent_color %>; }
-.btn-primary:hover { background-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); border-color: color-mix(in srgb, <%= event.accent_color %> 85%, black); }
-.text-primary { color: <%= event.accent_color %> !important; }
-.border-primary { border-color: <%= event.accent_color %> !important; }
-a { color: <%= event.accent_color %>; }
-<% } %>
-<%- event.custom_css || '' %>
-    </script>
-    <script>
-        (function() {
-            const themeCss = document.getElementById('eventThemeCss');
-            if (!themeCss) return;
-            const style = document.createElement('style');
-            style.textContent = themeCss.textContent;
-            document.head.appendChild(style);
-        })();
-    </script>
-    <% } %>
+    <%- include('partials/guest-event-theme', { event: typeof event !== 'undefined' ? event : null }) %>
     
 
 </head>
-<body class="mdj-eyup-brand">
+<%
+  const hubEvent = typeof event !== 'undefined' ? event : null;
+  let hubBodyClass = 'mdj-eyup-brand mdj-guest-hub-page';
+  if (!hubEvent || hubEvent.guest_menu_compact !== 0) hubBodyClass += ' mdj-guest-hub-compact';
+  if (hubEvent && hubEvent.guest_show_option_desc === 0) hubBodyClass += ' mdj-guest-hub-no-desc';
+  if (hubEvent && hubEvent.guest_hero_compact === 1) hubBodyClass += ' mdj-guest-hub-hero-compact';
+%>
+<body class="<%= hubBodyClass %>">
     <div class="mdj-scanlines" aria-hidden="true"></div>
 
-    <nav class="mdj-site-navbar mdj-site-navbar--minimal" aria-label="Requests">
-        <div class="nav-container">
-            <div class="logo" role="img" aria-label="EYUP EVENTS">
-                <span class="logo-text">EYUP</span>
-                <span class="logo-accent">EVENTS</span>
-                <span class="logo-subtitle"><% if (event && event.name) { %><%= event.name %><% } else if (typeof eventSlug === 'string' && eventSlug) { %>Guest requests<% } else { %>MobileDJay<% } %></span>
-            </div>
-            <div class="mdj-nav-controls">
-                <button id="repliesBellBtn" type="button" class="nav-msg-btn position-relative" title="Messages" aria-pressed="false" role="button" aria-label="Messages" hidden>
-                    <i class="fas fa-comment-dots"></i>
-                    <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
-                </button>
-            </div>
-        </div>
-    </nav>
-
     <span id="welcomeName" class="visually-hidden"></span>
-
-    <!-- Store eventSlug + DJ name for JavaScript -->
     <script>
         window.eventSlug = '<%= eventSlug || "" %>';
         window.djName = '<%= typeof djName !== "undefined" && djName ? djName : "DJ" %>';
     </script>
 
-    <main class="container mt-4">
+    <main class="container mdj-guest-hub-main">
         <div class="index-page">
+            <div class="guest-hub-top" aria-hidden="false">
+                <button id="repliesBellBtn" type="button" class="nav-msg-btn guest-hub-messages-btn position-relative" title="Messages" aria-pressed="false" aria-label="Messages" hidden>
+                    <i class="fas fa-comment-dots"></i>
+                    <span class="guest-hub-messages-label">Messages</span>
+                    <span id="repliesBadge" class="nav-msg-badge" style="display: none;">0</span>
+                </button>
+            </div>
             <!-- Hero Section (hidden when now playing) -->
             <header class="hero-section" id="heroSection">
                 <% if (event && event.logo_image) { %>
@@ -122,8 +75,6 @@ a { color: <%= event.accent_color %>; }
                         <div class="now-playing-artist" id="nowPlayingArtist"></div>
                     </div>
                 </div>
-            </div>
-
             </div>
 
             <!-- Customer Name Input -->
@@ -199,18 +150,6 @@ a { color: <%= event.accent_color %>; }
                         <div class="option-card-content">
                             <h3 class="option-card-title">Event Cam</h3>
                             <p class="option-card-desc">Open the camera and snap a photo for the event album</p>
-                        </div>
-                        <div class="option-card-arrow">
-                            <i class="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-                    <div class="option-card" data-target="<%= 'event/' + eventSlug + '/photo' %>">
-                        <div class="option-card-icon option-card-icon--photo">
-                            <i class="fas fa-images"></i>
-                        </div>
-                        <div class="option-card-content">
-                            <h3 class="option-card-title">Upload from Gallery</h3>
-                            <p class="option-card-desc">Choose a photo you already have on your phone</p>
                         </div>
                         <div class="option-card-arrow">
                             <i class="fas fa-chevron-right"></i>

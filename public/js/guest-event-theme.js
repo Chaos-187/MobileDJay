@@ -49,27 +49,46 @@
         }
 
         if (t.bg_image) {
-            let block = `${scope} {\n`;
-            block += `  background-image: url('${escapeCssUrl(t.bg_image)}') !important;\n`;
-            block += '  background-size: cover !important;\n';
-            block += `  background-position: ${bgPos} !important;\n`;
-            block += '  background-repeat: no-repeat !important;\n';
-            block += `  background-color: ${t.bg_color || '#0a0a0a'} !important;\n`;
-            block += '}';
-            parts.push(block);
+            const bgLayerPos = scope === 'body' ? 'fixed' : 'absolute';
+            parts.push(`${scope} {
+  background-color: ${t.bg_color || '#0a0a0a'} !important;
+  background-image: none !important;
+  position: relative;
+}`);
+            parts.push(`${scope}::after {
+  content: '';
+  position: ${bgLayerPos};
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  z-index: 0;
+  pointer-events: none;
+  background-image: url('${escapeCssUrl(t.bg_image)}');
+  background-size: cover;
+  background-position: ${bgPos} center;
+  background-repeat: no-repeat;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}`);
 
             if (bgOverlay > 0) {
                 const overlayPos = scope === 'body' ? 'fixed' : 'absolute';
-                parts.push(`${scope} { position: relative; }`);
                 parts.push(`${scope}::before {
   content: '';
   position: ${overlayPos};
   inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
   background: rgba(0, 0, 0, ${(bgOverlay / 100).toFixed(2)});
   pointer-events: none;
-  z-index: 0;
+  z-index: 1;
 }`);
-                parts.push(`${scope} main.container.mdj-guest-hub-main { position: relative; z-index: 1; }`);
+                parts.push(`${scope} main.container.mdj-guest-hub-main, ${scope} .mdj-scanlines { position: relative; z-index: 2; }`);
+            } else {
+                parts.push(`${scope} main.container.mdj-guest-hub-main, ${scope} .mdj-scanlines { position: relative; z-index: 1; }`);
             }
         } else if (t.bg_color) {
             parts.push(`${scope} {\n  background: ${t.bg_color} !important;\n}`);

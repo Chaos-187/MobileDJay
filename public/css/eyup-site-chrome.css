@@ -150,7 +150,6 @@ body.mdj-eyup-brand:not(.mdj-dash-tools) main.container {
     flex-direction: column;
     position: relative;
     z-index: 2;
-    min-height: 0;
 }
 
 body.mdj-eyup-brand:not(.mdj-dash-tools) main.container > .mdj-eyup-footer--compact {
@@ -355,7 +354,11 @@ body.dark-mode.mdj-dash-tools.mdj-eyup-brand .btn-outline-secondary {
     background: rgba(0, 0, 0, 0.15);
 }
 
-/* Scanlines (non-interactive, below modals) */
+/* Scanlines (non-interactive, above themed bg, below page content) */
+body.mdj-eyup-brand:not(.mdj-dash-tools) .mdj-scanlines {
+    z-index: 1;
+}
+
 body.mdj-eyup-brand .mdj-scanlines {
     position: fixed;
     top: 0;

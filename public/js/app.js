@@ -231,6 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
         welcomeName.textContent = customerName;
         optionsContainer.style.display = 'block';
         optionsContainer.classList.add('fade-in');
+        document.body.classList.add('mdj-guest-hub-menu-visible');
         // Show navbar profile and bell when options are visible
         if (editNameBtn) {
             editNameBtn.style.display = 'inline-flex';
@@ -245,6 +246,7 @@ document.addEventListener('DOMContentLoaded', function() {
         optionsContainer.style.display = 'none';
         repliesScreen.style.display = 'none';
         nameInputCard.style.display = 'block';
+        document.body.classList.remove('mdj-guest-hub-menu-visible');
         customerNameInput.focus();
         if (editNameBtn) {
             editNameBtn.style.display = 'none';

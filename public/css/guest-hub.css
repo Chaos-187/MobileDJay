@@ -5,7 +5,7 @@ body.mdj-guest-hub-page,
     padding-top: 0 !important;
     min-height: 100vh;
     min-height: 100dvh;
-    height: auto !important;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -19,13 +19,15 @@ body.mdj-guest-hub-page main.container.mdj-guest-hub-main,
     width: 100%;
     max-width: 100%;
     /* Override global main.container max-height (100vh - 60px) — no navbar on guest hub */
-    max-height: 100dvh !important;
-    height: 100dvh;
+    max-height: none !important;
+    height: auto;
     min-height: 0;
     margin: 0 auto !important;
-    padding: max(0.5rem, env(safe-area-inset-top)) clamp(0.75rem, 3vw, 1.25rem)
-        max(0.35rem, env(safe-area-inset-bottom));
-    overflow: hidden;
+    padding: max(1rem, calc(env(safe-area-inset-top, 0px) + 0.65rem)) clamp(0.75rem, 3vw, 1.25rem)
+        max(0.35rem, env(safe-area-inset-bottom, 0px));
+    overflow: hidden !important;
+    overflow-y: hidden !important;
+    padding-bottom: 0 !important;
     box-sizing: border-box;
 }
 
@@ -33,6 +35,8 @@ body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
 .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page {
     flex: 1 1 auto;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
     overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -41,6 +45,19 @@ body.mdj-guest-hub-page main.mdj-guest-hub-main > .index-page,
     width: 100%;
     margin: 0 auto;
     padding: 0 0.15rem 0.5rem;
+}
+
+body.mdj-guest-hub-page.mdj-guest-hub-menu-visible main.mdj-guest-hub-main > .index-page,
+.guest-phone-screen.mdj-guest-hub-page.mdj-guest-hub-menu-visible main.mdj-guest-hub-main > .index-page {
+    justify-content: center;
+    padding-top: clamp(0.5rem, 3vh, 1.75rem);
+    padding-bottom: clamp(0.75rem, 4vh, 2rem);
+}
+
+body.mdj-guest-hub-page .guest-hub-top:not(:has(.guest-hub-messages-btn:not([hidden]))) {
+    min-height: 0;
+    margin-bottom: 0;
+    padding-bottom: 0;
 }
 
 body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,
@@ -406,8 +423,7 @@ body.mdj-guest-hub-page.mdj-guest-hub-hero-compact .hero-subtitle,
 @media (max-width: 767.98px) {
     body.mdj-guest-hub-page main.mdj-guest-hub-main,
     .guest-phone-screen.mdj-guest-hub-page main.mdj-guest-hub-main {
-        padding-top: max(0.35rem, env(safe-area-inset-top));
-        padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
+        padding-top: max(1.15rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
     }
 
     body.mdj-guest-hub-page main.mdj-guest-hub-main > .mdj-eyup-footer--compact,

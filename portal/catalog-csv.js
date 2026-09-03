@@ -15,6 +15,7 @@ const CSV_HEADERS = [
     'capability_code',
     'allows_addons',
     'is_active',
+    'addon_only',
     'sort_order',
     'parent_code',
     'addon_code',
@@ -101,6 +102,7 @@ function snapshotToCsv(snapshot) {
                 p.capability_code || '',
                 p.allows_addons === false ? '0' : '1',
                 p.is_active === false ? '0' : '1',
+                p.addon_only === true ? '1' : '0',
                 p.sort_order != null ? p.sort_order : 0,
                 '',
                 '',
@@ -112,6 +114,7 @@ function snapshotToCsv(snapshot) {
             lines.push(
                 csvRow([
                     'addon',
+                    '',
                     '',
                     '',
                     '',
@@ -199,6 +202,7 @@ function csvToImportPayload(csvText) {
             capability_code: col(row, 'capability_code') || null,
             allows_addons: parseCsvBool(col(row, 'allows_addons')),
             is_active: parseCsvBool(col(row, 'is_active')),
+            addon_only: ['1', 'true', 'yes', 'y'].includes(col(row, 'addon_only').toLowerCase()),
             sort_order: col(row, 'sort_order') === '' ? 0 : Number(col(row, 'sort_order')),
             addons: []
         };

@@ -376,6 +376,7 @@ db.exec(`
         capability_code TEXT,
         allows_addons INTEGER NOT NULL DEFAULT 1 CHECK(allows_addons IN (0,1)),
         is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
+        addon_only INTEGER NOT NULL DEFAULT 0 CHECK(addon_only IN (0,1)),
         sort_order INTEGER NOT NULL DEFAULT 0,
         product_type TEXT NOT NULL DEFAULT 'general',
         image_url TEXT,
@@ -457,6 +458,13 @@ try {
 }
 try {
     db.exec(`ALTER TABLE catalog_products ADD COLUMN image_url TEXT`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(
+        `ALTER TABLE catalog_products ADD COLUMN addon_only INTEGER NOT NULL DEFAULT 0 CHECK(addon_only IN (0,1))`
+    );
 } catch (e) {
     /* exists */
 }
@@ -556,6 +564,7 @@ function materializeCatalogProduct(row, { addons = null, resolveImage = false } 
         ),
         allows_addons: row.allows_addons === 1,
         is_active: row.is_active === 1,
+        addon_only: row.addon_only === 1,
         image_url: normalizeCatalogImageStorage(row.image_url),
         image_url_public: row.image_url ? resolveCatalogImageUrl(row.image_url) : null
     };
@@ -1916,9 +1925,9 @@ const portalDb = {
         db.prepare(`
             INSERT INTO catalog_products (
                 id, code, name, description, pricing_model, standalone_rate, minimum_hours, currency,
-                capability_code, allows_addons, is_active, sort_order, product_type, image_url,
+                capability_code, allows_addons, is_active, addon_only, sort_order, product_type, image_url,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             id,
             String(row.code).trim().toLowerCase(),
@@ -1937,6 +1946,7 @@ const portalDb = {
                 : null,
             row.allows_addons === false || row.allows_addons === 0 ? 0 : 1,
             row.is_active === false || row.is_active === 0 ? 0 : 1,
+            row.addon_only === true || row.addon_only === 1 ? 1 : 0,
             Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
             normalizeProductType(row.product_type),
             normalizeCatalogImageStorage(row.image_url),
@@ -1960,6 +1970,7 @@ const portalDb = {
             'capability_code',
             'allows_addons',
             'is_active',
+            'addon_only',
             'sort_order',
             'product_type',
             'image_url'
@@ -1982,7 +1993,7 @@ const portalDb = {
             else if (key === 'capability_code') {
                 val =
                     val != null && String(val).trim() ? String(val).trim().toLowerCase() : null;
-            } else if (key === 'allows_addons' || key === 'is_active') {
+            } else if (key === 'allows_addons' || key === 'is_active' || key === 'addon_only') {
                 val = val ? 1 : 0;
             } else if (key === 'sort_order') val = Number(val) || 0;
             else if (key === 'product_type') val = normalizeProductType(val);
@@ -2213,6 +2224,7 @@ const portalDb = {
                 image_url: full.image_url || null,
                 allows_addons: full.allows_addons !== false,
                 is_active: full.is_active !== false,
+                addon_only: full.addon_only === true,
                 sort_order: full.sort_order != null ? full.sort_order : 0,
                 addons
             };
@@ -2265,6 +2277,7 @@ const portalDb = {
                         : null,
                 allows_addons: !(row.allows_addons === false || row.allows_addons === 0),
                 is_active: !(row.is_active === false || row.is_active === 0),
+                addon_only: row.addon_only === true || row.addon_only === 1,
                 sort_order: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0
             };
             if (existing) {
@@ -3102,7 +3115,9 @@ const portalDb = {
     },
 
     listPublicQuoteCatalogProducts() {
-        const products = portalDb.listCatalogProducts({ activeOnly: true });
+        const products = portalDb
+            .listCatalogProducts({ activeOnly: true })
+            .filter((p) => !p.addon_only);
         return products.map((p) => portalDb.materializePublicQuoteProduct(p.id));
     },
 

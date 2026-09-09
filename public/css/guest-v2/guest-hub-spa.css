@@ -60,19 +60,52 @@ body.gh-spa::after {
 
 .gh-app > * { position: relative; z-index: 1; }
 
-/* ── Name gate (full screen) ── */
+/* Lock app until guest check-in succeeds */
+body.gh-spa.gh-locked .gh-app {
+    pointer-events: none;
+    user-select: none;
+}
+
+body.gh-spa.gh-locked #ghGate {
+    display: flex;
+}
+
+body.gh-spa:not(.gh-locked) #ghGate {
+    display: none;
+}
+
+/* ── Name gate (full screen, body-level) ── */
 .gh-gate {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: 1000;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 2rem 1.5rem;
-    background: rgba(5, 5, 10, 0.92);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    background: rgba(5, 5, 10, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.gh-gate[hidden] {
+    display: none !important;
+}
+
+.gh-gate__loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.5rem 0;
+    color: var(--gh-muted);
+    font-size: 0.95rem;
+}
+
+.gh-gate__loading i {
+    font-size: 1.75rem;
+    color: var(--gh-accent);
 }
 
 .gh-gate__inner {

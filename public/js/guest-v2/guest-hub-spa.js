@@ -24,29 +24,67 @@
 
     document.addEventListener('DOMContentLoaded', init);
 
-    function init() {
+    async function init() {
         els.app = document.getElementById('ghApp');
         if (!els.app) return;
 
+        cacheGateElements();
+        bindGateEvents();
+
         if (!cfg.showOptionDesc) document.body.classList.add('gh-no-desc');
 
-        state.guestName = getStoredName();
         renderShell();
+        bindGlobalEvents();
 
-        if (!state.guestName) {
-            showGate();
-        } else {
-            hideGate();
-            onGuestReady();
+        var editMode = new URLSearchParams(global.location.search).get('edit') === 'true';
+        var perEventName = getPerEventName();
+        var prefill = perEventName || getLegacyName();
+
+        if (perEventName && !editMode) {
+            setGateLoading(true, perEventName);
+            var restored = await verifyCheckin(perEventName);
+            setGateLoading(false);
+            if (restored) {
+                state.guestName = perEventName;
+                unlockApp();
+                return;
+            }
+            showGateForm(prefill);
+            return;
         }
 
-        bindGlobalEvents();
+        if (editMode && global.history.replaceState) {
+            global.history.replaceState({}, document.title, cfg.v2Base || global.location.pathname);
+        }
+        showGateForm(prefill);
     }
 
     /* ── Storage ── */
 
-    function getStoredName() {
-        return guestSession ? guestSession.getGuestName(slug) : (sessionStorage.getItem('customerName') || '').trim();
+    function getPerEventName() {
+        if (!guestSession || !slug) return '';
+        try {
+            return (sessionStorage.getItem(guestSession.nameStorageKey(slug)) || '').trim();
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function getLegacyName() {
+        try {
+            return (sessionStorage.getItem('customerName') || '').trim();
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function clearPerEventName() {
+        if (!guestSession || !slug) return;
+        try {
+            sessionStorage.removeItem(guestSession.nameStorageKey(slug));
+        } catch (e) {
+            /* ignore */
+        }
     }
 
     function rememberName(name) {
@@ -62,7 +100,6 @@
         var navItems = buildNavItems(f);
 
         els.app.innerHTML =
-            '<div id="ghGate" class="gh-gate" hidden>' + gateHtml() + '</div>' +
             '<header class="gh-header">' +
                 '<div class="gh-header__row">' +
                     '<p class="gh-header__event">' + esc(cfg.eventName) + '</p>' +
@@ -108,22 +145,6 @@
             : '';
         return '<button type="button" class="gh-nav__btn' + active + '" data-tab="' + id + '">' +
             badge + '<i class="fas ' + icon + '"></i><span>' + label + '</span></button>';
-    }
-
-    function gateHtml() {
-        return '<div class="gh-gate__inner">' +
-            '<span class="gh-gate__badge"><i class="fas fa-sparkles"></i> Guest Hub</span>' +
-            '<h1 class="gh-gate__title">' + esc(cfg.eventName) + '</h1>' +
-            '<p class="gh-gate__sub">Enter your name once — then request songs, chat with the DJ, and join the fun.</p>' +
-            '<div class="gh-gate__field">' +
-                '<input type="text" id="ghGateInput" class="gh-input" placeholder="Your name…" maxlength="50" autocomplete="name" enterkeyhint="go">' +
-                '<button type="button" id="ghGateSubmit" class="gh-btn gh-btn--accent gh-btn--icon" aria-label="Continue">' +
-                    '<i class="fas fa-arrow-right"></i>' +
-                '</button>' +
-            '</div>' +
-            '<p class="gh-hint">Your name is unique for this event on this device.</p>' +
-            '<div id="ghGateError" class="gh-error" hidden role="alert"></div>' +
-        '</div>';
     }
 
     function homePanelHtml(f) {
@@ -241,11 +262,16 @@
         '</' + tag + '>';
     }
 
-    function cacheElements() {
+    function cacheGateElements() {
         els.gate = document.getElementById('ghGate');
         els.gateInput = document.getElementById('ghGateInput');
         els.gateSubmit = document.getElementById('ghGateSubmit');
         els.gateError = document.getElementById('ghGateError');
+        els.gateForm = document.getElementById('ghGateForm');
+        els.gateLoading = document.getElementById('ghGateLoading');
+    }
+
+    function cacheElements() {
         els.namePill = document.getElementById('ghNamePill');
         els.nameLabel = document.getElementById('ghNameLabel');
         els.navBtns = els.app.querySelectorAll('.gh-nav__btn');
@@ -291,18 +317,20 @@
         }
     }
 
-    function bindShellEvents(f) {
+    function bindGateEvents() {
         if (els.gateSubmit) {
             els.gateSubmit.addEventListener('click', submitGateName);
+        }
+        if (els.gateInput) {
             els.gateInput.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') submitGateName();
             });
         }
+    }
 
+    function bindShellEvents(f) {
         if (els.namePill) {
-            els.namePill.addEventListener('click', function () {
-                showGate(state.guestName);
-            });
+            els.namePill.addEventListener('click', openRenameGate);
         }
 
         els.navBtns.forEach(function (btn) {
@@ -329,7 +357,7 @@
                 var action = btn.getAttribute('data-more');
                 if (action === 'camera') openCamera();
                 else if (action === 'tips') openTipSheet();
-                else if (action === 'rename') showGate(state.guestName);
+                else if (action === 'rename') openRenameGate();
             });
         });
 
@@ -379,45 +407,93 @@
 
     /* ── Name gate ── */
 
-    function showGate(prefill) {
-        if (!els.gate) return;
-        els.gate.hidden = false;
-        els.gateInput.value = prefill || '';
-        els.gateError.hidden = true;
-        setTimeout(function () { els.gateInput.focus(); }, 100);
+    function lockApp() {
+        document.body.classList.add('gh-locked');
+        if (els.app) els.app.setAttribute('aria-hidden', 'true');
+        if (els.gate) els.gate.hidden = false;
     }
 
-    function hideGate() {
+    function unlockApp() {
+        document.body.classList.remove('gh-locked');
         if (els.gate) els.gate.hidden = true;
+        if (els.app) els.app.setAttribute('aria-hidden', 'false');
+        updateNameUI();
+        onGuestReady();
+    }
+
+    function showGateForm(prefill) {
+        lockApp();
+        setGateLoading(false);
+        if (els.gateInput) {
+            els.gateInput.value = prefill || '';
+            els.gateInput.disabled = false;
+        }
+        if (els.gateSubmit) els.gateSubmit.disabled = false;
+        showGateError('');
+        setTimeout(function () {
+            if (els.gateInput) els.gateInput.focus();
+        }, 100);
+    }
+
+    function openRenameGate() {
+        showGateForm(state.guestName || getPerEventName() || getLegacyName());
+    }
+
+    function setGateLoading(on, name) {
+        if (els.gateForm) els.gateForm.hidden = !!on;
+        if (els.gateLoading) {
+            els.gateLoading.hidden = !on;
+            if (on && name) {
+                els.gateLoading.querySelector('span').textContent = 'Welcome back, ' + name + '…';
+            } else if (els.gateLoading.querySelector('span')) {
+                els.gateLoading.querySelector('span').textContent = 'Checking you in…';
+            }
+        }
+        if (els.gateInput) els.gateInput.disabled = !!on;
+        if (els.gateSubmit) els.gateSubmit.disabled = !!on;
+    }
+
+    async function verifyCheckin(name) {
+        if (!name) return false;
+        if (!guestSession || !slug) {
+            rememberName(name);
+            return true;
+        }
+        var result = await guestSession.registerCheckin(name);
+        if (result.ok) {
+            rememberName(name);
+            return true;
+        }
+        if (result.data && result.data.error === 'name_taken') {
+            clearPerEventName();
+            showGateError(result.data.message || 'That name is already in use. Please choose another.');
+        } else {
+            showGateError('Could not check you in. Please enter your name and try again.');
+        }
+        return false;
     }
 
     async function submitGateName() {
         var name = els.gateInput.value.trim();
         if (!name) {
             showGateError('Please enter your name');
+            els.gateInput.focus();
             return;
         }
         showGateError('');
         els.gateSubmit.disabled = true;
+        els.gateInput.disabled = true;
         try {
-            if (guestSession && slug) {
-                var result = await guestSession.registerCheckin(name);
-                if (!result.ok && result.data && result.data.error === 'name_taken') {
-                    showGateError(result.data.message || 'That name is already in use.');
-                    els.gateInput.focus();
-                    return;
-                }
-            }
-            rememberName(name);
-            hideGate();
-            updateNameUI();
-            onGuestReady();
+            var ok = await verifyCheckin(name);
+            if (ok) unlockApp();
         } finally {
+            els.gateInput.disabled = false;
             els.gateSubmit.disabled = false;
         }
     }
 
     function showGateError(msg) {
+        if (!els.gateError) return;
         if (!msg) {
             els.gateError.hidden = true;
             els.gateError.textContent = '';
@@ -433,8 +509,6 @@
     }
 
     function onGuestReady() {
-        updateNameUI();
-        if (guestSession && slug) guestSession.registerCheckin(state.guestName);
         startNowPlaying();
         if (cfg.features && cfg.features.messages) {
             loadChatTimeline(true);

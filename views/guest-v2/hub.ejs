@@ -22,11 +22,31 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <link href="/css/guest-chat.css?v=2" rel="stylesheet">
-<link href="/css/guest-v2/guest-hub-spa.css?v=2" rel="stylesheet">
+<link href="/css/guest-v2/guest-hub-spa.css?v=3" rel="stylesheet">
 <% if (ghEvent) { %><%- include('../partials/guest-event-theme', { event: ghEvent }) %><% } %>
 </head>
-<body class="gh-spa">
-<div id="ghApp" class="gh-app" aria-live="polite"></div>
+<body class="gh-spa gh-locked">
+<div id="ghGate" class="gh-gate" role="dialog" aria-modal="true" aria-labelledby="ghGateTitle">
+    <div class="gh-gate__inner">
+        <span class="gh-gate__badge"><i class="fas fa-sparkles"></i> Guest Hub</span>
+        <h1 id="ghGateTitle" class="gh-gate__title"><%= ghEvent && ghEvent.name ? ghEvent.name : 'Welcome' %></h1>
+        <p class="gh-gate__sub">Enter your name to join — it’s unique for this event on this device.</p>
+        <div id="ghGateLoading" class="gh-gate__loading" hidden>
+            <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+            <span>Checking you in…</span>
+        </div>
+        <div id="ghGateForm" class="gh-gate__form">
+            <div class="gh-gate__field">
+                <input type="text" id="ghGateInput" class="gh-input" placeholder="Your name…" maxlength="50" autocomplete="name" enterkeyhint="go">
+                <button type="button" id="ghGateSubmit" class="gh-btn gh-btn--accent gh-btn--icon" aria-label="Continue">
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <div id="ghGateError" class="gh-error" hidden role="alert"></div>
+    </div>
+</div>
+<div id="ghApp" class="gh-app" aria-live="polite" aria-hidden="true"></div>
 <div id="ghCameraOverlay" class="gh-camera-overlay" hidden>
     <iframe id="ghCameraFrame" class="gh-camera-frame" title="Event Cam" allow="camera; microphone"></iframe>
     <button type="button" id="ghCameraClose" class="gh-camera-close" aria-label="Close camera"><i class="fas fa-times"></i></button>
@@ -54,6 +74,6 @@ window.GuestHubConfig = {
 };
 </script>
 <script src="/js/guest-session.js"></script>
-<script src="/js/guest-v2/guest-hub-spa.js?v=2"></script>
+<script src="/js/guest-v2/guest-hub-spa.js?v=3"></script>
 </body>
 </html>

@@ -2474,49 +2474,10 @@ app.get('/event/:eventSlug/v2', getEventFromSlug, (req, res) => {
     res.render('guest-v2/hub', guestV2Locals(req));
 });
 
-app.get('/event/:eventSlug/v2/songs', getEventFromSlug, (req, res) => {
-    if (req.event.enable_song_requests === 0) {
-        return res.redirect(`/event/${req.event.slug}/v2`);
-    }
-    res.render('guest-v2/songs', guestV2Locals(req, {
-        customerName: req.query.customerName || '',
-        songs: songCatalogue
-    }));
-});
-
-app.get('/event/:eventSlug/v2/karaoke', getEventFromSlug, (req, res) => {
-    if (req.event.enable_karaoke_requests === 0) {
-        return res.redirect(`/event/${req.event.slug}/v2`);
-    }
-    res.render('guest-v2/karaoke', guestV2Locals(req, {
-        customerName: req.query.customerName || '',
-        karaoke: karaokeCatalogue
-    }));
-});
-
-app.get('/event/:eventSlug/v2/messages', getEventFromSlug, (req, res) => {
-    if (req.event.enable_messages === 0) {
-        return res.redirect(`/event/${req.event.slug}/v2`);
-    }
-    res.render('guest-v2/messages', guestV2Locals(req, {
-        customerName: req.query.customerName || ''
-    }));
-});
-
-app.get('/event/:eventSlug/v2/camera', getEventFromSlug, (req, res) => {
-    if (!req.event.enable_photos) {
-        return res.status(403).render('error', {
-            error: 'Photos are not enabled for this event',
-            customerName: '',
-            eventSlug: req.event.slug
-        });
-    }
-    const customerName = req.query.customerName || '';
-    res.render('photo-camera', {
-        customerName,
-        eventSlug: req.event.slug,
-        event: req.event,
-        guestV2Hub: `/event/${req.event.slug}/v2`
+// Legacy v2 sub-paths — SPA handles everything on /v2
+['/songs', '/karaoke', '/messages', '/camera'].forEach(function (suffix) {
+    app.get('/event/:eventSlug/v2' + suffix, getEventFromSlug, (req, res) => {
+        res.redirect(302, `/event/${req.event.slug}/v2`);
     });
 });
 

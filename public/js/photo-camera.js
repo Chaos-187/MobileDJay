@@ -27,7 +27,7 @@
             ? window.MdjGuestSession.getGuestName(window.eventSlug)
             : sessionStorage.getItem('customerName')) ||
         '';
-    const eventUrl = '/event/' + encodeURIComponent(eventSlug);
+    const eventUrl = window.guestV2Hub || ('/event/' + encodeURIComponent(eventSlug));
 
     let cameraStream = null;
     let facingMode = 'environment';

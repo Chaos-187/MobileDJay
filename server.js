@@ -317,6 +317,19 @@ function getEventFromSlug(req, res, next) {
     next();
 }
 
+/** Shared template locals for Guest Hub v2 pages. */
+function guestV2Locals(req, extra = {}) {
+    const slug = req.event.slug;
+    return {
+        eventSlug: slug,
+        event: req.event,
+        v2Base: `/event/${slug}/v2`,
+        hubUrl: `/event/${slug}/v2`,
+        djName: req.event.dj_name || 'DJ',
+        ...extra
+    };
+}
+
 // JSON variant for API routes (no EJS error pages)
 function getEventFromSlugJson(req, res, next) {
     const slug = req.params.eventSlug;
@@ -1361,6 +1374,7 @@ app.get('/api/events/:id/links', djWebAuth.requireDjApiAuth, djWebAuth.requireEv
     const base = getPublicBaseUrl(req);
     res.json({
         guest: `${base}/event/${event.slug}`,
+        guest_v2: `${base}/event/${event.slug}/v2`,
         photos: `${base}/event/${event.slug}/photo`,
         gallery: `${base}/gallery/${event.slug}/${event.share_token}`,
         display: `${base}/dj/display/${event.slug}`
@@ -2452,6 +2466,57 @@ app.get('/event/:eventSlug/camera', getEventFromSlug, (req, res) => {
         customerName,
         eventSlug: req.event.slug,
         event: req.event
+    });
+});
+
+// ==================== Guest Hub v2 (parallel UI — legacy routes unchanged) ====================
+app.get('/event/:eventSlug/v2', getEventFromSlug, (req, res) => {
+    res.render('guest-v2/hub', guestV2Locals(req));
+});
+
+app.get('/event/:eventSlug/v2/songs', getEventFromSlug, (req, res) => {
+    if (req.event.enable_song_requests === 0) {
+        return res.redirect(`/event/${req.event.slug}/v2`);
+    }
+    res.render('guest-v2/songs', guestV2Locals(req, {
+        customerName: req.query.customerName || '',
+        songs: songCatalogue
+    }));
+});
+
+app.get('/event/:eventSlug/v2/karaoke', getEventFromSlug, (req, res) => {
+    if (req.event.enable_karaoke_requests === 0) {
+        return res.redirect(`/event/${req.event.slug}/v2`);
+    }
+    res.render('guest-v2/karaoke', guestV2Locals(req, {
+        customerName: req.query.customerName || '',
+        karaoke: karaokeCatalogue
+    }));
+});
+
+app.get('/event/:eventSlug/v2/messages', getEventFromSlug, (req, res) => {
+    if (req.event.enable_messages === 0) {
+        return res.redirect(`/event/${req.event.slug}/v2`);
+    }
+    res.render('guest-v2/messages', guestV2Locals(req, {
+        customerName: req.query.customerName || ''
+    }));
+});
+
+app.get('/event/:eventSlug/v2/camera', getEventFromSlug, (req, res) => {
+    if (!req.event.enable_photos) {
+        return res.status(403).render('error', {
+            error: 'Photos are not enabled for this event',
+            customerName: '',
+            eventSlug: req.event.slug
+        });
+    }
+    const customerName = req.query.customerName || '';
+    res.render('photo-camera', {
+        customerName,
+        eventSlug: req.event.slug,
+        event: req.event,
+        guestV2Hub: `/event/${req.event.slug}/v2`
     });
 });
 

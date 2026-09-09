@@ -1,0 +1,26 @@
+<%
+  const gv2Hub = typeof hubUrl !== 'undefined' ? hubUrl : (typeof v2Base !== 'undefined' ? v2Base : '/');
+  const gv2BarTitle = typeof barTitle !== 'undefined' ? barTitle : 'Guest Hub';
+  const gv2ShowBack = typeof showBack !== 'undefined' ? showBack : false;
+  const gv2BackHref = typeof backHref !== 'undefined' ? backHref : gv2Hub;
+%>
+<header class="gv2-topbar">
+    <div class="gv2-topbar__start">
+        <% if (gv2ShowBack) { %>
+        <a class="gv2-topbar__back" href="<%= gv2BackHref %>" aria-label="Back">
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>
+        </a>
+        <% } else if (event && event.logo_image) { %>
+        <img class="gv2-topbar__logo" src="<%= event.logo_image %>" alt="">
+        <% } %>
+    </div>
+    <h1 class="gv2-topbar__title"><%= gv2BarTitle %></h1>
+    <div class="gv2-topbar__end">
+        <% if (typeof showMessagesBtn === 'undefined' || showMessagesBtn) { %>
+        <a id="gv2MessagesBtn" class="gv2-topbar__messages" href="<%= gv2Hub %>/messages" title="Messages" aria-label="Messages" hidden>
+            <i class="fas fa-comment-dots" aria-hidden="true"></i>
+            <span id="gv2MessagesBadge" class="gv2-topbar__badge" hidden>0</span>
+        </a>
+        <% } %>
+    </div>
+</header>

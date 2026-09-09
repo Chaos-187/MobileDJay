@@ -321,6 +321,9 @@
     <script>
         window.eventSlug = '<%= eventSlug %>';
         window.customerName = '<%= customerName %>';
+        <% if (typeof guestV2Hub !== 'undefined' && guestV2Hub) { %>
+        window.guestV2Hub = '<%= guestV2Hub %>';
+        <% } %>
     </script>
     <script src="/js/photo-camera.js"></script>
 </body>

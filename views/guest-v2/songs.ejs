@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('partials/head', { event, pageTitle: 'Song request', eventSlug, includeBootstrap: true }) %>
+</head>
+<body class="guest-v2 gv2-flow">
+<div class="gv2-app">
+    <%- include('partials/topbar', { barTitle: 'Song request', hubUrl: v2Base, showBack: true, backHref: v2Base, showMessagesBtn: false }) %>
+    <main class="gv2-main">
+        <% if (event && event.show_tracks_played_guest && eventSlug) { %>
+        <button type="button" id="tracksPlayedBtn" class="gv2-btn gv2-btn--primary w-100 mb-2"
+                data-bs-toggle="modal" data-bs-target="#tracksPlayedModal">
+            <i class="fas fa-list-ul me-2"></i>Recently played
+        </button>
+        <% } %>
+        <div class="card mb-3">
+            <div class="card-body">
+                <label for="songSearch" class="form-label">Search songs</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" id="songSearch" class="form-control" placeholder="At least 3 characters…" autocomplete="off">
+                </div>
+                <div class="form-text">Search by title, artist, album, or year</div>
+            </div>
+        </div>
+        <form id="songRequestForm" action="/submit-song-request" method="POST">
+            <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
+            <input type="hidden" name="eventSlug" value="<%= eventSlug %>">
+            <div class="card mb-3">
+                <div class="card-header">Available songs</div>
+                <div class="card-body p-2">
+                    <div class="scrollable-results">
+                        <div id="songList" class="row g-2">
+                            <div class="col-12 text-center text-muted py-4">
+                                <i class="fas fa-search fa-2x mb-2"></i>
+                                <p class="mb-0">Search to find tracks in the library</p>
+                            </div>
+                        </div>
+                        <div id="noSongsFound" hidden class="text-center text-muted py-3">
+                            <p class="mb-0">Enter at least 3 characters to search</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gv2-submit-bar">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-paper-plane me-2"></i>Submit song request
+                </button>
+            </div>
+        </form>
+    </main>
+</div>
+<% if (event && event.show_tracks_played_guest && eventSlug) { %>
+<div class="modal fade" id="tracksPlayedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="background:#1a1d26;color:#f4f4f5;">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="fas fa-list-ul me-2"></i>Recently played</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="tracks-played-list tracks-played-list--modal list-unstyled mb-0" id="tracksPlayedModalList">
+                    <li class="text-muted">Loading…</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+<% } %>
+<script>
+    window.eventSlug = '<%= eventSlug %>';
+    window.GuestV2Config = { eventSlug: '<%= eventSlug %>', v2Base: '<%= v2Base %>' };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/guest-session.js"></script>
+<script src="/js/guest-v2/common.js?v=1"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var name = GuestV2.ensureGuestName();
+        if (name) document.getElementById('customerName').value = name;
+    });
+</script>
+<% if (event && event.show_tracks_played_guest && eventSlug) { %>
+<script src="/js/tracks-played-guest.js"></script>
+<% } %>
+<script src="/js/song-request.js"></script>
+</body>
+</html>

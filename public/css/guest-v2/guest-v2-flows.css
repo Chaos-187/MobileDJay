@@ -1,0 +1,81 @@
+/* Guest v2 flow pages — bootstrap overrides inside gv2 shell */
+
+body.guest-v2.gv2-flow .gv2-main {
+    padding-bottom: 5rem;
+}
+
+body.guest-v2.gv2-flow .card {
+    background: var(--event-guest-card-color, var(--gv2-surface));
+    border: 1px solid var(--gv2-border);
+    border-radius: var(--gv2-radius);
+    color: var(--gv2-text);
+    box-shadow: var(--gv2-shadow);
+}
+
+body.guest-v2.gv2-flow .card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--gv2-border);
+    color: var(--event-heading-color, var(--gv2-text));
+    font-weight: 700;
+}
+
+body.guest-v2.gv2-flow .form-control,
+body.guest-v2.gv2-flow .input-group-text {
+    background: rgba(0, 0, 0, 0.25);
+    border-color: var(--gv2-border);
+    color: var(--gv2-text);
+}
+
+body.guest-v2.gv2-flow .form-control:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: var(--gv2-accent);
+    color: var(--gv2-text);
+    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--gv2-accent) 25%, transparent);
+}
+
+body.guest-v2.gv2-flow .form-label,
+body.guest-v2.gv2-flow .form-text {
+    color: var(--gv2-muted);
+}
+
+body.guest-v2.gv2-flow .text-muted {
+    color: var(--gv2-muted) !important;
+}
+
+body.guest-v2.gv2-flow .btn-success {
+    background: var(--gv2-accent);
+    border-color: var(--gv2-accent);
+}
+
+body.guest-v2.gv2-flow .gv2-submit-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    padding: 0.75rem max(0.75rem, env(safe-area-inset-right)) max(0.85rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left));
+    background: linear-gradient(transparent, rgba(15, 17, 23, 0.92) 30%);
+    pointer-events: none;
+}
+
+body.guest-v2.gv2-flow .gv2-submit-bar .btn {
+    pointer-events: auto;
+    max-width: var(--gv2-max);
+    margin: 0 auto;
+    display: block;
+    width: 100%;
+    border-radius: var(--gv2-radius-sm);
+    font-weight: 700;
+    padding: 0.9rem 1rem;
+}
+
+body.guest-v2.gv2-flow .scrollable-results {
+    max-height: min(50vh, 420px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.guest-v2.gv2-flow .song-item,
+body.guest-v2.gv2-flow .karaoke-item {
+    border-radius: var(--gv2-radius-sm);
+}

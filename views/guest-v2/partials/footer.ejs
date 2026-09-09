@@ -1,0 +1,6 @@
+<footer class="gv2-footer" aria-label="Company">
+    <p class="gv2-footer__legal">&copy; <%= new Date().getFullYear() %> EYUP EVENTS UK LTD</p>
+    <% if (typeof showLegacyLink !== 'undefined' && showLegacyLink && eventSlug) { %>
+    <p class="gv2-footer__legacy"><a href="/event/<%= eventSlug %>">Classic guest page</a></p>
+    <% } %>
+</footer>

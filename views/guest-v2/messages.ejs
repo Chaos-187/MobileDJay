@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('partials/head', { event, pageTitle: 'Messages', eventSlug, includeGuestChat: true }) %>
+<meta name="supports-keyboard-gifs" content="true">
+<meta name="supports-keyboard-stickers" content="true">
+</head>
+<body class="guest-v2 gv2-messages">
+<div class="gv2-app">
+    <%- include('partials/topbar', { barTitle: 'Messages', hubUrl: v2Base, showBack: true, backHref: v2Base, showMessagesBtn: false }) %>
+    <main class="gv2-main">
+        <div class="guest-chat-shell">
+            <div id="chatMessages" class="guest-chat-thread" role="log" aria-live="polite">
+                <div class="guest-chat-thread__empty">
+                    <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
+                    <p class="mb-0">Loading conversation…</p>
+                </div>
+            </div>
+            <div class="guest-chat-composer">
+                <form id="messageForm" novalidate>
+                    <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
+                    <input type="hidden" id="message" name="message">
+                    <input type="hidden" id="messageText" name="messageText">
+                    <input type="hidden" name="eventSlug" value="<%= eventSlug %>">
+                    <div class="guest-chat-composer__toolbar">
+                        <label class="guest-chat-composer__privacy" for="djOnly">
+                            <input class="form-check-input" type="checkbox" value="1" id="djOnly" name="djOnly">
+                            <span><i class="fas fa-user-lock me-1"></i>DJ only</span>
+                        </label>
+                        <span id="charCount" class="guest-chat-composer__char">0/500</span>
+                    </div>
+                    <div class="guest-chat-composer__row">
+                        <div id="messageInput" class="guest-chat-composer__input" contenteditable="true" role="textbox"
+                             aria-label="Type a message" data-placeholder="Message the DJ…" inputmode="text" enterkeyhint="send"></div>
+                        <button type="submit" id="sendBtn" class="guest-chat-composer__send" aria-label="Send">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+    window.eventSlug = '<%= eventSlug %>';
+    window.djName = '<%= typeof djName !== "undefined" && djName ? djName : "DJ" %>';
+    window.GuestV2Config = { eventSlug: '<%= eventSlug %>', v2Base: '<%= v2Base %>' };
+</script>
+<script src="/js/guest-session.js"></script>
+<script src="/js/guest-v2/common.js?v=1"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var name = GuestV2.ensureGuestName();
+        if (name) document.getElementById('customerName').value = name;
+    });
+</script>
+<script src="/js/send-message.js"></script>
+</body>
+</html>

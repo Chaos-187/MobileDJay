@@ -931,6 +931,7 @@
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" href="/event/<%= event.slug %>" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-2"></i>Open guest page</a></li>
+                                    <li><a class="dropdown-item" href="/event/<%= event.slug %>/v2" target="_blank" rel="noopener"><i class="fas fa-mobile-screen me-2"></i>Open Guest Hub v2 (beta)</a></li>
                                     <li><a class="dropdown-item" href="/dj?event=<%= event.id %>"><i class="fas fa-headphones me-2"></i>Open in dashboard</a></li>
                                     <li><button type="button" class="dropdown-item share-links" data-event-id="<%= event.id %>" data-name="<%= event.name %>"><i class="fas fa-share-nodes me-2"></i>Share links</button></li>
                                     <li><button type="button" class="dropdown-item show-qr" data-slug="<%= event.slug %>" data-name="<%= event.name %>"><i class="fas fa-qrcode me-2"></i>QR code</button></li>
@@ -2703,6 +2704,7 @@
 
         const LINK_META = [
             { key: 'guest',   label: 'Guest requests page', icon: 'fa-users',  desc: 'Send/QR to guests at the event' },
+            { key: 'guest_v2', label: 'Guest Hub v2 (beta)', icon: 'fa-mobile-screen', desc: 'New mobile-first guest experience — test alongside the classic page' },
             { key: 'photos',  label: 'Photo upload page',   icon: 'fa-camera', desc: 'Guests snap photos into the album' },
             { key: 'gallery', label: 'Customer photo album', icon: 'fa-images', desc: 'Private link — send to the customer after the event' },
             { key: 'display', label: 'DJ display screen',   icon: 'fa-tv',     desc: 'Open on a big screen / projector' }

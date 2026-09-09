@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('partials/head', { event, pageTitle: 'Karaoke', eventSlug, includeBootstrap: true }) %>
+</head>
+<body class="guest-v2 gv2-flow">
+<div class="gv2-app">
+    <%- include('partials/topbar', { barTitle: 'Karaoke', hubUrl: v2Base, showBack: true, backHref: v2Base, showMessagesBtn: false }) %>
+    <main class="gv2-main">
+        <div class="card mb-3">
+            <div class="card-body">
+                <label for="karaokeSearch" class="form-label">Search karaoke</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" id="karaokeSearch" class="form-control" placeholder="At least 3 characters…" autocomplete="off">
+                </div>
+            </div>
+        </div>
+        <form id="karaokeRequestForm" action="/submit-karaoke-request" method="POST">
+            <input type="hidden" id="customerName" name="customerName" value="<%= customerName %>">
+            <input type="hidden" name="eventSlug" value="<%= eventSlug %>">
+            <div class="card mb-3">
+                <div class="card-header">Available tracks</div>
+                <div class="card-body p-2">
+                    <div class="scrollable-results">
+                        <div id="karaokeList" class="row g-2">
+                            <div class="col-12 text-center text-muted py-4">
+                                <i class="fas fa-microphone fa-2x mb-2"></i>
+                                <p class="mb-0">Search to find karaoke songs</p>
+                            </div>
+                        </div>
+                        <div id="noKaraokeFound" hidden class="text-center text-muted py-3">
+                            <p class="mb-0">Enter at least 3 characters to search</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="gv2-submit-bar">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-paper-plane me-2"></i>Submit karaoke request
+                </button>
+            </div>
+        </form>
+    </main>
+</div>
+<script>
+    window.eventSlug = '<%= eventSlug %>';
+    window.GuestV2Config = { eventSlug: '<%= eventSlug %>', v2Base: '<%= v2Base %>' };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/guest-session.js"></script>
+<script src="/js/guest-v2/common.js?v=1"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var name = GuestV2.ensureGuestName();
+        if (name) document.getElementById('customerName').value = name;
+    });
+</script>
+<script src="/js/karaoke-request.js"></script>
+</body>
+</html>

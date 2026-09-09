@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<%- include('partials/head', { event, pageTitle: 'Guest Hub', eventSlug }) %>
+</head>
+<%
+  let gv2BodyClass = 'guest-v2';
+  if (event && event.guest_show_option_desc === 0) gv2BodyClass += ' gv2-no-desc';
+%>
+<body class="<%= gv2BodyClass %>">
+<div class="gv2-app">
+    <%- include('partials/topbar', {
+        barTitle: event && event.name ? event.name : 'Guest Hub',
+        hubUrl: v2Base,
+        showBack: false,
+        showMessagesBtn: false
+    }) %>
+
+    <main class="gv2-main">
+        <section id="gv2Hero" class="gv2-hero">
+            <% if (event && event.logo_image) { %>
+            <img class="gv2-hero__logo" src="<%= event.logo_image %>" alt="<%= event.name %> logo">
+            <% } else { %>
+            <div class="gv2-hero__icon" aria-hidden="true"><i class="fas fa-headphones-alt"></i></div>
+            <% } %>
+            <h2 class="gv2-hero__title">
+                <%= event && event.name ? event.name : 'Welcome' %>
+                <span class="gv2-badge-beta">Beta</span>
+            </h2>
+            <p class="gv2-hero__subtitle">Request songs, sing karaoke, message the DJ &amp; more</p>
+        </section>
+
+        <section id="gv2NowPlaying" class="gv2-now-playing" hidden aria-live="polite">
+            <img id="gv2NpArt" class="gv2-now-playing__art" alt="" hidden>
+            <div id="gv2NpIcon" class="gv2-now-playing__icon" aria-hidden="true">
+                <i class="fas fa-compact-disc fa-spin"></i>
+            </div>
+            <div>
+                <span class="gv2-now-playing__label">Now playing</span>
+                <div id="gv2NpTitle" class="gv2-now-playing__title"></div>
+                <div id="gv2NpArtist" class="gv2-now-playing__artist"></div>
+            </div>
+        </section>
+
+        <section id="gv2NameCard" class="gv2-name-card">
+            <h2 class="gv2-name-card__title">What's your name?</h2>
+            <div class="gv2-name-row">
+                <input type="text" id="gv2CustomerName" class="gv2-input" placeholder="Your name…" maxlength="50" autocomplete="name" enterkeyhint="go">
+                <button type="button" id="gv2NameSubmit" class="gv2-btn gv2-btn--primary gv2-btn--icon" aria-label="Continue">
+                    <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                </button>
+            </div>
+            <p class="gv2-hint">Your name is unique for this event on this device.</p>
+            <div id="gv2Error" class="gv2-error" hidden role="alert"></div>
+        </section>
+
+        <section id="gv2MenuSection" hidden>
+            <div class="gv2-welcome-row">
+                <p class="gv2-welcome-name">Hi, <strong id="gv2WelcomeName"></strong></p>
+                <button type="button" id="gv2EditName" class="gv2-link-btn">Change name</button>
+            </div>
+            <p class="gv2-menu-prompt">What would you like to do?</p>
+            <div class="gv2-menu">
+                <% if (!event || event.enable_song_requests !== 0) { %>
+                <button type="button" class="gv2-menu-item" data-href="<%= v2Base %>/songs">
+                    <span class="gv2-menu-item__icon" aria-hidden="true"><i class="fas fa-music"></i></span>
+                    <span class="gv2-menu-item__body">
+                        <span class="gv2-menu-item__title">Song request</span>
+                        <span class="gv2-menu-item__desc">Search the library and request a track</span>
+                    </span>
+                    <span class="gv2-menu-item__chev" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <% } %>
+                <% if (!event || event.enable_karaoke_requests !== 0) { %>
+                <button type="button" class="gv2-menu-item" data-href="<%= v2Base %>/karaoke">
+                    <span class="gv2-menu-item__icon gv2-menu-item__icon--karaoke" aria-hidden="true"><i class="fas fa-microphone"></i></span>
+                    <span class="gv2-menu-item__body">
+                        <span class="gv2-menu-item__title">Karaoke</span>
+                        <span class="gv2-menu-item__desc">Pick a song and grab the mic</span>
+                    </span>
+                    <span class="gv2-menu-item__chev" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <% } %>
+                <% if (!event || event.enable_messages !== 0) { %>
+                <button type="button" class="gv2-menu-item" data-href="<%= v2Base %>/messages">
+                    <span class="gv2-menu-item__icon gv2-menu-item__icon--message" aria-hidden="true"><i class="fas fa-comment-dots"></i></span>
+                    <span class="gv2-menu-item__body">
+                        <span class="gv2-menu-item__title">Messages</span>
+                        <span class="gv2-menu-item__desc">Chat with the DJ and see replies</span>
+                    </span>
+                    <span class="gv2-menu-item__chev" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <% } %>
+                <% if (event && event.enable_photos) { %>
+                <button type="button" class="gv2-menu-item" data-href="<%= v2Base %>/camera">
+                    <span class="gv2-menu-item__icon gv2-menu-item__icon--photo" aria-hidden="true"><i class="fas fa-camera"></i></span>
+                    <span class="gv2-menu-item__body">
+                        <span class="gv2-menu-item__title">Event Cam</span>
+                        <span class="gv2-menu-item__desc">Snap a photo for the event album</span>
+                    </span>
+                    <span class="gv2-menu-item__chev" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <% } %>
+                <% if (event && event.enable_tips) {
+                    let tipLinks = [];
+                    if (event.tip_links) {
+                        try { tipLinks = JSON.parse(event.tip_links); } catch (e) {}
+                    }
+                    if (tipLinks.length === 0 && event.tip_provider && event.tip_payment_link) {
+                        tipLinks = [{ provider: event.tip_provider, url: event.tip_payment_link }];
+                    }
+                %>
+                <% if (tipLinks.length > 0) { %>
+                <button type="button" class="gv2-menu-item" id="gv2TipCard" data-tip-links='<%- JSON.stringify(tipLinks) %>'>
+                    <span class="gv2-menu-item__icon gv2-menu-item__icon--tip" aria-hidden="true"><i class="fas fa-hand-holding-dollar"></i></span>
+                    <span class="gv2-menu-item__body">
+                        <span class="gv2-menu-item__title">Tip the DJ</span>
+                        <span class="gv2-menu-item__desc">Show your appreciation</span>
+                    </span>
+                    <span class="gv2-menu-item__chev" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
+                </button>
+                <% } %>
+                <% } %>
+            </div>
+        </section>
+    </main>
+
+    <%- include('partials/footer', { eventSlug, showLegacyLink: true }) %>
+</div>
+
+<div class="modal fade" id="gv2TipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="background:#1a1d26;color:#f4f4f5;border:1px solid rgba(255,255,255,0.1);">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title"><i class="fas fa-hand-holding-dollar me-2"></i>Tip the DJ</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-center small mb-3" style="color:#a1a1aa;">Choose a payment method</p>
+                <div id="gv2TipLinksOptions"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.eventSlug = '<%= eventSlug %>';
+    window.GuestV2Config = {
+        eventSlug: '<%= eventSlug %>',
+        v2Base: '<%= v2Base %>',
+        enableMessages: <%= (!event || event.enable_messages !== 0) ? 'true' : 'false' %>
+    };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/guest-session.js"></script>
+<script src="/js/guest-v2/hub.js?v=1"></script>
+</body>
+</html>

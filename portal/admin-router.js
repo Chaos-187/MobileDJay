@@ -43,11 +43,19 @@ const {
     zohoStatusForProduct
 } = require('./zoho-item-sync');
 const { catalogImageUpload, catalogRoot } = require('./catalog-image-upload');
+const { siteMediaUpload, siteMediaRoot } = require('./site-media-upload');
 const {
     resolveCatalogImageUrl,
     normalizeCatalogImageStorage,
     catalogImageFilename
 } = require('./catalog-product-types');
+const {
+    normalizeSiteMediaCategory,
+    siteMediaFilename,
+    normalizeSiteMediaStorage,
+    resolveSiteMediaPublicUrl,
+    unlinkSiteMediaFile
+} = require('./site-media-urls');
 
 const router = express.Router();
 
@@ -1853,6 +1861,116 @@ router.delete('/catalog/vouchers/:id', (req, res) => {
         return jsonError(res, 'not_found', 'Voucher not found', 404);
     }
     audit(req.portalUser.id, 'catalog_voucher.delete', 'catalog_voucher', req.params.id, {});
+    res.status(204).send();
+});
+
+function enrichMediaAssetRow(row) {
+    if (!row) return null;
+    const out = { ...row };
+    if (row.source === 'catalog_product') {
+        out.image_url = normalizeCatalogImageStorage(row.storage_path);
+        out.image_url_public = resolveCatalogImageUrl(out.image_url);
+    } else {
+        out.image_url = normalizeSiteMediaStorage(row.storage_path || row.image_url);
+        out.image_url_public = resolveSiteMediaPublicUrl(out.image_url);
+    }
+    return out;
+}
+
+router.get('/media', (req, res) => {
+    const categoryRaw = req.query.category != null ? String(req.query.category).trim() : '';
+    const category = categoryRaw ? normalizeSiteMediaCategory(categoryRaw) : null;
+    const includeCatalog = req.query.include_catalog !== '0';
+    let items = portalDb.listSiteMediaAssets(category ? { category } : {}).map(enrichMediaAssetRow);
+    if (includeCatalog && (!category || category === 'products')) {
+        const catalogItems = portalDb
+            .listCatalogProductMediaForGallery()
+            .filter((row) => !category || row.category === category)
+            .map(enrichMediaAssetRow);
+        items = items.concat(catalogItems);
+    }
+    items.sort((a, b) => {
+        const ta = a.created_at ? Date.parse(a.created_at) : 0;
+        const tb = b.created_at ? Date.parse(b.created_at) : 0;
+        return tb - ta;
+    });
+    res.json({ media: items });
+});
+
+router.post('/media', (req, res) => {
+    siteMediaUpload.single('image')(req, res, (err) => {
+        if (err) {
+            return jsonError(res, 'validation_error', err.message || 'Image upload failed', 422);
+        }
+        if (!req.file) {
+            return jsonError(res, 'validation_error', 'image file is required', 422);
+        }
+        const body = req.body || {};
+        const category = normalizeSiteMediaCategory(body.category);
+        try {
+            const asset = portalDb.insertSiteMediaAsset({
+                filename: req.file.filename,
+                category,
+                title:
+                    body.title != null && String(body.title).trim()
+                        ? String(body.title).trim()
+                        : req.file.originalname || req.file.filename,
+                alt_text: body.alt_text != null ? String(body.alt_text) : '',
+                storage_path: `/uploads/site-media/${req.file.filename}`,
+                byte_size: req.file.size,
+                mime_type: req.file.mimetype,
+                uploaded_by_user_id: req.portalUser.id
+            });
+            audit(req.portalUser.id, 'site_media.create', 'site_media', asset.id, {
+                category
+            });
+            res.status(201).json(enrichMediaAssetRow(asset));
+        } catch (e) {
+            try {
+                fs.unlinkSync(path.join(siteMediaRoot, req.file.filename));
+            } catch {
+                /* ignore */
+            }
+            return jsonError(res, 'validation_error', e.message || 'Could not save media', 422);
+        }
+    });
+});
+
+router.patch('/media/:id', (req, res) => {
+    const id = req.params.id;
+    if (String(id).startsWith('catalog-product:')) {
+        return jsonError(
+            res,
+            'validation_error',
+            'Catalog product images are edited on the Products tab',
+            422
+        );
+    }
+    const updated = portalDb.updateSiteMediaAsset(id, req.body || {});
+    if (!updated) {
+        return jsonError(res, 'not_found', 'Media not found', 404);
+    }
+    audit(req.portalUser.id, 'site_media.patch', 'site_media', id, {});
+    res.json(enrichMediaAssetRow(updated));
+});
+
+router.delete('/media/:id', (req, res) => {
+    const id = req.params.id;
+    if (String(id).startsWith('catalog-product:')) {
+        return jsonError(
+            res,
+            'validation_error',
+            'Remove catalog product images from the Products tab',
+            422
+        );
+    }
+    const existing = portalDb.getSiteMediaAssetById(id);
+    if (!existing) {
+        return jsonError(res, 'not_found', 'Media not found', 404);
+    }
+    unlinkSiteMediaFile(existing.storage_path);
+    portalDb.deleteSiteMediaAsset(id);
+    audit(req.portalUser.id, 'site_media.delete', 'site_media', id, {});
     res.status(204).send();
 });
 

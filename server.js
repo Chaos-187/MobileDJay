@@ -93,6 +93,10 @@ const catalogImagesRoot = path.join(uploadsRoot, 'catalog');
 fs.mkdirSync(catalogImagesRoot, { recursive: true });
 app.use('/uploads/catalog', express.static(catalogImagesRoot, { maxAge: '30d' }));
 
+const siteMediaRoot = path.join(uploadsRoot, 'site-media');
+fs.mkdirSync(siteMediaRoot, { recursive: true });
+app.use('/uploads/site-media', express.static(siteMediaRoot, { maxAge: '30d' }));
+
 const slideshowStorage = multer.diskStorage({
     destination(req, file, cb) {
         const eventDir = path.join(slideshowRoot, String(req.params.id));

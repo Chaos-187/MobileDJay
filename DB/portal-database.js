@@ -474,6 +474,23 @@ db.exec(`
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(code, channel)
     );
+
+    CREATE TABLE IF NOT EXISTS site_media_assets (
+        id TEXT PRIMARY KEY,
+        filename TEXT NOT NULL UNIQUE,
+        category TEXT NOT NULL DEFAULT 'general'
+            CHECK(category IN ('products','news','gallery','general')),
+        title TEXT NOT NULL DEFAULT '',
+        alt_text TEXT NOT NULL DEFAULT '',
+        storage_path TEXT NOT NULL,
+        byte_size INTEGER,
+        mime_type TEXT,
+        uploaded_by_user_id TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_site_media_category_created
+        ON site_media_assets(category, created_at DESC);
 `);
 
 try {
@@ -742,6 +759,10 @@ const {
     inferProductType,
     publicCatalogImageUrl
 } = require('../portal/catalog-product-types');
+const {
+    resolveSiteMediaPublicUrl,
+    normalizeSiteMediaStorage
+} = require('../portal/site-media-urls');
 const catalogPricing = require('../portal/catalog-pricing');
 
 function repairStoredCatalogImageUrls() {
@@ -3839,8 +3860,154 @@ const portalDb = {
     deleteCatalogVoucher(voucherId) {
         const r = db.prepare('DELETE FROM catalog_vouchers WHERE id = ?').run(voucherId);
         return r.changes > 0;
+    },
+
+    listSiteMediaAssets({ category } = {}) {
+        let sql = 'SELECT * FROM site_media_assets';
+        const params = [];
+        if (category != null && String(category).trim() !== '') {
+            sql += ' WHERE category = ?';
+            params.push(String(category).trim().toLowerCase());
+        }
+        sql += ' ORDER BY created_at DESC';
+        return db
+            .prepare(sql)
+            .all(...params)
+            .map(materializeSiteMediaRow);
+    },
+
+    getSiteMediaAssetById(assetId) {
+        const row = db.prepare('SELECT * FROM site_media_assets WHERE id = ?').get(assetId);
+        return row ? materializeSiteMediaRow(row) : null;
+    },
+
+    insertSiteMediaAsset(row) {
+        const id = row.id || uuid();
+        const t = nowIso();
+        const filename = String(row.filename || '').trim();
+        if (!filename) throw new Error('filename is required');
+        const storagePath =
+            row.storage_path != null && String(row.storage_path).trim()
+                ? String(row.storage_path).trim()
+                : `/uploads/site-media/${filename}`;
+        const category = normalizeSiteMediaCategoryDb(row.category);
+        db.prepare(
+            `INSERT INTO site_media_assets (
+                id, filename, category, title, alt_text, storage_path,
+                byte_size, mime_type, uploaded_by_user_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+            id,
+            filename,
+            category,
+            row.title != null ? String(row.title).trim().slice(0, 200) : '',
+            row.alt_text != null ? String(row.alt_text).trim().slice(0, 500) : '',
+            storagePath,
+            row.byte_size != null && Number.isFinite(Number(row.byte_size))
+                ? Number(row.byte_size)
+                : null,
+            row.mime_type != null ? String(row.mime_type).slice(0, 64) : null,
+            row.uploaded_by_user_id != null ? String(row.uploaded_by_user_id) : null,
+            t,
+            t
+        );
+        return materializeSiteMediaRow(
+            db.prepare('SELECT * FROM site_media_assets WHERE id = ?').get(id)
+        );
+    },
+
+    updateSiteMediaAsset(assetId, patch) {
+        const existing = db.prepare('SELECT id FROM site_media_assets WHERE id = ?').get(assetId);
+        if (!existing) return null;
+        const allowed = ['category', 'title', 'alt_text'];
+        const sets = [];
+        const params = [];
+        for (const key of allowed) {
+            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
+            if (key === 'category') {
+                sets.push('category = ?');
+                params.push(normalizeSiteMediaCategoryDb(patch.category));
+            } else if (key === 'title') {
+                sets.push('title = ?');
+                params.push(String(patch.title || '').trim().slice(0, 200));
+            } else if (key === 'alt_text') {
+                sets.push('alt_text = ?');
+                params.push(String(patch.alt_text || '').trim().slice(0, 500));
+            }
+        }
+        if (!sets.length) return portalDb.getSiteMediaAssetById(assetId);
+        sets.push('updated_at = ?');
+        params.push(nowIso());
+        params.push(assetId);
+        db.prepare(`UPDATE site_media_assets SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+        return portalDb.getSiteMediaAssetById(assetId);
+    },
+
+    deleteSiteMediaAsset(assetId) {
+        const r = db.prepare('DELETE FROM site_media_assets WHERE id = ?').run(assetId);
+        return r.changes > 0;
+    },
+
+    listCatalogProductMediaForGallery() {
+        const rows = db
+            .prepare(
+                `SELECT id, code, name, image_url FROM catalog_products
+                 WHERE image_url IS NOT NULL AND trim(image_url) != ''`
+            )
+            .all();
+        return rows
+            .map((row) => {
+                const storage = normalizeCatalogImageStorage(row.image_url);
+                if (!storage) return null;
+                const filename = storage.replace(/^\/uploads\/catalog\//i, '');
+                return {
+                    id: `catalog-product:${row.id}`,
+                    source: 'catalog_product',
+                    category: 'products',
+                    title: row.name || row.code,
+                    alt_text: row.name || '',
+                    filename,
+                    storage_path: storage,
+                    product_id: row.id,
+                    product_code: row.code,
+                    readonly: true,
+                    created_at: null,
+                    updated_at: null
+                };
+            })
+            .filter(Boolean);
     }
 };
+
+function normalizeSiteMediaCategoryDb(raw) {
+    const s = String(raw || '')
+        .trim()
+        .toLowerCase();
+    if (s === 'products' || s === 'news' || s === 'gallery' || s === 'general') return s;
+    return 'general';
+}
+
+function materializeSiteMediaRow(row) {
+    if (!row) return null;
+    const storage = row.storage_path || `/uploads/site-media/${row.filename}`;
+    return {
+        id: row.id,
+        source: 'site_media',
+        filename: row.filename,
+        category: normalizeSiteMediaCategoryDb(row.category),
+        title: row.title || '',
+        alt_text: row.alt_text || '',
+        storage_path: storage,
+        byte_size: row.byte_size != null ? Number(row.byte_size) : null,
+        mime_type: row.mime_type || null,
+        uploaded_by_user_id: row.uploaded_by_user_id || null,
+        readonly: false,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        image_url: normalizeSiteMediaStorage(storage),
+        image_url_public: resolveSiteMediaPublicUrl(storage)
+    };
+}
 
 function normalizeVoucherCodeForDb(code) {
     return String(code || '')

@@ -741,7 +741,7 @@ Unauthenticated routes mounted under **`/api/v1/public`**. Full catalog field li
 | `POST` | `/enquiries` | Contact/booking enquiry (Turnstile when configured); re-validates `lead_metadata.voucher_code` |
 | `GET` | `/site-settings` | Marketing site settings (`?site=inflatables` for hire-site slice) |
 
-**Admin (Bearer `admin`):** availability blocks and vouchers — **`GET/POST/PATCH/DELETE /admin/catalog/availability-blocks`**, **`GET/POST/PATCH/DELETE /admin/catalog/vouchers`**. Enquiry channel counts: **`GET /admin/enquiries/stats`** → `{ events, inflatables, total, new, generated_at }` per status bucket.
+**Admin (Bearer `admin`):** availability blocks and vouchers — **`GET/POST/PATCH/DELETE /admin/catalog/availability-blocks`**, **`GET/POST/PATCH/DELETE /admin/catalog/vouchers`**. **Site media library:** **`GET /admin/media?category=`** (optional `include_catalog=0`), **`POST /admin/media`** (multipart `image`, fields `category`, `title`, `alt_text`), **`PATCH/DELETE /admin/media/:id`**. Public serve: **`GET /public/media/image/:filename`**. Enquiry channel counts: **`GET /admin/enquiries/stats`** → `{ events, inflatables, total, new, generated_at }` per status bucket.
 
 ---
 

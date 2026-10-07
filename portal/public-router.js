@@ -6,6 +6,7 @@ const stripePortal = require('./stripe-portal');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 const { portalDb } = require('../db/portal-database');
 const { createPublicEnquiry } = require('./enquiries-public');
+const { validateVoucherForContext } = require('./vouchers-service');
 const { catalogRoot } = require('./catalog-image-upload');
 const { catalogImageFilename, normalizeProductType } = require('./catalog-product-types');
 
@@ -93,6 +94,33 @@ router.get('/catalog/quote-products', (req, res, next) => {
         }
         res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
         res.json(body);
+    } catch (e) {
+        next(e);
+    }
+});
+
+router.get('/catalog/inflatables-availability', (req, res, next) => {
+    try {
+        const blocks = portalDb.listPublicInflatablesAvailabilityBlocks();
+        res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+        res.json({ blocks });
+    } catch (e) {
+        next(e);
+    }
+});
+
+router.post('/vouchers/validate', (req, res, next) => {
+    try {
+        const body = req.body || {};
+        const code = body.code != null ? String(body.code) : '';
+        const productIds =
+            body.product_ids != null
+                ? body.product_ids
+                : body.productIds != null
+                  ? body.productIds
+                  : [];
+        const result = validateVoucherForContext(code, productIds);
+        res.json(result);
     } catch (e) {
         next(e);
     }

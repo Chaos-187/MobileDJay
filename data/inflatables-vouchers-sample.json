@@ -1,0 +1,20 @@
+{
+  "description": "Demo voucher codes matching EYUP Inflatables sample-data.js — upsert by code after catalog import.",
+  "vouchers": [
+    {
+      "code": "EYUP",
+      "discount_percent": 25
+    },
+    {
+      "code": "CASTLE",
+      "discount_percent": 50
+    },
+    {
+      "code": "SURF",
+      "discount_percent": 100,
+      "product_codes": ["demo-surf-simulator"],
+      "applies_to": "Surf Simulator",
+      "invalid_message": "SURF only works when the Surf Simulator is in your hire list."
+    }
+  ]
+}

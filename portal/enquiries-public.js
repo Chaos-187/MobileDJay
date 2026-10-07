@@ -6,6 +6,10 @@ const {
     enrichLeadMetadataFromBody,
     resolveEventDurationHours
 } = require('./catalog-pricing');
+const {
+    validateVoucherForContext,
+    computeVoucherDiscountAmount
+} = require('./vouchers-service');
 
 function jsonError(res, code, message, status = 400, details = {}) {
     res.status(status).json({ error: { code, message, details } });
@@ -128,6 +132,41 @@ async function createPublicEnquiry(req, res) {
             });
         } catch (lineErr) {
             return jsonError(res, 'validation_error', lineErr.message || 'Invalid quote line items', 422);
+        }
+    }
+
+    const voucherCode =
+        parsed.leadMetadata &&
+        (parsed.leadMetadata.voucher_code || parsed.leadMetadata.voucherCode);
+    if (voucherCode) {
+        const cartIds = quotePayload.quote_line_items
+            .map((line) => line.product_id)
+            .filter(Boolean);
+        const vResult = validateVoucherForContext(voucherCode, cartIds);
+        if (!vResult.valid) {
+            return jsonError(
+                res,
+                'validation_error',
+                vResult.message || 'Invalid voucher code',
+                422,
+                { voucher: { code: vResult.code, valid: false } }
+            );
+        }
+        const discountAmt = computeVoucherDiscountAmount(quotePayload.quote_line_items, vResult);
+        parsed.leadMetadata.voucher_code = vResult.code;
+        parsed.leadMetadata.voucher_valid = true;
+        parsed.leadMetadata.voucher_discount_percent = vResult.discount_percent;
+        parsed.leadMetadata.voucher_discount_amount_server = discountAmt;
+        parsed.leadMetadata.voucher_discount_amount = discountAmt;
+        if (vResult.product_ids && vResult.product_ids.length) {
+            parsed.leadMetadata.voucher_product_ids = vResult.product_ids;
+        }
+        if (vResult.applies_to) {
+            parsed.leadMetadata.voucher_applies_to = vResult.applies_to;
+        }
+        if (discountAmt > 0 && quotePayload.quote_total > 0) {
+            quotePayload.quote_total =
+                Math.round(Math.max(0, quotePayload.quote_total - discountAmt) * 100) / 100;
         }
     }
 

@@ -56,4 +56,63 @@ Add-on-only products (`addon_only`) are excluded from public lists.
 
 ---
 
+## `GET /catalog/inflatables-availability`
+
+Blocked hire windows for active inflatable products (live checkout overlap checks).
+
+### Response `200`
+
+```json
+{
+  "blocks": [
+    {
+      "product_id": "uuid",
+      "start": "2026-06-01T09:00",
+      "end": "2026-06-01T17:00",
+      "reason": "Booked"
+    }
+  ]
+}
+```
+
+`start` / `end` are stored datetimes (typically local-style strings from admin). Clients treat `reason` like `note` in the Inflatables UI.
+
+### Cache
+
+`Cache-Control: public, max-age=60, stale-while-revalidate=300`
+
+---
+
+## `POST /vouchers/validate`
+
+Validate a hire voucher against the current cart product IDs (same shape as Inflatables demo `sample-data.js`).
+
+### Body
+
+```json
+{
+  "code": "EYUP",
+  "product_ids": ["catalog-product-uuid", "…"]
+}
+```
+
+### Response `200`
+
+```json
+{
+  "valid": true,
+  "code": "EYUP",
+  "discount_percent": 25,
+  "product_ids": null,
+  "applies_to": "",
+  "invalid_message": ""
+}
+```
+
+When invalid, `valid` is `false`, `discount_percent` is `0`, and `message` may explain product restrictions.
+
+Enquiries with `lead_metadata.voucher_code` are re-validated on **`POST /public/enquiries`**; invalid codes return **422**; valid codes adjust server `quote_total` by the computed discount.
+
+---
+
 Multi-site planning: [`../../docs/multi-site-portal/03-api-and-cors.md`](../../docs/multi-site-portal/03-api-and-cors.md)

@@ -729,6 +729,22 @@ Partial update: include only fields to change.
 
 ---
 
+## 5.10 Public marketing API (`/public/…`)
+
+Unauthenticated routes mounted under **`/api/v1/public`**. Full catalog field list: [`public-api-catalog.md`](public-api-catalog.md).
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/catalog/quote-products` | Quote/hire catalog; optional `?product_type=inflatables` |
+| `GET` | `/catalog/inflatables-availability` | `{ blocks: [{ product_id, start, end, reason }] }` |
+| `POST` | `/vouchers/validate` | Body `{ code, product_ids[] }` → `{ valid, code, discount_percent, … }` |
+| `POST` | `/enquiries` | Contact/booking enquiry (Turnstile when configured); re-validates `lead_metadata.voucher_code` |
+| `GET` | `/site-settings` | Marketing site settings blob |
+
+**Admin (Bearer `admin`):** availability blocks and vouchers — **`GET/POST/PATCH/DELETE /admin/catalog/availability-blocks`**, **`GET/POST/PATCH/DELETE /admin/catalog/vouchers`**.
+
+---
+
 ## 6. DJ endpoints
 
 All require **Bearer** and **`role === dj`**. Booking access is limited to rows in **`booking_assignments`** for that DJ.

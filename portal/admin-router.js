@@ -1771,6 +1771,90 @@ router.delete('/catalog/products/:id/image', (req, res) => {
     res.json(product);
 });
 
+router.get('/catalog/availability-blocks', (req, res) => {
+    res.json({ blocks: portalDb.listCatalogAvailabilityBlocks() });
+});
+
+router.post('/catalog/availability-blocks', (req, res) => {
+    try {
+        const block = portalDb.insertCatalogAvailabilityBlock(req.body || {});
+        audit(req.portalUser.id, 'catalog_availability.create', 'catalog_availability', block.id, {});
+        res.status(201).json(block);
+    } catch (err) {
+        return jsonError(res, 'validation_error', err.message || 'Invalid availability block', 422);
+    }
+});
+
+router.patch('/catalog/availability-blocks/:id', (req, res) => {
+    try {
+        const updated = portalDb.updateCatalogAvailabilityBlock(req.params.id, req.body || {});
+        if (!updated) {
+            return jsonError(res, 'not_found', 'Availability block not found', 404);
+        }
+        audit(req.portalUser.id, 'catalog_availability.patch', 'catalog_availability', req.params.id, {});
+        res.json(updated);
+    } catch (err) {
+        return jsonError(res, 'validation_error', err.message || 'Invalid availability block', 422);
+    }
+});
+
+router.delete('/catalog/availability-blocks/:id', (req, res) => {
+    const ok = portalDb.deleteCatalogAvailabilityBlock(req.params.id);
+    if (!ok) {
+        return jsonError(res, 'not_found', 'Availability block not found', 404);
+    }
+    audit(req.portalUser.id, 'catalog_availability.delete', 'catalog_availability', req.params.id, {});
+    res.status(204).send();
+});
+
+router.get('/catalog/vouchers', (req, res) => {
+    res.json({ vouchers: portalDb.listCatalogVouchers() });
+});
+
+router.post('/catalog/vouchers', (req, res) => {
+    try {
+        const voucher = portalDb.insertCatalogVoucher(req.body || {});
+        audit(req.portalUser.id, 'catalog_voucher.create', 'catalog_voucher', voucher.id, {});
+        res.status(201).json(voucher);
+    } catch (err) {
+        const status = /UNIQUE constraint failed/i.test(String(err.message)) ? 409 : 422;
+        return jsonError(
+            res,
+            status === 409 ? 'conflict' : 'validation_error',
+            err.message || 'Invalid voucher',
+            status
+        );
+    }
+});
+
+router.patch('/catalog/vouchers/:id', (req, res) => {
+    try {
+        const updated = portalDb.updateCatalogVoucher(req.params.id, req.body || {});
+        if (!updated) {
+            return jsonError(res, 'not_found', 'Voucher not found', 404);
+        }
+        audit(req.portalUser.id, 'catalog_voucher.patch', 'catalog_voucher', req.params.id, {});
+        res.json(updated);
+    } catch (err) {
+        const status = /UNIQUE constraint failed/i.test(String(err.message)) ? 409 : 422;
+        return jsonError(
+            res,
+            status === 409 ? 'conflict' : 'validation_error',
+            err.message || 'Invalid voucher',
+            status
+        );
+    }
+});
+
+router.delete('/catalog/vouchers/:id', (req, res) => {
+    const ok = portalDb.deleteCatalogVoucher(req.params.id);
+    if (!ok) {
+        return jsonError(res, 'not_found', 'Voucher not found', 404);
+    }
+    audit(req.portalUser.id, 'catalog_voucher.delete', 'catalog_voucher', req.params.id, {});
+    res.status(204).send();
+});
+
 // --- Enquiries (contact form leads) ---
 
 router.get('/enquiries', (req, res) => {

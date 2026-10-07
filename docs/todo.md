@@ -79,4 +79,11 @@ Short list of planned work tracked outside the domain spec docs.
 
 ---
 
+## 9. Multi-site portal (EYUP EVENTS + Inflatables)
+
+- **Planning (root repo):** [`docs/multi-site-portal/08-phases-and-tasks.md`](../../docs/multi-site-portal/08-phases-and-tasks.md) — task IDs **MS-001** onward (CORS, catalog, pricing, admin).
+- **Index:** [`docs/README.md`](../../docs/README.md).
+
+---
+
 *Add completed items beneath each section or strike through when shipped.*

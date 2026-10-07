@@ -1,0 +1,72 @@
+{
+  "description": "Starter inflatable products for staging — map demo site IDs to catalog codes. Expand via admin CSV or edit this file.",
+  "products": [
+    {
+      "code": "demo-castle-unicorn",
+      "name": "Unicorn Land Bouncy Castle",
+      "description": "A bright unicorn castle that turns a garden into the party. Pink and blue walls, a front step, and artwork the birthday child will spot from the gate. We deliver, set up, and collect.",
+      "product_type": "inflatables",
+      "pricing_model": "hourly",
+      "standalone_rate": 80,
+      "minimum_hours": 4,
+      "additional_hourly_rate": 20,
+      "currency": "GBP",
+      "allows_addons": false,
+      "is_active": true,
+      "addon_only": false,
+      "sort_order": 10,
+      "filter_group": "kids-castles",
+      "highlights": [
+        "A favourite for unicorn birthdays and garden parties",
+        "Front step so younger children can climb in",
+        "Safety mats included with the hire",
+        "We deliver, set up, and collect"
+      ],
+      "specs": {
+        "Size": "3.6 m long × 3.2 m wide × 2.5 m high",
+        "Platform height": "0.5 m",
+        "Max users": "6",
+        "Setup": "Flat grass or hardstanding"
+      }
+    },
+    {
+      "code": "demo-castle-pokemon",
+      "name": "Pokémon Bouncy Castle",
+      "description": "The castle Pokémon fans ask for. Character artwork across the walls, an easy front step, and plenty of bounce for a birthday or school fair.",
+      "product_type": "inflatables",
+      "pricing_model": "hourly",
+      "standalone_rate": 80,
+      "minimum_hours": 4,
+      "additional_hourly_rate": 20,
+      "currency": "GBP",
+      "allows_addons": false,
+      "is_active": true,
+      "addon_only": false,
+      "sort_order": 20,
+      "filter_group": "kids-castles",
+      "highlights": [
+        "An instant hit for Pokémon birthdays",
+        "Front step and safety mats included",
+        "We deliver, set up, and collect"
+      ],
+      "specs": {
+        "Size": "3.6 m long × 3.2 m wide × 2.5 m high",
+        "Max users": "6"
+      }
+    },
+    {
+      "code": "demo-bed-standard",
+      "name": "Standard surf bed",
+      "description": "Included standard bed surface for the surf simulator.",
+      "product_type": "inflatables",
+      "pricing_model": "flat",
+      "standalone_rate": 0,
+      "currency": "GBP",
+      "allows_addons": false,
+      "is_active": true,
+      "addon_only": true,
+      "sort_order": 900,
+      "filter_group": "rodeo-surf"
+    }
+  ]
+}

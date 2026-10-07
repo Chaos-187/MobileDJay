@@ -17,6 +17,10 @@ const CSV_HEADERS = [
     'is_active',
     'addon_only',
     'sort_order',
+    'additional_hourly_rate',
+    'filter_group',
+    'highlights',
+    'specs',
     'parent_code',
     'addon_code',
     'addon_rate',
@@ -104,6 +108,12 @@ function snapshotToCsv(snapshot) {
                 p.is_active === false ? '0' : '1',
                 p.addon_only === true ? '1' : '0',
                 p.sort_order != null ? p.sort_order : 0,
+                p.additional_hourly_rate != null && p.additional_hourly_rate !== ''
+                    ? p.additional_hourly_rate
+                    : '',
+                p.filter_group || '',
+                p.highlights && p.highlights.length ? JSON.stringify(p.highlights) : '',
+                p.specs && Object.keys(p.specs).length ? JSON.stringify(p.specs) : '',
                 '',
                 '',
                 '',
@@ -114,6 +124,10 @@ function snapshotToCsv(snapshot) {
             lines.push(
                 csvRow([
                     'addon',
+                    '',
+                    '',
+                    '',
+                    '',
                     '',
                     '',
                     '',
@@ -204,6 +218,36 @@ function csvToImportPayload(csvText) {
             is_active: parseCsvBool(col(row, 'is_active')),
             addon_only: ['1', 'true', 'yes', 'y'].includes(col(row, 'addon_only').toLowerCase()),
             sort_order: col(row, 'sort_order') === '' ? 0 : Number(col(row, 'sort_order')),
+            additional_hourly_rate:
+                col(row, 'additional_hourly_rate') === ''
+                    ? null
+                    : Number(col(row, 'additional_hourly_rate')),
+            filter_group: col(row, 'filter_group') || null,
+            highlights: (() => {
+                const raw = col(row, 'highlights');
+                if (!raw) return [];
+                try {
+                    const parsed = JSON.parse(raw);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return raw
+                        .split('|')
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                }
+            })(),
+            specs: (() => {
+                const raw = col(row, 'specs');
+                if (!raw) return {};
+                try {
+                    const parsed = JSON.parse(raw);
+                    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+                        ? parsed
+                        : {};
+                } catch {
+                    return {};
+                }
+            })(),
             addons: []
         };
         const existing = byCode.get(code);

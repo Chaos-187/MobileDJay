@@ -7,7 +7,7 @@ const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 const { portalDb } = require('../db/portal-database');
 const { createPublicEnquiry } = require('./enquiries-public');
 const { catalogRoot } = require('./catalog-image-upload');
-const { catalogImageFilename } = require('./catalog-product-types');
+const { catalogImageFilename, normalizeProductType } = require('./catalog-product-types');
 
 const router = express.Router();
 
@@ -73,13 +73,26 @@ router.get('/catalog/image/:filename', (req, res) => {
 
 router.get('/catalog/quote-products', (req, res, next) => {
     try {
-        const payload = portalDb.listPublicQuoteCatalogGrouped();
-        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
-        res.json({
+        const productTypeRaw =
+            req.query.product_type != null ? String(req.query.product_type).trim() : '';
+        const productTypeFilter = productTypeRaw ? normalizeProductType(productTypeRaw) : null;
+        const payload = portalDb.listPublicQuoteCatalogGrouped(
+            productTypeFilter ? { productTypeFilter } : undefined
+        );
+        let productTypes = portalDb.listCatalogProductTypes();
+        if (productTypeFilter) {
+            productTypes = productTypes.filter((t) => t.code === productTypeFilter);
+        }
+        const body = {
             products: payload.products,
             groups: payload.groups,
-            product_types: portalDb.listCatalogProductTypes()
-        });
+            product_types: productTypes
+        };
+        if (productTypeFilter) {
+            body.product_type_filter = productTypeFilter;
+        }
+        res.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=600');
+        res.json(body);
     } catch (e) {
         next(e);
     }

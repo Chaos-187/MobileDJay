@@ -7,7 +7,10 @@
     "start": "node server.js",
     "dev": "node server.js",
     "portal-seed": "node portal/seed.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "import-inflatables-sample": "node scripts/import-inflatables-sample.js",
+    "test": "node scripts/test-catalog-pricing.js && node scripts/test-phase0-multi-site.js",
+    "test:phase0": "node scripts/test-phase0-multi-site.js",
+    "test:pricing": "node scripts/test-catalog-pricing.js"
   },
   "keywords": [
     "dj",

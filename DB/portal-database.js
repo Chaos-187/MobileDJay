@@ -468,6 +468,75 @@ try {
 } catch (e) {
     /* exists */
 }
+try {
+    db.exec(`ALTER TABLE catalog_products ADD COLUMN additional_hourly_rate REAL`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE catalog_products ADD COLUMN product_metadata_json TEXT`);
+} catch (e) {
+    /* exists */
+}
+
+function parseProductMetadataJson(raw) {
+    if (raw == null || String(raw).trim() === '') return {};
+    try {
+        const o = JSON.parse(String(raw));
+        return o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+    } catch {
+        return {};
+    }
+}
+
+function normalizeProductMetadata(input) {
+    const src = input && typeof input === 'object' ? input : {};
+    const out = {};
+    if (src.filter_group != null && String(src.filter_group).trim()) {
+        out.filter_group = String(src.filter_group).trim().slice(0, 64);
+    }
+    if (Array.isArray(src.highlights)) {
+        out.highlights = src.highlights
+            .map((h) => String(h).trim())
+            .filter(Boolean)
+            .slice(0, 24);
+    }
+    if (src.specs && typeof src.specs === 'object' && !Array.isArray(src.specs)) {
+        const specs = {};
+        for (const [k, v] of Object.entries(src.specs)) {
+            if (k == null || v == null) continue;
+            const key = String(k).trim().slice(0, 64);
+            if (!key) continue;
+            specs[key] = String(v).trim().slice(0, 500);
+        }
+        if (Object.keys(specs).length) out.specs = specs;
+    }
+    return Object.keys(out).length ? out : null;
+}
+
+function additionalHourlyRateFromInput(raw) {
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+function productMetadataJsonFromInput(row) {
+    const meta = normalizeProductMetadata({
+        filter_group: row.filter_group,
+        highlights: row.highlights,
+        specs: row.specs
+    });
+    return meta ? JSON.stringify(meta) : null;
+}
+
+function enrichCatalogProductFields(out, row) {
+    const meta = parseProductMetadataJson(row.product_metadata_json);
+    out.additional_hourly_rate = additionalHourlyRateFromInput(row.additional_hourly_rate);
+    out.filter_group = meta.filter_group || null;
+    out.highlights = Array.isArray(meta.highlights) ? meta.highlights : [];
+    out.specs = meta.specs && typeof meta.specs === 'object' ? meta.specs : {};
+    return out;
+}
 
 const {
     normalizeProductType,
@@ -479,6 +548,7 @@ const {
     inferProductType,
     publicCatalogImageUrl
 } = require('../portal/catalog-product-types');
+const catalogPricing = require('../portal/catalog-pricing');
 
 function repairStoredCatalogImageUrls() {
     try {
@@ -520,30 +590,11 @@ function clampHoursToProductMinimum(product, hours) {
     return h;
 }
 
-function computeCatalogLineSubtotal({ pricing_model: pricingModel, quantity, hours, unit_rate: unitRate, discount_type: discountType, discount_value: discountValue }) {
-    const model = pricingModel || 'hourly';
-    const qty = Number(quantity);
-    const q = Number.isFinite(qty) && qty > 0 ? qty : 1;
-    const rate = Number(unitRate);
-    const r = Number.isFinite(rate) ? rate : 0;
-    let base;
-    if (model === 'hourly') {
-        const h = Number(hours);
-        base = r * (Number.isFinite(h) && h > 0 ? h : 0);
-    } else if (model === 'unit') {
-        base = r * q;
-    } else {
-        base = r * q;
+function computeCatalogLineSubtotal(params, productRow = null) {
+    if (productRow) {
+        return catalogPricing.computeLineSubtotal(productRow, params);
     }
-    const dt = discountType || 'none';
-    const dv = Number(discountValue);
-    let total = base;
-    if (dt === 'percent' && Number.isFinite(dv)) {
-        total = base * (1 - Math.min(Math.max(dv, 0), 100) / 100);
-    } else if (dt === 'fixed' && Number.isFinite(dv)) {
-        total = base - Math.max(dv, 0);
-    }
-    return Math.round(Math.max(0, total) * 100) / 100;
+    return catalogPricing.computeLineSubtotal({}, params);
 }
 
 function materializeCatalogProduct(row, { addons = null, resolveImage = false } = {}) {
@@ -572,6 +623,7 @@ function materializeCatalogProduct(row, { addons = null, resolveImage = false } 
         out.image_url = out.image_url_public;
     }
     if (addons != null) out.addons = addons;
+    enrichCatalogProductFields(out, row);
     return out;
 }
 
@@ -1922,12 +1974,17 @@ const portalDb = {
     insertCatalogProduct(row) {
         const id = row.id || uuid();
         const t = nowIso();
+        const metaJson =
+            row.product_metadata_json != null && String(row.product_metadata_json).trim()
+                ? String(row.product_metadata_json)
+                : productMetadataJsonFromInput(row);
         db.prepare(`
             INSERT INTO catalog_products (
                 id, code, name, description, pricing_model, standalone_rate, minimum_hours, currency,
                 capability_code, allows_addons, is_active, addon_only, sort_order, product_type, image_url,
+                additional_hourly_rate, product_metadata_json,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             id,
             String(row.code).trim().toLowerCase(),
@@ -1946,10 +2003,12 @@ const portalDb = {
                 : null,
             row.allows_addons === false || row.allows_addons === 0 ? 0 : 1,
             row.is_active === false || row.is_active === 0 ? 0 : 1,
-            row.addon_only === true || row.addon_only === 1 ? 1 : 0,
+            row.addon_only === true || row.addon_only === 1 || row.hire_only_addon === true ? 1 : 0,
             Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
             normalizeProductType(row.product_type),
             normalizeCatalogImageStorage(row.image_url),
+            additionalHourlyRateFromInput(row.additional_hourly_rate),
+            metaJson,
             t,
             t
         );
@@ -1959,6 +2018,29 @@ const portalDb = {
     updateCatalogProduct(productId, patch) {
         const existing = db.prepare('SELECT id FROM catalog_products WHERE id = ?').get(productId);
         if (!existing) return null;
+        const patchIn = { ...patch };
+        const metaFieldKeys = ['filter_group', 'highlights', 'specs'];
+        const hasMetaFieldPatch = metaFieldKeys.some((k) =>
+            Object.prototype.hasOwnProperty.call(patchIn, k)
+        );
+        if (hasMetaFieldPatch) {
+            const rowMeta = db
+                .prepare('SELECT product_metadata_json FROM catalog_products WHERE id = ?')
+                .get(productId);
+            const merged = parseProductMetadataJson(rowMeta && rowMeta.product_metadata_json);
+            if (Object.prototype.hasOwnProperty.call(patchIn, 'filter_group')) {
+                merged.filter_group = patchIn.filter_group;
+            }
+            if (Object.prototype.hasOwnProperty.call(patchIn, 'highlights')) {
+                merged.highlights = patchIn.highlights;
+            }
+            if (Object.prototype.hasOwnProperty.call(patchIn, 'specs')) {
+                merged.specs = patchIn.specs;
+            }
+            const normalized = normalizeProductMetadata(merged);
+            patchIn.product_metadata_json = normalized ? JSON.stringify(normalized) : null;
+            for (const k of metaFieldKeys) delete patchIn[k];
+        }
         const allowed = [
             'code',
             'name',
@@ -1973,13 +2055,15 @@ const portalDb = {
             'addon_only',
             'sort_order',
             'product_type',
-            'image_url'
+            'image_url',
+            'additional_hourly_rate',
+            'product_metadata_json'
         ];
         const sets = [];
         const params = [];
         for (const key of allowed) {
-            if (!Object.prototype.hasOwnProperty.call(patch, key)) continue;
-            let val = patch[key];
+            if (!Object.prototype.hasOwnProperty.call(patchIn, key)) continue;
+            let val = patchIn[key];
             if (key === 'code') val = String(val).trim().toLowerCase();
             else if (key === 'name') val = String(val).trim();
             else if (key === 'description') val = String(val);
@@ -1989,6 +2073,8 @@ const portalDb = {
             else if (key === 'minimum_hours') {
                 val =
                     val != null && val !== '' && Number.isFinite(Number(val)) ? Number(val) : null;
+            } else if (key === 'additional_hourly_rate') {
+                val = additionalHourlyRateFromInput(val);
             } else if (key === 'currency') val = String(val).trim().toUpperCase();
             else if (key === 'capability_code') {
                 val =
@@ -1999,6 +2085,11 @@ const portalDb = {
             else if (key === 'product_type') val = normalizeProductType(val);
             else if (key === 'image_url') {
                 val = normalizeCatalogImageStorage(val);
+            } else if (key === 'product_metadata_json') {
+                val =
+                    val != null && String(val).trim()
+                        ? String(val)
+                        : null;
             }
             sets.push(`${key} = ?`);
             params.push(val);
@@ -2165,14 +2256,17 @@ const portalDb = {
                     if (!Number.isFinite(hoursOut) || hoursOut <= 0) hoursOut = null;
                 }
 
-                const lineSubtotal = computeCatalogLineSubtotal({
-                    pricing_model: pricingModel,
-                    quantity: raw.quantity,
-                    hours: hoursOut,
-                    unit_rate: unitRate,
-                    discount_type: raw.discount_type,
-                    discount_value: raw.discount_value
-                });
+                const lineSubtotal = computeCatalogLineSubtotal(
+                    {
+                        pricing_model: pricingModel,
+                        quantity: raw.quantity,
+                        hours: hoursOut,
+                        unit_rate: unitRate,
+                        discount_type: raw.discount_type,
+                        discount_value: raw.discount_value
+                    },
+                    product
+                );
 
                 const lineId = raw.id && String(raw.id).trim() ? String(raw.id).trim() : uuid();
                 const label =
@@ -2226,6 +2320,10 @@ const portalDb = {
                 is_active: full.is_active !== false,
                 addon_only: full.addon_only === true,
                 sort_order: full.sort_order != null ? full.sort_order : 0,
+                additional_hourly_rate: full.additional_hourly_rate,
+                filter_group: full.filter_group || null,
+                highlights: full.highlights || [],
+                specs: full.specs || {},
                 addons
             };
         });
@@ -2277,8 +2375,15 @@ const portalDb = {
                         : null,
                 allows_addons: !(row.allows_addons === false || row.allows_addons === 0),
                 is_active: !(row.is_active === false || row.is_active === 0),
-                addon_only: row.addon_only === true || row.addon_only === 1,
-                sort_order: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0
+                addon_only:
+                    row.addon_only === true ||
+                    row.addon_only === 1 ||
+                    row.hire_only_addon === true,
+                sort_order: Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
+                additional_hourly_rate: additionalHourlyRateFromInput(row.additional_hourly_rate),
+                filter_group: row.filter_group,
+                highlights: row.highlights,
+                specs: row.specs
             };
             if (existing) {
                 portalDb.updateCatalogProduct(existing.id, fields);
@@ -2814,7 +2919,12 @@ const portalDb = {
         });
     },
 
-    normalizeEnquiryQuoteLineItems(itemsIn) {
+    normalizeEnquiryQuoteLineItems(itemsIn, options) {
+        const opts = options && typeof options === 'object' ? options : {};
+        const eventDurationHours =
+            opts.eventDurationHours != null && Number.isFinite(Number(opts.eventDurationHours))
+                ? Number(opts.eventDurationHours)
+                : null;
         const items = Array.isArray(itemsIn) ? itemsIn : [];
         const normalized = [];
         const keyToIndex = new Map();
@@ -2882,20 +2992,30 @@ const portalDb = {
 
             let hoursOut = raw.hours != null && raw.hours !== '' ? Number(raw.hours) : null;
             if (pricingModel === 'hourly') {
-                hoursOut = clampHoursToProductMinimum(product, hoursOut);
+                if (!Number.isFinite(hoursOut) || hoursOut <= 0) {
+                    if (eventDurationHours != null && eventDurationHours > 0) {
+                        hoursOut = eventDurationHours;
+                    }
+                }
+                if (!catalogPricing.usesTieredHourly(product)) {
+                    hoursOut = clampHoursToProductMinimum(product, hoursOut);
+                }
                 if (!Number.isFinite(hoursOut) || hoursOut <= 0) hoursOut = null;
             } else {
                 hoursOut = null;
             }
 
-            const lineSubtotal = computeCatalogLineSubtotal({
-                pricing_model: pricingModel,
-                quantity: raw.quantity,
-                hours: hoursOut,
-                unit_rate: unitRate,
-                discount_type: raw.discount_type,
-                discount_value: raw.discount_value
-            });
+            const lineSubtotal = computeCatalogLineSubtotal(
+                {
+                    pricing_model: pricingModel,
+                    quantity: raw.quantity,
+                    hours: hoursOut,
+                    unit_rate: unitRate,
+                    discount_type: raw.discount_type,
+                    discount_value: raw.discount_value
+                },
+                product
+            );
 
             const line = {
                 client_key: clientKey,
@@ -3125,6 +3245,7 @@ const portalDb = {
         const full = portalDb.getCatalogProductById(productId);
         if (!full) return null;
         const productType = inferProductType(full);
+        const meta = parseProductMetadataJson(full.product_metadata_json);
         return {
             id: full.id,
             name: full.name,
@@ -3137,6 +3258,11 @@ const portalDb = {
                 full.minimum_hours != null && Number.isFinite(Number(full.minimum_hours))
                     ? Number(full.minimum_hours)
                     : null,
+            additional_hourly_rate: additionalHourlyRateFromInput(full.additional_hourly_rate),
+            filter_group: meta.filter_group || null,
+            highlights: Array.isArray(meta.highlights) ? meta.highlights : [],
+            specs: meta.specs && typeof meta.specs === 'object' ? meta.specs : {},
+            hire_only_addon: !!full.addon_only,
             currency: full.currency || 'GBP',
             allows_addons: !!full.allows_addons,
             image_url: publicCatalogImageUrl(full),
@@ -3149,11 +3275,19 @@ const portalDb = {
         };
     },
 
-    listPublicQuoteCatalogGrouped() {
-        const products = portalDb
-            .listPublicQuoteCatalogProducts()
-            .filter(Boolean)
-            .sort((a, b) => {
+    listPublicQuoteCatalogGrouped(options) {
+        const opts = options && typeof options === 'object' ? options : {};
+        let productTypeFilter = null;
+        if (opts.productTypeFilter != null && String(opts.productTypeFilter).trim() !== '') {
+            productTypeFilter = normalizeProductType(opts.productTypeFilter);
+        }
+        let products = portalDb.listPublicQuoteCatalogProducts().filter(Boolean);
+        if (productTypeFilter) {
+            products = products.filter(
+                (p) => normalizeProductType(p.product_type) === productTypeFilter
+            );
+        }
+        products = products.sort((a, b) => {
                 const typeDiff = sortOrderForProductType(a.product_type) - sortOrderForProductType(b.product_type);
                 if (typeDiff !== 0) return typeDiff;
                 return String(a.name).localeCompare(String(b.name));

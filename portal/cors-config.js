@@ -5,7 +5,11 @@
 const DEFAULT_PORTAL_CORS_ORIGINS = [
     'https://eyupevents.uk',
     'https://www.eyupevents.uk',
-    'https://requests.eyupevents.uk'
+    'https://requests.eyupevents.uk',
+    'https://eyupinflatables.uk',
+    'https://www.eyupinflatables.uk',
+    'https://eyupinflatables.co.uk',
+    'https://www.eyupinflatables.co.uk'
 ];
 
 const DEV_PORTAL_CORS_ORIGINS = [
@@ -48,11 +52,32 @@ function isEyupEventsOrigin(origin) {
     return false;
 }
 
+function isEyupInflatablesOrigin(origin) {
+    if (process.env.PORTAL_CORS_ALLOW_EYUP_SUBDOMAINS === '0') return false;
+    try {
+        const u = new URL(origin);
+        const host = u.hostname.toLowerCase();
+        const isInflatableHost =
+            host === 'eyupinflatables.uk' ||
+            host.endsWith('.eyupinflatables.uk') ||
+            host === 'eyupinflatables.co.uk' ||
+            host.endsWith('.eyupinflatables.co.uk');
+        if (isInflatableHost) {
+            if (u.protocol === 'https:') return true;
+            return process.env.NODE_ENV !== 'production' && u.protocol === 'http:';
+        }
+    } catch {
+        /* ignore */
+    }
+    return false;
+}
+
 function isPortalCorsOriginAllowed(origin, allowedList) {
     if (!origin) return true;
     const normalized = normalizeOrigin(origin);
     if (allowedList.includes(normalized)) return true;
-    return isEyupEventsOrigin(normalized);
+    if (isEyupEventsOrigin(normalized)) return true;
+    return isEyupInflatablesOrigin(normalized);
 }
 
 function createPortalCorsOptions() {
@@ -82,6 +107,8 @@ function createPortalCorsOptions() {
 module.exports = {
     DEFAULT_PORTAL_CORS_ORIGINS,
     parsePortalCorsOrigins,
+    isEyupEventsOrigin,
+    isEyupInflatablesOrigin,
     isPortalCorsOriginAllowed,
     createPortalCorsOptions
 };

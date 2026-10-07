@@ -2,6 +2,10 @@ const { portalDb } = require('../db/portal-database');
 const { getSiteSettings } = require('./site-settings-service');
 const { verifyTurnstile } = require('./turnstile');
 const brevoMail = require('./brevo-mail');
+const {
+    enrichLeadMetadataFromBody,
+    resolveEventDurationHours
+} = require('./catalog-pricing');
 
 function jsonError(res, code, message, status = 400, details = {}) {
     res.status(status).json({ error: { code, message, details } });
@@ -60,8 +64,10 @@ function validateEnquiryBody(body) {
         throw err;
     }
 
-    const leadMetadata =
-        body.lead_metadata && typeof body.lead_metadata === 'object' ? { ...body.lead_metadata } : {};
+    let leadMetadata = enrichLeadMetadataFromBody(
+        body,
+        body.lead_metadata && typeof body.lead_metadata === 'object' ? { ...body.lead_metadata } : {}
+    );
     leadMetadata.form_source = leadMetadata.form_source || body.form_source || 'eyup_events_website';
     leadMetadata.form_timestamp =
         leadMetadata.form_timestamp || body.form_timestamp || new Date().toISOString();
@@ -116,10 +122,37 @@ async function createPublicEnquiry(req, res) {
     let quotePayload = { quote_line_items: [], quote_subtotal: 0, quote_total: 0 };
     if (parsed.quoteLineItems.length) {
         try {
-            quotePayload = portalDb.normalizeEnquiryQuoteLineItems(parsed.quoteLineItems);
+            const eventDurationHours = resolveEventDurationHours(parsed.leadMetadata);
+            quotePayload = portalDb.normalizeEnquiryQuoteLineItems(parsed.quoteLineItems, {
+                eventDurationHours
+            });
         } catch (lineErr) {
             return jsonError(res, 'validation_error', lineErr.message || 'Invalid quote line items', 422);
         }
+    }
+
+    const clientHireTotal =
+        parsed.leadMetadata && parsed.leadMetadata.hire_total != null
+            ? Number(parsed.leadMetadata.hire_total)
+            : null;
+    if (
+        Number.isFinite(clientHireTotal) &&
+        quotePayload.quote_total > 0 &&
+        Math.abs(clientHireTotal - quotePayload.quote_total) > 0.02
+    ) {
+        parsed.leadMetadata.quote_total_server = quotePayload.quote_total;
+        parsed.leadMetadata.quote_total_client = clientHireTotal;
+        parsed.leadMetadata.quote_total_mismatch = true;
+        if (process.env.NODE_ENV !== 'production') {
+            console.warn(
+                '[portal] enquiry quote total mismatch — server:',
+                quotePayload.quote_total,
+                'client:',
+                clientHireTotal
+            );
+        }
+    } else if (quotePayload.quote_total > 0) {
+        parsed.leadMetadata.quote_total_server = quotePayload.quote_total;
     }
 
     const enquiry = portalDb.insertEnquiry({

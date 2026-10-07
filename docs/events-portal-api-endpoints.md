@@ -743,6 +743,8 @@ Unauthenticated routes mounted under **`/api/v1/public`**. Full catalog field li
 
 **Admin (Bearer `admin`):** availability blocks and vouchers — **`GET/POST/PATCH/DELETE /admin/catalog/availability-blocks`**, **`GET/POST/PATCH/DELETE /admin/catalog/vouchers`**. **Site media library:** **`GET /admin/media?category=`** (optional `include_catalog=0`), **`POST /admin/media`** (multipart `image`, fields `category`, `title`, `alt_text`), **`PATCH/DELETE /admin/media/:id`**. Public serve: **`GET /public/media/image/:filename`**. Enquiry channel counts: **`GET /admin/enquiries/stats`** → `{ events, inflatables, total, new, generated_at }` per status bucket.
 
+**Image uploads (admin):** catalog and gallery images allow up to **10 MB** per file (JPEG/PNG/WebP/GIF). If nginx in front of Node still uses the default **`client_max_body_size 1m`**, browsers see **HTTP 413** for files over ~1 MB even though the app allows more. Set **`client_max_body_size 20M;`** on the `requests.eyupevents.uk` vhost — see **`deploy/nginx/requests.eyupevents.uk.conf.example`**.
+
 ---
 
 ## 6. DJ endpoints

@@ -24,7 +24,7 @@ const storage = multer.diskStorage({
 
 const siteMediaUpload = multer({
     storage,
-    limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
     fileFilter(_req, file, cb) {
         const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
         cb(ok ? null : new Error('Only JPEG, PNG, WebP, or GIF images are allowed'), ok);

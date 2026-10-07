@@ -135,7 +135,15 @@ router.post('/vouchers/validate', (req, res, next) => {
                 channel = 'events';
             }
         }
-        const result = validateVoucherForContext(code, productIds, channel);
+        const customerEmail =
+            body.customer_email != null
+                ? body.customer_email
+                : body.email != null
+                  ? body.email
+                  : null;
+        const result = validateVoucherForContext(code, productIds, channel, {
+            customerEmail
+        });
         res.json(result);
     } catch (e) {
         next(e);

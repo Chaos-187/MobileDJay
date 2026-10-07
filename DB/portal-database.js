@@ -465,6 +465,11 @@ db.exec(`
         applies_to TEXT,
         invalid_message TEXT,
         is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
+        max_redemptions INTEGER,
+        redemption_count INTEGER NOT NULL DEFAULT 0,
+        customer_emails_json TEXT,
+        valid_from TEXT,
+        valid_until TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now')),
         UNIQUE(code, channel)
@@ -553,6 +558,25 @@ function migrateCatalogVouchersChannel() {
 }
 
 migrateCatalogVouchersChannel();
+
+function migrateCatalogVouchersExtendedFields() {
+    const columns = [
+        ['max_redemptions', 'INTEGER'],
+        ['redemption_count', 'INTEGER NOT NULL DEFAULT 0'],
+        ['customer_emails_json', 'TEXT'],
+        ['valid_from', 'TEXT'],
+        ['valid_until', 'TEXT']
+    ];
+    columns.forEach(([name, type]) => {
+        try {
+            db.exec(`ALTER TABLE catalog_vouchers ADD COLUMN ${name} ${type}`);
+        } catch (e) {
+            /* exists */
+        }
+    });
+}
+
+migrateCatalogVouchersExtendedFields();
 
 function parseProductMetadataJson(raw) {
     if (raw == null || String(raw).trim() === '') return {};
@@ -653,9 +677,28 @@ function materializeAvailabilityBlockRow(row) {
     };
 }
 
+function parseCustomerEmailsJson(raw) {
+    if (raw == null || String(raw).trim() === '') return [];
+    try {
+        const parsed = JSON.parse(String(raw));
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map((e) => normalizeEmail(e)).filter(Boolean);
+    } catch {
+        return String(raw)
+            .split(/[,;\n]+/)
+            .map((e) => normalizeEmail(e))
+            .filter(Boolean);
+    }
+}
+
 function materializeCatalogVoucherRow(row) {
     if (!row) return null;
     const product_ids = parseJsonStringArray(row.product_ids_json);
+    const customer_emails = parseCustomerEmailsJson(row.customer_emails_json);
+    const maxRedemptions =
+        row.max_redemptions != null && Number.isFinite(Number(row.max_redemptions))
+            ? Number(row.max_redemptions)
+            : null;
     return {
         id: row.id,
         code: row.code,
@@ -665,6 +708,11 @@ function materializeCatalogVoucherRow(row) {
         applies_to: row.applies_to || null,
         invalid_message: row.invalid_message || null,
         is_active: row.is_active === 1,
+        max_redemptions: maxRedemptions,
+        redemption_count: Number(row.redemption_count) || 0,
+        customer_emails,
+        valid_from: row.valid_from || null,
+        valid_until: row.valid_until || null,
         created_at: row.created_at,
         updated_at: row.updated_at
     };
@@ -3671,10 +3719,16 @@ const portalDb = {
         );
         const id = row.id || uuid();
         const t = nowIso();
+        let customerEmails = serializeVoucherCustomerEmailsInput(row);
+        if (customerEmails === undefined) customerEmails = null;
+        const maxRedemptions = parseVoucherMaxRedemptionsInput(row);
+        const validFrom = normalizeVoucherDateTimeInput(row.valid_from);
+        const validUntil = normalizeVoucherDateTimeInput(row.valid_until);
         db.prepare(
             `INSERT INTO catalog_vouchers (
-                id, code, channel, discount_percent, product_ids_json, applies_to, invalid_message, is_active, created_at, updated_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                id, code, channel, discount_percent, product_ids_json, applies_to, invalid_message, is_active,
+                max_redemptions, redemption_count, customer_emails_json, valid_from, valid_until, created_at, updated_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`
         ).run(
             id,
             code,
@@ -3684,6 +3738,10 @@ const portalDb = {
             row.applies_to != null ? String(row.applies_to) : null,
             row.invalid_message != null ? String(row.invalid_message) : null,
             row.is_active === false || row.is_active === 0 ? 0 : 1,
+            maxRedemptions,
+            customerEmails,
+            validFrom,
+            validUntil,
             t,
             t
         );
@@ -3732,6 +3790,25 @@ const portalDb = {
             sets.push('is_active = ?');
             params.push(patch.is_active ? 1 : 0);
         }
+        if (Object.prototype.hasOwnProperty.call(patch, 'max_redemptions')) {
+            sets.push('max_redemptions = ?');
+            params.push(parseVoucherMaxRedemptionsInput(patch));
+        }
+        if (
+            Object.prototype.hasOwnProperty.call(patch, 'customer_emails') ||
+            Object.prototype.hasOwnProperty.call(patch, 'customer_emails_json')
+        ) {
+            sets.push('customer_emails_json = ?');
+            params.push(serializeVoucherCustomerEmailsInput(patch));
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'valid_from')) {
+            sets.push('valid_from = ?');
+            params.push(normalizeVoucherDateTimeInput(patch.valid_from));
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, 'valid_until')) {
+            sets.push('valid_until = ?');
+            params.push(normalizeVoucherDateTimeInput(patch.valid_until));
+        }
         if (!sets.length) return materializeCatalogVoucherRow(existing);
         sets.push('updated_at = ?');
         params.push(nowIso());
@@ -3740,6 +3817,15 @@ const portalDb = {
         return materializeCatalogVoucherRow(
             db.prepare('SELECT * FROM catalog_vouchers WHERE id = ?').get(voucherId)
         );
+    },
+
+    incrementCatalogVoucherRedemption(voucherId) {
+        const r = db
+            .prepare(
+                `UPDATE catalog_vouchers SET redemption_count = redemption_count + 1, updated_at = ? WHERE id = ?`
+            )
+            .run(nowIso(), voucherId);
+        return r.changes > 0;
     },
 
     deleteCatalogVoucher(voucherId) {
@@ -3752,6 +3838,44 @@ function normalizeVoucherCodeForDb(code) {
     return String(code || '')
         .trim()
         .toUpperCase();
+}
+
+function parseVoucherMaxRedemptionsInput(row) {
+    if (row == null || typeof row !== 'object') return null;
+    if (!Object.prototype.hasOwnProperty.call(row, 'max_redemptions')) return null;
+    const raw = row.max_redemptions;
+    if (raw === '' || raw == null) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return Math.floor(n);
+}
+
+function serializeVoucherCustomerEmailsInput(row) {
+    if (row == null || typeof row !== 'object') return null;
+    let list = [];
+    if (Array.isArray(row.customer_emails)) {
+        list = row.customer_emails.map((e) => normalizeEmail(e)).filter(Boolean);
+    } else if (row.customer_emails_json != null) {
+        list = parseCustomerEmailsJson(row.customer_emails_json);
+    } else if (typeof row.customer_emails === 'string') {
+        list = String(row.customer_emails)
+            .split(/[,;\n]+/)
+            .map((e) => normalizeEmail(e))
+            .filter(Boolean);
+    } else if (Object.prototype.hasOwnProperty.call(row, 'customer_emails')) {
+        return null;
+    } else {
+        return undefined;
+    }
+    return list.length ? JSON.stringify(list) : null;
+}
+
+function normalizeVoucherDateTimeInput(value) {
+    if (value == null || String(value).trim() === '') return null;
+    const s = String(value).trim();
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return s;
+    return d.toISOString();
 }
 
 module.exports = { portalDb, uuid, normalizeEmail, nowIso };

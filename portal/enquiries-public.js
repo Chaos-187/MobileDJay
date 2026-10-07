@@ -189,6 +189,7 @@ async function createPublicEnquiry(req, res) {
     const voucherCode =
         parsed.leadMetadata &&
         (parsed.leadMetadata.voucher_code || parsed.leadMetadata.voucherCode);
+    let voucherRedemptionId = null;
     if (voucherCode) {
         const cartIds = quotePayload.quote_line_items
             .map((line) => line.product_id)
@@ -199,7 +200,8 @@ async function createPublicEnquiry(req, res) {
             inferEnquirySiteKey({
                 lead_metadata: parsed.leadMetadata,
                 form_source: parsed.leadMetadata && parsed.leadMetadata.form_source
-            })
+            }),
+            { customerEmail: parsed.email }
         );
         if (!vResult.valid) {
             return jsonError(
@@ -225,6 +227,9 @@ async function createPublicEnquiry(req, res) {
         if (discountAmt > 0 && quotePayload.quote_total > 0) {
             quotePayload.quote_total =
                 Math.round(Math.max(0, quotePayload.quote_total - discountAmt) * 100) / 100;
+        }
+        if (vResult.voucher_id) {
+            voucherRedemptionId = vResult.voucher_id;
         }
     }
 
@@ -270,6 +275,14 @@ async function createPublicEnquiry(req, res) {
         quote_total: quotePayload.quote_total,
         lead_metadata: parsed.leadMetadata
     });
+
+    if (voucherRedemptionId) {
+        try {
+            portalDb.incrementCatalogVoucherRedemption(voucherRedemptionId);
+        } catch (incErr) {
+            console.error('[portal] voucher redemption increment', incErr);
+        }
+    }
 
     if (brevoMail.isConfigured()) {
         try {

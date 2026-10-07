@@ -16,7 +16,59 @@ function normalizeVoucherChannel(channel) {
     return 'inflatables';
 }
 
-function validateVoucherForContext(code, contextProductIds, channel) {
+function normalizeCustomerEmail(email) {
+    const { normalizeEmail } = require('../db/portal-database');
+    return normalizeEmail(email);
+}
+
+function parseVoucherInstant(value) {
+    if (value == null || String(value).trim() === '') return null;
+    const d = new Date(String(value));
+    return isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function validateVoucherRules(voucher, options) {
+    options = options || {};
+    const now = Date.now();
+    const fromMs = parseVoucherInstant(voucher.valid_from);
+    if (fromMs != null && now < fromMs) {
+        return {
+            valid: false,
+            message: voucher.invalid_message || 'This voucher is not valid yet.'
+        };
+    }
+    const untilMs = parseVoucherInstant(voucher.valid_until);
+    if (untilMs != null && now > untilMs) {
+        return {
+            valid: false,
+            message: voucher.invalid_message || 'This voucher has expired.'
+        };
+    }
+    if (voucher.max_redemptions != null && voucher.max_redemptions >= 0) {
+        const used = Number(voucher.redemption_count) || 0;
+        if (used >= voucher.max_redemptions) {
+            return {
+                valid: false,
+                message: voucher.invalid_message || 'This voucher has reached its redemption limit.'
+            };
+        }
+    }
+    const allowed = Array.isArray(voucher.customer_emails) ? voucher.customer_emails : [];
+    if (allowed.length) {
+        const email = options.customerEmail ? normalizeCustomerEmail(options.customerEmail) : '';
+        if (!email || !allowed.includes(email)) {
+            return {
+                valid: false,
+                message:
+                    voucher.invalid_message ||
+                    'This code is restricted to specific customers — use the email it was issued to.'
+            };
+        }
+    }
+    return { valid: true };
+}
+
+function validateVoucherForContext(code, contextProductIds, channel, options) {
     const normalized = normalizeVoucherCode(code);
     if (!normalized) {
         return {
@@ -37,6 +89,16 @@ function validateVoucherForContext(code, contextProductIds, channel) {
         };
     }
 
+    const ruleCheck = validateVoucherRules(voucher, options);
+    if (!ruleCheck.valid) {
+        return {
+            valid: false,
+            code: normalized,
+            discount_percent: 0,
+            message: ruleCheck.message
+        };
+    }
+
     const cartIds = Array.isArray(contextProductIds)
         ? contextProductIds.map((id) => String(id || '').trim()).filter(Boolean)
         : [];
@@ -49,13 +111,15 @@ function validateVoucherForContext(code, contextProductIds, channel) {
                 valid: false,
                 code: normalized,
                 discount_percent: 0,
-                message: voucher.invalid_message || 'This code does not apply to items in your hire list.'
+                message:
+                    voucher.invalid_message || 'This code does not apply to items in your hire list.'
             };
         }
     }
 
     return {
         valid: true,
+        voucher_id: voucher.id,
         code: normalized,
         discount_percent: Number(voucher.discount_percent) || 0,
         product_ids: requiredIds.length ? requiredIds.slice() : null,

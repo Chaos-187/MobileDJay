@@ -1808,7 +1808,8 @@ router.delete('/catalog/availability-blocks/:id', (req, res) => {
 });
 
 router.get('/catalog/vouchers', (req, res) => {
-    res.json({ vouchers: portalDb.listCatalogVouchers() });
+    const channel = req.query.channel || null;
+    res.json({ vouchers: portalDb.listCatalogVouchers({ channel }) });
 });
 
 router.post('/catalog/vouchers', (req, res) => {

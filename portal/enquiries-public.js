@@ -193,7 +193,14 @@ async function createPublicEnquiry(req, res) {
         const cartIds = quotePayload.quote_line_items
             .map((line) => line.product_id)
             .filter(Boolean);
-        const vResult = validateVoucherForContext(voucherCode, cartIds);
+        const vResult = validateVoucherForContext(
+            voucherCode,
+            cartIds,
+            inferEnquirySiteKey({
+                lead_metadata: parsed.leadMetadata,
+                form_source: parsed.leadMetadata && parsed.leadMetadata.form_source
+            })
+        );
         if (!vResult.valid) {
             return jsonError(
                 res,

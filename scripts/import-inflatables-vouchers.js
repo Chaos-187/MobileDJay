@@ -156,19 +156,26 @@ function updateVoucherDirect(db, voucherId, patch) {
     db.prepare(`UPDATE catalog_vouchers SET ${sets.join(', ')} WHERE id = ?`).run(...params);
 }
 
+function voucherMapKey(code, channel) {
+    return String(code).toUpperCase() + ':' + String(channel || 'inflatables').toLowerCase();
+}
+
 function upsertViaPortalDb(vouchers) {
     const { portalDb } = require('../db/portal-database');
     if (typeof portalDb.listCatalogVouchers !== 'function') {
         return null;
     }
     const existing = portalDb.listCatalogVouchers();
-    const byCode = new Map(existing.map((v) => [String(v.code).toUpperCase(), v]));
+    const byCode = new Map(
+        existing.map((v) => [voucherMapKey(v.code, v.channel || 'inflatables'), v])
+    );
     let created = 0;
     let updated = 0;
     vouchers.forEach((row) => {
         const code = normalizeVoucherCode(row.code);
         if (!code) return;
-        const prior = byCode.get(code);
+        const ch = String(row.channel || 'inflatables').toLowerCase();
+        const prior = byCode.get(voucherMapKey(code, ch));
         if (prior) {
             portalDb.updateCatalogVoucher(prior.id, row);
             updated += 1;
@@ -186,14 +193,17 @@ function upsertDirectSqlite(vouchers) {
     db.pragma('foreign_keys = ON');
     ensureVoucherTable(db);
     const existing = listVouchersDirect(db);
-    const byCode = new Map(existing.map((v) => [String(v.code).toUpperCase(), v]));
+    const byCode = new Map(
+        existing.map((v) => [voucherMapKey(v.code, v.channel || 'inflatables'), v])
+    );
     let created = 0;
     let updated = 0;
     const tx = db.transaction(() => {
         vouchers.forEach((row) => {
             const code = normalizeVoucherCode(row.code);
             if (!code) return;
-            const prior = byCode.get(code);
+            const ch = String(row.channel || 'inflatables').toLowerCase();
+            const prior = byCode.get(voucherMapKey(code, ch));
             if (prior) {
                 updateVoucherDirect(db, prior.id, row);
                 updated += 1;

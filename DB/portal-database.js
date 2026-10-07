@@ -458,14 +458,16 @@ db.exec(`
 
     CREATE TABLE IF NOT EXISTS catalog_vouchers (
         id TEXT PRIMARY KEY,
-        code TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        code TEXT NOT NULL COLLATE NOCASE,
+        channel TEXT NOT NULL DEFAULT 'inflatables' CHECK(channel IN ('events','inflatables')),
         discount_percent REAL NOT NULL DEFAULT 0,
         product_ids_json TEXT,
         applies_to TEXT,
         invalid_message TEXT,
         is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE(code, channel)
     );
 `);
 
@@ -501,6 +503,56 @@ try {
 } catch (e) {
     /* exists */
 }
+
+function normalizeVoucherChannel(raw) {
+    const s = String(raw || '')
+        .trim()
+        .toLowerCase();
+    if (s === 'events' || s === 'eyup_events' || s === 'eyup_events_website') return 'events';
+    return 'inflatables';
+}
+
+function migrateCatalogVouchersChannel() {
+    try {
+        db.exec(
+            `ALTER TABLE catalog_vouchers ADD COLUMN channel TEXT NOT NULL DEFAULT 'inflatables'`
+        );
+    } catch (e) {
+        /* exists */
+    }
+    const tableSql = db
+        .prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='catalog_vouchers'`)
+        .get();
+    if (!tableSql || !tableSql.sql) return;
+    if (String(tableSql.sql).includes('UNIQUE(code, channel)')) return;
+    if (!/code TEXT NOT NULL UNIQUE/i.test(String(tableSql.sql))) return;
+    db.exec(`
+        BEGIN;
+        CREATE TABLE catalog_vouchers_migrate (
+            id TEXT PRIMARY KEY,
+            code TEXT NOT NULL COLLATE NOCASE,
+            channel TEXT NOT NULL DEFAULT 'inflatables' CHECK(channel IN ('events','inflatables')),
+            discount_percent REAL NOT NULL DEFAULT 0,
+            product_ids_json TEXT,
+            applies_to TEXT,
+            invalid_message TEXT,
+            is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(code, channel)
+        );
+        INSERT INTO catalog_vouchers_migrate (
+            id, code, channel, discount_percent, product_ids_json, applies_to, invalid_message, is_active, created_at, updated_at
+        )
+        SELECT id, code, COALESCE(channel, 'inflatables'), discount_percent, product_ids_json, applies_to, invalid_message, is_active, created_at, updated_at
+        FROM catalog_vouchers;
+        DROP TABLE catalog_vouchers;
+        ALTER TABLE catalog_vouchers_migrate RENAME TO catalog_vouchers;
+        COMMIT;
+    `);
+}
+
+migrateCatalogVouchersChannel();
 
 function parseProductMetadataJson(raw) {
     if (raw == null || String(raw).trim() === '') return {};
@@ -607,6 +659,7 @@ function materializeCatalogVoucherRow(row) {
     return {
         id: row.id,
         code: row.code,
+        channel: normalizeVoucherChannel(row.channel || 'inflatables'),
         discount_percent: Number(row.discount_percent) || 0,
         product_ids,
         applies_to: row.applies_to || null,
@@ -3581,25 +3634,38 @@ const portalDb = {
         return r.changes > 0;
     },
 
-    listCatalogVouchers() {
+    listCatalogVouchers({ channel } = {}) {
+        const channelNorm =
+            channel != null && String(channel).trim() !== ''
+                ? normalizeVoucherChannel(channel)
+                : null;
+        let sql = 'SELECT * FROM catalog_vouchers';
+        const params = [];
+        if (channelNorm) {
+            sql += ' WHERE channel = ?';
+            params.push(channelNorm);
+        }
+        sql += ' ORDER BY channel ASC, code COLLATE NOCASE ASC';
         return db
-            .prepare('SELECT * FROM catalog_vouchers ORDER BY code COLLATE NOCASE ASC')
-            .all()
+            .prepare(sql)
+            .all(...params)
             .map(materializeCatalogVoucherRow);
     },
 
-    getActiveCatalogVoucherByCode(code) {
+    getActiveCatalogVoucherByCode(code, channel) {
+        const channelNorm = normalizeVoucherChannel(channel || 'inflatables');
         const row = db
             .prepare(
-                `SELECT * FROM catalog_vouchers WHERE code = ? COLLATE NOCASE AND is_active = 1`
+                `SELECT * FROM catalog_vouchers WHERE code = ? COLLATE NOCASE AND channel = ? AND is_active = 1`
             )
-            .get(normalizeVoucherCodeForDb(code));
+            .get(normalizeVoucherCodeForDb(code), channelNorm);
         return materializeCatalogVoucherRow(row);
     },
 
     insertCatalogVoucher(row) {
         const code = normalizeVoucherCodeForDb(row.code);
         if (!code) throw new Error('Voucher code is required');
+        const channel = normalizeVoucherChannel(row.channel || 'inflatables');
         const productIds = resolveCatalogProductIdRefs(
             row.product_ids || row.product_codes || parseJsonStringArray(row.product_ids_json)
         );
@@ -3607,11 +3673,12 @@ const portalDb = {
         const t = nowIso();
         db.prepare(
             `INSERT INTO catalog_vouchers (
-                id, code, discount_percent, product_ids_json, applies_to, invalid_message, is_active, created_at, updated_at
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                id, code, channel, discount_percent, product_ids_json, applies_to, invalid_message, is_active, created_at, updated_at
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         ).run(
             id,
             code,
+            channel,
             Number.isFinite(Number(row.discount_percent)) ? Number(row.discount_percent) : 0,
             productIds.length ? JSON.stringify(productIds) : null,
             row.applies_to != null ? String(row.applies_to) : null,
@@ -3631,6 +3698,10 @@ const portalDb = {
         if (patch.code != null) {
             sets.push('code = ?');
             params.push(normalizeVoucherCodeForDb(patch.code));
+        }
+        if (patch.channel != null) {
+            sets.push('channel = ?');
+            params.push(normalizeVoucherChannel(patch.channel));
         }
         if (patch.discount_percent != null) {
             sets.push('discount_percent = ?');

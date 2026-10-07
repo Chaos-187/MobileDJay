@@ -3,14 +3,17 @@
   "vouchers": [
     {
       "code": "EYUP",
+      "channel": "inflatables",
       "discount_percent": 25
     },
     {
       "code": "CASTLE",
+      "channel": "inflatables",
       "discount_percent": 50
     },
     {
       "code": "SURF",
+      "channel": "inflatables",
       "discount_percent": 100,
       "product_codes": ["demo-surf-simulator"],
       "applies_to": "Surf Simulator",

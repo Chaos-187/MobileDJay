@@ -124,7 +124,18 @@ router.post('/vouchers/validate', (req, res, next) => {
                 : body.productIds != null
                   ? body.productIds
                   : [];
-        const result = validateVoucherForContext(code, productIds);
+        let channel = body.channel != null ? String(body.channel).trim() : '';
+        if (!channel) {
+            if (
+                body.site === 'eyupinflatables' ||
+                body.form_source === 'eyup_inflatables_website'
+            ) {
+                channel = 'inflatables';
+            } else {
+                channel = 'events';
+            }
+        }
+        const result = validateVoucherForContext(code, productIds, channel);
         res.json(result);
     } catch (e) {
         next(e);

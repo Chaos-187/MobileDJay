@@ -8,7 +8,15 @@ function normalizeVoucherCode(code) {
         .toUpperCase();
 }
 
-function validateVoucherForContext(code, contextProductIds) {
+function normalizeVoucherChannel(channel) {
+    const s = String(channel || '')
+        .trim()
+        .toLowerCase();
+    if (s === 'events' || s === 'eyup_events' || s === 'eyup_events_website') return 'events';
+    return 'inflatables';
+}
+
+function validateVoucherForContext(code, contextProductIds, channel) {
     const normalized = normalizeVoucherCode(code);
     if (!normalized) {
         return {
@@ -19,7 +27,8 @@ function validateVoucherForContext(code, contextProductIds) {
         };
     }
 
-    const voucher = portalDb().getActiveCatalogVoucherByCode(normalized);
+    const channelNorm = normalizeVoucherChannel(channel || 'inflatables');
+    const voucher = portalDb().getActiveCatalogVoucherByCode(normalized, channelNorm);
     if (!voucher) {
         return {
             valid: false,
@@ -74,6 +83,7 @@ function computeVoucherDiscountAmount(quoteLineItems, voucherResult) {
 
 module.exports = {
     normalizeVoucherCode,
+    normalizeVoucherChannel,
     validateVoucherForContext,
     computeVoucherDiscountAmount
 };

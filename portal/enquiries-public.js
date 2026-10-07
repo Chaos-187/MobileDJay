@@ -3,6 +3,8 @@ const {
     getSiteSettings,
     inferEnquirySiteKey,
     isContactFormEnabledForSite,
+    isMaintenanceModeForSite,
+    maintenanceMessageForSite,
     contactFormDisabledMessageForSite
 } = require('./site-settings-service');
 const { verifyTurnstile } = require('./turnstile');
@@ -147,6 +149,14 @@ function validateEnquiryBody(body) {
 async function createPublicEnquiry(req, res) {
     const settings = getSiteSettings();
     const siteKey = inferEnquirySiteKey(req.body || {});
+    if (isMaintenanceModeForSite(settings, siteKey)) {
+        return jsonError(
+            res,
+            'forbidden',
+            maintenanceMessageForSite(settings, siteKey) || 'Site is temporarily unavailable',
+            403
+        );
+    }
     if (!isContactFormEnabledForSite(settings, siteKey)) {
         return jsonError(
             res,

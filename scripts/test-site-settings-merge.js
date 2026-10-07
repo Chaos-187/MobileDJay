@@ -4,6 +4,7 @@ const {
     mergeSiteSettings,
     inferEnquirySiteKey,
     isContactFormEnabledForSite,
+    isMaintenanceModeForSite,
     getPublicSiteSettingsResponse
 } = require('../portal/site-settings-service');
 
@@ -56,6 +57,26 @@ function testPublicInflatablesSlice() {
     assert.deepStrictEqual(pub.featured_product_ids, ['a', 'b']);
 }
 
+function testMaintenanceBlocksCheckout() {
+    const merged = mergeSiteSettings({
+        nav: { home: true },
+        contact_form_enabled: true,
+        contact_form_disabled_message: 'Events msg',
+        sites: {
+            inflatables: {
+                contact_form_enabled: true,
+                maintenance_mode: true,
+                maintenance_message: 'Back soon'
+            }
+        }
+    });
+    assert.strictEqual(isMaintenanceModeForSite(merged, 'inflatables'), true);
+    assert.strictEqual(isContactFormEnabledForSite(merged, 'inflatables'), false);
+    const pub = getPublicSiteSettingsResponse(merged, 'inflatables');
+    assert.strictEqual(pub.maintenance_mode, true);
+    assert.strictEqual(pub.maintenance_message, 'Back soon');
+}
+
 function testInferSite() {
     assert.strictEqual(
         inferEnquirySiteKey({ form_source: 'eyup_inflatables_website' }),
@@ -69,6 +90,7 @@ function main() {
     testLegacyTopLevelOnly();
     testInflatablesIndependentContact();
     testPublicInflatablesSlice();
+    testMaintenanceBlocksCheckout();
     testInferSite();
     console.log('test-site-settings-merge: ok');
 }

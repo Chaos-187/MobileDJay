@@ -192,14 +192,16 @@ Backward-compatible nested settings:
       "contact_form_enabled": true,
       "contact_form_disabled_message": "...",
       "deposit_rate": 0.25,
-      "featured_product_ids": ["catalog-code"]
+      "featured_product_ids": ["catalog-code"],
+      "maintenance_mode": false,
+      "maintenance_message": "We are updating the website…"
     }
   }
 }
 ```
 
 - Legacy rows without `sites`: top-level contact fields populate both channels on read.
-- **`GET /public/site-settings?site=inflatables`** returns a slice: `{ site, contact_form_enabled, contact_form_disabled_message, deposit_rate, featured_product_ids }`.
+- **`GET /public/site-settings?site=inflatables`** returns a slice: `{ site, contact_form_enabled, contact_form_disabled_message, deposit_rate, featured_product_ids, maintenance_mode, maintenance_message }`.
 - Omit `?site=` for the full merged document (Events marketing + admin).
 - Enquiries: `POST /public/enquiries` uses **`inferEnquirySiteKey(body)`** to pick Events vs Inflatables contact toggles.
 

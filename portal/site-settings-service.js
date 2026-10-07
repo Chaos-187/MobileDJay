@@ -37,7 +37,10 @@ const SITES_DEFAULTS = {
         contact_form_enabled: true,
         contact_form_disabled_message: DEFAULTS.contact_form_disabled_message,
         deposit_rate: 0.25,
-        featured_product_ids: []
+        featured_product_ids: [],
+        maintenance_mode: false,
+        maintenance_message:
+            'We are updating the website. Please check back soon or call us on 07868 134663.'
     }
 };
 
@@ -113,6 +116,19 @@ function mergeSitesBlock(rawSites, topLevelContact) {
             ? normalizeStringArray(inflatablesRaw.featured_product_ids)
             : normalizeStringArray(inflatablesRaw.featured_product_codes);
 
+    const maintenanceMode =
+        typeof inflatablesRaw.maintenance_mode === 'boolean'
+            ? inflatablesRaw.maintenance_mode
+            : SITES_DEFAULTS.inflatables.maintenance_mode;
+
+    let maintenanceMessage = SITES_DEFAULTS.inflatables.maintenance_message;
+    if (
+        inflatablesRaw.maintenance_message != null &&
+        String(inflatablesRaw.maintenance_message).trim()
+    ) {
+        maintenanceMessage = String(inflatablesRaw.maintenance_message).trim();
+    }
+
     return {
         events: {
             contact_form_enabled: eventsContactEnabled
@@ -121,7 +137,9 @@ function mergeSitesBlock(rawSites, topLevelContact) {
             contact_form_enabled: inflatablesContactEnabled,
             contact_form_disabled_message: inflatablesMessage,
             deposit_rate: depositRate,
-            featured_product_ids: featured
+            featured_product_ids: featured,
+            maintenance_mode: maintenanceMode,
+            maintenance_message: maintenanceMessage
         }
     };
 }
@@ -197,9 +215,29 @@ function inferEnquirySiteKey(body) {
     return 'events';
 }
 
+function isMaintenanceModeForSite(settings, siteKey) {
+    const merged = settings && settings.sites ? settings : mergeSiteSettings(settings || {});
+    if (siteKey === 'inflatables') {
+        return merged.sites.inflatables.maintenance_mode === true;
+    }
+    return false;
+}
+
+function maintenanceMessageForSite(settings, siteKey) {
+    const merged = settings && settings.sites ? settings : mergeSiteSettings(settings || {});
+    if (siteKey === 'inflatables') {
+        return (
+            merged.sites.inflatables.maintenance_message ||
+            SITES_DEFAULTS.inflatables.maintenance_message
+        );
+    }
+    return '';
+}
+
 function isContactFormEnabledForSite(settings, siteKey) {
     const merged = settings && settings.sites ? settings : mergeSiteSettings(settings || {});
     if (siteKey === 'inflatables') {
+        if (merged.sites.inflatables.maintenance_mode === true) return false;
         return merged.sites.inflatables.contact_form_enabled !== false;
     }
     return merged.contact_form_enabled !== false;
@@ -225,7 +263,9 @@ function getPublicSiteSettingsResponse(merged, siteQuery) {
             contact_form_enabled: inf.contact_form_enabled,
             contact_form_disabled_message: inf.contact_form_disabled_message,
             deposit_rate: inf.deposit_rate,
-            featured_product_ids: inf.featured_product_ids.slice()
+            featured_product_ids: inf.featured_product_ids.slice(),
+            maintenance_mode: inf.maintenance_mode === true,
+            maintenance_message: inf.maintenance_message
         };
     }
     return merged;
@@ -334,6 +374,23 @@ function validateSiteSettingsBody(body) {
                                 'must be an array of non-empty strings';
                         }
                     }
+                    if ('maintenance_mode' in inf && typeof inf.maintenance_mode !== 'boolean') {
+                        details['sites.inflatables.maintenance_mode'] = 'must be a boolean';
+                    }
+                    if ('maintenance_message' in inf) {
+                        if (typeof inf.maintenance_message !== 'string') {
+                            details['sites.inflatables.maintenance_message'] = 'must be a string';
+                        } else {
+                            const msg = inf.maintenance_message.trim();
+                            if (msg.length > 500) {
+                                details['sites.inflatables.maintenance_message'] =
+                                    'must be at most 500 characters';
+                            } else if (/<[a-z]/i.test(inf.maintenance_message)) {
+                                details['sites.inflatables.maintenance_message'] =
+                                    'must not contain HTML';
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -387,6 +444,8 @@ module.exports = {
     getSiteSettings,
     putSiteSettings,
     inferEnquirySiteKey,
+    isMaintenanceModeForSite,
+    maintenanceMessageForSite,
     isContactFormEnabledForSite,
     contactFormDisabledMessageForSite,
     getPublicSiteSettingsResponse

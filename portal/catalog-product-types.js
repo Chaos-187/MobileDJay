@@ -3,6 +3,11 @@
  * Admins may use any slug; known types get friendly labels and sort order.
  */
 
+const {
+    normalizeSiteMediaStorage,
+    resolveSiteMediaPublicUrl
+} = require('./site-media-urls');
+
 /** @type {Record<string, { label: string, sort_order: number }>} */
 const KNOWN_PRODUCT_TYPES = {
     mobile_dj: { label: 'Mobile DJ', sort_order: 10 },
@@ -106,6 +111,24 @@ function resolveCatalogImageUrl(url) {
     return origin + (s.startsWith('/') ? s : `/${s}`);
 }
 
+/** Stored path for catalog upload or site media library link. */
+function normalizeProductImageStorage(url) {
+    if (url == null || String(url).trim() === '') return null;
+    const site = normalizeSiteMediaStorage(url);
+    if (site) return site;
+    return normalizeCatalogImageStorage(url);
+}
+
+/** Public URL for hire site / admin preview. */
+function resolveProductImagePublicUrl(url) {
+    if (url == null || String(url).trim() === '') return null;
+    const stored = normalizeProductImageStorage(url);
+    if (!stored) return null;
+    const site = normalizeSiteMediaStorage(stored);
+    if (site) return resolveSiteMediaPublicUrl(site);
+    return resolveCatalogImageUrl(stored);
+}
+
 function inferProductType(product) {
     if (!product) return 'general';
     const explicit = normalizeProductType(product.product_type);
@@ -139,7 +162,8 @@ function defaultImageForProductType(typeCode) {
 
 function publicCatalogImageUrl(product) {
     const type = inferProductType(product);
-    const stored = product && product.image_url ? resolveCatalogImageUrl(product.image_url) : null;
+    const stored =
+        product && product.image_url ? resolveProductImagePublicUrl(product.image_url) : null;
     if (stored) return stored;
     return defaultImageForProductType(type);
 }
@@ -154,7 +178,9 @@ module.exports = {
     catalogPublicOrigin,
     catalogImageFilename,
     normalizeCatalogImageStorage,
+    normalizeProductImageStorage,
     resolveCatalogImageUrl,
+    resolveProductImagePublicUrl,
     inferProductType,
     defaultImageForProductType,
     publicCatalogImageUrl

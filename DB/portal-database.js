@@ -756,6 +756,8 @@ const {
     listKnownProductTypes,
     resolveCatalogImageUrl,
     normalizeCatalogImageStorage,
+    normalizeProductImageStorage,
+    resolveProductImagePublicUrl,
     inferProductType,
     publicCatalogImageUrl
 } = require('../portal/catalog-product-types');
@@ -831,8 +833,8 @@ function materializeCatalogProduct(row, { addons = null, resolveImage = false } 
         allows_addons: row.allows_addons === 1,
         is_active: row.is_active === 1,
         addon_only: row.addon_only === 1,
-        image_url: normalizeCatalogImageStorage(row.image_url),
-        image_url_public: row.image_url ? resolveCatalogImageUrl(row.image_url) : null
+        image_url: normalizeProductImageStorage(row.image_url),
+        image_url_public: row.image_url ? resolveProductImagePublicUrl(row.image_url) : null
     };
     if (resolveImage && out.image_url) {
         out.image_url = out.image_url_public;
@@ -2221,7 +2223,7 @@ const portalDb = {
             row.addon_only === true || row.addon_only === 1 || row.hire_only_addon === true ? 1 : 0,
             Number.isFinite(Number(row.sort_order)) ? Number(row.sort_order) : 0,
             normalizeProductType(row.product_type),
-            normalizeCatalogImageStorage(row.image_url),
+            normalizeProductImageStorage(row.image_url),
             additionalHourlyRateFromInput(row.additional_hourly_rate),
             metaJson,
             t,
@@ -2302,7 +2304,7 @@ const portalDb = {
             } else if (key === 'sort_order') val = Number(val) || 0;
             else if (key === 'product_type') val = normalizeProductType(val);
             else if (key === 'image_url') {
-                val = normalizeCatalogImageStorage(val);
+                val = normalizeProductImageStorage(val);
             } else if (key === 'product_metadata_json') {
                 val =
                     val != null && String(val).trim()

@@ -35,6 +35,7 @@ Add-on-only products (`addon_only`) are excluded from public lists.
 | Field | Type | Notes |
 |-------|------|--------|
 | `id` | string | Catalog UUID |
+| `code` | string \| null | Stable slug for admin featured lists / imports |
 | `name`, `description` | string | |
 | `product_type`, `product_type_label` | string | e.g. `inflatables` |
 | `pricing_model` | `hourly` \| `flat` \| `unit` | |

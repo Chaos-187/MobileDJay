@@ -1857,6 +1857,10 @@ router.delete('/catalog/vouchers/:id', (req, res) => {
 
 // --- Enquiries (contact form leads) ---
 
+router.get('/enquiries/stats', (req, res) => {
+    res.json(portalDb.getEnquiryChannelStats());
+});
+
 router.get('/enquiries', (req, res) => {
     const status = req.query.status || null;
     const q = req.query.q || null;

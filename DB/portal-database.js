@@ -3257,6 +3257,48 @@ const portalDb = {
         return row ? portalDb.materializeEnquiry(row) : null;
     },
 
+    getEnquiryChannelStats() {
+        const rows = db
+            .prepare(
+                `SELECT status,
+                    CASE
+                        WHEN json_extract(lead_metadata, '$.form_source') = 'eyup_inflatables_website'
+                          OR json_extract(lead_metadata, '$.site') = 'eyupinflatables'
+                        THEN 'inflatables'
+                        ELSE 'events'
+                    END AS channel,
+                    COUNT(*) AS count
+                 FROM enquiries
+                 GROUP BY status, channel`
+            )
+            .all();
+        const emptyBucket = () => ({
+            total: 0,
+            new: 0,
+            read: 0,
+            quoted: 0,
+            converted: 0,
+            archived: 0
+        });
+        const out = {
+            events: emptyBucket(),
+            inflatables: emptyBucket(),
+            generated_at: nowIso()
+        };
+        rows.forEach((row) => {
+            const channel = row.channel === 'inflatables' ? 'inflatables' : 'events';
+            const n = Number(row.count) || 0;
+            const status = row.status || 'new';
+            out[channel].total += n;
+            if (Object.prototype.hasOwnProperty.call(out[channel], status)) {
+                out[channel][status] += n;
+            }
+        });
+        out.total = out.events.total + out.inflatables.total;
+        out.new = out.events.new + out.inflatables.new;
+        return out;
+    },
+
     listEnquiries({ status, q, channel, limit = 100, offset = 0 } = {}) {
         const clauses = [];
         const params = [];
@@ -3352,6 +3394,7 @@ const portalDb = {
         const meta = parseProductMetadataJson(full.product_metadata_json);
         return {
             id: full.id,
+            code: full.code || null,
             name: full.name,
             description: full.description || '',
             product_type: productType,

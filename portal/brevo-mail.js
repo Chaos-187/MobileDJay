@@ -31,6 +31,10 @@ const TEMPLATE_REGISTRY = {
         env: 'BREVO_TEMPLATE_CONTACT_AUTORESPONDER',
         label: 'Contact autoresponder'
     },
+    contact_autoresponder_inflatables: {
+        env: 'BREVO_TEMPLATE_CONTACT_AUTORESPONDER_INFLATABLES',
+        label: 'Inflatables hire autoresponder'
+    },
     password_reset: {
         env: 'BREVO_TEMPLATE_PASSWORD_RESET',
         label: 'Password reset'

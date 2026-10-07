@@ -20,6 +20,45 @@ function jsonError(res, code, message, status = 400, details = {}) {
     res.status(status).json({ error: { code, message, details } });
 }
 
+const INFLATABLES_PUBLIC_ORIGIN =
+    process.env.EYUP_INFLATABLES_PUBLIC_ORIGIN || 'https://eyupinflatables.uk';
+
+function contactAutoresponderTemplateKey(leadMetadata) {
+    const siteKey = inferEnquirySiteKey({
+        form_source: leadMetadata && leadMetadata.form_source,
+        lead_metadata: leadMetadata
+    });
+    if (siteKey === 'inflatables' && brevoMail.getTemplateId('contact_autoresponder_inflatables')) {
+        return 'contact_autoresponder_inflatables';
+    }
+    return 'contact_autoresponder';
+}
+
+function contactAutoresponderParams(parsed, quotePayload) {
+    const base = {
+        first_name: parsed.firstName,
+        event_date: parsed.eventDate || '',
+        quote_total:
+            quotePayload.quote_total > 0 ? `£${quotePayload.quote_total.toFixed(2)}` : ''
+    };
+    const meta = parsed.leadMetadata || {};
+    if (inferEnquirySiteKey({ lead_metadata: meta, form_source: meta.form_source }) === 'inflatables') {
+        const origin = String(INFLATABLES_PUBLIC_ORIGIN).replace(/\/$/, '');
+        return {
+            ...base,
+            site_name: 'EYUP! Inflatables',
+            brand_name: 'EYUP! Inflatables',
+            hire_list_link: `${origin}/hire.html`,
+            checkout_link: `${origin}/checkout.html`
+        };
+    }
+    return {
+        ...base,
+        site_name: 'EYUP EVENTS',
+        brand_name: 'EYUP EVENTS'
+    };
+}
+
 function normalizeUKPhone(phone) {
     if (phone == null) return null;
     let cleaned = String(phone).replace(/[\s\-()]/g, '');
@@ -227,22 +266,23 @@ async function createPublicEnquiry(req, res) {
 
     if (brevoMail.isConfigured()) {
         try {
+            const templateKey = contactAutoresponderTemplateKey(parsed.leadMetadata);
+            const siteKey = inferEnquirySiteKey({
+                lead_metadata: parsed.leadMetadata,
+                form_source: parsed.leadMetadata && parsed.leadMetadata.form_source
+            });
             await brevoMail.sendCustomerTemplateEmail({
-                templateKey: 'contact_autoresponder',
+                templateKey,
                 user: {
                     email: parsed.email,
                     first_name: parsed.firstName,
                     last_name: parsed.lastName
                 },
-                params: {
-                    first_name: parsed.firstName,
-                    event_date: parsed.eventDate || '',
-                    quote_total:
-                        quotePayload.quote_total > 0
-                            ? `£${quotePayload.quote_total.toFixed(2)}`
-                            : ''
-                },
-                tags: ['contact-enquiry']
+                params: contactAutoresponderParams(parsed, quotePayload),
+                tags: [
+                    'contact-enquiry',
+                    siteKey === 'inflatables' ? 'inflatables-enquiry' : 'events-enquiry'
+                ]
             });
         } catch (mailErr) {
             console.error('[portal] public/enquiries autoresponder', mailErr);

@@ -739,7 +739,7 @@ Unauthenticated routes mounted under **`/api/v1/public`**. Full catalog field li
 | `GET` | `/catalog/inflatables-availability` | `{ blocks: [{ product_id, start, end, reason }] }` |
 | `POST` | `/vouchers/validate` | Body `{ code, product_ids[] }` → `{ valid, code, discount_percent, … }` |
 | `POST` | `/enquiries` | Contact/booking enquiry (Turnstile when configured); re-validates `lead_metadata.voucher_code` |
-| `GET` | `/site-settings` | Marketing site settings blob |
+| `GET` | `/site-settings` | Marketing site settings (`?site=inflatables` for hire-site slice) |
 
 **Admin (Bearer `admin`):** availability blocks and vouchers — **`GET/POST/PATCH/DELETE /admin/catalog/availability-blocks`**, **`GET/POST/PATCH/DELETE /admin/catalog/vouchers`**.
 

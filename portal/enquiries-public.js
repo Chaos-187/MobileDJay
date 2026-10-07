@@ -1,5 +1,10 @@
 const { portalDb } = require('../db/portal-database');
-const { getSiteSettings } = require('./site-settings-service');
+const {
+    getSiteSettings,
+    inferEnquirySiteKey,
+    isContactFormEnabledForSite,
+    contactFormDisabledMessageForSite
+} = require('./site-settings-service');
 const { verifyTurnstile } = require('./turnstile');
 const brevoMail = require('./brevo-mail');
 const {
@@ -102,8 +107,15 @@ function validateEnquiryBody(body) {
 
 async function createPublicEnquiry(req, res) {
     const settings = getSiteSettings();
-    if (settings.contact_form_enabled === false) {
-        return jsonError(res, 'forbidden', 'Contact form is currently unavailable', 403);
+    const siteKey = inferEnquirySiteKey(req.body || {});
+    if (!isContactFormEnabledForSite(settings, siteKey)) {
+        return jsonError(
+            res,
+            'forbidden',
+            contactFormDisabledMessageForSite(settings, siteKey) ||
+                'Contact form is currently unavailable',
+            403
+        );
     }
 
     const turnstile = await verifyTurnstile(req, req.body && req.body.cf_turnstile_response);

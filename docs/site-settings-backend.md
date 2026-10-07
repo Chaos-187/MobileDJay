@@ -172,9 +172,38 @@ Server-side defaults **must match** `js/site-settings.js` (`EyupSiteSettings.DEF
 3. Ignore **unknown** `nav` keys (do not persist them).
 4. If `typeof raw.contact_form_enabled === 'boolean'`, copy it.
 5. If `raw.contact_form_disabled_message` is a non-empty string after trim, copy it (max length — see §6).
-6. Return `out`.
+6. Merge **`sites.events`** and **`sites.inflatables`** (see §5.1); keep top-level `contact_form_enabled` in sync with `sites.events`.
+7. Return `out`.
 
-**Never** return partial `nav` — always all 16 keys.
+**Never** return partial `nav` — always all known keys.
+
+### 5.1 Multi-site `sites` (Phase 4)
+
+Backward-compatible nested settings:
+
+```json
+{
+  "nav": { "...": "boolean" },
+  "contact_form_enabled": true,
+  "contact_form_disabled_message": "...",
+  "sites": {
+    "events": { "contact_form_enabled": true },
+    "inflatables": {
+      "contact_form_enabled": true,
+      "contact_form_disabled_message": "...",
+      "deposit_rate": 0.25,
+      "featured_product_ids": ["catalog-code"]
+    }
+  }
+}
+```
+
+- Legacy rows without `sites`: top-level contact fields populate both channels on read.
+- **`GET /public/site-settings?site=inflatables`** returns a slice: `{ site, contact_form_enabled, contact_form_disabled_message, deposit_rate, featured_product_ids }`.
+- Omit `?site=` for the full merged document (Events marketing + admin).
+- Enquiries: `POST /public/enquiries` uses **`inferEnquirySiteKey(body)`** to pick Events vs Inflatables contact toggles.
+
+Implementation: `portal/site-settings-service.js` (`mergeSiteSettings`, `getPublicSiteSettingsResponse`).
 
 ---
 

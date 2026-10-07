@@ -1,4 +1,6 @@
-const { portalDb } = require('../db/portal-database');
+function portalDb() {
+    return require('../db/portal-database').portalDb;
+}
 
 /** Baseline defaults — unknown nav keys from the DB/admin UI are still persisted. */
 const DEFAULTS = {
@@ -27,8 +29,20 @@ const DEFAULTS = {
         'Sorry, we are currently fully booked. Please check back soon or call us on 07868 134663.'
 };
 
+const SITES_DEFAULTS = {
+    events: {
+        contact_form_enabled: true
+    },
+    inflatables: {
+        contact_form_enabled: true,
+        contact_form_disabled_message: DEFAULTS.contact_form_disabled_message,
+        deposit_rate: 0.25,
+        featured_product_ids: []
+    }
+};
+
 const NAV_KEYS = Object.keys(DEFAULTS.nav);
-const KNOWN_TOP_KEYS = new Set(['nav', 'contact_form_enabled', 'contact_form_disabled_message']);
+const KNOWN_TOP_KEYS = new Set(['nav', 'contact_form_enabled', 'contact_form_disabled_message', 'sites']);
 const NAV_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
 const MAX_NAV_KEY_LEN = 64;
 
@@ -48,6 +62,77 @@ function isPrimitiveSettingValue(value) {
         typeof value === 'string' ||
         typeof value === 'number'
     );
+}
+
+function normalizeStringArray(value) {
+    if (value == null) return [];
+    if (Array.isArray(value)) {
+        return value.map((x) => String(x || '').trim()).filter(Boolean);
+    }
+    if (typeof value === 'string') {
+        return value
+            .split(/[,;\n]+/)
+            .map((x) => x.trim())
+            .filter(Boolean);
+    }
+    return [];
+}
+
+function mergeSitesBlock(rawSites, topLevelContact) {
+    const raw = rawSites && typeof rawSites === 'object' ? rawSites : {};
+    const eventsRaw = raw.events && typeof raw.events === 'object' ? raw.events : {};
+    const inflatablesRaw =
+        raw.inflatables && typeof raw.inflatables === 'object' ? raw.inflatables : {};
+
+    const eventsContactEnabled =
+        typeof eventsRaw.contact_form_enabled === 'boolean'
+            ? eventsRaw.contact_form_enabled
+            : topLevelContact.enabled;
+    const inflatablesContactEnabled =
+        typeof inflatablesRaw.contact_form_enabled === 'boolean'
+            ? inflatablesRaw.contact_form_enabled
+            : topLevelContact.enabled;
+
+    let inflatablesMessage = SITES_DEFAULTS.inflatables.contact_form_disabled_message;
+    if (
+        inflatablesRaw.contact_form_disabled_message != null &&
+        String(inflatablesRaw.contact_form_disabled_message).trim()
+    ) {
+        inflatablesMessage = String(inflatablesRaw.contact_form_disabled_message).trim();
+    } else if (topLevelContact.message) {
+        inflatablesMessage = topLevelContact.message;
+    }
+
+    let depositRate = SITES_DEFAULTS.inflatables.deposit_rate;
+    if (inflatablesRaw.deposit_rate != null && Number.isFinite(Number(inflatablesRaw.deposit_rate))) {
+        depositRate = Math.min(1, Math.max(0, Number(inflatablesRaw.deposit_rate)));
+    }
+
+    const featured =
+        inflatablesRaw.featured_product_ids != null
+            ? normalizeStringArray(inflatablesRaw.featured_product_ids)
+            : normalizeStringArray(inflatablesRaw.featured_product_codes);
+
+    return {
+        events: {
+            contact_form_enabled: eventsContactEnabled
+        },
+        inflatables: {
+            contact_form_enabled: inflatablesContactEnabled,
+            contact_form_disabled_message: inflatablesMessage,
+            deposit_rate: depositRate,
+            featured_product_ids: featured
+        }
+    };
+}
+
+function syncTopLevelContactFromSites(out) {
+    if (out.sites && out.sites.events && typeof out.sites.events.contact_form_enabled === 'boolean') {
+        out.contact_form_enabled = out.sites.events.contact_form_enabled;
+    } else if (typeof out.contact_form_enabled === 'boolean') {
+        out.sites.events.contact_form_enabled = out.contact_form_enabled;
+    }
+    return out;
 }
 
 function mergeSiteSettings(raw) {
@@ -78,6 +163,12 @@ function mergeSiteSettings(raw) {
         out.contact_form_disabled_message = DEFAULTS.contact_form_disabled_message;
     }
 
+    out.sites = mergeSitesBlock(raw && raw.sites, {
+        enabled: out.contact_form_enabled,
+        message: out.contact_form_disabled_message
+    });
+    syncTopLevelContactFromSites(out);
+
     // Preserve additional top-level primitive settings for forward compatibility.
     if (raw && typeof raw === 'object') {
         for (const k of Object.keys(raw)) {
@@ -90,6 +181,54 @@ function mergeSiteSettings(raw) {
     }
 
     return out;
+}
+
+function inferEnquirySiteKey(body) {
+    const b = body && typeof body === 'object' ? body : {};
+    const meta =
+        b.lead_metadata && typeof b.lead_metadata === 'object' ? b.lead_metadata : {};
+    if (
+        b.form_source === 'eyup_inflatables_website' ||
+        meta.form_source === 'eyup_inflatables_website' ||
+        meta.site === 'eyupinflatables'
+    ) {
+        return 'inflatables';
+    }
+    return 'events';
+}
+
+function isContactFormEnabledForSite(settings, siteKey) {
+    const merged = settings && settings.sites ? settings : mergeSiteSettings(settings || {});
+    if (siteKey === 'inflatables') {
+        return merged.sites.inflatables.contact_form_enabled !== false;
+    }
+    return merged.contact_form_enabled !== false;
+}
+
+function contactFormDisabledMessageForSite(settings, siteKey) {
+    const merged = settings && settings.sites ? settings : mergeSiteSettings(settings || {});
+    if (siteKey === 'inflatables') {
+        return (
+            merged.sites.inflatables.contact_form_disabled_message ||
+            DEFAULTS.contact_form_disabled_message
+        );
+    }
+    return merged.contact_form_disabled_message || DEFAULTS.contact_form_disabled_message;
+}
+
+function getPublicSiteSettingsResponse(merged, siteQuery) {
+    const site = siteQuery != null ? String(siteQuery).trim().toLowerCase() : '';
+    if (site === 'inflatables') {
+        const inf = merged.sites.inflatables;
+        return {
+            site: 'inflatables',
+            contact_form_enabled: inf.contact_form_enabled,
+            contact_form_disabled_message: inf.contact_form_disabled_message,
+            deposit_rate: inf.deposit_rate,
+            featured_product_ids: inf.featured_product_ids.slice()
+        };
+    }
+    return merged;
 }
 
 function validateSiteSettingsBody(body) {
@@ -135,6 +274,71 @@ function validateSiteSettingsBody(body) {
         }
     }
 
+    if ('sites' in body) {
+        if (body.sites == null || typeof body.sites !== 'object' || Array.isArray(body.sites)) {
+            details.sites = 'must be an object';
+        } else {
+            if ('events' in body.sites) {
+                const ev = body.sites.events;
+                if (ev == null || typeof ev !== 'object' || Array.isArray(ev)) {
+                    details['sites.events'] = 'must be an object';
+                } else if (
+                    'contact_form_enabled' in ev &&
+                    typeof ev.contact_form_enabled !== 'boolean'
+                ) {
+                    details['sites.events.contact_form_enabled'] = 'must be a boolean';
+                }
+            }
+            if ('inflatables' in body.sites) {
+                const inf = body.sites.inflatables;
+                if (inf == null || typeof inf !== 'object' || Array.isArray(inf)) {
+                    details['sites.inflatables'] = 'must be an object';
+                } else {
+                    if (
+                        'contact_form_enabled' in inf &&
+                        typeof inf.contact_form_enabled !== 'boolean'
+                    ) {
+                        details['sites.inflatables.contact_form_enabled'] = 'must be a boolean';
+                    }
+                    if ('contact_form_disabled_message' in inf) {
+                        if (typeof inf.contact_form_disabled_message !== 'string') {
+                            details['sites.inflatables.contact_form_disabled_message'] =
+                                'must be a string';
+                        } else {
+                            const msg = inf.contact_form_disabled_message.trim();
+                            if (msg.length > 500) {
+                                details['sites.inflatables.contact_form_disabled_message'] =
+                                    'must be at most 500 characters';
+                            } else if (/<[a-z]/i.test(inf.contact_form_disabled_message)) {
+                                details['sites.inflatables.contact_form_disabled_message'] =
+                                    'must not contain HTML';
+                            }
+                        }
+                    }
+                    if ('deposit_rate' in inf) {
+                        const rate = Number(inf.deposit_rate);
+                        if (!Number.isFinite(rate) || rate < 0 || rate > 1) {
+                            details['sites.inflatables.deposit_rate'] =
+                                'must be a number between 0 and 1';
+                        }
+                    }
+                    if ('featured_product_ids' in inf && inf.featured_product_ids != null) {
+                        if (!Array.isArray(inf.featured_product_ids)) {
+                            details['sites.inflatables.featured_product_ids'] = 'must be an array';
+                        } else if (
+                            inf.featured_product_ids.some(
+                                (id) => typeof id !== 'string' || !String(id).trim()
+                            )
+                        ) {
+                            details['sites.inflatables.featured_product_ids'] =
+                                'must be an array of non-empty strings';
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     for (const k of Object.keys(body)) {
         if (KNOWN_TOP_KEYS.has(k)) continue;
         if (!isPrimitiveSettingValue(body[k])) {
@@ -150,7 +354,7 @@ function validateSiteSettingsBody(body) {
 }
 
 function getSiteSettings() {
-    const row = portalDb.getSiteSettingsRow();
+    const row = portalDb().getSiteSettingsRow();
     let raw = {};
     if (row && row.payload_json) {
         try {
@@ -170,15 +374,20 @@ function putSiteSettings(body, adminUserId) {
         err.details = result.details;
         throw err;
     }
-    portalDb.saveSiteSettings(JSON.stringify(result.merged), adminUserId);
+    portalDb().saveSiteSettings(JSON.stringify(result.merged), adminUserId);
     return result.merged;
 }
 
 module.exports = {
     DEFAULTS,
+    SITES_DEFAULTS,
     NAV_KEYS,
     mergeSiteSettings,
     validateSiteSettingsBody,
     getSiteSettings,
-    putSiteSettings
+    putSiteSettings,
+    inferEnquirySiteKey,
+    isContactFormEnabledForSite,
+    contactFormDisabledMessageForSite,
+    getPublicSiteSettingsResponse
 };

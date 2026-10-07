@@ -1860,9 +1860,10 @@ router.delete('/catalog/vouchers/:id', (req, res) => {
 router.get('/enquiries', (req, res) => {
     const status = req.query.status || null;
     const q = req.query.q || null;
+    const channel = req.query.channel || null;
     const limit = req.query.limit;
     const offset = req.query.offset;
-    const enquiries = portalDb.listEnquiries({ status, q, limit, offset });
+    const enquiries = portalDb.listEnquiries({ status, q, channel, limit, offset });
     res.json({ enquiries });
 });
 

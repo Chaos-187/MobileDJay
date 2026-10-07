@@ -1,7 +1,10 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { getSiteSettings } = require('./site-settings-service');
+const {
+    getSiteSettings,
+    getPublicSiteSettingsResponse
+} = require('./site-settings-service');
 const stripePortal = require('./stripe-portal');
 const { syncCheckoutSessionFromStripe } = require('./stripe-checkout-sync');
 const { portalDb } = require('../db/portal-database');
@@ -52,8 +55,10 @@ router.post('/stripe/sync-checkout-session', async (req, res) => {
 router.get('/site-settings', (req, res, next) => {
     try {
         const settings = getSiteSettings();
+        const siteQuery = req.query.site != null ? String(req.query.site).trim() : '';
+        const body = getPublicSiteSettingsResponse(settings, siteQuery);
         res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
-        res.json(settings);
+        res.json(body);
     } catch (e) {
         next(e);
     }

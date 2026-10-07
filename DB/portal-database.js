@@ -3257,12 +3257,28 @@ const portalDb = {
         return row ? portalDb.materializeEnquiry(row) : null;
     },
 
-    listEnquiries({ status, q, limit = 100, offset = 0 } = {}) {
+    listEnquiries({ status, q, channel, limit = 100, offset = 0 } = {}) {
         const clauses = [];
         const params = [];
         if (status && ['new', 'read', 'quoted', 'converted', 'archived'].includes(status)) {
             clauses.push('status = ?');
             params.push(status);
+        }
+        const channelNorm =
+            channel != null ? String(channel).trim().toLowerCase() : '';
+        if (channelNorm === 'inflatables') {
+            clauses.push(`(
+                json_extract(lead_metadata, '$.form_source') = 'eyup_inflatables_website'
+                OR json_extract(lead_metadata, '$.site') = 'eyupinflatables'
+            )`);
+        } else if (channelNorm === 'events') {
+            clauses.push(`(
+                lead_metadata IS NULL OR TRIM(lead_metadata) = ''
+                OR (
+                    COALESCE(json_extract(lead_metadata, '$.form_source'), '') != 'eyup_inflatables_website'
+                    AND COALESCE(json_extract(lead_metadata, '$.site'), '') != 'eyupinflatables'
+                )
+            )`);
         }
         if (q && String(q).trim()) {
             const like = `%${String(q).trim()}%`;

@@ -610,6 +610,9 @@ function normalizeProductMetadata(input) {
         }
         if (Object.keys(specs).length) out.specs = specs;
     }
+    if (src.pipa_hub_asset_id != null && String(src.pipa_hub_asset_id).trim()) {
+        out.pipa_hub_asset_id = String(src.pipa_hub_asset_id).trim().slice(0, 128);
+    }
     return Object.keys(out).length ? out : null;
 }
 
@@ -623,7 +626,8 @@ function productMetadataJsonFromInput(row) {
     const meta = normalizeProductMetadata({
         filter_group: row.filter_group,
         highlights: row.highlights,
-        specs: row.specs
+        specs: row.specs,
+        pipa_hub_asset_id: row.pipa_hub_asset_id
     });
     return meta ? JSON.stringify(meta) : null;
 }
@@ -724,6 +728,7 @@ function enrichCatalogProductFields(out, row) {
     out.filter_group = meta.filter_group || null;
     out.highlights = Array.isArray(meta.highlights) ? meta.highlights : [];
     out.specs = meta.specs && typeof meta.specs === 'object' ? meta.specs : {};
+    out.pipa_hub_asset_id = meta.pipa_hub_asset_id || null;
     return out;
 }
 
@@ -2208,7 +2213,7 @@ const portalDb = {
         const existing = db.prepare('SELECT id FROM catalog_products WHERE id = ?').get(productId);
         if (!existing) return null;
         const patchIn = { ...patch };
-        const metaFieldKeys = ['filter_group', 'highlights', 'specs'];
+        const metaFieldKeys = ['filter_group', 'highlights', 'specs', 'pipa_hub_asset_id'];
         const hasMetaFieldPatch = metaFieldKeys.some((k) =>
             Object.prototype.hasOwnProperty.call(patchIn, k)
         );
@@ -2225,6 +2230,9 @@ const portalDb = {
             }
             if (Object.prototype.hasOwnProperty.call(patchIn, 'specs')) {
                 merged.specs = patchIn.specs;
+            }
+            if (Object.prototype.hasOwnProperty.call(patchIn, 'pipa_hub_asset_id')) {
+                merged.pipa_hub_asset_id = patchIn.pipa_hub_asset_id;
             }
             const normalized = normalizeProductMetadata(merged);
             patchIn.product_metadata_json = normalized ? JSON.stringify(normalized) : null;

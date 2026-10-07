@@ -19,6 +19,7 @@ const CSV_HEADERS = [
     'sort_order',
     'additional_hourly_rate',
     'filter_group',
+    'pipa_hub_asset_id',
     'highlights',
     'specs',
     'parent_code',
@@ -112,6 +113,7 @@ function snapshotToCsv(snapshot) {
                     ? p.additional_hourly_rate
                     : '',
                 p.filter_group || '',
+                p.pipa_hub_asset_id || '',
                 p.highlights && p.highlights.length ? JSON.stringify(p.highlights) : '',
                 p.specs && Object.keys(p.specs).length ? JSON.stringify(p.specs) : '',
                 '',
@@ -124,6 +126,7 @@ function snapshotToCsv(snapshot) {
             lines.push(
                 csvRow([
                     'addon',
+                    '',
                     '',
                     '',
                     '',
@@ -223,6 +226,7 @@ function csvToImportPayload(csvText) {
                     ? null
                     : Number(col(row, 'additional_hourly_rate')),
             filter_group: col(row, 'filter_group') || null,
+            pipa_hub_asset_id: col(row, 'pipa_hub_asset_id') || null,
             highlights: (() => {
                 const raw = col(row, 'highlights');
                 if (!raw) return [];

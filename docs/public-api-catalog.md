@@ -48,7 +48,9 @@ Add-on-only products (`addon_only`) are excluded from public lists.
 | `hire_only_addon` | boolean | Same as DB `addon_only` (Inflatables client alias) |
 | `currency` | string | Default `GBP` |
 | `allows_addons` | boolean | |
-| `image_url` | string \| null | Public catalog image URL |
+| `addon_selection` | `single` \| `multi` \| omitted | Hire UI when add-ons linked; API defaults to `single` if `allows_addons` and `addons.length` |
+| `extras_label`, `extras_note` | string \| null | Optional copy for add-on block (from product metadata) |
+| `image_url` | string \| null | Resolved public URL (`/uploads/site-media/…`, legacy `/uploads/catalog/…`, or type default) |
 | `addons` | array | Linked add-on products with rates |
 
 ### Cache

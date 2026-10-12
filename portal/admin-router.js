@@ -58,6 +58,8 @@ const {
     resolveSiteMediaPublicUrl,
     unlinkSiteMediaFile
 } = require('./site-media-urls');
+const pipaHub = require('./pipa-hub-client');
+const { syncCatalogProductFromPipaHub } = require('./pipa-hub-sync');
 
 const router = express.Router();
 
@@ -513,8 +515,111 @@ router.get('/integrations/status', (req, res) => {
         zoho_books: {
             ...zohoBooks.configSummary(),
             ...zohoOAuth.oauthStatus()
-        }
+        },
+        pipa_hub: pipaHub.configSummary()
     });
+});
+
+router.get('/integrations/pipa-hub/status', (req, res) => {
+    res.json(pipaHub.configSummary());
+});
+
+router.post('/integrations/pipa-hub/test', async (req, res) => {
+    if (!pipaHub.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Set PIPA_HUB_API_KEY on the API server (base URL defaults to https://hub.pipa.org.uk), then restart.',
+            503
+        );
+    }
+    try {
+        const result = await pipaHub.testConnection();
+        audit(req.portalUser.id, 'pipa_hub.test', 'integration', 'pipa_hub', { ok: result.ok });
+        if (!result.ok) {
+            return jsonError(
+                res,
+                result.auth_failed ? 'service_unavailable' : 'upstream_error',
+                result.message || 'PIPA Hub test failed',
+                result.auth_failed ? 503 : 502
+            );
+        }
+        res.json(result);
+    } catch (err) {
+        console.error('[portal] admin/pipa-hub/test', err);
+        return jsonError(
+            res,
+            err.code || 'upstream_error',
+            err.message || 'PIPA Hub test failed',
+            err.code === 'service_unavailable' ? 503 : 502,
+            err.details || {}
+        );
+    }
+});
+
+router.get('/integrations/pipa-hub/device', async (req, res) => {
+    if (!pipaHub.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'PIPA Hub is not configured on the API server.',
+            503
+        );
+    }
+    const tag = req.query.tag;
+    if (tag == null || String(tag).trim() === '') {
+        return jsonError(res, 'validation_error', 'Query parameter tag is required', 422);
+    }
+    try {
+        const device = await pipaHub.getDeviceByTag(tag);
+        const includeReports = req.query.reports === '1' || req.query.reports === 'true';
+        res.json({
+            summary: pipaHub.summarizeDevice(device, { include_reports: includeReports }),
+            lookup_ok: pipaHub.deviceLookupOk(device)
+        });
+    } catch (err) {
+        console.error('[portal] admin/pipa-hub/device', err);
+        return jsonError(
+            res,
+            err.code === 'validation_error' ? 'validation_error' : 'upstream_error',
+            err.message || 'PIPA Hub lookup failed',
+            err.code === 'validation_error' ? 422 : 502,
+            err.details || {}
+        );
+    }
+});
+
+router.post('/integrations/pipa-hub/devices/lookup', async (req, res) => {
+    if (!pipaHub.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'PIPA Hub is not configured on the API server.',
+            503
+        );
+    }
+    const tags = req.body && req.body.tags;
+    if (!Array.isArray(tags)) {
+        return jsonError(res, 'validation_error', 'body.tags must be an array of tag numbers', 422);
+    }
+    try {
+        const devices = await pipaHub.getDevicesByTags(tags);
+        res.json({
+            devices: devices.map((d) => ({
+                summary: pipaHub.summarizeDevice(d),
+                lookup_ok: pipaHub.deviceLookupOk(d)
+            }))
+        });
+    } catch (err) {
+        console.error('[portal] admin/pipa-hub/devices/lookup', err);
+        return jsonError(
+            res,
+            err.code === 'validation_error' ? 'validation_error' : 'upstream_error',
+            err.message || 'PIPA Hub lookup failed',
+            err.code === 'validation_error' ? 422 : 502,
+            err.details || {}
+        );
+    }
 });
 
 router.get('/zoho/oauth/start', (req, res) => {
@@ -1632,6 +1737,58 @@ router.get('/catalog/products/:id/zoho', (req, res) => {
         code: product.code,
         ...zohoStatusForProduct(product)
     });
+});
+
+router.post('/catalog/products/:id/pipa-hub/sync', async (req, res) => {
+    if (!pipaHub.isConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'PIPA Hub is not configured. Set PIPA_HUB_API_KEY on the API server.',
+            503
+        );
+    }
+    const product = portalDb.getCatalogProductById(req.params.id);
+    if (!product) {
+        return jsonError(res, 'not_found', 'Product not found', 404);
+    }
+    const body = req.body || {};
+    try {
+        const result = await syncCatalogProductFromPipaHub(req.params.id, {
+            tag: body.tag,
+            apply_name: !!body.apply_name,
+            apply_description: !!body.apply_description,
+            apply_image_url: !!body.apply_image_url
+        });
+        audit(req.portalUser.id, 'catalog_product.pipa_sync', 'catalog_product', req.params.id, {
+            tag: result.pipa && result.pipa.tag_current,
+            lookup_ok: result.pipa && result.pipa.lookup_ok
+        });
+        res.json({
+            ...result,
+            product: {
+                ...result.product,
+                zoho: zohoStatusForProduct(result.product)
+            }
+        });
+    } catch (err) {
+        console.error('[portal] admin/catalog/products pipa-hub sync', err);
+        const status =
+            err.code === 'not_found'
+                ? 404
+                : err.code === 'validation_error'
+                  ? 422
+                  : err.code === 'service_unavailable'
+                    ? 503
+                    : 502;
+        return jsonError(
+            res,
+            err.code || 'upstream_error',
+            err.message || 'PIPA Hub sync failed',
+            status,
+            err.details || {}
+        );
+    }
 });
 
 router.post('/catalog/products/:id/zoho/sync', async (req, res) => {

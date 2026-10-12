@@ -47,7 +47,9 @@ const { siteMediaUpload, siteMediaRoot } = require('./site-media-upload');
 const {
     resolveCatalogImageUrl,
     normalizeCatalogImageStorage,
-    catalogImageFilename
+    catalogImageFilename,
+    normalizeProductImageStorage,
+    resolveProductImagePublicUrl
 } = require('./catalog-product-types');
 const {
     normalizeSiteMediaCategory,
@@ -1744,26 +1746,59 @@ router.post('/catalog/products/:id/image', (req, res) => {
     if (!existing) {
         return jsonError(res, 'not_found', 'Product not found', 404);
     }
-    catalogImageUpload.single('image')(req, res, (err) => {
+    siteMediaUpload.single('image')(req, res, (err) => {
         if (err) {
             return jsonError(res, 'validation_error', err.message || 'Image upload failed', 422);
         }
         if (!req.file) {
             return jsonError(res, 'validation_error', 'image file is required', 422);
         }
-        const imageUrl = `/uploads/catalog/${req.file.filename}`;
-        if (existing.image_url && existing.image_url !== imageUrl) {
+        const body = req.body || {};
+        const category = normalizeSiteMediaCategory(body.category || 'products');
+        const title =
+            body.title != null && String(body.title).trim()
+                ? String(body.title).trim()
+                : existing.name || req.file.originalname || req.file.filename;
+        const altText =
+            body.alt_text != null && String(body.alt_text).trim()
+                ? String(body.alt_text).trim()
+                : existing.name || '';
+        let asset;
+        try {
+            asset = portalDb.insertSiteMediaAsset({
+                filename: req.file.filename,
+                category,
+                title,
+                alt_text: altText,
+                storage_path: `/uploads/site-media/${req.file.filename}`,
+                byte_size: req.file.size,
+                mime_type: req.file.mimetype,
+                uploaded_by_user_id: req.portalUser.id
+            });
+        } catch (e) {
+            try {
+                fs.unlinkSync(path.join(siteMediaRoot, req.file.filename));
+            } catch {
+                /* ignore */
+            }
+            return jsonError(res, 'validation_error', e.message || 'Could not save media', 422);
+        }
+        const imageUrl = asset.storage_path;
+        if (existing.image_url && existing.image_url !== imageUrl && catalogImageFilename(existing.image_url)) {
             unlinkCatalogImageFile(existing.image_url);
         }
         const product = portalDb.updateCatalogProduct(req.params.id, { image_url: imageUrl });
         audit(req.portalUser.id, 'catalog_product.image', 'catalog_product', req.params.id, {
-            image_url: imageUrl
+            image_url: imageUrl,
+            site_media_id: asset.id
         });
-        const storedImageUrl = normalizeCatalogImageStorage(product.image_url);
+        audit(req.portalUser.id, 'site_media.create', 'site_media', asset.id, { category, via: 'catalog_product' });
+        const storedImageUrl = normalizeProductImageStorage(product.image_url);
         res.json({
             ...product,
             image_url: storedImageUrl,
-            image_url_public: resolveCatalogImageUrl(storedImageUrl)
+            image_url_public: resolveProductImagePublicUrl(storedImageUrl),
+            site_media: enrichMediaAssetRow(asset)
         });
     });
 });
@@ -1773,10 +1808,17 @@ router.delete('/catalog/products/:id/image', (req, res) => {
     if (!existing) {
         return jsonError(res, 'not_found', 'Product not found', 404);
     }
-    if (existing.image_url) unlinkCatalogImageFile(existing.image_url);
+    if (existing.image_url && catalogImageFilename(existing.image_url)) {
+        unlinkCatalogImageFile(existing.image_url);
+    }
     const product = portalDb.updateCatalogProduct(req.params.id, { image_url: null });
     audit(req.portalUser.id, 'catalog_product.image_clear', 'catalog_product', req.params.id, {});
-    res.json(product);
+    const storedImageUrl = normalizeProductImageStorage(product.image_url);
+    res.json({
+        ...product,
+        image_url: storedImageUrl,
+        image_url_public: resolveProductImagePublicUrl(storedImageUrl)
+    });
 });
 
 router.get('/catalog/availability-blocks', (req, res) => {

@@ -26,6 +26,20 @@
   if (hubEvent && hubEvent.guest_hero_compact === 1) hubBodyClass += ' mdj-guest-hub-hero-compact';
 %>
 <body class="<%= hubBodyClass %>">
+    <% if (eventSlug) { %>
+    <script>
+        (function () {
+            var slug = <%- JSON.stringify(eventSlug) %>;
+            var path = window.location.pathname.replace(/\/+$/, '');
+            var classicPath = '/event/' + slug + '/classic';
+            if (path === classicPath) return;
+            var barePath = '/event/' + slug;
+            if (path === barePath) {
+                window.location.replace(barePath + '/v2');
+            }
+        })();
+    </script>
+    <% } %>
     <div class="mdj-scanlines" aria-hidden="true"></div>
 
     <span id="welcomeName" class="visually-hidden"></span>

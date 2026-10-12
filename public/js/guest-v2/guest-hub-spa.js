@@ -238,7 +238,7 @@
             items += moreItem('button', 'tips', 'fa-heart', 'Tip the DJ', 'Show your appreciation');
         }
         items += moreItem('button', 'rename', 'fa-user-pen', 'Change name', 'Use a different display name');
-        items += '<a class="gh-more-item" href="/event/' + escAttr(slug) + '">' +
+        items += '<a class="gh-more-item" href="/event/' + escAttr(slug) + '/classic">' +
             '<span class="gh-more-item__icon"><i class="fas fa-arrow-left"></i></span>' +
             '<span class="gh-more-item__body">' +
                 '<p class="gh-more-item__title">Classic guest page</p>' +

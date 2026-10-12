@@ -6,9 +6,9 @@ Operator-facing overview of DJ and guest features. For HTTP details see [`mobile
 
 ## Guest pages
 
-### Event landing (`/event/:slug`)
+### Guest Hub v2 (`/event/:slug`)
 
-Each event has its own URL. Guests enter their name (check-in is recorded silently), then choose song request, karaoke, message, photos, or tips depending on what is enabled for that event.
+Each event has its own URL. The default experience is the **Guest Hub** SPA (name gate, bottom nav, in-app song/karaoke/chat). Legacy multi-page hub: `/event/:slug/classic`. Bookmarks to `/event/:slug/v2` redirect to the canonical URL.
 
 Inactive events show a closed notice instead of the request UI.
 

@@ -81,7 +81,7 @@ Requires **`enable_public_events_page`** in global settings.
 
 ### Home page
 
-**`GET /`** — when the setting is enabled, renders the event picker HTML (`events-list` view). When disabled, renders the legacy generic guest landing.
+**`GET /`** — when the setting is enabled, renders the event picker HTML (`events-list` view). Event cards link to `/event/:slug/v2` (redirects to canonical `/event/:slug` on current servers). When disabled, renders the legacy generic guest landing.
 
 **`GET /events`** — redirects to `/` (legacy alias).
 

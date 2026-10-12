@@ -80,7 +80,7 @@
                     const accent = event.accent_color || '#0d6efd';
                     const heading = event.heading_color || '#fff';
                 %>
-                <a href="/event/<%= event.slug %>" class="event-picker-card" style="--event-accent: <%= accent %>;">
+                <a href="/event/<%= event.slug %>/v2" class="event-picker-card" style="--event-accent: <%= accent %>;">
                     <div class="event-picker-card__logo">
                         <% if (event.logo_image) { %>
                         <img src="<%= event.logo_image %>" alt="<%= event.name %> logo">

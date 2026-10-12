@@ -321,17 +321,32 @@ function getEventFromSlug(req, res, next) {
     next();
 }
 
+/** Canonical guest hub URL (v2 SPA). */
+function guestHubUrlPath(slug) {
+    return `/event/${slug}`;
+}
+
 /** Shared template locals for Guest Hub v2 pages. */
 function guestV2Locals(req, extra = {}) {
     const slug = req.event.slug;
+    const hubPath = guestHubUrlPath(slug);
     return {
         eventSlug: slug,
         event: req.event,
-        v2Base: `/event/${slug}/v2`,
-        hubUrl: `/event/${slug}/v2`,
+        v2Base: hubPath,
+        hubUrl: hubPath,
         djName: req.event.dj_name || 'DJ',
         ...extra
     };
+}
+
+function guestHubQuerySuffix(req) {
+    const q = req.originalUrl.includes('?') ? req.originalUrl.slice(req.originalUrl.indexOf('?')) : '';
+    return q;
+}
+
+function redirectToGuestHub(req, res) {
+    res.redirect(302, guestHubUrlPath(req.event.slug) + guestHubQuerySuffix(req));
 }
 
 // JSON variant for API routes (no EJS error pages)
@@ -1377,8 +1392,9 @@ app.get('/api/events/:id/links', djWebAuth.requireDjApiAuth, djWebAuth.requireEv
     }
     const base = getPublicBaseUrl(req);
     res.json({
-        guest: `${base}/event/${event.slug}`,
-        guest_v2: `${base}/event/${event.slug}/v2`,
+        guest: `${base}${guestHubUrlPath(event.slug)}`,
+        guest_legacy: `${base}/event/${event.slug}/classic`,
+        guest_v2: `${base}${guestHubUrlPath(event.slug)}`,
         photos: `${base}/event/${event.slug}/photo`,
         gallery: `${base}/gallery/${event.slug}/${event.share_token}`,
         display: `${base}/dj/display/${event.slug}`
@@ -2220,8 +2236,13 @@ app.delete('/api/dj/message/:id', djWebAuth.requireDjApiAuth, (req, res) => {
     if (!message) {
         return res.status(404).json({ error: 'Message not found' });
     }
-    if (message.type !== 'spinner-result') {
-        return res.status(400).json({ error: 'Only spinner result notes can be removed here' });
+    if (!isDjInboxMessage(message)) {
+        return res.status(400).json({ error: 'This message cannot be removed from the inbox' });
+    }
+    const events = djAllowedEvents(req.portalUser);
+    const allowed = djWebAuth.filterMessagesForUser([message], req.portalUser, events);
+    if (!allowed.length) {
+        return res.status(403).json({ error: 'Not allowed to remove this message' });
     }
     if (!messageDb.delete(messageId)) {
         return res.status(404).json({ error: 'Message not found' });
@@ -2402,38 +2423,44 @@ app.get('/api/public/events', (req, res) => {
 });
 
 // ==================== Event-specific Customer Routes ====================
-// Event landing page
+// Guest Hub v2 (default customer portal)
 app.get('/event/:eventSlug', getEventFromSlug, (req, res) => {
+    res.render('guest-v2/hub', guestV2Locals(req));
+});
+
+// Legacy multi-page guest hub (classic)
+app.get('/event/:eventSlug/classic', getEventFromSlug, (req, res) => {
     res.render('index', { eventSlug: req.event.slug, event: req.event });
 });
 
-// Event-specific song request
+// Old /v2 path → canonical hub URL (bookmarks & printed QR)
+app.get('/event/:eventSlug/v2', getEventFromSlug, redirectToGuestHub);
+
+// Classic multi-page flows (linked from /event/:slug/classic)
 app.get('/event/:eventSlug/song-request', getEventFromSlug, (req, res) => {
     const customerName = req.query.customerName || '';
-    res.render('song-request', { 
-        songs: songCatalogue, 
-        customerName, 
+    res.render('song-request', {
+        songs: songCatalogue,
+        customerName,
         eventSlug: req.event.slug,
         event: req.event
     });
 });
 
-// Event-specific karaoke request
 app.get('/event/:eventSlug/karaoke-request', getEventFromSlug, (req, res) => {
     const customerName = req.query.customerName || '';
-    res.render('karaoke-request', { 
-        karaoke: karaokeCatalogue, 
-        customerName, 
+    res.render('karaoke-request', {
+        karaoke: karaokeCatalogue,
+        customerName,
         eventSlug: req.event.slug,
         event: req.event
     });
 });
 
-// Event-specific message
 app.get('/event/:eventSlug/send-message', getEventFromSlug, (req, res) => {
     const customerName = req.query.customerName || '';
-    res.render('send-message', { 
-        customerName, 
+    res.render('send-message', {
+        customerName,
         eventSlug: req.event.slug,
         event: req.event
     });
@@ -2473,16 +2500,9 @@ app.get('/event/:eventSlug/camera', getEventFromSlug, (req, res) => {
     });
 });
 
-// ==================== Guest Hub v2 (parallel UI — legacy routes unchanged) ====================
-app.get('/event/:eventSlug/v2', getEventFromSlug, (req, res) => {
-    res.render('guest-v2/hub', guestV2Locals(req));
-});
-
-// Legacy v2 sub-paths — SPA handles everything on /v2
+// Legacy v2 sub-paths — redirect to canonical guest hub
 ['/songs', '/karaoke', '/messages', '/camera'].forEach(function (suffix) {
-    app.get('/event/:eventSlug/v2' + suffix, getEventFromSlug, (req, res) => {
-        res.redirect(302, `/event/${req.event.slug}/v2`);
-    });
+    app.get('/event/:eventSlug/v2' + suffix, getEventFromSlug, redirectToGuestHub);
 });
 
 // Customer-facing photo gallery — token-protected link the DJ shares after the event.

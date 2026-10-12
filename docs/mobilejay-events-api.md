@@ -215,6 +215,7 @@ Returns `[]` if `show_tracks_played_guest` is off. Max `limit` 50.
 | GET | `/api/dj/dashboard-data` | `{ requests, messages }` — messages are inbox-filtered with `needsReply` |
 | GET | `/api/dj/messages` | Pending display messages (`?includePrivate=true` for all) |
 | POST | `/api/dj/message/:id/mark-displayed` | Mark message shown on display |
+| DELETE | `/api/dj/message/:id` | Delete a guest inbox message or spinner result note (event-scoped for assigned DJs) |
 | DELETE | `/api/dj/request/:id` | Remove request from queue |
 | POST | `/api/dj/reply` | Send reply to guest |
 | GET | `/api/dj/replies` | All DJ replies |

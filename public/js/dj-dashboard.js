@@ -262,13 +262,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     title="Reply">
                                 <i class="fas fa-reply"></i>
                             </button>
-                            ` : `
-                            <button class="btn btn-outline-secondary btn-sm remove-spinner-message" 
+                            ` : ''}
+                            <button class="btn btn-outline-secondary btn-sm remove-message" 
                                     data-message-id="${message.id}"
-                                    title="Remove this result">
+                                    data-is-spinner="${isSpinnerResult ? '1' : '0'}"
+                                    title="${isSpinnerResult ? 'Remove this result' : 'Delete message'}">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
-                            `}
                         </div>
                     </div>
                     <div class="message-text small">${message.message}</div>
@@ -359,11 +359,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const messageId = button.dataset.messageId;
             markMessageDisplayed(messageId);
         }
-        if (e.target.classList.contains('remove-spinner-message') || e.target.closest('.remove-spinner-message')) {
-            const button = e.target.classList.contains('remove-spinner-message')
+        if (e.target.classList.contains('remove-message') || e.target.closest('.remove-message')) {
+            const button = e.target.classList.contains('remove-message')
                 ? e.target
-                : e.target.closest('.remove-spinner-message');
-            removeSpinnerMessage(button.dataset.messageId);
+                : e.target.closest('.remove-message');
+            removeMessage(button.dataset.messageId, button.dataset.isSpinner === '1');
         }
     });
 
@@ -454,8 +454,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function removeSpinnerMessage(messageId) {
+    function removeMessage(messageId, isSpinner) {
         if (!messageId) return;
+        const confirmText = isSpinner
+            ? 'Remove this spinner result from your inbox?'
+            : 'Delete this guest message? It will be removed from the inbox and display queue.';
+        if (!confirm(confirmText)) return;
+
         fetch(`/api/dj/message/${messageId}`, { method: 'DELETE', credentials: 'include' })
             .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
             .then(({ ok, data }) => {
@@ -471,11 +476,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     messageCard.style.opacity = '0';
                     setTimeout(() => {
                         messageCard.remove();
+                        document.dispatchEvent(new CustomEvent('mdj-dashboard-refreshed'));
                     }, 300);
                 }
+                showAlert(isSpinner ? 'Spinner result removed' : 'Message deleted', 'success');
             })
             .catch((error) => {
-                console.error('Error removing spinner message:', error);
+                console.error('Error removing message:', error);
                 showAlert(error.message || 'Failed to remove message', 'danger');
             });
     }

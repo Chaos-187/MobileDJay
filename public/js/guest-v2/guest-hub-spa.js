@@ -1,5 +1,5 @@
 /**
- * Guest Hub SPA — single-page guest experience at /event/:slug/v2
+ * Guest Hub SPA — default guest experience at /event/:slug (legacy alias /v2)
  */
 (function (global) {
     'use strict';

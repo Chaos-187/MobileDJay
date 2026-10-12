@@ -26,7 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const customerName = getCustomerName();
     if (!customerName) {
         const v2Hub = window.GuestV2Config && window.GuestV2Config.v2Base;
-        window.location.href = v2Hub || (window.eventSlug ? `/event/${window.eventSlug}` : '/');
+        window.location.href =
+            v2Hub || (window.eventSlug ? `/event/${window.eventSlug}` : '/');
         return;
     }
 

@@ -630,6 +630,16 @@ function normalizeProductMetadata(input) {
     if (src.pipa_hub_asset_id != null && String(src.pipa_hub_asset_id).trim()) {
         out.pipa_hub_asset_id = String(src.pipa_hub_asset_id).trim().slice(0, 128);
     }
+    if (src.addon_selection != null && String(src.addon_selection).trim()) {
+        const mode = String(src.addon_selection).trim().toLowerCase();
+        if (mode === 'single' || mode === 'multi') out.addon_selection = mode;
+    }
+    if (src.extras_label != null && String(src.extras_label).trim()) {
+        out.extras_label = String(src.extras_label).trim().slice(0, 120);
+    }
+    if (src.extras_note != null && String(src.extras_note).trim()) {
+        out.extras_note = String(src.extras_note).trim().slice(0, 500);
+    }
     return Object.keys(out).length ? out : null;
 }
 
@@ -644,7 +654,10 @@ function productMetadataJsonFromInput(row) {
         filter_group: row.filter_group,
         highlights: row.highlights,
         specs: row.specs,
-        pipa_hub_asset_id: row.pipa_hub_asset_id
+        pipa_hub_asset_id: row.pipa_hub_asset_id,
+        addon_selection: row.addon_selection,
+        extras_label: row.extras_label,
+        extras_note: row.extras_note
     });
     return meta ? JSON.stringify(meta) : null;
 }
@@ -746,6 +759,9 @@ function enrichCatalogProductFields(out, row) {
     out.highlights = Array.isArray(meta.highlights) ? meta.highlights : [];
     out.specs = meta.specs && typeof meta.specs === 'object' ? meta.specs : {};
     out.pipa_hub_asset_id = meta.pipa_hub_asset_id || null;
+    out.addon_selection = meta.addon_selection || null;
+    out.extras_label = meta.extras_label || null;
+    out.extras_note = meta.extras_note || null;
     return out;
 }
 
@@ -3524,6 +3540,11 @@ const portalDb = {
         if (!full) return null;
         const productType = inferProductType(full);
         const meta = parseProductMetadataJson(full.product_metadata_json);
+        const addonRows = full.addons || [];
+        let addonSelection = meta.addon_selection || null;
+        if (!addonSelection && full.allows_addons && addonRows.length) {
+            addonSelection = 'single';
+        }
         return {
             id: full.id,
             code: full.code || null,
@@ -3544,8 +3565,11 @@ const portalDb = {
             hire_only_addon: !!full.addon_only,
             currency: full.currency || 'GBP',
             allows_addons: !!full.allows_addons,
+            addon_selection: addonSelection,
+            extras_label: meta.extras_label || null,
+            extras_note: meta.extras_note || null,
             image_url: publicCatalogImageUrl(full),
-            addons: (full.addons || []).map((a) => ({
+            addons: addonRows.map((a) => ({
                 addon_product_id: a.addon_product_id,
                 addon_name: a.addon_name,
                 addon_rate: Number(a.addon_rate) || 0,

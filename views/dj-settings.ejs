@@ -212,7 +212,7 @@
                                     </button>
                                     <span id="songDbStatus" class="small" aria-live="polite"></span>
                                 </div>
-                                <div class="form-text">Your VirtualDJ <code>database.xml</code> export — used for the guest song request search.</div>
+                                <div class="form-text">Your VirtualDJ <code>database.xml</code> export — used for the guest song request search. Large files (40MB+) need <code>client_max_body_size 220M</code> on nginx (<code>deploy/nginx/requests.eyupevents.uk.conf.example</code>).</div>
                             </div>
 
                             <div class="mb-0">
@@ -448,10 +448,22 @@
             return `${label}: <strong>${data.count.toLocaleString()}</strong> songs loaded · ${data.file.filename} (${sizeMb} MB, updated ${date})`;
         }
 
+        async function readJsonResponse(res) {
+            const ct = res.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+                return res.json();
+            }
+            const text = await res.text();
+            if (res.status === 413) {
+                throw new Error('File too large for the server (check nginx client_max_body_size, need ~220M for big VirtualDJ libraries)');
+            }
+            throw new Error(text || `Request failed (${res.status})`);
+        }
+
         async function refreshCatalogueInfo() {
             try {
-                const res = await fetch('/api/settings/catalogues');
-                const data = await res.json();
+                const res = await fetch('/api/settings/catalogues', { credentials: 'include' });
+                const data = await readJsonResponse(res);
                 document.getElementById('songDbInfo').innerHTML = formatFileInfo('Current', data.songs);
                 document.getElementById('karaokeInfo').innerHTML = formatFileInfo('Current', data.karaoke);
             } catch (err) {
@@ -472,13 +484,17 @@
                     return;
                 }
                 btn.disabled = true;
-                status.textContent = 'Uploading…';
+                const file = input.files[0];
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+                status.textContent = endpoint.includes('song-database')
+                    ? `Uploading ${sizeMb} MB — then validating catalogue…`
+                    : `Uploading ${sizeMb} MB…`;
                 status.className = 'small text-muted';
                 try {
                     const fd = new FormData();
-                    fd.append('file', input.files[0]);
-                    const res = await fetch(endpoint, { method: 'POST', body: fd });
-                    const data = await res.json();
+                    fd.append('file', file);
+                    const res = await fetch(endpoint, { method: 'POST', body: fd, credentials: 'include' });
+                    const data = await readJsonResponse(res);
                     if (!res.ok || !data.success) throw new Error(data.error || 'Upload failed');
                     status.textContent = `Uploaded ✓ — ${data.count.toLocaleString()} songs loaded`;
                     status.className = 'small text-success';

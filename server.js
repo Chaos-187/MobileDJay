@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const readline = require('readline');
 
 /** Always next to server.js — not relative to cwd (important under systemd/npm on Ubuntu). */
 const portalEnvPath = path.resolve(__dirname, '.env');
@@ -25,7 +26,6 @@ if (!process.env.PORTAL_SILENCE_ENV_LOG) {
 const express = require('express');
 const https = require('https');
 const querystring = require('querystring');
-const xml2js = require('xml2js');
 const csv = require('csv-parser');
 const crypto = require('crypto');
 const multer = require('multer');
@@ -149,6 +149,16 @@ const catalogueUpload = multer({
     }),
     limits: { fileSize: 200 * 1024 * 1024, files: 1 }
 });
+
+function handleCatalogueUpload(req, res, next) {
+    catalogueUpload.single('file')(req, res, (err) => {
+        if (!err) return next();
+        if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ error: 'File too large (max 200 MB)' });
+        }
+        return res.status(400).json({ error: err.message || 'Upload failed' });
+    });
+}
 
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
@@ -843,29 +853,57 @@ const KARAOKE_CSV_PATH = path.join(__dirname, 'db', 'Karaoke_Catalog.csv');
 // Pre-upload-feature install location, kept as a read fallback
 const LEGACY_KARAOKE_CSV_PATH = path.join(__dirname, 'db', 'VirtualDJ_Karaoke_Catalog_2025-12-29.csv');
 
-// Parse a VirtualDJ database XML file into a song catalogue array. Throws on invalid XML.
+function decodeXmlAttr(value) {
+    return String(value)
+        .replace(/&apos;/g, "'")
+        .replace(/&quot;/g, '"')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+}
+
+function readVdjTagAttr(line, name) {
+    const re = new RegExp(`\\b${name}="([^"]*)"`);
+    const match = line.match(re);
+    return match ? decodeXmlAttr(match[1]) : null;
+}
+
+function assertVirtualDjDatabaseXml(xmlPath) {
+    const fd = fs.openSync(xmlPath, 'r');
+    try {
+        const buf = Buffer.alloc(8192);
+        const n = fs.readSync(fd, buf, 0, buf.length, 0);
+        const head = buf.slice(0, n).toString('utf8');
+        if (!head.includes('VirtualDJ_Database')) {
+            throw new Error('Not a VirtualDJ database XML export (missing VirtualDJ_Database root)');
+        }
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+// Stream-parse VirtualDJ database.xml — avoids loading multi‑MB files into xml2js (which blocks for minutes).
 async function parseSongsXML(xmlPath) {
-    const xmlData = fs.readFileSync(xmlPath, 'utf8');
-    const parser = new xml2js.Parser();
-    const result = await parser.parseStringPromise(xmlData);
+    assertVirtualDjDatabaseXml(xmlPath);
 
     const songs = [];
     let id = 1;
+    const rl = readline.createInterface({
+        input: fs.createReadStream(xmlPath, { encoding: 'utf8' }),
+        crlfDelay: Infinity
+    });
 
-    if (result.VirtualDJ_Database && result.VirtualDJ_Database.Song) {
-        result.VirtualDJ_Database.Song.forEach(song => {
-            if (song.Tags && song.Tags[0]) {
-                const tags = song.Tags[0].$;
-                if (tags.Title && tags.Author) {
-                    songs.push({
-                        id: id++,
-                        title: tags.Title,
-                        artist: tags.Author,
-                        genre: tags.Album || 'Unknown',
-                        year: tags.Year || 'Unknown'
-                    });
-                }
-            }
+    for await (const line of rl) {
+        if (!line.includes('<Tags')) continue;
+        const title = readVdjTagAttr(line, 'Title');
+        const artist = readVdjTagAttr(line, 'Author');
+        if (!title || !artist) continue;
+        songs.push({
+            id: id++,
+            title,
+            artist,
+            genre: readVdjTagAttr(line, 'Album') || readVdjTagAttr(line, 'Genre') || 'Unknown',
+            year: readVdjTagAttr(line, 'Year') || 'Unknown'
         });
     }
     return songs;
@@ -1322,7 +1360,7 @@ app.get('/api/settings/catalogues', djWebAuth.requireAdminApiAuth, (req, res) =>
 });
 
 // Upload a new VirtualDJ song database XML — validated by parsing before it replaces the old one
-app.post('/api/settings/upload-song-database', djWebAuth.requireAdminApiAuth, catalogueUpload.single('file'), async (req, res) => {
+app.post('/api/settings/upload-song-database', djWebAuth.requireAdminApiAuth, handleCatalogueUpload, async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
@@ -1330,7 +1368,7 @@ app.post('/api/settings/upload-song-database', djWebAuth.requireAdminApiAuth, ca
     try {
         const songs = await parseSongsXML(tmpPath);
         if (songs.length === 0) {
-            throw new Error('No songs found — is this a VirtualDJ database XML export?');
+            throw new Error('No songs found — export must include Title and Author on track Tags');
         }
         fs.copyFileSync(tmpPath, SONG_DB_XML_PATH);
         songCatalogue = songs;
@@ -1345,7 +1383,7 @@ app.post('/api/settings/upload-song-database', djWebAuth.requireAdminApiAuth, ca
 });
 
 // Upload a new karaoke catalogue CSV — validated by parsing before it replaces the old one
-app.post('/api/settings/upload-karaoke-catalog', djWebAuth.requireAdminApiAuth, catalogueUpload.single('file'), async (req, res) => {
+app.post('/api/settings/upload-karaoke-catalog', djWebAuth.requireAdminApiAuth, handleCatalogueUpload, async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }

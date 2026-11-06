@@ -29,6 +29,44 @@
     let adminCells = new Map();
     let adminGridSize = 0;
     let selectedPlayingFor = 'line';
+    let adminGridResizeObserver = null;
+
+    function setGamesDashboardFocus(on) {
+        document.body.classList.toggle('mdj-dashboard-games-focus', !!on);
+        if (on) {
+            requestAnimationFrame(() => {
+                fitAdminGridCellFont();
+            });
+        }
+    }
+
+    /** Size number text so all 90 cells fit the board area without an inner scrollbar (Games focus layout). */
+    function fitAdminGridCellFont() {
+        if (!document.body.classList.contains('mdj-dashboard-games-focus')) return;
+        const wrap = document.querySelector('#bingoSubControl .mdj-bingo-grid-scroll');
+        const grid = els.adminGrid;
+        if (!wrap || !grid || !grid.children.length) return;
+        const pad = 6;
+        const w = wrap.clientWidth - pad;
+        const h = wrap.clientHeight - pad;
+        if (w < 48 || h < 48) return;
+        const cols = window.matchMedia('(max-width: 768px)').matches ? 9 : 10;
+        const n = grid.children.length;
+        const rows = Math.ceil(n / cols) || 1;
+        const gap = 3;
+        const cellW = (w - gap * (cols - 1)) / cols;
+        const cellH = (h - gap * (rows - 1)) / rows;
+        const px = Math.max(7, Math.min(15, Math.min(cellW, cellH) * 0.42));
+        grid.style.setProperty('--mdj-bingo-admin-cell-fs', px + 'px');
+    }
+
+    function bindAdminGridFit() {
+        const wrap = document.querySelector('#bingoSubControl .mdj-bingo-grid-scroll');
+        if (!wrap || typeof ResizeObserver === 'undefined') return;
+        if (adminGridResizeObserver) adminGridResizeObserver.disconnect();
+        adminGridResizeObserver = new ResizeObserver(() => fitAdminGridCellFont());
+        adminGridResizeObserver.observe(wrap);
+    }
 
     function slug() {
         return typeof window.mdjGetPromptTargetSlug === 'function' ? window.mdjGetPromptTargetSlug() : null;
@@ -99,6 +137,7 @@
             els.adminGrid.appendChild(cell);
             adminCells.set(n, cell);
         }
+        fitAdminGridCellFont();
     }
 
     function syncAdminGrid(state) {
@@ -388,7 +427,22 @@
         });
     });
 
-    document.getElementById('bingoSubCards-tab')?.addEventListener('shown.bs.tab', loadBatches);
+    document.getElementById('bingoSubPrepare-tab')?.addEventListener('shown.bs.tab', loadBatches);
+
+    document.getElementById('bingoSubControl-tab')?.addEventListener('shown.bs.tab', () => {
+        fitAdminGridCellFont();
+    });
+
+    let gamesFocusResizeTimer = null;
+    window.addEventListener(
+        'resize',
+        () => {
+            if (!document.body.classList.contains('mdj-dashboard-games-focus')) return;
+            clearTimeout(gamesFocusResizeTimer);
+            gamesFocusResizeTimer = setTimeout(fitAdminGridCellFont, 120);
+        },
+        { passive: true }
+    );
 
     function startPoll() {
         clearInterval(pollTimer);
@@ -396,12 +450,20 @@
     }
 
     document.getElementById('games-tab')?.addEventListener('shown.bs.tab', () => {
+        setGamesDashboardFocus(true);
+        bindAdminGridFit();
         fetchState();
-        if (document.getElementById('bingoSubCards')?.classList.contains('active')) loadBatches();
+        if (document.getElementById('bingoSubPrepare')?.classList.contains('active')) loadBatches();
         startPoll();
+        requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
     });
 
     document.getElementById('games-tab')?.addEventListener('hidden.bs.tab', () => {
+        setGamesDashboardFocus(false);
+        if (adminGridResizeObserver) {
+            adminGridResizeObserver.disconnect();
+            adminGridResizeObserver = null;
+        }
         clearInterval(pollTimer);
     });
 
@@ -414,4 +476,11 @@
     buildAdminGrid(Number(els.ballCount?.value) || 90);
     updateTargetHint();
     fetchState();
+
+    const gamesPane = document.getElementById('games');
+    if (gamesPane?.classList.contains('active') || gamesPane?.classList.contains('show')) {
+        setGamesDashboardFocus(true);
+        bindAdminGridFit();
+        requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
+    }
 })();

@@ -2,12 +2,33 @@
    DJ dashboard — Games / Bingo admin
    ═══════════════════════════════════════════════════════════════ */
 
+.mdj-bingo-console {
+    --mdj-bingo-accent: #ff7a1a;
+    --mdj-bingo-accent-soft: rgba(255, 122, 26, 0.14);
+    --mdj-bingo-surface: rgba(255, 255, 255, 0.045);
+    --mdj-bingo-surface-border: rgba(255, 255, 255, 0.1);
+    --mdj-bingo-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+body:not(.dark-mode) .mdj-bingo-console {
+    --mdj-bingo-surface: rgba(255, 255, 255, 0.92);
+    --mdj-bingo-surface-border: rgba(15, 23, 42, 0.08);
+}
+
 .mdj-bingo-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--mdj-bingo-radius);
+    background: var(--mdj-bingo-surface);
+    border: 1px solid var(--mdj-bingo-surface-border);
+    backdrop-filter: blur(10px);
 }
 
 .mdj-bingo-topbar-title {
@@ -17,48 +38,273 @@
     gap: 0.5rem;
     font-weight: 700;
     font-size: 1.05rem;
+    letter-spacing: -0.02em;
 }
 
 .mdj-bingo-hint:empty {
     display: none;
 }
 
-.mdj-bingo-console {
-    display: flex;
-    flex-direction: column;
-    gap: 0.65rem;
-}
-
 .mdj-bingo-subtabs {
     display: flex;
     flex-wrap: nowrap;
-    gap: 0.35rem;
-    padding: 0.2rem;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.12);
+    gap: 0.4rem;
+    padding: 0.35rem;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 body:not(.dark-mode) .mdj-bingo-subtabs {
-    background: rgba(255, 102, 0, 0.08);
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.06);
 }
 
 .mdj-bingo-subtabs .nav-link {
     flex: 1;
     text-align: center;
-    font-weight: 700;
-    font-size: 0.88rem;
-    padding: 0.65rem 0.35rem;
-    min-height: 48px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.7rem 0.75rem;
+    min-height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    color: inherit;
+    border-radius: 11px;
+    color: rgba(255, 255, 255, 0.65);
+    border: 1px solid transparent;
+    transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+body:not(.dark-mode) .mdj-bingo-subtabs .nav-link {
+    color: #64748b;
+}
+
+.mdj-bingo-subtabs .nav-link:hover {
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+body:not(.dark-mode) .mdj-bingo-subtabs .nav-link:hover {
+    color: #0f172a;
+    background: rgba(15, 23, 42, 0.05);
 }
 
 .mdj-bingo-subtabs .nav-link.active {
-    background: #ff6600;
+    background: linear-gradient(145deg, var(--mdj-bingo-accent), #e85d00);
+    color: #0d0500;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 14px rgba(255, 102, 0, 0.28);
+}
+
+body:not(.dark-mode) .mdj-bingo-subtabs .nav-link.active {
+    color: #fff;
+    border-color: transparent;
+}
+
+.mdj-bingo-control-split {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+@media (min-width: 768px) {
+    .mdj-bingo-control-split {
+        flex-direction: row;
+        align-items: stretch;
+    }
+
+    .mdj-bingo-control-split > .mdj-bingo-surface--primary {
+        flex: 1 1 48%;
+        min-width: 0;
+    }
+
+    .mdj-bingo-control-split > .mdj-bingo-surface--claims {
+        flex: 1 1 52%;
+        min-width: 0;
+    }
+}
+
+.mdj-bingo-surface {
+    padding: 1rem 1rem 1.1rem;
+    border-radius: var(--mdj-bingo-radius);
+    background: var(--mdj-bingo-surface);
+    border: 1px solid var(--mdj-bingo-surface-border);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+}
+
+body.dark-mode .mdj-bingo-surface {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.mdj-bingo-surface-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 0 0.5rem;
+}
+
+body:not(.dark-mode) .mdj-bingo-surface-title {
+    color: #64748b;
+}
+
+.mdj-bingo-surface-title--inline {
+    margin-bottom: 0.65rem;
+}
+
+.mdj-bingo-surface--board {
+    padding-bottom: 0.85rem;
+}
+
+.mdj-bingo-prepare-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+@media (min-width: 992px) {
+    .mdj-bingo-prepare-stack {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .mdj-bingo-prepare-stack > .mdj-bingo-surface {
+        flex: 1 1 50%;
+        min-width: 0;
+    }
+}
+
+.mdj-bingo-input {
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+body:not(.dark-mode) .mdj-bingo-input {
+    border-color: #e2e8f0;
+    background: #fff;
+}
+
+.mdj-bingo-btn-go {
+    background: linear-gradient(145deg, #22c55e, #16a34a);
+    border: none;
+    color: #fff;
+}
+
+.mdj-bingo-btn-go:hover {
+    filter: brightness(1.06);
+    color: #fff;
+}
+
+.mdj-bingo-btn-stop {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.45);
+    color: #fca5a5;
+}
+
+body:not(.dark-mode) .mdj-bingo-btn-stop {
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+}
+
+.mdj-bingo-btn-call {
+    background: linear-gradient(145deg, var(--mdj-bingo-accent), #ea580c);
+    border: none;
     color: #1a0a00;
+}
+
+.mdj-bingo-btn-call:hover {
+    filter: brightness(1.05);
+    color: #1a0a00;
+}
+
+.mdj-bingo-btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+body:not(.dark-mode) .mdj-bingo-btn-secondary {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #0f172a;
+}
+
+.mdj-bingo-btn-verify {
+    background: linear-gradient(145deg, #38bdf8, #0ea5e9);
+    border: none;
+    color: #0c1929;
+    font-weight: 800;
+}
+
+.mdj-bingo-btn-outline {
+    background: transparent;
+    border: 2px solid var(--mdj-bingo-accent);
+    color: var(--mdj-bingo-accent);
+}
+
+.mdj-bingo-btn-outline:hover {
+    background: var(--mdj-bingo-accent-soft);
+    color: var(--mdj-bingo-accent);
+}
+
+.mdj-bingo-btn-muted {
+    background: rgba(148, 163, 184, 0.2);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+body:not(.dark-mode) .mdj-bingo-btn-muted {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+
+.mdj-bingo-btn-danger-outline {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.55);
+    color: #f87171;
+}
+
+body:not(.dark-mode) .mdj-bingo-btn-danger-outline {
+    color: #dc2626;
+}
+
+.mdj-bingo-claim-line {
+    background: rgba(234, 179, 8, 0.18);
+    border: 1px solid rgba(234, 179, 8, 0.55);
+    color: #fde68a;
+}
+
+.mdj-bingo-claim-two {
+    background: rgba(56, 189, 248, 0.15);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: #bae6fd;
+}
+
+.mdj-bingo-claim-house {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(248, 113, 113, 0.55);
+    color: #fecaca;
+}
+
+body:not(.dark-mode) .mdj-bingo-claim-line {
+    color: #a16207;
+}
+
+body:not(.dark-mode) .mdj-bingo-claim-two {
+    color: #0369a1;
+}
+
+body:not(.dark-mode) .mdj-bingo-claim-house {
+    color: #b91c1c;
+}
+
+.mdj-bingo-verify-result {
+    min-height: 1.25rem;
 }
 
 .mdj-bingo-field-label {
@@ -81,15 +327,16 @@ body:not(.dark-mode) .mdj-bingo-subtabs {
     align-items: flex-end;
     justify-content: space-between;
     gap: 0.75rem;
-    padding: 0.65rem 0.85rem;
-    margin-bottom: 0.65rem;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.85rem;
     border-radius: 14px;
-    background: linear-gradient(135deg, rgba(255, 102, 0, 0.12), rgba(0, 0, 0, 0.2));
-    border: 1px solid rgba(255, 102, 0, 0.25);
+    background: linear-gradient(160deg, rgba(255, 122, 26, 0.12), rgba(15, 23, 42, 0.45));
+    border: 1px solid rgba(255, 122, 26, 0.22);
 }
 
 body:not(.dark-mode) .mdj-bingo-run-hero {
-    background: linear-gradient(135deg, #fff8f3, #f0f2f5);
+    background: linear-gradient(160deg, rgba(255, 237, 213, 0.95), #f8fafc);
+    border-color: rgba(255, 122, 26, 0.2);
 }
 
 .mdj-bingo-run-hero-label {
@@ -102,12 +349,32 @@ body:not(.dark-mode) .mdj-bingo-run-hero {
 .mdj-bingo-paused-chip {
     font-size: 0.78rem;
     font-weight: 700;
-    color: #ffc107;
+    color: #fde047;
+    padding: 0.35rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(250, 204, 21, 0.35);
+}
+
+body:not(.dark-mode) .mdj-bingo-paused-chip {
+    color: #854d0e;
+    background: rgba(254, 240, 138, 0.55);
+    border-color: rgba(234, 179, 8, 0.45);
 }
 
 .mdj-bingo-touch-seg {
     min-height: 48px;
     font-weight: 700;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.75);
+}
+
+body:not(.dark-mode) .mdj-bingo-touch-seg {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #475569;
 }
 
 .mdj-bingo-touch-action {
@@ -131,8 +398,8 @@ body:not(.dark-mode) .mdj-bingo-run-hero {
 .mdj-bingo-action-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-    margin-bottom: 0.65rem;
+    gap: 0.55rem;
+    margin-bottom: 0;
 }
 
 .mdj-bingo-action-grid .mdj-bingo-touch-action--wide {
@@ -146,17 +413,17 @@ body:not(.dark-mode) .mdj-bingo-run-hero {
 }
 
 .mdj-bingo-grid-scroll {
-    max-height: min(28vh, 200px);
+    max-height: min(32vh, 240px);
     overflow: auto;
     border-radius: 12px;
-    padding: 0.45rem;
-    background: rgba(0, 0, 0, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 body:not(.dark-mode) .mdj-bingo-grid-scroll {
-    background: #eef1f5;
-    border-color: #dee2e6;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
 }
 
 .mdj-bingo-batches-scroll {
@@ -207,36 +474,156 @@ body:not(.dark-mode) .mdj-bingo-switch-row {
 }
 
 .mdj-bingo-verify-type .btn.active {
-    background: #ff6600;
-    border-color: #ff6600;
+    background: linear-gradient(145deg, var(--mdj-bingo-accent), #ea580c);
+    border-color: transparent;
     color: #1a0a00;
+}
+
+body:not(.dark-mode) .mdj-bingo-verify-type .btn.active {
+    color: #fff;
 }
 
 .mdj-games-tab {
     padding-top: 0.15rem;
 }
 
+/* Games tab: one viewport-tall column — no nested scrollbars; board fills remainder */
+body.mdj-dashboard-games-focus .mdj-dash-layout {
+    min-height: 0;
+    align-items: stretch;
+}
+
+body.mdj-dashboard-games-focus .mdj-dash-primary.mdj-dash-scroll {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overflow-x: hidden;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+body.mdj-dashboard-games-focus .mdj-dash-primary.mdj-dash-scroll > #dashboardTabContent {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-height: none;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab .mdj-bingo-topbar,
+body.mdj-dashboard-games-focus .mdj-games-tab #bingoTargetHint {
+    flex-shrink: 0;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab .mdj-bingo-console {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab .mdj-bingo-subtabs {
+    flex-shrink: 0;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab .mdj-bingo-tab-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab #bingoSubControl.tab-pane.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab #bingoSubControl .mdj-bingo-control-split {
+    flex: 0 0 auto;
+    min-height: 0;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab #bingoSubControl .mdj-bingo-surface--board {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-top: 0.65rem;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab #bingoSubControl .mdj-bingo-surface--board .mdj-bingo-surface-title--inline {
+    flex-shrink: 0;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab .mdj-bingo-grid-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+    padding: 0.35rem;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab .mdj-bingo-admin-grid {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    align-content: start;
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab .mdj-bingo-admin-cell {
+    font-size: var(--mdj-bingo-admin-cell-fs, 0.58rem);
+}
+
+body.mdj-dashboard-games-focus .mdj-games-tab #bingoSubPrepare.tab-pane.active {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.35rem;
+}
+
 @media (min-width: 992px) {
-    .mdj-games-tab {
+    .mdj-games-tab:not(.active) {
+        max-height: none;
+    }
+
+    /* Non–games-focus: keep a sane cap so other contexts don’t explode */
+    body:not(.mdj-dashboard-games-focus) .mdj-games-tab {
         max-height: calc(100dvh - 11.5rem);
         display: flex;
         flex-direction: column;
         overflow: hidden;
     }
 
-    .mdj-games-tab .mdj-bingo-console {
+    body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-console {
         flex: 1 1 auto;
         min-height: 0;
         overflow: hidden;
     }
 
-    .mdj-games-tab .mdj-bingo-tab-panels {
+    body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-tab-panels {
         flex: 1 1 auto;
         min-height: 0;
         overflow: hidden;
     }
 
-    .mdj-games-tab .mdj-bingo-tab-panels > .tab-pane.active {
+    body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-tab-panels > .tab-pane.active {
         height: 100%;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
@@ -453,9 +840,14 @@ body:not(.dark-mode) .mdj-bingo-ball-chip--last {
 }
 
 .mdj-bingo-playing-for .btn.active {
-    background: #ff6600;
-    border-color: #ff6600;
+    background: linear-gradient(145deg, var(--mdj-bingo-accent), #ea580c);
+    border-color: transparent;
     color: #1a0a00;
+    box-shadow: 0 2px 12px rgba(255, 122, 26, 0.35);
+}
+
+body:not(.dark-mode) .mdj-bingo-playing-for .btn.active {
+    color: #fff;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -795,6 +1187,8 @@ body.bingo-screen-active {
 }
 
 .bingo-fs-cell-num {
+    display: inline-block;
+    transform-origin: center center;
     font-size: clamp(0.38rem, 26cqmin, 0.68rem);
     font-weight: 700;
     line-height: 1;
@@ -860,14 +1254,16 @@ body.bingo-screen-active {
     opacity: 0.6;
 }
 
-.bingo-fs-cell.is-new {
-    animation: bingoCellMark 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* Pop animates the number only — scaling the whole cell made grid tiles
+   paint outside their tracks and overlap neighbouring rows. */
+.bingo-fs-cell.is-new .bingo-fs-cell-num {
+    animation: bingoCellNumPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-@keyframes bingoCellMark {
-    0% { transform: scale(0.85); }
-    50% { transform: scale(1.08); }
-    100% { transform: scale(1); }
+@keyframes bingoCellNumPop {
+    0% { transform: scale(0.88); opacity: 0.85; }
+    55% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 .bingo-display-layer.claim-active .bingo-fs-layout,

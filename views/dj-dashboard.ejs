@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=3" rel="stylesheet">
+    <link href="/css/bingo.css?v=6" rel="stylesheet">
     <style>
         .request-card {
             transition: all 0.3s ease;
@@ -1010,121 +1010,130 @@
             </div>
 
             <!-- Games Tab -->
-            <div class="tab-pane fade" id="games" role="tabpanel">
-                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                    <h4 class="mb-0"><i class="fas fa-gamepad me-2"></i>Games</h4>
-                    <a id="openDisplayLinkGames" href="#" target="_blank" class="btn btn-outline-primary btn-sm" style="display:none;">
-                        <i class="fas fa-external-link-alt me-1"></i>Open Display
+            <div class="tab-pane fade mdj-games-tab" id="games" role="tabpanel">
+                <div class="mdj-bingo-topbar">
+                    <div class="mdj-bingo-topbar-title">
+                        <i class="fas fa-table-cells text-warning" aria-hidden="true"></i>
+                        <span>Bingo</span>
+                        <span id="bingoRunStatus" class="badge bg-secondary mdj-bingo-status-pill">Not running</span>
+                    </div>
+                    <a id="openDisplayLinkGames" href="#" target="_blank" class="btn btn-outline-primary mdj-bingo-touch-btn-sm" style="display:none;">
+                        <i class="fas fa-tv" aria-hidden="true"></i><span class="d-none d-sm-inline ms-1">Display</span>
                     </a>
                 </div>
-                <p class="text-muted small mb-3">
-                    <i class="fas fa-circle-info me-1"></i>
-                    Run interactive games on the event display. More games can be added here over time.
-                    <span id="bingoTargetHint" class="d-block mt-1"></span>
-                </p>
+                <p id="bingoTargetHint" class="mdj-bingo-hint small text-muted mb-2"></p>
 
-                <div class="mdj-game-picker" role="list">
-                    <button type="button" class="mdj-game-tile is-active border-0" data-game="bingo" role="listitem">
-                        <i class="fas fa-table-cells fa-2x mb-2 d-block text-warning"></i>
-                        <strong>Bingo</strong>
-                    </button>
-                    <div class="mdj-game-tile mdj-game-tile--soon" role="listitem" aria-disabled="true">
-                        <i class="fas fa-lock fa-2x mb-2 d-block opacity-50"></i>
-                        <strong>More soon</strong>
-                    </div>
-                </div>
+                <div id="gamePanelBingo" class="mdj-bingo-console" data-game-panel="bingo">
+                    <ul class="nav nav-pills mdj-bingo-subtabs" id="bingoSubTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="bingoSubRun-tab" data-bs-toggle="tab" data-bs-target="#bingoSubRun" type="button" role="tab">Run</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="bingoSubClaims-tab" data-bs-toggle="tab" data-bs-target="#bingoSubClaims" type="button" role="tab">Claims</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="bingoSubCards-tab" data-bs-toggle="tab" data-bs-target="#bingoSubCards" type="button" role="tab">Cards</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="bingoSubSetup-tab" data-bs-toggle="tab" data-bs-target="#bingoSubSetup" type="button" role="tab">Setup</button>
+                        </li>
+                    </ul>
 
-                <div id="gamePanelBingo" class="mdj-game-panel mdj-bingo-admin-shell" data-game-panel="bingo">
-                    <div class="mdj-bingo-admin-card">
-                        <div class="mdj-bingo-admin-card__title">Live session</div>
-                        <div class="mdj-bingo-session-bar">
-                            <span id="bingoRunStatus" class="badge bg-secondary mdj-bingo-status-pill">Not running</span>
-                            <span id="bingoPausedHint" class="small text-warning" hidden><i class="fas fa-pause-circle me-1"></i>Calling paused for claim</span>
-                            <div class="d-flex align-items-center gap-2 ms-auto">
-                                <span class="text-muted small">Last ball</span>
-                                <span id="bingoLastBall" class="mdj-bingo-hero-ball">—</span>
+                    <div class="tab-content mdj-bingo-tab-panels" id="bingoSubTabContent">
+                        <!-- Run -->
+                        <div class="tab-pane fade show active" id="bingoSubRun" role="tabpanel">
+                            <div class="mdj-bingo-run-hero">
+                                <div>
+                                    <span class="mdj-bingo-run-hero-label">Last ball</span>
+                                    <div id="bingoLastBall" class="mdj-bingo-hero-ball">—</div>
+                                </div>
+                                <span id="bingoPausedHint" class="mdj-bingo-paused-chip" hidden><i class="fas fa-pause-circle"></i> Paused</span>
                             </div>
+
+                            <p class="mdj-bingo-field-label">Playing for</p>
+                            <div class="mdj-bingo-playing-for btn-group w-100 mb-2" role="group" aria-label="Playing for">
+                                <button type="button" class="btn btn-outline-warning mdj-bingo-touch-seg active" data-playing-for="line">1 Line</button>
+                                <button type="button" class="btn btn-outline-warning mdj-bingo-touch-seg" data-playing-for="two-lines">2 Lines</button>
+                                <button type="button" class="btn btn-outline-warning mdj-bingo-touch-seg" data-playing-for="house">House</button>
+                            </div>
+
+                            <div class="mdj-bingo-action-grid">
+                                <button type="button" class="btn btn-success mdj-bingo-touch-action" id="bingoStartBtn"><i class="fas fa-play"></i> Start</button>
+                                <button type="button" class="btn btn-outline-danger mdj-bingo-touch-action" id="bingoStopBtn"><i class="fas fa-stop"></i> Stop</button>
+                                <button type="button" class="btn btn-primary mdj-bingo-touch-action mdj-bingo-touch-action--wide" id="bingoCallBtn"><i class="fas fa-bullhorn"></i> Call next ball</button>
+                                <button type="button" class="btn btn-warning mdj-bingo-touch-action" id="bingoResumeBtn" hidden><i class="fas fa-play-circle"></i> Resume</button>
+                                <button type="button" class="btn btn-outline-warning mdj-bingo-touch-action" id="bingoSkipIntroBtn" hidden><i class="fas fa-forward"></i> Skip intro</button>
+                            </div>
+
+                            <div class="mdj-bingo-grid-scroll" aria-label="Called numbers">
+                                <div id="bingoAdminGrid" class="mdj-bingo-admin-grid"></div>
+                            </div>
+                            <div id="bingoCalledStrip" class="mdj-bingo-called-strip mt-2" hidden aria-hidden="true"></div>
                         </div>
-                        <label class="form-label small mb-1">Playing for <span class="text-muted fw-normal">(on display)</span></label>
-                        <div class="mdj-bingo-playing-for btn-group w-100 mb-3" role="group" aria-label="Playing for">
-                            <button type="button" class="btn btn-outline-warning active" data-playing-for="line" id="bingoPlayForLine">1 Line</button>
-                            <button type="button" class="btn btn-outline-warning" data-playing-for="two-lines" id="bingoPlayForTwoLines">2 Lines</button>
-                            <button type="button" class="btn btn-outline-warning" data-playing-for="house" id="bingoPlayForHouse">Full house</button>
+
+                        <!-- Claims -->
+                        <div class="tab-pane fade" id="bingoSubClaims" role="tabpanel">
+                            <p class="mdj-bingo-pane-lead">Flash the room display. Calling pauses until you tap <strong>Resume</strong> on Run.</p>
+                            <div class="mdj-bingo-claim-btns mb-3">
+                                <button type="button" class="btn btn-warning mdj-bingo-touch-claim" id="bingoFlashLineBtn">1 Line</button>
+                                <button type="button" class="btn btn-info text-dark mdj-bingo-touch-claim" id="bingoFlashTwoLinesBtn">2 Lines</button>
+                                <button type="button" class="btn btn-danger mdj-bingo-touch-claim" id="bingoFlashHouseBtn">Full house</button>
+                            </div>
+                            <label class="mdj-bingo-field-label" for="bingoVerifySerial">Check serial</label>
+                            <input type="text" class="form-control form-control-lg mb-2" id="bingoVerifySerial" placeholder="Card serial" autocomplete="off" inputmode="text">
+                            <input type="hidden" id="bingoVerifyClaimType" value="house">
+                            <div class="mdj-bingo-verify-type btn-group w-100 mb-2" role="group" aria-label="Claim type">
+                                <button type="button" class="btn btn-outline-secondary mdj-bingo-touch-seg" data-verify-claim="line">1 Line</button>
+                                <button type="button" class="btn btn-outline-secondary mdj-bingo-touch-seg" data-verify-claim="two-lines">2 Lines</button>
+                                <button type="button" class="btn btn-outline-secondary mdj-bingo-touch-seg active" data-verify-claim="house">House</button>
+                            </div>
+                            <button type="button" class="btn btn-primary w-100 mdj-bingo-touch-action" id="bingoVerifyBtn"><i class="fas fa-check-double"></i> Verify &amp; flash</button>
+                            <p id="bingoVerifyResult" class="small mb-0 mt-2 text-muted"></p>
                         </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4 col-6">
-                                <label class="form-label small mb-1" for="bingoBallCount">Balls in play</label>
-                                <input type="number" class="form-control" id="bingoBallCount" min="9" max="90" value="90">
-                            </div>
-                            <div class="col-md-4 col-6">
-                                <label class="form-label small mb-1" for="bingoCallInterval">Auto-call every (sec)</label>
-                                <input type="number" class="form-control" id="bingoCallInterval" min="2" max="120" value="5">
-                            </div>
-                            <div class="col-md-4 col-12 d-flex align-items-end">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" id="bingoAutoCall">
-                                    <label class="form-check-label" for="bingoAutoCall">Auto-call</label>
+
+                        <!-- Cards -->
+                        <div class="tab-pane fade" id="bingoSubCards" role="tabpanel">
+                            <div class="row g-2 mb-2">
+                                <div class="col-4">
+                                    <label class="mdj-bingo-field-label" for="bingoCardGenCount">Qty</label>
+                                    <input type="number" class="form-control form-control-lg" id="bingoCardGenCount" min="1" max="200" value="20">
+                                </div>
+                                <div class="col-8">
+                                    <label class="mdj-bingo-field-label" for="bingoCardBatch">Batch</label>
+                                    <input type="text" class="form-control form-control-lg" id="bingoCardBatch" placeholder="e.g. B1" maxlength="32">
                                 </div>
                             </div>
+                            <button type="button" class="btn btn-outline-primary w-100 mdj-bingo-touch-action mb-2" id="bingoGenCardsBtn">
+                                <i class="fas fa-print"></i> Generate &amp; print
+                            </button>
+                            <div id="bingoBatchesList" class="mdj-bingo-batches-scroll small"></div>
                         </div>
-                        <div class="mdj-bingo-control-row">
-                            <button type="button" class="btn btn-success" id="bingoStartBtn"><i class="fas fa-play me-1"></i>Start on display</button>
-                            <button type="button" class="btn btn-outline-danger" id="bingoStopBtn"><i class="fas fa-stop me-1"></i>Stop</button>
-                            <button type="button" class="btn btn-primary" id="bingoCallBtn"><i class="fas fa-bullhorn me-1"></i>Call next</button>
-                            <button type="button" class="btn btn-warning" id="bingoResumeBtn" hidden><i class="fas fa-play-circle me-1"></i>Resume calling</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="bingoResetCallsBtn">Reset board</button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="bingoApplyConfigBtn">Apply settings</button>
-                        </div>
-                        <p class="text-muted small mt-3 mb-2">Number board (mirrors display)</p>
-                        <div id="bingoAdminGrid" class="mdj-bingo-admin-grid mb-2" aria-label="Called numbers"></div>
-                        <div id="bingoCalledStrip" class="mdj-bingo-called-strip"></div>
-                    </div>
 
-                    <div class="mdj-bingo-admin-card">
-                        <div class="mdj-bingo-admin-card__title">Claims — pauses calling</div>
-                        <p class="text-muted small mb-3">Flash the big screen for the room. Auto-call stops until you hit <strong>Resume calling</strong>.</p>
-                        <div class="mdj-bingo-claim-btns mb-3">
-                            <button type="button" class="btn btn-warning" id="bingoFlashLineBtn">1 Line</button>
-                            <button type="button" class="btn btn-info text-dark" id="bingoFlashTwoLinesBtn">2 Lines</button>
-                            <button type="button" class="btn btn-danger" id="bingoFlashHouseBtn">Full house</button>
+                        <!-- Setup -->
+                        <div class="tab-pane fade" id="bingoSubSetup" role="tabpanel">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="mdj-bingo-field-label" for="bingoBallCount">Balls</label>
+                                    <input type="number" class="form-control form-control-lg" id="bingoBallCount" min="9" max="90" value="90">
+                                </div>
+                                <div class="col-6">
+                                    <label class="mdj-bingo-field-label" for="bingoIntroSeconds">Intro (sec)</label>
+                                    <input type="number" class="form-control form-control-lg" id="bingoIntroSeconds" min="0" max="600" value="30">
+                                </div>
+                                <div class="col-6">
+                                    <label class="mdj-bingo-field-label" for="bingoCallInterval">Auto every (s)</label>
+                                    <input type="number" class="form-control form-control-lg" id="bingoCallInterval" min="2" max="120" value="5">
+                                </div>
+                                <div class="col-6 d-flex align-items-end">
+                                    <div class="form-check form-switch mb-2 ps-0 w-100 mdj-bingo-switch-row">
+                                        <input class="form-check-input" type="checkbox" id="bingoAutoCall">
+                                        <label class="form-check-label" for="bingoAutoCall">Auto-call</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-secondary w-100 mdj-bingo-touch-action mb-2" id="bingoApplyConfigBtn">Save setup</button>
+                            <button type="button" class="btn btn-outline-danger w-100 mdj-bingo-touch-action" id="bingoResetCallsBtn">Reset number board</button>
                         </div>
-                        <label class="form-label small mb-1" for="bingoVerifySerial">Verify card serial</label>
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-5">
-                                <input type="text" class="form-control" id="bingoVerifySerial" placeholder="e.g. NIKOLS-B1-0001" autocomplete="off">
-                            </div>
-                            <div class="col-md-3">
-                                <select class="form-select" id="bingoVerifyClaimType">
-                                    <option value="line">One line</option>
-                                    <option value="two-lines">Two lines</option>
-                                    <option value="house" selected>Full house</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <button type="button" class="btn btn-primary w-100" id="bingoVerifyBtn">Verify &amp; flash</button>
-                            </div>
-                        </div>
-                        <p id="bingoVerifyResult" class="small mb-0 mt-2 text-muted"></p>
-                    </div>
-
-                    <div class="mdj-bingo-admin-card">
-                        <div class="mdj-bingo-admin-card__title">Printable cards</div>
-                        <div class="row g-2 align-items-end">
-                            <div class="col-sm-3">
-                                <label class="form-label small mb-1" for="bingoCardGenCount">Quantity</label>
-                                <input type="number" class="form-control" id="bingoCardGenCount" min="1" max="200" value="20">
-                            </div>
-                            <div class="col-sm-4">
-                                <label class="form-label small mb-1" for="bingoCardBatch">Batch id</label>
-                                <input type="text" class="form-control" id="bingoCardBatch" placeholder="e.g. B1" maxlength="32">
-                            </div>
-                            <div class="col-sm-5">
-                                <button type="button" class="btn btn-outline-primary w-100" id="bingoGenCardsBtn">
-                                    <i class="fas fa-print me-1"></i>Generate &amp; print
-                                </button>
-                            </div>
-                        </div>
-                        <div id="bingoBatchesList" class="small mt-3"></div>
                     </div>
                 </div>
             </div>
@@ -1296,7 +1305,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/dj-dashboard.js?v=4"></script>
-    <script src="/js/dj-bingo.js?v=3"></script>
+    <script src="/js/dj-bingo.js?v=6"></script>
 
     <script>
     document.getElementById('djLogoutBtn')?.addEventListener('click', function () {

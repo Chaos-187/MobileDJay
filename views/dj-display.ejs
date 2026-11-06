@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
-    <link href="/css/bingo.css?v=3" rel="stylesheet">
+    <link href="/css/bingo.css?v=4" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -1244,22 +1244,39 @@
         <div class="winner-title-text" id="yesNoWinnerTitle"></div>
     </div>
 
-    <!-- Bingo — full-screen display -->
+    <!-- Bingo — full-screen (must sit above message / QR UI) -->
     <div class="bingo-display-layer" id="bingoDisplayLayer" aria-live="polite" aria-hidden="true">
         <div class="bingo-fs-ambient" aria-hidden="true"></div>
         <div class="bingo-fs-rays" aria-hidden="true"></div>
-        <div class="bingo-fs-layout">
+        <div class="bingo-fs-dots" aria-hidden="true"></div>
+
+        <div class="bingo-intro-stage" id="bingoIntroStage" hidden>
+            <div class="bingo-intro-card">
+                <p class="bingo-intro-eyebrow"><i class="fas fa-table-cells me-2"></i>Bingo starting soon</p>
+                <p class="bingo-intro-playing-for" id="bingoIntroPlayingFor">Playing for · 1 Line</p>
+                <div class="bingo-intro-countdown-wrap">
+                    <svg class="bingo-intro-ring" viewBox="0 0 120 120" aria-hidden="true">
+                        <circle class="bingo-intro-ring-track" cx="60" cy="60" r="52"></circle>
+                        <circle class="bingo-intro-ring-progress" id="bingoIntroRing" cx="60" cy="60" r="52"></circle>
+                    </svg>
+                    <div class="bingo-intro-countdown" id="bingoIntroCountdown">30</div>
+                </div>
+                <p class="bingo-intro-hint">Get your cards ready — numbers will be called when the countdown finishes.</p>
+            </div>
+        </div>
+
+        <div class="bingo-fs-layout" id="bingoFsGame">
             <header class="bingo-fs-header">
                 <div class="bingo-fs-brand">
                     <i class="fas fa-table-cells" aria-hidden="true"></i>
                     <span>Bingo</span>
                 </div>
-                <p class="bingo-fs-playing-for" id="bingoDisplayPlayingFor">Playing for · 1 Line</p>
                 <p class="bingo-fs-meta" id="bingoDisplayMeta">Ready</p>
                 <span class="bingo-fs-paused-badge" id="bingoDisplayPaused" hidden>
-                    <i class="fas fa-pause-circle me-1" aria-hidden="true"></i>Claim check — calling paused
+                    <i class="fas fa-pause-circle me-1" aria-hidden="true"></i>Claim check
                 </span>
             </header>
+            <p class="bingo-fs-playing-for" id="bingoDisplayPlayingFor">Playing for · <span class="bingo-fs-playing-for-accent">1 Line</span></p>
             <div class="bingo-fs-main">
                 <aside class="bingo-fs-hero">
                     <p class="bingo-fs-hero-label">Now calling</p>
@@ -1268,7 +1285,7 @@
                         <div class="bingo-fs-ball-glow" aria-hidden="true"></div>
                         <div class="bingo-display-last-ball" id="bingoDisplayLastBall">—</div>
                     </div>
-                    <p class="bingo-fs-recent-label">Last called</p>
+                    <p class="bingo-fs-recent-label">Recent</p>
                     <div class="bingo-fs-recent" id="bingoDisplayRecent"></div>
                 </aside>
                 <div class="bingo-fs-grid-panel">
@@ -1435,6 +1452,6 @@
     </script>
     <script src="/js/mdj-binary-spinner.js"></script>
     <script src="/js/dj-display.js?v=7"></script>
-    <script src="/js/dj-display-bingo.js?v=3"></script>
+    <script src="/js/dj-display-bingo.js?v=4"></script>
 </body>
 </html>

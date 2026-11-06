@@ -9,7 +9,9 @@
         status: document.getElementById('bingoRunStatus'),
         ballCount: document.getElementById('bingoBallCount'),
         callInterval: document.getElementById('bingoCallInterval'),
+        introSeconds: document.getElementById('bingoIntroSeconds'),
         autoCall: document.getElementById('bingoAutoCall'),
+        skipIntroBtn: document.getElementById('bingoSkipIntroBtn'),
         calledStrip: document.getElementById('bingoCalledStrip'),
         lastBall: document.getElementById('bingoLastBall'),
         cardCount: document.getElementById('bingoCardGenCount'),
@@ -41,6 +43,14 @@
         return active?.getAttribute('data-playing-for') || selectedPlayingFor || 'line';
     }
 
+    function getVerifyClaimType() {
+        const active = document.querySelector('.mdj-bingo-verify-type [data-verify-claim].active');
+        const val = active?.getAttribute('data-verify-claim') || 'house';
+        const hidden = document.getElementById('bingoVerifyClaimType');
+        if (hidden) hidden.value = val;
+        return val;
+    }
+
     function syncPlayingForUI(playingFor) {
         selectedPlayingFor = playingFor || 'line';
         document.querySelectorAll('.mdj-bingo-playing-for [data-playing-for]').forEach((btn) => {
@@ -57,7 +67,8 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             autoCall: !!els.autoCall?.checked,
-            playingFor: selectedPlayingFor
+            playingFor: selectedPlayingFor,
+            introSeconds: Number(els.introSeconds?.value) || 0
         });
         if (data?.success && data.state) renderStatus(data.state);
     }
@@ -107,7 +118,9 @@
         const byId = (id) => document.getElementById(id);
         if (byId('bingoStartBtn')) byId('bingoStartBtn').disabled = !hasSlug || active;
         if (byId('bingoStopBtn')) byId('bingoStopBtn').disabled = !hasSlug || !active;
-        if (byId('bingoCallBtn')) byId('bingoCallBtn').disabled = !hasSlug || !active || paused;
+        const inIntro = state.phase === 'intro';
+        if (byId('bingoCallBtn')) byId('bingoCallBtn').disabled = !hasSlug || !active || paused || inIntro;
+        if (els.skipIntroBtn) els.skipIntroBtn.hidden = !(active && inIntro);
         if (byId('bingoResetCallsBtn')) byId('bingoResetCallsBtn').disabled = !hasSlug || !active;
         if (byId('bingoApplyConfigBtn')) byId('bingoApplyConfigBtn').disabled = !hasSlug;
         if (byId('bingoFlashLineBtn')) byId('bingoFlashLineBtn').disabled = !hasSlug || !active;
@@ -125,20 +138,6 @@
     }
 
     function renderCalledBalls(state) {
-        if (!els.calledStrip) return;
-        els.calledStrip.innerHTML = '';
-        const balls = state.calledBalls || [];
-        if (!balls.length) {
-            els.calledStrip.innerHTML = '<span class="text-muted small">No balls called yet.</span>';
-            return;
-        }
-        balls.forEach((n, idx) => {
-            const chip = document.createElement('span');
-            chip.className =
-                'mdj-bingo-ball-chip' + (idx === balls.length - 1 ? ' mdj-bingo-ball-chip--last' : '');
-            chip.textContent = n;
-            els.calledStrip.appendChild(chip);
-        });
         if (els.lastBall) {
             els.lastBall.textContent = state.lastBall != null ? String(state.lastBall) : '—';
         }
@@ -153,7 +152,10 @@
             syncAdminGrid({ ballCount: Number(els.ballCount?.value) || 90, calledBalls: [], lastBall: null });
             return;
         }
-        if (state.paused) {
+        if (state.phase === 'intro') {
+            els.status.textContent = 'Intro · ' + (state.introRemainingSec || 0) + 's';
+            els.status.className = 'badge bg-info text-dark mdj-bingo-status-pill';
+        } else if (state.paused) {
             els.status.textContent = 'Paused · claim check';
             els.status.className = 'badge bg-warning text-dark mdj-bingo-status-pill is-paused';
         } else if (state.autoCall) {
@@ -167,6 +169,9 @@
         if (els.ballCount) els.ballCount.value = state.ballCount;
         if (els.callInterval) els.callInterval.value = Math.round((state.callIntervalMs || 5000) / 1000);
         if (els.autoCall) els.autoCall.checked = !!state.autoCall;
+        if (els.introSeconds && state.introSeconds != null && !state.active) {
+            els.introSeconds.value = state.introSeconds;
+        }
         renderCalledBalls(state);
         syncAdminGrid(state);
         if (state.playingFor) syncPlayingForUI(state.playingFor);
@@ -218,9 +223,16 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             autoCall: !!els.autoCall?.checked,
-            playingFor: getSelectedPlayingFor()
+            playingFor: getSelectedPlayingFor(),
+            introSeconds: Number(els.introSeconds?.value) || 0
         });
         if (data?.success) renderStatus(data.state);
+        else if (data?.error) alert(data.error);
+    });
+
+    document.getElementById('bingoSkipIntroBtn')?.addEventListener('click', async () => {
+        const data = await apiPost('/games/bingo/skip-intro');
+        if (data?.success && data.state) renderStatus(data.state);
         else if (data?.error) alert(data.error);
     });
 
@@ -246,7 +258,8 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             autoCall: !!els.autoCall?.checked,
-            playingFor: getSelectedPlayingFor()
+            playingFor: getSelectedPlayingFor(),
+            introSeconds: Number(els.introSeconds?.value) || 0
         });
         if (data?.success) renderStatus(data.state);
     });
@@ -274,7 +287,7 @@
     document.getElementById('bingoVerifyBtn')?.addEventListener('click', async () => {
         const eid = eventId();
         const serial = (els.verifySerial?.value || '').trim();
-        const claimType = document.getElementById('bingoVerifyClaimType')?.value || 'house';
+        const claimType = getVerifyClaimType();
         if (!eid) {
             alert('Select an event first.');
             return;
@@ -349,11 +362,11 @@
             els.batchesList.innerHTML = '';
             batches.forEach((b) => {
                 const row = document.createElement('div');
-                row.className = 'd-flex justify-content-between align-items-center gap-2 mb-1 flex-wrap';
-                row.innerHTML = `<span><code>${b.batch_id}</code> <span class="text-muted">(${b.card_count} cards)</span></span>`;
+                row.className = 'mdj-bingo-batch-row';
+                row.innerHTML = `<span><strong>${b.batch_id}</strong> <span class="text-muted">(${b.card_count})</span></span>`;
                 const printBtn = document.createElement('button');
                 printBtn.type = 'button';
-                printBtn.className = 'btn btn-sm btn-outline-primary';
+                printBtn.className = 'btn btn-outline-primary';
                 printBtn.textContent = 'Print';
                 printBtn.addEventListener('click', () => {
                     window.open(`/dj/bingo/${eid}/print?batch=${encodeURIComponent(b.batch_id)}`, '_blank');
@@ -366,17 +379,16 @@
         }
     }
 
-    document.querySelectorAll('.mdj-game-tile[data-game]').forEach((tile) => {
-        tile.addEventListener('click', () => {
-            if (tile.classList.contains('mdj-game-tile--soon')) return;
-            const game = tile.dataset.game;
-            document.querySelectorAll('.mdj-game-panel').forEach((p) => {
-                p.hidden = p.dataset.gamePanel !== game;
+    document.querySelectorAll('.mdj-bingo-verify-type [data-verify-claim]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mdj-bingo-verify-type [data-verify-claim]').forEach((b) => {
+                b.classList.toggle('active', b === btn);
             });
-            document.querySelectorAll('.mdj-game-tile').forEach((t) => t.classList.remove('is-active'));
-            tile.classList.add('is-active');
+            getVerifyClaimType();
         });
     });
+
+    document.getElementById('bingoSubCards-tab')?.addEventListener('shown.bs.tab', loadBatches);
 
     function startPoll() {
         clearInterval(pollTimer);
@@ -385,7 +397,7 @@
 
     document.getElementById('games-tab')?.addEventListener('shown.bs.tab', () => {
         fetchState();
-        loadBatches();
+        if (document.getElementById('bingoSubCards')?.classList.contains('active')) loadBatches();
         startPoll();
     });
 

@@ -12,12 +12,19 @@
     const recentEl = document.getElementById('bingoDisplayRecent');
     const pausedBadge = document.getElementById('bingoDisplayPaused');
     const playingForEl = document.getElementById('bingoDisplayPlayingFor');
+    const introStage = document.getElementById('bingoIntroStage');
+    const introCountdown = document.getElementById('bingoIntroCountdown');
+    const introPlayingFor = document.getElementById('bingoIntroPlayingFor');
+    const introRing = document.getElementById('bingoIntroRing');
     const claimOverlay = document.getElementById('bingoClaimFlashOverlay');
     const claimTitle = document.getElementById('bingoClaimFlashTitle');
     const claimSub = document.getElementById('bingoClaimFlashSub');
     const claimCard = document.getElementById('bingoClaimFlashCard');
     const waitingMessage = document.getElementById('waitingMessage');
+    const qrOverlay = document.getElementById('qrOverlay');
+    const controlPanel = document.getElementById('controlPanel');
 
+    const RING_LEN = 326.7;
     const cellByNumber = new Map();
     let gridBuiltFor = 0;
     let lastRevision = -1;
@@ -25,7 +32,11 @@
     let calledSet = new Set();
     let claimHideTimer = null;
     let pollTimer = null;
+    let tickTimer = null;
     let lastPlayingFor = null;
+    let introEndsAtLocal = null;
+    let introTotalSec = 30;
+    let lastState = null;
 
     function buildGrid(ballCount) {
         if (!gridEl) return;
@@ -36,7 +47,10 @@
             const cell = document.createElement('div');
             cell.className = 'bingo-fs-cell';
             cell.dataset.num = String(n);
-            cell.innerHTML = `<span class="bingo-fs-cell-num">${n}</span><span class="bingo-fs-cell-check" aria-hidden="true"><i class="fas fa-check"></i></span>`;
+            cell.innerHTML =
+                '<span class="bingo-fs-cell-num">' +
+                n +
+                '</span><span class="bingo-fs-cell-check" aria-hidden="true"><i class="fas fa-check"></i></span>';
             gridEl.appendChild(cell);
             cellByNumber.set(n, cell);
         }
@@ -64,7 +78,7 @@
         clearTimeout(claimHideTimer);
         claimTitle.textContent = flash.label || 'Bingo';
         let sub = '';
-        if (flash.serial) sub += `Serial ${flash.serial}`;
+        if (flash.serial) sub += 'Serial ' + flash.serial;
         if (flash.valid === true) sub += (sub ? ' · ' : '') + 'Verified winner';
         if (flash.valid === false) sub += (sub ? ' · ' : '') + 'Not verified';
         if (!sub) sub = 'Calling paused';
@@ -72,10 +86,16 @@
         claimCard?.classList.toggle('invalid', flash.valid === false);
         claimOverlay.classList.add('show');
         layer?.classList.add('claim-active');
-        claimHideTimer = setTimeout(() => {
+        claimHideTimer = setTimeout(function () {
             claimOverlay.classList.remove('show');
             layer?.classList.remove('claim-active');
         }, 5500);
+    }
+
+    function hideUnderlays() {
+        if (waitingMessage) waitingMessage.style.display = 'none';
+        if (qrOverlay) qrOverlay.style.setProperty('display', 'none', 'important');
+        if (controlPanel) controlPanel.style.setProperty('display', 'none', 'important');
     }
 
     function setFullscreenActive(on) {
@@ -84,18 +104,54 @@
             layer.classList.toggle('active', on);
             layer.setAttribute('aria-hidden', on ? 'false' : 'true');
         }
-        if (waitingMessage && on) {
-            waitingMessage.style.display = 'none';
+        if (on) hideUnderlays();
+    }
+
+    function updateIntroUI() {
+        if (!lastState || lastState.phase !== 'intro' || !introEndsAtLocal) {
+            introStage?.setAttribute('hidden', '');
+            layer?.classList.remove('is-intro');
+            return;
+        }
+        introStage?.removeAttribute('hidden');
+        layer?.classList.add('is-intro');
+        const remainingMs = Math.max(0, introEndsAtLocal - Date.now());
+        const sec = Math.ceil(remainingMs / 1000);
+        if (introCountdown) introCountdown.textContent = String(sec);
+        if (introRing && introTotalSec > 0) {
+            const progress = remainingMs / (introTotalSec * 1000);
+            introRing.style.strokeDashoffset = String(RING_LEN * (1 - progress));
+        }
+        const pfLabel = lastState.playingForLabel || '1 Line';
+        if (introPlayingFor) {
+            introPlayingFor.textContent = 'Playing for · ' + pfLabel;
         }
     }
 
+    function syncIntroFromState(state) {
+        if (state.phase === 'intro') {
+            if (state.introSeconds) introTotalSec = state.introSeconds;
+            if (state.introRemainingMs != null) {
+                introEndsAtLocal = Date.now() + state.introRemainingMs;
+            }
+        } else {
+            introEndsAtLocal = null;
+        }
+        updateIntroUI();
+    }
+
     function renderState(state) {
+        lastState = state;
         if (!state.active) {
             setFullscreenActive(false);
             lastPlayingFor = null;
+            introEndsAtLocal = null;
+            introStage?.setAttribute('hidden', '');
+            layer?.classList.remove('is-intro');
             return;
         }
         setFullscreenActive(true);
+        syncIntroFromState(state);
 
         const ballCount = state.ballCount || 90;
         if (ballCount !== gridBuiltFor) buildGrid(ballCount);
@@ -121,7 +177,12 @@
             }
         }
 
-        if (state.lastBall != null && state.lastBall !== lastBallSeen) {
+        if (state.phase === 'intro') {
+            if (lastBallEl) lastBallEl.textContent = '—';
+            if (metaEl) {
+                metaEl.textContent = 'Starting in ' + (state.introRemainingSec || 0) + 's';
+            }
+        } else if (state.lastBall != null && state.lastBall !== lastBallSeen) {
             lastBallSeen = state.lastBall;
             if (lastBallEl) {
                 lastBallEl.textContent = state.lastBall;
@@ -129,14 +190,14 @@
                 void lastBallEl.offsetWidth;
                 lastBallEl.classList.add('ball-pop');
             }
-        } else if (state.lastBall == null && lastBallEl) {
+        } else if (state.lastBall == null && lastBallEl && state.phase !== 'intro') {
             lastBallEl.textContent = '—';
             lastBallEl.classList.remove('ball-pop');
         }
 
-        if (metaEl) {
+        if (metaEl && state.phase !== 'intro') {
             const n = (state.calledBalls || []).length;
-            let text = `${n} of ${ballCount} balls called`;
+            let text = n + ' of ' + ballCount + ' balls called';
             if (state.paused) text += ' · paused';
             else if (state.autoCall) text += ' · auto';
             metaEl.textContent = text;
@@ -147,10 +208,15 @@
         if (recentEl) {
             const recent = (state.calledBalls || []).slice(-8).reverse();
             recentEl.innerHTML = recent
-                .map(
-                    (n, i) =>
-                        `<span class="bingo-fs-recent-ball${i === 0 ? ' is-latest' : ''}">${n}</span>`
-                )
+                .map(function (n, i) {
+                    return (
+                        '<span class="bingo-fs-recent-ball' +
+                        (i === 0 ? ' is-latest' : '') +
+                        '">' +
+                        n +
+                        '</span>'
+                    );
+                })
                 .join('');
         }
 
@@ -162,7 +228,7 @@
     async function pollState() {
         try {
             const res = await fetch(
-                `/api/display/${encodeURIComponent(slug)}/games/bingo/state?consume=1`
+                '/api/display/' + encodeURIComponent(slug) + '/games/bingo/state?consume=1'
             );
             const state = await res.json();
             renderState(state);
@@ -174,14 +240,27 @@
 
     buildGrid(90);
     pollTimer = setInterval(pollState, 700);
+    tickTimer = setInterval(function () {
+        if (lastState?.active && lastState.phase === 'intro') {
+            updateIntroUI();
+            if (introEndsAtLocal && Date.now() >= introEndsAtLocal) {
+                pollState();
+            }
+        }
+    }, 200);
     pollState();
 
-    document.addEventListener('visibilitychange', () => {
+    document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
             clearInterval(pollTimer);
+            clearInterval(tickTimer);
         } else {
             clearInterval(pollTimer);
+            clearInterval(tickTimer);
             pollTimer = setInterval(pollState, 700);
+            tickTimer = setInterval(function () {
+                if (lastState?.active && lastState.phase === 'intro') updateIntroUI();
+            }, 200);
             pollState();
         }
     });

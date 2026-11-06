@@ -17,10 +17,16 @@
         verifySerial: document.getElementById('bingoVerifySerial'),
         verifyResult: document.getElementById('bingoVerifyResult'),
         batchesList: document.getElementById('bingoBatchesList'),
-        targetHint: document.getElementById('bingoTargetHint')
+        targetHint: document.getElementById('bingoTargetHint'),
+        adminGrid: document.getElementById('bingoAdminGrid'),
+        pausedHint: document.getElementById('bingoPausedHint'),
+        resumeBtn: document.getElementById('bingoResumeBtn')
     };
 
     let pollTimer = null;
+    let adminCells = new Map();
+    let adminGridSize = 0;
+    let selectedPlayingFor = 'line';
 
     function slug() {
         return typeof window.mdjGetPromptTargetSlug === 'function' ? window.mdjGetPromptTargetSlug() : null;
@@ -28,6 +34,32 @@
 
     function eventId() {
         return typeof window.mdjGetPromptTargetEventId === 'function' ? window.mdjGetPromptTargetEventId() : null;
+    }
+
+    function getSelectedPlayingFor() {
+        const active = document.querySelector('.mdj-bingo-playing-for [data-playing-for].active');
+        return active?.getAttribute('data-playing-for') || selectedPlayingFor || 'line';
+    }
+
+    function syncPlayingForUI(playingFor) {
+        selectedPlayingFor = playingFor || 'line';
+        document.querySelectorAll('.mdj-bingo-playing-for [data-playing-for]').forEach((btn) => {
+            const match = btn.getAttribute('data-playing-for') === selectedPlayingFor;
+            btn.classList.toggle('active', match);
+        });
+    }
+
+    async function setPlayingFor(playingFor) {
+        syncPlayingForUI(playingFor);
+        const s = slug();
+        if (!s) return;
+        const data = await apiPut('/games/bingo/config', {
+            ballCount: Number(els.ballCount?.value) || 90,
+            callIntervalSeconds: Number(els.callInterval?.value) || 5,
+            autoCall: !!els.autoCall?.checked,
+            playingFor: selectedPlayingFor
+        });
+        if (data?.success && data.state) renderStatus(data.state);
     }
 
     function updateTargetHint() {
@@ -43,21 +75,53 @@
         els.targetHint.innerHTML = `<span class="text-success"><i class="fas fa-tv me-1"></i>Display: <strong>${name || s}</strong></span>`;
     }
 
+    function buildAdminGrid(ballCount) {
+        if (!els.adminGrid) return;
+        els.adminGrid.innerHTML = '';
+        adminCells.clear();
+        adminGridSize = ballCount;
+        for (let n = 1; n <= ballCount; n++) {
+            const cell = document.createElement('div');
+            cell.className = 'mdj-bingo-admin-cell';
+            cell.textContent = n;
+            cell.dataset.num = String(n);
+            els.adminGrid.appendChild(cell);
+            adminCells.set(n, cell);
+        }
+    }
+
+    function syncAdminGrid(state) {
+        const ballCount = state.ballCount || 90;
+        if (ballCount !== adminGridSize) buildAdminGrid(ballCount);
+        const called = new Set(state.calledBalls || []);
+        adminCells.forEach((cell, n) => {
+            cell.classList.toggle('is-called', called.has(n));
+            cell.classList.toggle('is-last', state.lastBall === n);
+        });
+    }
+
     function updateActionButtons(state) {
         const hasSlug = !!slug();
         const active = !!state.active;
+        const paused = !!state.paused;
         const byId = (id) => document.getElementById(id);
         if (byId('bingoStartBtn')) byId('bingoStartBtn').disabled = !hasSlug || active;
         if (byId('bingoStopBtn')) byId('bingoStopBtn').disabled = !hasSlug || !active;
-        if (byId('bingoCallBtn')) byId('bingoCallBtn').disabled = !hasSlug || !active;
+        if (byId('bingoCallBtn')) byId('bingoCallBtn').disabled = !hasSlug || !active || paused;
         if (byId('bingoResetCallsBtn')) byId('bingoResetCallsBtn').disabled = !hasSlug || !active;
         if (byId('bingoApplyConfigBtn')) byId('bingoApplyConfigBtn').disabled = !hasSlug;
-        if (byId('bingoFlashLineBtn')) byId('bingoFlashLineBtn').disabled = !hasSlug;
-        if (byId('bingoFlashTwoLinesBtn')) byId('bingoFlashTwoLinesBtn').disabled = !hasSlug;
-        if (byId('bingoFlashHouseBtn')) byId('bingoFlashHouseBtn').disabled = !hasSlug;
+        if (byId('bingoFlashLineBtn')) byId('bingoFlashLineBtn').disabled = !hasSlug || !active;
+        if (byId('bingoFlashTwoLinesBtn')) byId('bingoFlashTwoLinesBtn').disabled = !hasSlug || !active;
+        if (byId('bingoFlashHouseBtn')) byId('bingoFlashHouseBtn').disabled = !hasSlug || !active;
         if (byId('bingoVerifyBtn')) byId('bingoVerifyBtn').disabled = !hasSlug;
         if (byId('bingoGenCardsBtn')) byId('bingoGenCardsBtn').disabled = !hasSlug;
         if (els.ballCount) els.ballCount.disabled = active;
+        if (els.resumeBtn) {
+            els.resumeBtn.hidden = !(active && paused);
+        }
+        if (els.pausedHint) {
+            els.pausedHint.hidden = !(active && paused);
+        }
     }
 
     function renderCalledBalls(state) {
@@ -86,15 +150,26 @@
             els.status.textContent = 'Not running';
             els.status.className = 'badge bg-secondary mdj-bingo-status-pill';
             updateActionButtons(state);
+            syncAdminGrid({ ballCount: Number(els.ballCount?.value) || 90, calledBalls: [], lastBall: null });
             return;
         }
-        els.status.textContent = state.autoCall ? 'Live · auto-call' : 'Live · manual';
-        els.status.className = 'badge bg-success mdj-bingo-status-pill';
+        if (state.paused) {
+            els.status.textContent = 'Paused · claim check';
+            els.status.className = 'badge bg-warning text-dark mdj-bingo-status-pill is-paused';
+        } else if (state.autoCall) {
+            els.status.textContent = 'Live · auto-call';
+            els.status.className = 'badge bg-success mdj-bingo-status-pill';
+        } else {
+            els.status.textContent = 'Live · manual';
+            els.status.className = 'badge bg-success mdj-bingo-status-pill';
+        }
         updateActionButtons(state);
         if (els.ballCount) els.ballCount.value = state.ballCount;
         if (els.callInterval) els.callInterval.value = Math.round((state.callIntervalMs || 5000) / 1000);
         if (els.autoCall) els.autoCall.checked = !!state.autoCall;
         renderCalledBalls(state);
+        syncAdminGrid(state);
+        if (state.playingFor) syncPlayingForUI(state.playingFor);
     }
 
     async function fetchState() {
@@ -142,7 +217,8 @@
         const data = await apiPost('/games/bingo/start', {
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
-            autoCall: !!els.autoCall?.checked
+            autoCall: !!els.autoCall?.checked,
+            playingFor: getSelectedPlayingFor()
         });
         if (data?.success) renderStatus(data.state);
         else if (data?.error) alert(data.error);
@@ -169,15 +245,27 @@
         const data = await apiPut('/games/bingo/config', {
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
-            autoCall: !!els.autoCall?.checked
+            autoCall: !!els.autoCall?.checked,
+            playingFor: getSelectedPlayingFor()
         });
         if (data?.success) renderStatus(data.state);
     });
 
     async function flashClaim(claimType) {
         const data = await apiPost('/games/bingo/claim-flash', { claimType });
-        if (!data?.success && data?.error) alert(data.error);
+        if (data?.success && data.state) renderStatus(data.state);
+        else if (data?.error) alert(data.error);
     }
+
+    document.getElementById('bingoResumeBtn')?.addEventListener('click', async () => {
+        const data = await apiPost('/games/bingo/resume');
+        if (data?.success && data.state) renderStatus(data.state);
+        else if (data?.error) alert(data.error);
+    });
+
+    document.querySelectorAll('.mdj-bingo-playing-for [data-playing-for]').forEach((btn) => {
+        btn.addEventListener('click', () => setPlayingFor(btn.getAttribute('data-playing-for')));
+    });
 
     document.getElementById('bingoFlashLineBtn')?.addEventListener('click', () => flashClaim('line'));
     document.getElementById('bingoFlashTwoLinesBtn')?.addEventListener('click', () => flashClaim('two-lines'));
@@ -311,6 +399,7 @@
         updateTargetHint();
     });
 
+    buildAdminGrid(Number(els.ballCount?.value) || 90);
     updateTargetHint();
     fetchState();
 })();

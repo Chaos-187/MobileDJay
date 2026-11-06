@@ -1988,7 +1988,8 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
     bingoSession.startBingo(slug, {
         ballCount: req.body.ballCount,
         callIntervalMs,
-        autoCall: !!req.body.autoCall
+        autoCall: !!req.body.autoCall,
+        playingFor: req.body.playingFor
     });
     if (req.body.autoCall) {
         bingoSession.scheduleAutoCall(slug, bingoManualOrAutoCall);
@@ -2023,13 +2024,23 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
     const state = bingoSession.updateBingoConfig(slug, {
         ballCount: req.body.ballCount,
         callIntervalMs: req.body.callIntervalSeconds != null ? Number(req.body.callIntervalSeconds) * 1000 : undefined,
-        autoCall: req.body.autoCall
+        autoCall: req.body.autoCall,
+        playingFor: req.body.playingFor
     });
     bingoSession.clearAutoTimer(slug);
-    if (state.active && state.autoCall) {
+    if (state.active && state.autoCall && !state.paused) {
         bingoSession.scheduleAutoCall(slug, bingoManualOrAutoCall);
     }
     res.json({ success: true, state: bingoSession.publicBingoState(slug) });
+});
+
+app.post('/api/display/:eventSlug/games/bingo/resume', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const result = bingoSession.resumeCalling(slug, bingoManualOrAutoCall);
+    if (result.error) {
+        return res.status(400).json(result);
+    }
+    res.json(result);
 });
 
 app.post('/api/display/:eventSlug/games/bingo/claim-flash', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {

@@ -783,6 +783,7 @@ body.bingo-screen-active {
 .bingo-fs-cell {
     position: relative;
     aspect-ratio: 1;
+    container-type: size;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -794,23 +795,38 @@ body.bingo-screen-active {
 }
 
 .bingo-fs-cell-num {
-    font-size: clamp(0.55rem, 1.4vw, 0.95rem);
+    font-size: clamp(0.38rem, 26cqmin, 0.68rem);
     font-weight: 700;
+    line-height: 1;
     color: rgba(255, 255, 255, 0.35);
     font-family: 'Space Mono', monospace;
+    max-width: 92%;
+    text-align: center;
 }
 
 .bingo-fs-cell-check {
     position: absolute;
-    inset: 0;
+    top: 8%;
+    right: 10%;
+    left: auto;
+    bottom: auto;
+    width: 32%;
+    height: 32%;
+    max-width: 11px;
+    max-height: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
-    color: #fff;
+    font-size: 0.4rem;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.9);
     opacity: 0;
-    transform: scale(0.5);
-    transition: opacity 0.2s, transform 0.25s;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
+
+.bingo-fs-cell-check .fa-check {
+    font-size: inherit;
 }
 
 .bingo-fs-cell.is-called {
@@ -823,8 +839,7 @@ body.bingo-screen-active {
 }
 
 .bingo-fs-cell.is-called .bingo-fs-cell-check {
-    opacity: 0.85;
-    transform: scale(1);
+    opacity: 0.75;
 }
 
 .bingo-fs-cell.is-last {
@@ -836,7 +851,13 @@ body.bingo-screen-active {
 
 .bingo-fs-cell.is-last .bingo-fs-cell-num {
     color: #1a0a00;
-    font-size: clamp(0.65rem, 1.6vw, 1.05rem);
+    font-size: clamp(0.4rem, 28cqmin, 0.72rem);
+    font-weight: 800;
+}
+
+.bingo-fs-cell.is-last .bingo-fs-cell-check {
+    color: rgba(26, 10, 0, 0.65);
+    opacity: 0.6;
 }
 
 .bingo-fs-cell.is-new {

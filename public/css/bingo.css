@@ -1,0 +1,282 @@
+/* ── DJ dashboard — Games / Bingo ── */
+.mdj-game-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.mdj-game-tile {
+    border: 2px solid rgba(255, 102, 0, 0.35);
+    border-radius: 12px;
+    padding: 1rem 0.75rem;
+    text-align: center;
+    background: rgba(255, 102, 0, 0.08);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.mdj-game-tile:hover,
+.mdj-game-tile.is-active {
+    border-color: var(--bs-primary, #ff6600);
+    background: rgba(255, 102, 0, 0.18);
+}
+
+.mdj-game-tile--soon {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.mdj-bingo-status-pill {
+    font-family: var(--bs-font-monospace, monospace);
+    font-size: 0.78rem;
+}
+
+.mdj-bingo-called-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+.mdj-bingo-ball-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mdj-bingo-ball-chip--last {
+    background: #ff6600;
+    color: #111;
+    border-color: #ffb380;
+    transform: scale(1.08);
+}
+
+body:not(.dark-mode) .mdj-bingo-ball-chip {
+    background: #f0f2f5;
+    border-color: #dee2e6;
+}
+
+body:not(.dark-mode) .mdj-bingo-ball-chip--last {
+    background: #ff6600;
+    color: #fff;
+}
+
+.mdj-bingo-claim-btns {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+@media (max-width: 576px) {
+    .mdj-bingo-claim-btns {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Event display overlay ── */
+.bingo-display-layer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 8500;
+    display: none;
+}
+
+.bingo-display-layer.active {
+    display: block;
+}
+
+.bingo-display-panel {
+    position: absolute;
+    left: 50%;
+    bottom: 4vh;
+    transform: translateX(-50%);
+    width: min(92vw, 720px);
+    padding: 1.25rem 1.5rem 1rem;
+    border-radius: 20px;
+    background: linear-gradient(145deg, rgba(10, 12, 28, 0.92), rgba(20, 24, 48, 0.88));
+    border: 2px solid rgba(255, 102, 0, 0.55);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55), 0 0 40px rgba(255, 102, 0, 0.15);
+    text-align: center;
+    color: #fff;
+}
+
+.bingo-display-title {
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.75);
+    margin-bottom: 0.35rem;
+}
+
+.bingo-display-last-ball {
+    font-size: clamp(3.5rem, 14vw, 6.5rem);
+    font-weight: 900;
+    line-height: 1;
+    color: #ffb347;
+    text-shadow: 0 0 30px rgba(255, 102, 0, 0.65);
+    animation: bingoBallPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes bingoBallPop {
+    0% { transform: scale(0.4); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.bingo-display-meta {
+    font-size: 0.95rem;
+    margin-top: 0.35rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.bingo-display-recent {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-top: 0.85rem;
+}
+
+.bingo-display-recent span {
+    width: 2.1rem;
+    height: 2.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.8rem;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.bingo-claim-flash-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    pointer-events: none;
+}
+
+.bingo-claim-flash-overlay.show {
+    display: flex;
+}
+
+.bingo-claim-flash-card {
+    text-align: center;
+    padding: 2rem 3rem;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #ff6600, #ff9933);
+    color: #1a0a00;
+    box-shadow: 0 0 80px rgba(255, 102, 0, 0.55);
+    animation: bingoClaimIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bingo-claim-flash-card.invalid {
+    background: linear-gradient(135deg, #444, #666);
+    color: #fff;
+}
+
+@keyframes bingoClaimIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.bingo-claim-flash-title {
+    font-size: clamp(2rem, 8vw, 4rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.bingo-claim-flash-sub {
+    font-size: clamp(1rem, 3vw, 1.35rem);
+    margin-top: 0.5rem;
+}
+
+/* ── Print layout ── */
+.bingo-print-body {
+    font-family: system-ui, sans-serif;
+    margin: 0;
+    padding: 1rem;
+    background: #eee;
+}
+
+.bingo-print-toolbar {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.bingo-print-page {
+    background: #fff;
+    padding: 1rem 1.25rem 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.bingo-print-header {
+    margin-bottom: 0.75rem;
+}
+
+.bingo-print-brand {
+    font-weight: 700;
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.bingo-print-serial {
+    font-size: 1.1rem;
+    margin: 0.25rem 0;
+}
+
+.bingo-print-event {
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.bingo-card-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.bingo-card-table th,
+.bingo-card-table td {
+    border: 2px solid #222;
+    text-align: center;
+    padding: 0.45rem 0.15rem;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.bingo-card-table th {
+    background: #f5f5f5;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.bingo-cell-blank {
+    background: #fafafa;
+}
+
+.bingo-print-foot {
+    font-size: 0.75rem;
+    color: #666;
+    margin: 0.75rem 0 0;
+}

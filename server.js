@@ -34,7 +34,9 @@ const { JSDOM } = require('jsdom');
 const createDOMPurify = require('dompurify');
 const cors = require('cors');
 const { createPortalCorsOptions } = require('./portal/cors-config');
-const { eventDb, requestDb, messageDb, replyDb, photoDb, trackDb, guestDb, slideshowDb, settingsDb, ensureDefaultEvent } = require('./db/database');
+const { eventDb, requestDb, messageDb, replyDb, photoDb, trackDb, guestDb, slideshowDb, bingoDb, settingsDb, ensureDefaultEvent } = require('./db/database');
+const { generateUK90Ticket, verifyClaim, claimLabel } = require('./lib/bingo');
+const bingoSession = require('./lib/bingo-session');
 const portalRouter = require('./portal/router');
 const djWebAuth = require('./portal/dj-web-auth');
 const app = express();
@@ -1958,6 +1960,163 @@ app.get('/api/display/:eventSlug/yesno-spinner/spin-status', (req, res) => {
 app.post('/api/display/:eventSlug/yesno-spinner/clear-spin', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
     clearYesNoSpinState(req.params.eventSlug);
     res.json({ success: true });
+});
+
+// ==================== Display games — Bingo ====================
+
+function bingoManualOrAutoCall(slug) {
+    return bingoSession.callBall(slug);
+}
+
+app.get('/api/display/:eventSlug/games/bingo/state', (req, res) => {
+    const slug = req.params.eventSlug;
+    const payload = bingoSession.publicBingoState(slug);
+    const forDisplay = req.query.consume === '1' || req.query.role === 'display';
+    if (forDisplay) {
+        const flash = bingoSession.consumeClaimFlash(slug);
+        if (flash) payload.claimFlash = flash;
+    } else {
+        const pending = bingoSession.getBingoState(slug).claimFlash;
+        if (pending) payload.claimFlash = { ...pending };
+    }
+    res.json(payload);
+});
+
+app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const callIntervalMs = Math.max(2000, (Number(req.body.callIntervalSeconds) || 5) * 1000);
+    bingoSession.startBingo(slug, {
+        ballCount: req.body.ballCount,
+        callIntervalMs,
+        autoCall: !!req.body.autoCall
+    });
+    if (req.body.autoCall) {
+        bingoSession.scheduleAutoCall(slug, bingoManualOrAutoCall);
+    }
+    res.json({ success: true, state: bingoSession.publicBingoState(slug) });
+});
+
+app.post('/api/display/:eventSlug/games/bingo/stop', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    bingoSession.clearAutoTimer(slug);
+    bingoSession.stopBingo(slug);
+    res.json({ success: true, state: bingoSession.publicBingoState(slug) });
+});
+
+app.post('/api/display/:eventSlug/games/bingo/call', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const result = bingoManualOrAutoCall(slug);
+    if (result.error) {
+        return res.status(400).json(result);
+    }
+    res.json(result);
+});
+
+app.post('/api/display/:eventSlug/games/bingo/reset-calls', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    bingoSession.resetCalls(slug);
+    res.json({ success: true, state: bingoSession.publicBingoState(slug) });
+});
+
+app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const state = bingoSession.updateBingoConfig(slug, {
+        ballCount: req.body.ballCount,
+        callIntervalMs: req.body.callIntervalSeconds != null ? Number(req.body.callIntervalSeconds) * 1000 : undefined,
+        autoCall: req.body.autoCall
+    });
+    bingoSession.clearAutoTimer(slug);
+    if (state.active && state.autoCall) {
+        bingoSession.scheduleAutoCall(slug, bingoManualOrAutoCall);
+    }
+    res.json({ success: true, state: bingoSession.publicBingoState(slug) });
+});
+
+app.post('/api/display/:eventSlug/games/bingo/claim-flash', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const claimType = String(req.body.claimType || '').trim();
+    if (!['line', 'two-lines', 'house'].includes(claimType)) {
+        return res.status(400).json({ error: 'claimType must be line, two-lines, or house' });
+    }
+    const flash = bingoSession.setClaimFlash(slug, claimType, {
+        serial: req.body.serial || null,
+        valid: req.body.valid
+    });
+    res.json({ success: true, flash, state: bingoSession.publicBingoState(slug) });
+});
+
+app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const eventId = req.event.id;
+    const serial = String(req.body.serial || '').trim();
+    const claimType = String(req.body.claimType || '').trim();
+    if (!serial) {
+        return res.status(400).json({ error: 'serial is required' });
+    }
+    if (!['line', 'two-lines', 'house'].includes(claimType)) {
+        return res.status(400).json({ error: 'claimType must be line, two-lines, or house' });
+    }
+    const card = bingoDb.getBySerial(eventId, serial);
+    if (!card || !card.grid) {
+        return res.status(404).json({ error: 'Unknown card serial for this event' });
+    }
+    const slug = req.event.slug;
+    const state = bingoSession.getBingoState(slug);
+    const valid = verifyClaim(card.grid, state.calledBalls, claimType);
+    const flash = bingoSession.setClaimFlash(slug, claimType, { serial, valid });
+    res.json({
+        success: true,
+        valid,
+        serial,
+        claimType,
+        claimLabel: claimLabel(claimType),
+        flash,
+        state: bingoSession.publicBingoState(slug)
+    });
+});
+
+app.post('/api/events/:id/bingo/cards/generate', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const eventId = req.event.id;
+    const count = Math.max(1, Math.min(200, Number(req.body.count) || 10));
+    const ballCount = Math.max(9, Math.min(90, Number(req.body.ballCount) || 90));
+    const batchId = String(req.body.batchId || `B${Date.now().toString(36).toUpperCase()}`).slice(0, 32);
+    const prefix = String(req.event.slug || 'EVT')
+        .replace(/[^a-z0-9]/gi, '')
+        .slice(0, 6)
+        .toUpperCase();
+
+    const existingInBatch = bingoDb.countByBatch(eventId, batchId);
+    const cards = [];
+    for (let i = 0; i < count; i++) {
+        const seq = String(existingInBatch + i + 1).padStart(4, '0');
+        const serial = `${prefix}-${batchId}-${seq}`;
+        const grid = generateUK90Ticket(ballCount);
+        cards.push({ serial, grid });
+    }
+    bingoDb.addMany(eventId, batchId, cards);
+    res.json({
+        success: true,
+        batchId,
+        count: cards.length,
+        printUrl: `/dj/bingo/${eventId}/print?batch=${encodeURIComponent(batchId)}`,
+        eventId
+    });
+});
+
+app.get('/api/events/:id/bingo/batches', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    res.json({ batches: bingoDb.listBatches(req.event.id) });
+});
+
+app.get('/dj/bingo/:id/print', djWebAuth.requireDjWebAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const batchId = String(req.query.batch || 'default').trim();
+    const cards = bingoDb.listByBatch(req.event.id, batchId);
+    if (!cards.length) {
+        return res.status(404).render('error', { error: 'No bingo cards found for this batch.', eventSlug: req.event.slug });
+    }
+    res.render('bingo-cards-print', {
+        event: req.event,
+        batchId,
+        cards
+    });
 });
 
 // ==================== Tracks Played ====================

@@ -294,6 +294,21 @@ try {
     /* exists */
 }
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS bingo_cards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        serial TEXT NOT NULL,
+        batch_id TEXT NOT NULL DEFAULT 'default',
+        grid_json TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+        UNIQUE(event_id, serial)
+    );
+    CREATE INDEX IF NOT EXISTS idx_bingo_cards_event ON bingo_cards(event_id);
+    CREATE INDEX IF NOT EXISTS idx_bingo_cards_batch ON bingo_cards(event_id, batch_id);
+`);
+
 // Backfill share tokens for existing events
 {
     const missing = db.prepare(`SELECT id FROM events WHERE share_token IS NULL OR share_token = ''`).all();
@@ -1317,6 +1332,79 @@ const slideshowDb = {
     }
 };
 
+const bingoDb = {
+    _parseRow(row) {
+        if (!row) return null;
+        let grid;
+        try {
+            grid = JSON.parse(row.grid_json);
+        } catch {
+            grid = null;
+        }
+        return {
+            id: row.id,
+            eventId: row.event_id,
+            serial: row.serial,
+            batchId: row.batch_id,
+            grid,
+            createdAt: row.created_at
+        };
+    },
+
+    getBySerial(eventId, serial) {
+        const row = db
+            .prepare('SELECT * FROM bingo_cards WHERE event_id = ? AND serial = ? COLLATE NOCASE')
+            .get(eventId, String(serial || '').trim());
+        return this._parseRow(row);
+    },
+
+    listBatches(eventId) {
+        return db
+            .prepare(
+                `SELECT batch_id, COUNT(*) AS card_count, MIN(created_at) AS created_at
+                 FROM bingo_cards WHERE event_id = ?
+                 GROUP BY batch_id ORDER BY created_at DESC`
+            )
+            .all(eventId);
+    },
+
+    listByBatch(eventId, batchId) {
+        const rows = db
+            .prepare(
+                `SELECT * FROM bingo_cards WHERE event_id = ? AND batch_id = ? ORDER BY id ASC`
+            )
+            .all(eventId, batchId);
+        return rows.map((r) => this._parseRow(r));
+    },
+
+    countByBatch(eventId, batchId) {
+        const row = db
+            .prepare('SELECT COUNT(*) AS n FROM bingo_cards WHERE event_id = ? AND batch_id = ?')
+            .get(eventId, batchId);
+        return row?.n || 0;
+    },
+
+    addMany(eventId, batchId, cards) {
+        const insert = db.prepare(`
+            INSERT INTO bingo_cards (event_id, serial, batch_id, grid_json)
+            VALUES (?, ?, ?, ?)
+        `);
+        const txn = db.transaction((items) => {
+            for (const item of items) {
+                insert.run(eventId, item.serial, batchId, JSON.stringify(item.grid));
+            }
+        });
+        txn(cards);
+        return cards.length;
+    },
+
+    deleteBatch(eventId, batchId) {
+        return db
+            .prepare('DELETE FROM bingo_cards WHERE event_id = ? AND batch_id = ?')
+            .run(eventId, batchId).changes;
+    }
+};
+
 // Global settings (key/value store with JSON values)
 const settingsDb = {
     get: function(key, fallback = null) {
@@ -1372,6 +1460,7 @@ module.exports = {
     trackDb,
     guestDb,
     slideshowDb,
+    bingoDb,
     settingsDb,
     ensureDefaultEvent,
     generateSlug

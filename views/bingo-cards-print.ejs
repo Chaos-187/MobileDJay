@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo cards — <%= event.name %></title>
+    <link href="/css/bingo.css?v=1" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .bingo-print-page { break-after: page; page-break-after: always; }
+            .bingo-print-page:last-child { break-after: auto; page-break-after: auto; }
+        }
+    </style>
+</head>
+<body class="bingo-print-body">
+    <div class="bingo-print-toolbar no-print">
+        <p><strong><%= event.name %></strong> — batch <code><%= batchId %></code> (<%= cards.length %> cards)</p>
+        <button type="button" onclick="window.print()">Print</button>
+        <button type="button" onclick="window.close()">Close</button>
+    </div>
+
+    <% cards.forEach(function(card) { %>
+    <section class="bingo-print-page">
+        <header class="bingo-print-header">
+            <div class="bingo-print-brand">EYUP EVENTS — Bingo</div>
+            <div class="bingo-print-serial">Serial: <strong><%= card.serial %></strong></div>
+            <div class="bingo-print-event"><%= event.name %></div>
+        </header>
+        <table class="bingo-card-table" aria-label="Bingo card <%= card.serial %>">
+            <thead>
+                <tr>
+                    <th>1–9</th>
+                    <th>10–19</th>
+                    <th>20–29</th>
+                    <th>30–39</th>
+                    <th>40–49</th>
+                    <th>50–59</th>
+                    <th>60–69</th>
+                    <th>70–79</th>
+                    <th>80–90</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% card.grid.forEach(function(row) { %>
+                <tr>
+                    <% row.forEach(function(cell) { %>
+                    <td class="<%= cell == null ? 'bingo-cell-blank' : '' %>"><%= cell == null ? '' : cell %></td>
+                    <% }); %>
+                </tr>
+                <% }); %>
+            </tbody>
+        </table>
+        <p class="bingo-print-foot">Mark called numbers. Claims: one line · two lines · full house.</p>
+    </section>
+    <% }); %>
+</body>
+</html>

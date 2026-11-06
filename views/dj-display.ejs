@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
-    <link href="/css/bingo.css?v=11" rel="stylesheet">
+    <link href="/css/bingo.css?v=12" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -1296,7 +1296,10 @@
         </div>
     </div>
     <div class="bingo-claim-flash-overlay" id="bingoClaimFlashOverlay">
+        <div class="bingo-claim-flash-burst" aria-hidden="true"></div>
+        <div class="bingo-claim-flash-shimmer" aria-hidden="true"></div>
         <div class="bingo-claim-flash-card" id="bingoClaimFlashCard">
+            <div class="bingo-claim-flash-badge" id="bingoClaimFlashBadge" aria-hidden="true"></div>
             <div class="bingo-claim-flash-title" id="bingoClaimFlashTitle">Bingo</div>
             <div class="bingo-claim-flash-sub" id="bingoClaimFlashSub"></div>
         </div>
@@ -1452,6 +1455,6 @@
     </script>
     <script src="/js/mdj-binary-spinner.js"></script>
     <script src="/js/dj-display.js?v=7"></script>
-    <script src="/js/dj-display-bingo.js?v=6"></script>
+    <script src="/js/dj-display-bingo.js?v=7"></script>
 </body>
 </html>

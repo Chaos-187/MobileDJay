@@ -122,6 +122,29 @@
         calledSet = nextSet;
     }
 
+    const CLAIM_TIER_PREFIX = 'claim-tier-';
+
+    function applyClaimTierClasses(overlay, flash) {
+        if (!overlay) return;
+        const tiers = ['line', 'two-lines', 'house'];
+        tiers.forEach(function (t) {
+            overlay.classList.remove(CLAIM_TIER_PREFIX + t);
+        });
+        overlay.classList.remove('claim-invalid');
+        const ct = flash.claimType;
+        if (ct === 'two-lines') overlay.classList.add(CLAIM_TIER_PREFIX + 'two-lines');
+        else if (ct === 'house') overlay.classList.add(CLAIM_TIER_PREFIX + 'house');
+        else overlay.classList.add(CLAIM_TIER_PREFIX + 'line');
+        if (flash.valid === false) overlay.classList.add('claim-invalid');
+    }
+
+    function claimFlashDurationMs(flash) {
+        if (flash.valid === false) return 4200;
+        if (flash.claimType === 'house') return 9000;
+        if (flash.claimType === 'two-lines') return 7000;
+        return 5500;
+    }
+
     function showClaim(flash) {
         if (!flash || !claimOverlay) return;
         clearTimeout(claimHideTimer);
@@ -133,12 +156,29 @@
         if (!sub) sub = 'Calling paused';
         claimSub.textContent = sub;
         claimCard?.classList.toggle('invalid', flash.valid === false);
+        applyClaimTierClasses(claimOverlay, flash);
+        const badge = document.getElementById('bingoClaimFlashBadge');
+        if (badge) {
+            if (flash.valid === false) {
+                badge.textContent = '';
+            } else if (flash.claimType === 'house') {
+                badge.textContent = '★ FULL HOUSE ★';
+            } else if (flash.claimType === 'two-lines') {
+                badge.textContent = '★★ TWO LINES ★★';
+            } else {
+                badge.textContent = '★ LINE ★';
+            }
+        }
+        claimOverlay.classList.remove('show');
+        void claimOverlay.offsetWidth;
+        void claimCard?.offsetWidth;
         claimOverlay.classList.add('show');
         layer?.classList.add('claim-active');
+        const hideMs = claimFlashDurationMs(flash);
         claimHideTimer = setTimeout(function () {
             claimOverlay.classList.remove('show');
             layer?.classList.remove('claim-active');
-        }, 5500);
+        }, hideMs);
     }
 
     function speakBallNumber(num) {

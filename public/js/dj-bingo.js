@@ -11,6 +11,7 @@
         callInterval: document.getElementById('bingoCallInterval'),
         introSeconds: document.getElementById('bingoIntroSeconds'),
         autoCall: document.getElementById('bingoAutoCall'),
+        voiceCall: document.getElementById('bingoVoiceCall'),
         skipIntroBtn: document.getElementById('bingoSkipIntroBtn'),
         calledStrip: document.getElementById('bingoCalledStrip'),
         lastBall: document.getElementById('bingoLastBall'),
@@ -105,6 +106,7 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             autoCall: !!els.autoCall?.checked,
+            voiceCall: !!els.voiceCall?.checked,
             playingFor: selectedPlayingFor,
             introSeconds: Number(els.introSeconds?.value) || 0
         });
@@ -188,6 +190,7 @@
             els.status.textContent = 'Not running';
             els.status.className = 'badge bg-secondary mdj-bingo-status-pill';
             updateActionButtons(state);
+            if (els.voiceCall && state.voiceCall != null) els.voiceCall.checked = !!state.voiceCall;
             syncAdminGrid({ ballCount: Number(els.ballCount?.value) || 90, calledBalls: [], lastBall: null });
             return;
         }
@@ -208,6 +211,7 @@
         if (els.ballCount) els.ballCount.value = state.ballCount;
         if (els.callInterval) els.callInterval.value = Math.round((state.callIntervalMs || 5000) / 1000);
         if (els.autoCall) els.autoCall.checked = !!state.autoCall;
+        if (els.voiceCall) els.voiceCall.checked = !!state.voiceCall;
         if (els.introSeconds && state.introSeconds != null && !state.active) {
             els.introSeconds.value = state.introSeconds;
         }
@@ -262,6 +266,7 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             autoCall: !!els.autoCall?.checked,
+            voiceCall: !!els.voiceCall?.checked,
             playingFor: getSelectedPlayingFor(),
             introSeconds: Number(els.introSeconds?.value) || 0
         });
@@ -297,6 +302,7 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             autoCall: !!els.autoCall?.checked,
+            voiceCall: !!els.voiceCall?.checked,
             playingFor: getSelectedPlayingFor(),
             introSeconds: Number(els.introSeconds?.value) || 0
         });

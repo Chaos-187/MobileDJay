@@ -1131,11 +1131,18 @@
                                             <label class="mdj-bingo-field-label" for="bingoCallInterval">Auto every (s)</label>
                                             <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoCallInterval" min="2" max="120" value="5">
                                         </div>
-                                        <div class="col-6 d-flex align-items-end">
-                                            <div class="form-check form-switch mb-0 ps-0 w-100 mdj-bingo-switch-row">
+                                        <div class="col-12">
+                                            <div class="form-check form-switch mb-2 ps-0 w-100 mdj-bingo-switch-row">
                                                 <input class="form-check-input" type="checkbox" id="bingoAutoCall">
-                                                <label class="form-check-label" for="bingoAutoCall">Auto-call</label>
+                                                <label class="form-check-label" for="bingoAutoCall">Auto-call next ball</label>
                                             </div>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-check form-switch mb-0 ps-0 w-100 mdj-bingo-switch-row">
+                                                <input class="form-check-input" type="checkbox" id="bingoVoiceCall">
+                                                <label class="form-check-label" for="bingoVoiceCall">Voice on display</label>
+                                            </div>
+                                            <p class="small text-muted mb-0 mt-1">Reads each new number aloud on the venue screen (browser). Tap the display once if the browser asks for permission.</p>
                                         </div>
                                     </div>
                                     <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-muted mb-2" id="bingoApplyConfigBtn">Save setup</button>
@@ -1314,7 +1321,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/dj-dashboard.js?v=4"></script>
-    <script src="/js/dj-bingo.js?v=9"></script>
+    <script src="/js/dj-bingo.js?v=10"></script>
 
     <script>
     document.getElementById('djLogoutBtn')?.addEventListener('click', function () {

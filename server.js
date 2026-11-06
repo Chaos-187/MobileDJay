@@ -1990,6 +1990,7 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
         ballCount: req.body.ballCount,
         callIntervalMs,
         autoCall: !!req.body.autoCall,
+        voiceCall: !!req.body.voiceCall,
         playingFor: req.body.playingFor,
         introSeconds: req.body.introSeconds
     });
@@ -2029,6 +2030,7 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
         ballCount: req.body.ballCount,
         callIntervalMs: req.body.callIntervalSeconds != null ? Number(req.body.callIntervalSeconds) * 1000 : undefined,
         autoCall: req.body.autoCall,
+        voiceCall: req.body.voiceCall,
         playingFor: req.body.playingFor,
         introSeconds: req.body.introSeconds
     });

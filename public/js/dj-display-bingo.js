@@ -37,6 +37,51 @@
     let introEndsAtLocal = null;
     let introTotalSec = 30;
     let lastState = null;
+    let gridResizeObserver = null;
+    let gridColBreakpointMql = null;
+    let lastSpokenBall = null;
+    let prevVoiceCall = false;
+
+    function getDisplayGridCols() {
+        return window.matchMedia('(max-width: 900px)').matches ? 9 : 10;
+    }
+
+    function fitDisplayGrid() {
+        if (!gridEl || !gridBuiltFor) return;
+        const cols = getDisplayGridCols();
+        const rows = Math.ceil(gridBuiltFor / cols);
+        const w = gridEl.clientWidth;
+        const h = gridEl.clientHeight;
+        if (w < 16 || h < 16) return;
+        const cs = window.getComputedStyle(gridEl);
+        const gx = parseFloat(cs.columnGap) || 0;
+        const gy = parseFloat(cs.rowGap) || gx || 0;
+        const cellW = (w - gx * Math.max(0, cols - 1)) / cols;
+        const cellH = (h - gy * Math.max(0, rows - 1)) / rows;
+        const px = Math.max(7, Math.min(36, Math.min(cellW, cellH) * 0.36));
+        const lastPx = Math.min(px * 1.08, px + 3);
+        gridEl.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+        gridEl.style.gridTemplateRows = 'repeat(' + rows + ', minmax(0, 1fr))';
+        gridEl.style.setProperty('--bingo-display-cell-fs', px + 'px');
+        gridEl.style.setProperty('--bingo-display-cell-fs-last', lastPx + 'px');
+    }
+
+    function bindDisplayGridFit() {
+        if (!gridEl || typeof ResizeObserver === 'undefined') return;
+        if (gridResizeObserver) gridResizeObserver.disconnect();
+        gridResizeObserver = new ResizeObserver(function () {
+            requestAnimationFrame(fitDisplayGrid);
+        });
+        gridResizeObserver.observe(gridEl);
+        if (!gridColBreakpointMql) {
+            gridColBreakpointMql = window.matchMedia('(max-width: 900px)');
+            const onBp = function () {
+                requestAnimationFrame(fitDisplayGrid);
+            };
+            if (gridColBreakpointMql.addEventListener) gridColBreakpointMql.addEventListener('change', onBp);
+            else if (gridColBreakpointMql.addListener) gridColBreakpointMql.addListener(onBp);
+        }
+    }
 
     function buildGrid(ballCount) {
         if (!gridEl) return;
@@ -54,6 +99,10 @@
             gridEl.appendChild(cell);
             cellByNumber.set(n, cell);
         }
+        bindDisplayGridFit();
+        requestAnimationFrame(function () {
+            requestAnimationFrame(fitDisplayGrid);
+        });
     }
 
     function syncGrid(calledBalls, lastBall) {
@@ -90,6 +139,42 @@
             claimOverlay.classList.remove('show');
             layer?.classList.remove('claim-active');
         }, 5500);
+    }
+
+    function speakBallNumber(num) {
+        if (typeof window === 'undefined' || !window.speechSynthesis) return;
+        try {
+            window.speechSynthesis.cancel();
+        } catch (e) {
+            /* ignore */
+        }
+        const u = new SpeechSynthesisUtterance('Number ' + num);
+        u.lang = 'en-GB';
+        u.rate = 0.92;
+        u.pitch = 1;
+        try {
+            window.speechSynthesis.speak(u);
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
+    function maybeAnnounceBall(state) {
+        if (!state.voiceCall) {
+            lastSpokenBall = state.lastBall;
+            return;
+        }
+        if (!state.active || state.phase === 'intro' || state.paused) {
+            return;
+        }
+        if (state.lastBall == null) {
+            return;
+        }
+        if (state.lastBall === lastSpokenBall) {
+            return;
+        }
+        lastSpokenBall = state.lastBall;
+        speakBallNumber(state.lastBall);
     }
 
     function hideUnderlays() {
@@ -142,10 +227,21 @@
 
     function renderState(state) {
         lastState = state;
+        if (state.voiceCall && !prevVoiceCall) {
+            lastSpokenBall = state.lastBall;
+        }
+        prevVoiceCall = !!state.voiceCall;
         if (!state.active) {
             setFullscreenActive(false);
             lastPlayingFor = null;
             introEndsAtLocal = null;
+            lastSpokenBall = null;
+            prevVoiceCall = false;
+            try {
+                window.speechSynthesis?.cancel();
+            } catch (e) {
+                /* ignore */
+            }
             introStage?.setAttribute('hidden', '');
             layer?.classList.remove('is-intro');
             return;
@@ -190,6 +286,7 @@
                 void lastBallEl.offsetWidth;
                 lastBallEl.classList.add('ball-pop');
             }
+            maybeAnnounceBall(state);
         } else if (state.lastBall == null && lastBallEl && state.phase !== 'intro') {
             lastBallEl.textContent = '—';
             lastBallEl.classList.remove('ball-pop');
@@ -200,6 +297,7 @@
             let text = n + ' of ' + ballCount + ' balls called';
             if (state.paused) text += ' · paused';
             else if (state.autoCall) text += ' · auto';
+            if (state.voiceCall) text += ' · voice';
             metaEl.textContent = text;
         }
 
@@ -252,6 +350,11 @@
 
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
+            try {
+                window.speechSynthesis?.cancel();
+            } catch (e) {
+                /* ignore */
+            }
             clearInterval(pollTimer);
             clearInterval(tickTimer);
         } else {

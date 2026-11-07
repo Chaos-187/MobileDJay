@@ -1,0 +1,230 @@
+/* Virtual horse / dog racing — venue display */
+
+.racing-display-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: none;
+    flex-direction: column;
+    background: linear-gradient(180deg, #0c1a14 0%, #1a2f23 40%, #0d2818 100%);
+    color: #f0fdf4;
+    overflow: hidden;
+}
+
+.racing-display-layer.active {
+    display: flex;
+}
+
+body.racing-screen-active .racing-display-layer.active {
+    display: flex;
+}
+
+.racing-fs-header {
+    text-align: center;
+    padding: clamp(0.75rem, 2vw, 1.5rem) 1rem 0.5rem;
+}
+
+.racing-fs-title {
+    font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.racing-fs-meta {
+    font-size: 0.9rem;
+    opacity: 0.75;
+    margin: 0.25rem 0 0;
+}
+
+.racing-countdown-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 3;
+}
+
+.racing-countdown-stage[hidden] {
+    display: none !important;
+}
+
+.racing-countdown-num {
+    font-size: clamp(4rem, 18vw, 9rem);
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow: 0 0 40px rgba(251, 191, 36, 0.5);
+}
+
+.racing-track-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 4vw 6vh;
+    gap: clamp(0.35rem, 1.2vh, 0.65rem);
+}
+
+.racing-lane {
+    position: relative;
+    height: clamp(2.4rem, 6vh, 3.5rem);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: visible;
+}
+
+.racing-lane::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: repeating-linear-gradient(
+        180deg,
+        #fff 0,
+        #fff 8px,
+        #1e293b 8px,
+        #1e293b 16px
+    );
+    border-radius: 0 6px 6px 0;
+}
+
+.racing-lane__label {
+    position: absolute;
+    left: 0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.65rem;
+    font-weight: 800;
+    opacity: 0.55;
+    z-index: 2;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.racing-runner {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    will-change: left;
+    transition: left 80ms linear;
+    z-index: 1;
+}
+
+.racing-runner__silk {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.racing-runner__glyph {
+    font-size: clamp(1.4rem, 3.5vw, 2rem);
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.racing-runner__name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px #000;
+    display: none;
+}
+
+@media (min-width: 768px) {
+    .racing-runner__name {
+        display: block;
+    }
+}
+
+.racing-winner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.72);
+    z-index: 4;
+    animation: racing-winner-in 0.5s ease;
+}
+
+.racing-winner-overlay[hidden] {
+    display: none !important;
+}
+
+.racing-winner-card {
+    text-align: center;
+    padding: 2rem 3rem;
+    border-radius: 1rem;
+    background: linear-gradient(145deg, #fbbf24, #ea580c);
+    color: #1a0800;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.racing-winner-card h2 {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-weight: 900;
+    margin: 0 0 0.25rem;
+}
+
+.racing-winner-card p {
+    margin: 0;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+@keyframes racing-winner-in {
+    from {
+        opacity: 0;
+        transform: scale(0.92);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* DJ dashboard — virtual racing panel */
+.mdj-racing-console .mdj-racing-lineup {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.mdj-racing-lineup-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.85rem;
+}
+
+.mdj-racing-lineup-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+}
+
+.mdj-games-kind-picker .nav-link {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.mdj-games-kind-picker .nav-link.active {
+    background: #ea580c;
+}

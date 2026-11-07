@@ -406,6 +406,7 @@ body.gh-spa:not(.gh-locked) #ghGate {
 .gh-action__icon--karaoke { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
 .gh-action__icon--chat { background: linear-gradient(135deg, #f59e0b, #ef4444); }
 .gh-action__icon--cam { background: linear-gradient(135deg, #ec4899, #a855f7); }
+.gh-action__icon--bingo { background: linear-gradient(135deg, #f59e0b, #ea580c); }
 
 .gh-action__title {
     margin: 0;

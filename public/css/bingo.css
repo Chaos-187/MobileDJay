@@ -1,4 +1,118 @@
 /* ═══════════════════════════════════════════════════════════════
+   Guest mobile bingo (/event/:slug/bingo)
+   ═══════════════════════════════════════════════════════════════ */
+
+body.mdj-guest-bingo-page {
+    min-height: 100dvh;
+    background: #0a0a12;
+    color: #f0f0f5;
+}
+
+.guest-bingo-main {
+    max-width: 480px;
+    padding: 1rem 1rem 2rem;
+}
+
+.guest-bingo-back {
+    color: rgba(255, 255, 255, 0.75);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.guest-bingo-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0.5rem 0 0;
+}
+
+.guest-bingo-sub {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.55);
+    margin-bottom: 1rem;
+}
+
+.guest-bingo-game-pick {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 1px solid rgba(255, 140, 60, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-bottom: 0.5rem;
+    color: inherit;
+}
+
+.guest-bingo-game-pick__title {
+    display: block;
+    font-weight: 700;
+}
+
+.guest-bingo-game-pick__meta {
+    display: block;
+    font-size: 0.78rem;
+    opacity: 0.7;
+}
+
+.guest-bingo-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: clamp(0.65rem, 2.8vw, 0.82rem);
+    margin: 0.75rem 0 1rem;
+}
+
+.guest-bingo-table th,
+.guest-bingo-table td {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    text-align: center;
+    padding: 0.35rem 0.15rem;
+}
+
+.guest-bingo-table td.is-blank {
+    background: rgba(0, 0, 0, 0.25);
+}
+
+.guest-bingo-table td.is-marked {
+    background: linear-gradient(145deg, #ff7a1a, #e85d00);
+    color: #1a0800;
+    font-weight: 800;
+}
+
+.guest-bingo-called-ball {
+    font-size: 2rem;
+    font-weight: 900;
+    color: #ffb340;
+}
+
+.guest-bingo-claim-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+}
+
+.mdj-bingo-games-list {
+    max-height: 220px;
+    overflow-y: auto;
+}
+
+.mdj-bingo-game-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mdj-bingo-game-row.is-selected {
+    background: rgba(255, 122, 26, 0.12);
+    border-radius: 8px;
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    DJ dashboard — Games / Bingo admin
    ═══════════════════════════════════════════════════════════════ */
 
@@ -1062,41 +1176,204 @@ body.bingo-screen-active {
 
 .bingo-fs-ball-stage {
     position: relative;
-    width: min(28vw, 220px);
-    height: min(28vw, 220px);
+    width: min(32vw, 260px);
+    min-height: min(42vw, 300px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 0.5rem 0 1rem;
+    padding-top: min(18vw, 130px);
+}
+
+/* ── Ball draw machine (tumbler between calls) ── */
+.bingo-ball-machine {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(30vw, 200px);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.45;
+    transition: opacity 0.4s ease;
+}
+
+.bingo-display-layer.is-drawing .bingo-ball-machine {
+    opacity: 1;
+}
+
+.bbm-cabinet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.bbm-globe {
+    position: relative;
+    width: min(28vw, 180px);
+    height: min(28vw, 180px);
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.22), rgba(40, 50, 90, 0.55) 42%, rgba(8, 10, 24, 0.92) 100%);
+    border: 3px solid rgba(255, 160, 80, 0.55);
+    box-shadow:
+        inset 0 -12px 28px rgba(0, 0, 0, 0.55),
+        inset 0 8px 18px rgba(255, 200, 120, 0.15),
+        0 8px 24px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+}
+
+.bingo-display-layer.is-drawing .bbm-globe {
+    animation: bbmGlobeShake 0.55s ease-in-out infinite;
+}
+
+@keyframes bbmGlobeShake {
+    0%, 100% { transform: rotate(-1.5deg); }
+    50% { transform: rotate(1.5deg); }
+}
+
+.bbm-globe-shine {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.35), transparent 42%);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.bbm-tumble {
+    position: absolute;
+    inset: 12%;
+    z-index: 1;
+}
+
+.bbm-mini-ball {
+    position: absolute;
+    width: clamp(22px, 4.2vw, 30px);
+    height: clamp(22px, 4.2vw, 30px);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0.5rem 0 1rem;
+    border-radius: 50%;
+    font-size: clamp(0.55rem, 1.8vw, 0.72rem);
+    font-weight: 800;
+    color: #1a0800;
+    background: radial-gradient(circle at 30% 25%, #fff 0%, #ffb340 55%, #e85d00 100%);
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    animation: bbmMiniBallTumble 1.2s ease-in-out infinite;
+    animation-delay: calc(var(--bbm-i, 0) * -0.15s);
+}
+
+.bingo-display-layer.is-drawing .bbm-mini-ball {
+    animation-duration: 0.45s;
+}
+
+@keyframes bbmMiniBallTumble {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(6%, -14%) rotate(35deg); }
+    50% { transform: translate(-8%, 10%) rotate(-25deg); }
+    75% { transform: translate(10%, 6%) rotate(20deg); }
+}
+
+.bbm-neck {
+    width: 42%;
+    height: 14px;
+    margin-top: -4px;
+    background: linear-gradient(180deg, #3a4258, #1a1f2e);
+    border-left: 2px solid rgba(255, 140, 60, 0.35);
+    border-right: 2px solid rgba(255, 140, 60, 0.35);
+    border-radius: 0 0 6px 6px;
+}
+
+.bbm-ramp {
+    position: relative;
+    width: 28%;
+    height: 28px;
+    background: linear-gradient(180deg, #2a3142, #12161f);
+    border-radius: 0 0 8px 8px;
+    border: 1px solid rgba(255, 140, 60, 0.25);
+    overflow: visible;
+}
+
+.bbm-ramp-ball {
+    position: absolute;
+    left: 50%;
+    top: -10px;
+    width: 20px;
+    height: 20px;
+    margin-left: -10px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, #fff 0%, #ff9a40 60%, #e85d00 100%);
+    opacity: 0;
+    transform: translateY(-20px) scale(0.6);
+}
+
+.bingo-display-layer.is-drawing .bbm-ramp-ball {
+    animation: bbmRampFeed 0.85s ease-in-out infinite;
+}
+
+@keyframes bbmRampFeed {
+    0% { opacity: 0; transform: translateY(-24px) scale(0.5); }
+    35% { opacity: 1; transform: translateY(0) scale(1); }
+    70% { opacity: 0.3; transform: translateY(18px) scale(0.85); }
+    100% { opacity: 0; transform: translateY(28px) scale(0.5); }
+}
+
+.bingo-display-last-ball.is-rolling {
+    animation: none;
+    filter: blur(0.4px);
+    opacity: 0.92;
+}
+
+.bingo-display-layer.is-drawing .bingo-fs-ball-ring {
+    animation-duration: 1.2s;
+    border-color: rgba(255, 200, 80, 0.75);
+}
+
+.bingo-display-layer.is-drawing .bingo-fs-ball-glow {
+    animation-duration: 0.7s;
 }
 
 .bingo-fs-ball-ring {
     position: absolute;
-    inset: 0;
+    left: 50%;
+    bottom: 0;
+    width: min(28vw, 220px);
+    height: min(28vw, 220px);
+    margin: 0;
+    transform: translateX(-50%);
     border-radius: 50%;
     border: 3px solid rgba(255, 102, 0, 0.45);
     animation: bingoRingSpin 8s linear infinite;
+    z-index: 1;
 }
 
 @keyframes bingoRingSpin {
-    to { transform: rotate(360deg); }
+    to { transform: translateX(-50%) rotate(360deg); }
 }
 
 .bingo-fs-ball-glow {
     position: absolute;
-    inset: 12%;
+    left: 50%;
+    bottom: 12%;
+    width: min(22vw, 172px);
+    height: min(22vw, 172px);
+    transform: translateX(-50%);
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255, 140, 0, 0.45), transparent 65%);
     animation: bingoGlowPulse 2s ease-in-out infinite;
+    z-index: 1;
 }
 
 @keyframes bingoGlowPulse {
-    0%, 100% { transform: scale(0.92); opacity: 0.7; }
-    50% { transform: scale(1.05); opacity: 1; }
+    0%, 100% { transform: translateX(-50%) scale(0.92); opacity: 0.7; }
+    50% { transform: translateX(-50%) scale(1.05); opacity: 1; }
 }
 
 .bingo-display-last-ball {
     position: relative;
+    z-index: 2;
     font-size: clamp(3.5rem, 12vw, 5.5rem);
     font-weight: 900;
     line-height: 1;

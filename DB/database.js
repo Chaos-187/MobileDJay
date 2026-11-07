@@ -309,6 +309,66 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_bingo_cards_batch ON bingo_cards(event_id, batch_id);
 `);
 
+db.exec(`
+    CREATE TABLE IF NOT EXISTS bingo_games (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        batch_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'preparing'
+            CHECK(status IN ('preparing', 'join_open', 'live', 'ended')),
+        ball_count INTEGER NOT NULL DEFAULT 90,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+        UNIQUE(event_id, batch_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_bingo_games_event ON bingo_games(event_id);
+    CREATE INDEX IF NOT EXISTS idx_bingo_games_status ON bingo_games(event_id, status);
+`);
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS bingo_player_claims (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        game_id INTEGER NOT NULL,
+        customer_name TEXT NOT NULL,
+        serial TEXT,
+        claim_type TEXT NOT NULL CHECK(claim_type IN ('line', 'two-lines', 'house')),
+        valid_on_card INTEGER,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'dismissed')),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (game_id) REFERENCES bingo_games(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_bingo_claims_game ON bingo_player_claims(game_id);
+`);
+
+try {
+    db.exec(`ALTER TABLE events ADD COLUMN enable_bingo INTEGER DEFAULT 0`);
+} catch (e) {
+    /* exists */
+}
+
+try {
+    db.exec(`ALTER TABLE bingo_cards ADD COLUMN game_id INTEGER`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bingo_cards ADD COLUMN assigned_to TEXT`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bingo_cards ADD COLUMN device_id TEXT`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bingo_cards ADD COLUMN assigned_at TEXT`);
+} catch (e) {
+    /* exists */
+}
+
 // Backfill share tokens for existing events
 {
     const missing = db.prepare(`SELECT id FROM events WHERE share_token IS NULL OR share_token = ''`).all();
@@ -506,10 +566,10 @@ const eventDb = {
                                'display_bg_slideshow_enabled', 'display_bg_slideshow_seconds',
                                'display_bg_overlay_opacity', 'display_show_waiting_message',
                                'display_card_color', 'display_card_opacity', 'display_message_style', 'photo_banner_style',
-                               'show_tracks_played_guest', 'show_public'];
+                               'show_tracks_played_guest', 'show_public', 'enable_bingo'];
         const intFlagFields = new Set([
             'is_active', 'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',
-            'enable_tips', 'enable_photos', 'show_tracks_played_guest', 'show_public',
+            'enable_tips', 'enable_photos', 'enable_bingo', 'show_tracks_played_guest', 'show_public',
             'display_show_qr', 'display_bg_slideshow_enabled', 'display_show_waiting_message',
             'guest_menu_compact', 'guest_show_option_desc', 'guest_hero_compact'
         ]);
@@ -1344,9 +1404,13 @@ const bingoDb = {
         return {
             id: row.id,
             eventId: row.event_id,
+            gameId: row.game_id,
             serial: row.serial,
             batchId: row.batch_id,
             grid,
+            assignedTo: row.assigned_to,
+            deviceId: row.device_id,
+            assignedAt: row.assigned_at,
             createdAt: row.created_at
         };
     },
@@ -1384,14 +1448,15 @@ const bingoDb = {
         return row?.n || 0;
     },
 
-    addMany(eventId, batchId, cards) {
+    addMany(eventId, batchId, cards, gameId = null) {
         const insert = db.prepare(`
-            INSERT INTO bingo_cards (event_id, serial, batch_id, grid_json)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO bingo_cards (event_id, serial, batch_id, grid_json, game_id)
+            VALUES (?, ?, ?, ?, ?)
         `);
+        const gid = gameId != null ? gameId : null;
         const txn = db.transaction((items) => {
             for (const item of items) {
-                insert.run(eventId, item.serial, batchId, JSON.stringify(item.grid));
+                insert.run(eventId, item.serial, batchId, JSON.stringify(item.grid), gid);
             }
         });
         txn(cards);
@@ -1402,6 +1467,243 @@ const bingoDb = {
         return db
             .prepare('DELETE FROM bingo_cards WHERE event_id = ? AND batch_id = ?')
             .run(eventId, batchId).changes;
+    },
+
+    countUnassignedForGame(gameId) {
+        const row = db
+            .prepare(
+                `SELECT COUNT(*) AS n FROM bingo_cards WHERE game_id = ? AND (assigned_to IS NULL OR TRIM(assigned_to) = '')`
+            )
+            .get(gameId);
+        return row?.n || 0;
+    },
+
+    _normalizeDevice(deviceId) {
+        if (deviceId == null || !String(deviceId).trim()) return null;
+        return String(deviceId).trim().slice(0, 64);
+    },
+
+    getAssignedForPlayer(gameId, customerName) {
+        const name = normalizeGuestName(customerName);
+        if (!name) return null;
+        const row = db
+            .prepare(
+                `SELECT * FROM bingo_cards WHERE game_id = ? AND assigned_to = ? COLLATE NOCASE LIMIT 1`
+            )
+            .get(gameId, name);
+        return this._parseRow(row);
+    },
+
+    /**
+     * Resolve card for guest play/claim: name match + device binding (same model as event guest check-in).
+     * Binds device_id on first access when the DJ assigned a card without a device.
+     */
+    resolveGuestCardAccess(gameId, customerName, deviceId) {
+        const name = normalizeGuestName(customerName);
+        const device = this._normalizeDevice(deviceId);
+        if (!name || !device) return { error: 'invalid_identity' };
+        const card = this.getAssignedForPlayer(gameId, name);
+        if (!card) return { error: 'not_assigned' };
+        if (card.deviceId && card.deviceId !== device) {
+            return { error: 'device_mismatch' };
+        }
+        if (!card.deviceId) {
+            db.prepare('UPDATE bingo_cards SET device_id = ? WHERE id = ? AND (device_id IS NULL OR TRIM(device_id) = "")').run(
+                device,
+                card.id
+            );
+            const rebound = db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(card.id);
+            return { card: this._parseRow(rebound) };
+        }
+        return { card };
+    },
+
+    assignNextAvailable(gameId, customerName, deviceId) {
+        const name = normalizeGuestName(customerName);
+        const device = this._normalizeDevice(deviceId);
+        if (!name || !device) return { error: 'invalid_identity' };
+        const existing = this.getAssignedForPlayer(gameId, name);
+        if (existing) {
+            if (existing.deviceId && existing.deviceId !== device) {
+                return { error: 'name_taken' };
+            }
+            if (!existing.deviceId) {
+                db.prepare(
+                    'UPDATE bingo_cards SET device_id = ? WHERE id = ? AND (device_id IS NULL OR TRIM(device_id) = "")'
+                ).run(device, existing.id);
+                const rebound = db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(existing.id);
+                return { card: this._parseRow(rebound) };
+            }
+            return { card: existing };
+        }
+        const assign = db.transaction(() => {
+            const row = db
+                .prepare(
+                    `SELECT id FROM bingo_cards
+                     WHERE game_id = ? AND (assigned_to IS NULL OR TRIM(assigned_to) = '')
+                     ORDER BY id ASC LIMIT 1`
+                )
+                .get(gameId);
+            if (!row) return null;
+            db.prepare(
+                `UPDATE bingo_cards SET assigned_to = ?, device_id = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`
+            ).run(name, device, row.id);
+            return db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(row.id);
+        });
+        const row = assign();
+        if (!row) return { error: 'sold_out' };
+        return { card: this._parseRow(row) };
+    },
+
+    /** DJ dashboard: reserve next card for a guest name without binding a device yet. */
+    assignNextAvailableDj(gameId, customerName) {
+        const name = normalizeGuestName(customerName);
+        if (!name) return null;
+        const existing = this.getAssignedForPlayer(gameId, name);
+        if (existing) return existing;
+        const assign = db.transaction(() => {
+            const row = db
+                .prepare(
+                    `SELECT id FROM bingo_cards
+                     WHERE game_id = ? AND (assigned_to IS NULL OR TRIM(assigned_to) = '')
+                     ORDER BY id ASC LIMIT 1`
+                )
+                .get(gameId);
+            if (!row) return null;
+            db.prepare(
+                `UPDATE bingo_cards SET assigned_to = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`
+            ).run(name, row.id);
+            return db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(row.id);
+        });
+        return this._parseRow(assign());
+    },
+
+    assignBySerial(eventId, serial, customerName, deviceId) {
+        const name = normalizeGuestName(customerName);
+        const row = db
+            .prepare('SELECT * FROM bingo_cards WHERE event_id = ? AND serial = ? COLLATE NOCASE')
+            .get(eventId, String(serial || '').trim());
+        if (!row) return null;
+        db.prepare(
+            `UPDATE bingo_cards SET assigned_to = ?, device_id = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`
+        ).run(name, deviceId || null, row.id);
+        return this._parseRow(db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(row.id));
+    },
+
+    listAssignmentsForGame(gameId) {
+        const rows = db
+            .prepare(
+                `SELECT * FROM bingo_cards WHERE game_id = ? AND assigned_to IS NOT NULL AND TRIM(assigned_to) != ''
+                 ORDER BY assigned_at DESC`
+            )
+            .all(gameId);
+        return rows.map((r) => this._parseRow(r));
+    }
+};
+
+const bingoGameDb = {
+    _parseRow(row) {
+        if (!row) return null;
+        return {
+            id: row.id,
+            eventId: row.event_id,
+            title: row.title,
+            batchId: row.batch_id,
+            status: row.status,
+            ballCount: row.ball_count,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at
+        };
+    },
+
+    listByEvent(eventId) {
+        const rows = db
+            .prepare(`SELECT * FROM bingo_games WHERE event_id = ? ORDER BY id DESC`)
+            .all(eventId);
+        return rows.map((r) => this._parseRow(r));
+    },
+
+    getById(gameId) {
+        return this._parseRow(db.prepare('SELECT * FROM bingo_games WHERE id = ?').get(gameId));
+    },
+
+    getLiveForEvent(eventId) {
+        return this._parseRow(
+            db.prepare(`SELECT * FROM bingo_games WHERE event_id = ? AND status = 'live' ORDER BY id DESC LIMIT 1`).get(
+                eventId
+            )
+        );
+    },
+
+    create(eventId, { title, batchId, ballCount = 90 }) {
+        const t = String(title || 'Bingo game').trim().slice(0, 120) || 'Bingo game';
+        const batch = String(batchId || `G${Date.now().toString(36)}`).slice(0, 32);
+        const bc = Math.max(9, Math.min(90, Number(ballCount) || 90));
+        const result = db
+            .prepare(
+                `INSERT INTO bingo_games (event_id, title, batch_id, status, ball_count) VALUES (?, ?, ?, 'preparing', ?)`
+            )
+            .run(eventId, t, batch, bc);
+        return this.getById(result.lastInsertRowid);
+    },
+
+    setStatus(gameId, status) {
+        const allowed = ['preparing', 'join_open', 'live', 'ended'];
+        if (!allowed.includes(status)) return null;
+        const game = this.getById(gameId);
+        if (!game) return null;
+        if (status === 'live') {
+            db.prepare(`UPDATE bingo_games SET status = 'ended', updated_at = CURRENT_TIMESTAMP WHERE event_id = ? AND status = 'live' AND id != ?`).run(
+                game.eventId,
+                gameId
+            );
+        }
+        db.prepare(`UPDATE bingo_games SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(status, gameId);
+        return this.getById(gameId);
+    },
+
+    update(gameId, patch) {
+        const game = this.getById(gameId);
+        if (!game) return null;
+        if (patch.title != null) {
+            db.prepare(`UPDATE bingo_games SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                String(patch.title).trim().slice(0, 120),
+                gameId
+            );
+        }
+        if (patch.ballCount != null) {
+            db.prepare(`UPDATE bingo_games SET ball_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                Math.max(9, Math.min(90, Number(patch.ballCount) || 90)),
+                gameId
+            );
+        }
+        return this.getById(gameId);
+    }
+};
+
+const bingoClaimDb = {
+    add(gameId, { customerName, serial, claimType, validOnCard }) {
+        const result = db
+            .prepare(
+                `INSERT INTO bingo_player_claims (game_id, customer_name, serial, claim_type, valid_on_card)
+                 VALUES (?, ?, ?, ?, ?)`
+            )
+            .run(gameId, customerName, serial || null, claimType, validOnCard ? 1 : 0);
+        return result.lastInsertRowid;
+    },
+
+    listPending(gameId) {
+        return db
+            .prepare(
+                `SELECT * FROM bingo_player_claims WHERE game_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 20`
+            )
+            .all(gameId);
+    },
+
+    dismissAll(gameId) {
+        return db
+            .prepare(`UPDATE bingo_player_claims SET status = 'dismissed' WHERE game_id = ? AND status = 'pending'`)
+            .run(gameId).changes;
     }
 };
 
@@ -1461,6 +1763,8 @@ module.exports = {
     guestDb,
     slideshowDb,
     bingoDb,
+    bingoGameDb,
+    bingoClaimDb,
     settingsDb,
     ensureDefaultEvent,
     generateSlug

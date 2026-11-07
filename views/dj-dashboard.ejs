@@ -13,6 +13,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/bingo.css?v=10" rel="stylesheet">
+    <link href="/css/racing.css?v=1" rel="stylesheet">
     <style>
         .request-card {
             transition: all 0.3s ease;
@@ -1011,7 +1012,18 @@
 
             <!-- Games Tab -->
             <div class="tab-pane fade mdj-games-tab" id="games" role="tabpanel">
-                <div class="mdj-bingo-topbar">
+                <ul class="nav nav-pills mdj-games-kind-picker mb-2 gap-1" id="mdjGamesKindPicker" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link active" data-games-kind="bingo" id="gamesKindBingo"><i class="fas fa-table-cells me-1"></i>Bingo</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link" data-games-kind="horse" id="gamesKindHorse"><i class="fas fa-horse me-1"></i>Virtual horses</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link" data-games-kind="dog" id="gamesKindDog"><i class="fas fa-dog me-1"></i>Virtual dogs</button>
+                    </li>
+                </ul>
+                <div class="mdj-bingo-topbar" id="mdjGamesTopbarBingo">
                     <div class="mdj-bingo-topbar-title">
                         <i class="fas fa-table-cells text-warning" aria-hidden="true"></i>
                         <span>Bingo</span>
@@ -1022,6 +1034,23 @@
                     </a>
                 </div>
                 <p id="bingoTargetHint" class="mdj-bingo-hint small text-muted mb-2"></p>
+                <div class="mdj-bingo-topbar mb-2" id="mdjGamesTopbarRacing" hidden>
+                    <div class="mdj-bingo-topbar-title">
+                        <i class="fas fa-flag-checkered text-warning" aria-hidden="true"></i>
+                        <span id="racingPanelTitle">Virtual horses</span>
+                        <span id="racingRunStatus" class="badge bg-secondary mdj-bingo-status-pill">Idle</span>
+                    </div>
+                    <a id="openDisplayLinkRacing" href="#" target="_blank" class="btn btn-outline-primary mdj-bingo-touch-btn-sm" style="display:none;">
+                        <i class="fas fa-tv" aria-hidden="true"></i><span class="d-none d-sm-inline ms-1">Display</span>
+                    </a>
+                </div>
+                <div class="mdj-bingo-surface mb-2 p-2" id="bingoGameSelectWrap" aria-label="Active bingo game">
+                    <label class="mdj-bingo-field-label" for="bingoActiveGameSelect">Game</label>
+                    <select id="bingoActiveGameSelect" class="form-select form-select-lg mdj-bingo-input mb-2">
+                        <option value="">— Legacy / live game —</option>
+                    </select>
+                    <p id="bingoActiveGameMeta" class="small text-muted mb-0"></p>
+                </div>
 
                 <div id="gamePanelBingo" class="mdj-bingo-console" data-game-panel="bingo">
                     <ul class="nav nav-pills mdj-bingo-subtabs" id="bingoSubTabs" role="tablist">
@@ -1096,6 +1125,38 @@
                         <!-- Prepare: cards + setup -->
                         <div class="tab-pane fade" id="bingoSubPrepare" role="tabpanel">
                             <div class="mdj-bingo-prepare-stack">
+                                <section class="mdj-bingo-surface" aria-label="Bingo games">
+                                    <h3 class="mdj-bingo-surface-title"><i class="fas fa-layer-group me-1 text-warning" aria-hidden="true"></i>Games &amp; players</h3>
+                                    <p class="mdj-bingo-pane-lead mb-3">Create a game, generate cards, open join for the guest hub, then select it above to run calls.</p>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-12">
+                                            <label class="mdj-bingo-field-label" for="bingoNewGameTitle">Title</label>
+                                            <input type="text" class="form-control form-control-lg mdj-bingo-input" id="bingoNewGameTitle" placeholder="e.g. Eyes down — Game 1" maxlength="80">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="mdj-bingo-field-label" for="bingoNewGameCards">Cards</label>
+                                            <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoNewGameCards" min="0" max="200" value="30">
+                                        </div>
+                                        <div class="col-6 d-flex align-items-end">
+                                            <div class="form-check form-switch mb-2">
+                                                <input class="form-check-input" type="checkbox" id="bingoNewGameOpenJoin" checked>
+                                                <label class="form-check-label" for="bingoNewGameOpenJoin">Open join on hub</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-outline mb-3" id="bingoCreateGameBtn">
+                                        <i class="fas fa-plus"></i> Create game
+                                    </button>
+                                    <div id="bingoGamesList" class="mdj-bingo-games-list small mb-3"></div>
+                                    <label class="mdj-bingo-field-label" for="bingoAssignName">Assign card to name</label>
+                                    <div class="input-group mb-2">
+                                        <input type="text" class="form-control form-control-lg mdj-bingo-input" id="bingoAssignName" placeholder="Guest name" autocomplete="off">
+                                        <button type="button" class="btn mdj-bingo-btn-outline" id="bingoAssignBtn">Assign</button>
+                                    </div>
+                                    <p id="bingoAssignResult" class="small mb-2"></p>
+                                    <h4 class="h6 text-muted mt-3">Joined players</h4>
+                                    <div id="bingoPlayersList" class="mdj-bingo-games-list small"></div>
+                                </section>
                                 <section class="mdj-bingo-surface" aria-label="Print cards">
                                     <h3 class="mdj-bingo-surface-title"><i class="fas fa-print me-1 text-info" aria-hidden="true"></i>Cards</h3>
                                     <p class="mdj-bingo-pane-lead mb-3">Generate printable sheets before the game.</p>
@@ -1150,6 +1211,37 @@
                                 </section>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="gamePanelRacing" class="mdj-racing-console mdj-bingo-console" data-game-panel="racing" hidden>
+                    <p class="mdj-bingo-hint small text-muted mb-3">Run a countdown then race on the venue display — great for sweepstakes or hype between rounds.</p>
+                    <div class="mdj-bingo-prepare-stack">
+                        <section class="mdj-bingo-surface" aria-label="Race setup">
+                            <h3 class="mdj-bingo-surface-title"><i class="fas fa-sliders me-1 text-info"></i>Setup</h3>
+                            <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                    <label class="mdj-bingo-field-label" for="racingRunnerCount">Runners</label>
+                                    <input type="number" class="form-control form-control-lg mdj-bingo-input" id="racingRunnerCount" min="4" max="8" value="6">
+                                </div>
+                                <div class="col-4">
+                                    <label class="mdj-bingo-field-label" for="racingCountdownSec">Countdown (s)</label>
+                                    <input type="number" class="form-control form-control-lg mdj-bingo-input" id="racingCountdownSec" min="0" max="30" value="5">
+                                </div>
+                                <div class="col-4">
+                                    <label class="mdj-bingo-field-label" for="racingDurationSec">Race (s)</label>
+                                    <input type="number" class="form-control form-control-lg mdj-bingo-input" id="racingDurationSec" min="5" max="60" value="14">
+                                </div>
+                            </div>
+                            <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-muted mb-2" id="racingApplyConfigBtn">Save setup</button>
+                            <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-outline mb-3" id="racingNewLineupBtn"><i class="fas fa-shuffle"></i> New lineup</button>
+                            <div id="racingLineupList" class="mdj-racing-lineup mb-3"></div>
+                            <div class="mdj-bingo-action-grid">
+                                <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-go" id="racingStartBtn"><i class="fas fa-play"></i> Start race</button>
+                                <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-stop" id="racingStopBtn"><i class="fas fa-stop"></i> Stop</button>
+                                <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-secondary mdj-bingo-touch-action--wide" id="racingSkipCountdownBtn" hidden><i class="fas fa-forward"></i> Skip countdown</button>
+                            </div>
+                        </section>
                     </div>
                 </div>
             </div>
@@ -1321,7 +1413,9 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/dj-dashboard.js?v=4"></script>
-    <script src="/js/dj-bingo.js?v=10"></script>
+    <script src="/js/dj-games-picker.js?v=1"></script>
+    <script src="/js/dj-bingo.js?v=11"></script>
+    <script src="/js/dj-racing.js?v=1"></script>
 
     <script>
     document.getElementById('djLogoutBtn')?.addEventListener('click', function () {
@@ -1493,6 +1587,7 @@
         function updateDisplayLink() {
             const link = document.getElementById('openDisplayLink');
             const linkGames = document.getElementById('openDisplayLinkGames');
+            const linkRacing = document.getElementById('openDisplayLinkRacing');
             const slug = getSelectedEventSlug() || getPromptTargetSlug();
             const spinnerLink = document.getElementById('karaokeSpinnerDisplayLink');
             const guestSpinnerLink = document.getElementById('guestSpinnerDisplayLink');
@@ -1502,6 +1597,10 @@
                 if (linkGames) {
                     linkGames.href = '/dj/display/' + slug;
                     linkGames.style.display = '';
+                }
+                if (linkRacing) {
+                    linkRacing.href = '/dj/display/' + slug;
+                    linkRacing.style.display = '';
                 }
                 if (spinnerLink) {
                     spinnerLink.href =
@@ -1514,6 +1613,7 @@
             } else {
                 link.style.display = 'none';
                 if (linkGames) linkGames.style.display = 'none';
+                if (linkRacing) linkRacing.style.display = 'none';
                 if (spinnerLink) spinnerLink.href = '/karaoke-spinner';
                 if (guestSpinnerLink) guestSpinnerLink.href = '/guest-spinner';
             }

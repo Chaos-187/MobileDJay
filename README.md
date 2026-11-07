@@ -85,6 +85,7 @@ Only **active** events with **show public** enabled appear. `/events` redirects 
 | [`docs/NOW-PLAYING-API.md`](docs/NOW-PLAYING-API.md) | Now playing endpoint for VirtualDJ / integrations |
 | [`docs/deploy-self-hosted.md`](docs/deploy-self-hosted.md) | GitHub Actions + PM2 deployment |
 | [`docs/dj-portal-auth.md`](docs/dj-portal-auth.md) | DJ login, env vars, booking ↔ event access |
+| [`docs/bingo-mobile.md`](docs/bingo-mobile.md) | Multi-game bingo, card assignment, guest phone play |
 
 ## Technology stack
 

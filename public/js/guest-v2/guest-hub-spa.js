@@ -153,6 +153,7 @@
         if (f.karaoke) actions += actionTile('karaoke', 'fa-microphone', 'Karaoke', 'Grab the mic', 'music');
         if (f.messages) actions += actionTile('chat', 'fa-comment-dots', 'Messages', 'Chat with the DJ', 'chat');
         if (f.photos) actions += actionTile('camera', 'fa-camera', 'Event Cam', 'Snap for the album', 'camera');
+        if (f.bingo) actions += actionTile('bingo', 'fa-table-cells', 'Bingo', 'Play on your phone', 'bingo');
 
         return '<div class="gh-vinyl-wrap">' +
                 '<div id="ghVinyl" class="gh-vinyl">' +
@@ -168,7 +169,16 @@
     }
 
     function actionTile(mode, icon, title, desc, tab) {
-        var iconClass = mode === 'karaoke' ? 'karaoke' : mode === 'chat' ? 'chat' : mode === 'camera' ? 'cam' : 'songs';
+        var iconClass =
+            mode === 'karaoke'
+                ? 'karaoke'
+                : mode === 'chat'
+                  ? 'chat'
+                  : mode === 'camera'
+                    ? 'cam'
+                    : mode === 'bingo'
+                      ? 'bingo'
+                      : 'songs';
         return '<button type="button" class="gh-action" data-action="' + mode + '" data-tab="' + tab + '">' +
             '<span class="gh-action__icon gh-action__icon--' + iconClass + '"><i class="fas ' + icon + '"></i></span>' +
             '<span class="gh-action__title">' + esc(title) + '</span>' +
@@ -236,6 +246,19 @@
         }
         if (f.tips && cfg.tipLinks && cfg.tipLinks.length) {
             items += moreItem('button', 'tips', 'fa-heart', 'Tip the DJ', 'Show your appreciation');
+        }
+        if (f.bingo) {
+            items +=
+                '<a class="gh-more-item" href="/event/' +
+                escAttr(slug) +
+                '/bingo">' +
+                '<span class="gh-more-item__icon"><i class="fas fa-table-cells"></i></span>' +
+                '<span class="gh-more-item__body">' +
+                '<p class="gh-more-item__title">Bingo</p>' +
+                '<p class="gh-more-item__sub">Join a game and mark your card</p>' +
+                '</span>' +
+                '<i class="fas fa-chevron-right" style="color:var(--gh-muted);font-size:0.8rem"></i>' +
+                '</a>';
         }
         items += moreItem('button', 'rename', 'fa-user-pen', 'Change name', 'Use a different display name');
         items += '<a class="gh-more-item" href="/event/' + escAttr(slug) + '/classic">' +
@@ -344,7 +367,9 @@
                 var action = btn.getAttribute('data-action');
                 var tab = btn.getAttribute('data-tab');
                 if (action === 'camera') openCamera();
-                else if (tab === 'music') {
+                else if (action === 'bingo') {
+                    window.location.href = '/event/' + encodeURIComponent(slug) + '/bingo';
+                } else if (tab === 'music') {
                     state.musicMode = action === 'karaoke' ? 'karaoke' : 'songs';
                     setTab('music');
                     syncMusicSegment();

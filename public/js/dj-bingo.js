@@ -23,10 +23,21 @@
         targetHint: document.getElementById('bingoTargetHint'),
         adminGrid: document.getElementById('bingoAdminGrid'),
         pausedHint: document.getElementById('bingoPausedHint'),
-        resumeBtn: document.getElementById('bingoResumeBtn')
+        resumeBtn: document.getElementById('bingoResumeBtn'),
+        gameSelect: document.getElementById('bingoActiveGameSelect'),
+        gameMeta: document.getElementById('bingoActiveGameMeta'),
+        gamesList: document.getElementById('bingoGamesList'),
+        playersList: document.getElementById('bingoPlayersList'),
+        newGameTitle: document.getElementById('bingoNewGameTitle'),
+        newGameCards: document.getElementById('bingoNewGameCards'),
+        newGameOpenJoin: document.getElementById('bingoNewGameOpenJoin'),
+        assignName: document.getElementById('bingoAssignName'),
+        assignResult: document.getElementById('bingoAssignResult')
     };
 
     let pollTimer = null;
+    let gamesCache = [];
+    let selectedGameId = null;
     let adminCells = new Map();
     let adminGridSize = 0;
     let selectedPlayingFor = 'line';
@@ -77,6 +88,201 @@
         return typeof window.mdjGetPromptTargetEventId === 'function' ? window.mdjGetPromptTargetEventId() : null;
     }
 
+    function storageKeyForGame() {
+        const eid = eventId();
+        return eid ? `mdj_bingo_game_${eid}` : null;
+    }
+
+    function getActiveGameId() {
+        if (els.gameSelect && els.gameSelect.value) {
+            return parseInt(els.gameSelect.value, 10);
+        }
+        return selectedGameId;
+    }
+
+    function persistSelectedGame(id) {
+        selectedGameId = id || null;
+        const key = storageKeyForGame();
+        if (key) {
+            if (id) sessionStorage.setItem(key, String(id));
+            else sessionStorage.removeItem(key);
+        }
+    }
+
+    function withGameId(body) {
+        const gid = getActiveGameId();
+        const out = body ? { ...body } : {};
+        if (gid) out.gameId = gid;
+        return out;
+    }
+
+    function statusLabel(st) {
+        const map = {
+            preparing: 'Preparing',
+            join_open: 'Join open',
+            live: 'Live',
+            ended: 'Ended'
+        };
+        return map[st] || st;
+    }
+
+    function syncGameMeta() {
+        if (!els.gameMeta) return;
+        const gid = getActiveGameId();
+        if (!gid) {
+            els.gameMeta.textContent = 'No game selected — uses legacy session or whichever game is live.';
+            return;
+        }
+        const g = gamesCache.find((x) => x.id === gid);
+        if (!g) {
+            els.gameMeta.textContent = '';
+            return;
+        }
+        els.gameMeta.textContent = `${g.title} · ${statusLabel(g.status)} · ${g.unassignedCards ?? '?'} cards free · ${g.assignments ?? 0} assigned`;
+    }
+
+    function populateGameSelect() {
+        if (!els.gameSelect) return;
+        const prev = els.gameSelect.value;
+        els.gameSelect.innerHTML = '<option value="">— Legacy / auto live —</option>';
+        gamesCache.forEach((g) => {
+            const opt = document.createElement('option');
+            opt.value = String(g.id);
+            opt.textContent = `${g.title} (${statusLabel(g.status)})`;
+            els.gameSelect.appendChild(opt);
+        });
+        const key = storageKeyForGame();
+        const stored = key ? sessionStorage.getItem(key) : null;
+        if (prev && gamesCache.some((g) => String(g.id) === prev)) {
+            els.gameSelect.value = prev;
+        } else if (stored && gamesCache.some((g) => String(g.id) === stored)) {
+            els.gameSelect.value = stored;
+        } else {
+            const live = gamesCache.find((g) => g.status === 'live');
+            const open = gamesCache.find((g) => g.status === 'join_open');
+            if (live) els.gameSelect.value = String(live.id);
+            else if (open) els.gameSelect.value = String(open.id);
+        }
+        persistSelectedGame(els.gameSelect.value ? parseInt(els.gameSelect.value, 10) : null);
+        syncGameMeta();
+    }
+
+    function renderGamesList() {
+        if (!els.gamesList) return;
+        if (!gamesCache.length) {
+            els.gamesList.innerHTML = '<p class="text-muted mb-0">No games yet — create one below.</p>';
+            return;
+        }
+        const gid = getActiveGameId();
+        els.gamesList.innerHTML = gamesCache
+            .map((g) => {
+                const sel = gid === g.id ? ' is-selected' : '';
+                return (
+                    `<div class="mdj-bingo-game-row${sel}" data-game-id="${g.id}">` +
+                    `<div><strong>${escapeHtml(g.title)}</strong><br><span class="text-muted">${statusLabel(g.status)} · ${g.unassignedCards} free · ${g.assignments} players</span></div>` +
+                    `<div class="btn-group btn-group-sm">` +
+                    (g.status === 'preparing'
+                        ? `<button type="button" class="btn btn-outline-success bingo-game-open-join" data-id="${g.id}">Open join</button>`
+                        : '') +
+                    (g.status === 'join_open' || g.status === 'preparing'
+                        ? `<button type="button" class="btn btn-outline-secondary bingo-game-end-join" data-id="${g.id}">Close join</button>`
+                        : '') +
+                    (g.status !== 'ended'
+                        ? `<button type="button" class="btn btn-outline-warning bingo-game-end" data-id="${g.id}">End</button>`
+                        : '') +
+                    `<button type="button" class="btn btn-outline-primary bingo-game-use" data-id="${g.id}">Use</button>` +
+                    `</div></div>`
+                );
+            })
+            .join('');
+        els.gamesList.querySelectorAll('.bingo-game-open-join').forEach((btn) => {
+            btn.addEventListener('click', () => setGameStatus(btn.dataset.id, 'join_open'));
+        });
+        els.gamesList.querySelectorAll('.bingo-game-end-join').forEach((btn) => {
+            btn.addEventListener('click', () => setGameStatus(btn.dataset.id, 'preparing'));
+        });
+        els.gamesList.querySelectorAll('.bingo-game-end').forEach((btn) => {
+            btn.addEventListener('click', () => setGameStatus(btn.dataset.id, 'ended'));
+        });
+        els.gamesList.querySelectorAll('.bingo-game-use').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (els.gameSelect) els.gameSelect.value = btn.dataset.id;
+                persistSelectedGame(parseInt(btn.dataset.id, 10));
+                syncGameMeta();
+                fetchState();
+            });
+        });
+    }
+
+    async function setGameStatus(gameId, status) {
+        const eid = eventId();
+        if (!eid) return;
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gameId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            const data = await res.json();
+            if (!res.ok) alert(data.error || 'Could not update game');
+            else loadGames();
+        } catch (e) {
+            alert('Could not update game');
+        }
+    }
+
+    async function loadGames() {
+        const eid = eventId();
+        if (!eid) {
+            gamesCache = [];
+            renderGamesList();
+            populateGameSelect();
+            return;
+        }
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games`);
+            const data = await res.json();
+            gamesCache = data.games || [];
+            populateGameSelect();
+            renderGamesList();
+            loadPlayers();
+        } catch (e) {
+            if (els.gamesList) els.gamesList.innerHTML = '<span class="text-danger">Could not load games.</span>';
+        }
+    }
+
+    async function loadPlayers() {
+        const eid = eventId();
+        const gid = getActiveGameId();
+        if (!els.playersList || !eid || !gid) {
+            if (els.playersList) els.playersList.innerHTML = '<span class="text-muted">Select a game to see players.</span>';
+            return;
+        }
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gid}/players`);
+            const data = await res.json();
+            const players = data.players || [];
+            if (!players.length) {
+                els.playersList.innerHTML = '<span class="text-muted">No assigned cards yet.</span>';
+                return;
+            }
+            els.playersList.innerHTML = players
+                .map(
+                    (p) =>
+                        `<div class="mdj-bingo-game-row"><span><strong>${escapeHtml(p.assignedTo)}</strong></span><span class="text-muted">${escapeHtml(p.serial)}</span></div>`
+                )
+                .join('');
+        } catch (e) {
+            els.playersList.innerHTML = '<span class="text-danger">Could not load players.</span>';
+        }
+    }
+
+    function escapeHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = t || '';
+        return d.innerHTML;
+    }
+
     function getSelectedPlayingFor() {
         const active = document.querySelector('.mdj-bingo-playing-for [data-playing-for].active');
         return active?.getAttribute('data-playing-for') || selectedPlayingFor || 'line';
@@ -102,14 +308,14 @@
         syncPlayingForUI(playingFor);
         const s = slug();
         if (!s) return;
-        const data = await apiPut('/games/bingo/config', {
+        const data = await apiPut('/games/bingo/config', withGameId({
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
             playingFor: selectedPlayingFor,
             introSeconds: Number(els.introSeconds?.value) || 0
-        });
+        }));
         if (data?.success && data.state) renderStatus(data.state);
     }
 
@@ -228,8 +434,17 @@
             return;
         }
         try {
-            const res = await fetch(`/api/display/${encodeURIComponent(s)}/games/bingo/state`);
+            const gid = getActiveGameId();
+            let url = `/api/display/${encodeURIComponent(s)}/games/bingo/state`;
+            if (gid) url += `?gameId=${encodeURIComponent(gid)}`;
+            const res = await fetch(url);
             const state = await res.json();
+            if (state.gameTitle && els.gameMeta) {
+                const extra = els.gameMeta.textContent;
+                if (!extra || extra.startsWith(state.gameTitle)) {
+                    /* meta updated via syncGameMeta */
+                }
+            }
             renderStatus(state);
         } catch (e) {
             console.error('Bingo state fetch failed', e);
@@ -245,7 +460,7 @@
         const res = await mdjFetch(`/api/display/${encodeURIComponent(s)}${path}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: body ? JSON.stringify(body) : undefined
+            body: JSON.stringify(withGameId(body))
         });
         return res.json();
     }
@@ -256,7 +471,7 @@
         const res = await mdjFetch(`/api/display/${encodeURIComponent(s)}${path}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body || {})
+            body: JSON.stringify(withGameId(body))
         });
         return res.json();
     }
@@ -270,8 +485,10 @@
             playingFor: getSelectedPlayingFor(),
             introSeconds: Number(els.introSeconds?.value) || 0
         });
-        if (data?.success) renderStatus(data.state);
-        else if (data?.error) alert(data.error);
+        if (data?.success) {
+            renderStatus(data.state);
+            loadGames();
+        } else if (data?.error) alert(data.error);
     });
 
     document.getElementById('bingoSkipIntroBtn')?.addEventListener('click', async () => {
@@ -282,7 +499,10 @@
 
     document.getElementById('bingoStopBtn')?.addEventListener('click', async () => {
         const data = await apiPost('/games/bingo/stop');
-        if (data?.success) renderStatus(data.state);
+        if (data?.success) {
+            renderStatus(data.state);
+            loadGames();
+        }
     });
 
     document.getElementById('bingoCallBtn')?.addEventListener('click', async () => {
@@ -346,7 +566,7 @@
             const res = await mdjFetch(`/api/events/${eid}/bingo/verify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ serial, claimType })
+                body: JSON.stringify(withGameId({ serial, claimType }))
             });
             const data = await res.json();
             if (!res.ok) {
@@ -374,11 +594,12 @@
         const count = Number(els.cardCount?.value) || 10;
         const batchId = (els.cardBatch?.value || '').trim() || undefined;
         const ballCount = Number(els.ballCount?.value) || 90;
+        const gameId = getActiveGameId();
         try {
             const res = await mdjFetch(`/api/events/${eid}/bingo/cards/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ count, batchId, ballCount })
+                body: JSON.stringify(withGameId({ count, batchId, ballCount }))
             });
             const data = await res.json();
             if (!res.ok) {
@@ -433,7 +654,89 @@
         });
     });
 
-    document.getElementById('bingoSubPrepare-tab')?.addEventListener('shown.bs.tab', loadBatches);
+    document.getElementById('bingoSubPrepare-tab')?.addEventListener('shown.bs.tab', () => {
+        loadBatches();
+        loadGames();
+    });
+
+    document.getElementById('bingoCreateGameBtn')?.addEventListener('click', async () => {
+        const eid = eventId();
+        if (!eid) {
+            alert('Select an event first.');
+            return;
+        }
+        const title = (els.newGameTitle?.value || '').trim() || `Game ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        const cardCount = Number(els.newGameCards?.value) || 0;
+        const openJoin = !!els.newGameOpenJoin?.checked;
+        const ballCount = Number(els.ballCount?.value) || 90;
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title, cardCount, openJoin, ballCount })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'Could not create game');
+                return;
+            }
+            if (els.newGameTitle) els.newGameTitle.value = '';
+            if (data.printUrl) window.open(data.printUrl, '_blank', 'noopener');
+            await loadGames();
+            if (data.game?.id && els.gameSelect) {
+                els.gameSelect.value = String(data.game.id);
+                persistSelectedGame(data.game.id);
+                syncGameMeta();
+            }
+        } catch (e) {
+            alert('Could not create game');
+        }
+    });
+
+    document.getElementById('bingoAssignBtn')?.addEventListener('click', async () => {
+        const eid = eventId();
+        const gid = getActiveGameId();
+        const name = (els.assignName?.value || '').trim();
+        if (!eid || !gid) {
+            alert('Select a game first.');
+            return;
+        }
+        if (!name) {
+            alert('Enter a guest name.');
+            return;
+        }
+        if (els.assignResult) els.assignResult.textContent = 'Assigning…';
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gid}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customerName: name })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                if (els.assignResult) {
+                    els.assignResult.textContent = data.error || 'Failed';
+                    els.assignResult.className = 'small text-danger mb-2';
+                }
+                return;
+            }
+            if (els.assignResult) {
+                els.assignResult.textContent = `Assigned ${data.card.serial} to ${name}`;
+                els.assignResult.className = 'small text-success mb-2';
+            }
+            loadGames();
+        } catch (e) {
+            if (els.assignResult) els.assignResult.textContent = 'Could not assign';
+        }
+    });
+
+    els.gameSelect?.addEventListener('change', () => {
+        persistSelectedGame(els.gameSelect.value ? parseInt(els.gameSelect.value, 10) : null);
+        syncGameMeta();
+        renderGamesList();
+        loadPlayers();
+        fetchState();
+    });
 
     document.getElementById('bingoSubControl-tab')?.addEventListener('shown.bs.tab', () => {
         fitAdminGridCellFont();
@@ -459,7 +762,10 @@
         setGamesDashboardFocus(true);
         bindAdminGridFit();
         fetchState();
-        if (document.getElementById('bingoSubPrepare')?.classList.contains('active')) loadBatches();
+        if (document.getElementById('bingoSubPrepare')?.classList.contains('active')) {
+            loadBatches();
+            loadGames();
+        }
         startPoll();
         requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
     });
@@ -476,6 +782,7 @@
     window.addEventListener('mdj-dashboard-event-changed', () => {
         fetchState();
         loadBatches();
+        loadGames();
         updateTargetHint();
     });
 

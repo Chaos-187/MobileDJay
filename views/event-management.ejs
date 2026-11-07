@@ -911,6 +911,7 @@
                                         <% if (event.enable_karaoke_requests) { %><span class="mdj-event-row__feature bg-info text-dark" title="Karaoke"><i class="fas fa-microphone"></i></span><% } %>
                                         <% if (event.enable_messages) { %><span class="mdj-event-row__feature bg-warning text-dark" title="Messages"><i class="fas fa-envelope"></i></span><% } %>
                                         <% if (event.enable_photos) { %><span class="mdj-event-row__feature text-white" style="background:#a855f7;" title="Guest photos"><i class="fas fa-camera"></i></span><% } %>
+                                        <% if (event.enable_bingo) { %><span class="mdj-event-row__feature text-dark" style="background:#fbbf24;" title="Mobile bingo"><i class="fas fa-table-cells"></i></span><% } %>
                                     </div>
                                 </div>
                             </div>
@@ -1024,6 +1025,15 @@
                                             <i class="fas fa-camera me-1" style="color:#c084fc;"></i>Guest Photos
                                         </label>
                                     </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="eventEnableBingo">
+                                        <label class="form-check-label" for="eventEnableBingo">
+                                            <i class="fas fa-table-cells me-1" style="color:#f59e0b;"></i>Mobile bingo
+                                        </label>
+                                    </div>
+                                    <div class="form-text">Guests can join games from the requests hub and play on their phones.</div>
                                 </div>
                                 <div class="mb-3">
                                     <div class="form-check form-switch">
@@ -1195,6 +1205,15 @@
                                                     <i class="fas fa-camera me-1" style="color:#c084fc;"></i>Guest Photos
                                                 </label>
                                             </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="editEventEnableBingo">
+                                                <label class="form-check-label" for="editEventEnableBingo">
+                                                    <i class="fas fa-table-cells me-1" style="color:#f59e0b;"></i>Mobile bingo
+                                                </label>
+                                            </div>
+                                            <div class="form-text">Shows Bingo on the guest hub when a game is open.</div>
                                         </div>
                                         <div class="mb-3">
                                             <div class="form-check form-switch">
@@ -2410,6 +2429,7 @@
                 enable_karaoke_requests: document.getElementById('eventEnableKaraokeRequests').checked,
                 enable_messages: document.getElementById('eventEnableMessages').checked,
                 enable_photos: document.getElementById('eventEnablePhotos').checked,
+                enable_bingo: document.getElementById('eventEnableBingo').checked,
                 enable_tips: document.getElementById('eventEnableTips').checked,
                 show_public: document.getElementById('eventShowPublic').checked,
                 tip_links: getTipLinks('tipLinksContainer')
@@ -2489,6 +2509,7 @@
                         document.getElementById('editEventEnableKaraokeRequests').checked = event.enable_karaoke_requests !== 0;
                         document.getElementById('editEventEnableMessages').checked = event.enable_messages !== 0;
                         document.getElementById('editEventEnablePhotos').checked = event.enable_photos === 1;
+                        document.getElementById('editEventEnableBingo').checked = event.enable_bingo === 1;
                         document.getElementById('editEventShowTracksGuest').checked = event.show_tracks_played_guest === 1;
                         document.getElementById('editEventShowPublic').checked = event.show_public === 1;
                         
@@ -2564,6 +2585,7 @@
                 enable_karaoke_requests: document.getElementById('editEventEnableKaraokeRequests').checked ? 1 : 0,
                 enable_messages: document.getElementById('editEventEnableMessages').checked ? 1 : 0,
                 enable_photos: document.getElementById('editEventEnablePhotos').checked ? 1 : 0,
+                enable_bingo: document.getElementById('editEventEnableBingo').checked ? 1 : 0,
                 show_tracks_played_guest: document.getElementById('editEventShowTracksGuest').checked ? 1 : 0,
                 show_public: document.getElementById('editEventShowPublic').checked ? 1 : 0,
                 enable_tips: document.getElementById('editEventEnableTips').checked ? 1 : 0,

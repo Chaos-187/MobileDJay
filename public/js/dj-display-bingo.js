@@ -20,6 +20,8 @@
     const claimTitle = document.getElementById('bingoClaimFlashTitle');
     const claimSub = document.getElementById('bingoClaimFlashSub');
     const claimCard = document.getElementById('bingoClaimFlashCard');
+    const ballMachineTumble = document.getElementById('bingoBallMachineTumble');
+    const ballMachineRamp = document.getElementById('bingoBallMachineRamp');
     const waitingMessage = document.getElementById('waitingMessage');
     const qrOverlay = document.getElementById('qrOverlay');
     const controlPanel = document.getElementById('controlPanel');
@@ -41,6 +43,147 @@
     let gridColBreakpointMql = null;
     let lastSpokenBall = null;
     let prevVoiceCall = false;
+
+    /* Keep in sync with lib/bingo.js (remainingBalls, pickRandomDecoy) */
+    function ballCap(maxBall) {
+        return Math.max(9, Math.min(90, Number(maxBall) || 90));
+    }
+
+    function remainingBalls(calledBalls, maxBall) {
+        const cap = ballCap(maxBall);
+        const called = new Set(calledBalls || []);
+        const out = [];
+        for (let n = 1; n <= cap; n++) {
+            if (!called.has(n)) out.push(n);
+        }
+        return out;
+    }
+
+    function pickRandomDecoy(calledBalls, maxBall) {
+        const pool = remainingBalls(calledBalls, maxBall);
+        if (!pool.length) return null;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    let isDrawing = false;
+    let drawInterval = null;
+    let drawRampInterval = null;
+    let dwellTimer = null;
+
+    function clearDrawTimers() {
+        clearInterval(drawInterval);
+        clearInterval(drawRampInterval);
+        clearTimeout(dwellTimer);
+        drawInterval = null;
+        drawRampInterval = null;
+        dwellTimer = null;
+    }
+
+    function populateTumbleBalls(state) {
+        if (!ballMachineTumble) return;
+        const pool = remainingBalls(state.calledBalls, state.ballCount);
+        ballMachineTumble.innerHTML = '';
+        const count = Math.min(14, Math.max(6, pool.length));
+        const picked = [];
+        const poolCopy = pool.slice();
+        for (let i = 0; i < count && poolCopy.length; i++) {
+            const j = Math.floor(Math.random() * poolCopy.length);
+            picked.push(poolCopy.splice(j, 1)[0]);
+        }
+        picked.forEach(function (n, i) {
+            const el = document.createElement('span');
+            el.className = 'bbm-mini-ball';
+            el.textContent = n;
+            el.style.setProperty('--bbm-i', String(i));
+            el.style.left = 8 + ((i * 17) % 62) + '%';
+            el.style.top = 10 + ((i * 23) % 52) + '%';
+            ballMachineTumble.appendChild(el);
+        });
+        if (ballMachineRamp) {
+            ballMachineRamp.textContent = picked[0] != null ? picked[0] : '';
+        }
+    }
+
+    function stopDrawing(revealBall) {
+        if (!isDrawing && revealBall == null) return;
+        isDrawing = false;
+        layer?.classList.remove('is-drawing');
+        clearDrawTimers();
+        if (lastBallEl) lastBallEl.classList.remove('is-rolling');
+        if (revealBall != null && lastBallEl) {
+            lastBallEl.textContent = revealBall;
+            lastBallEl.classList.remove('ball-pop');
+            void lastBallEl.offsetWidth;
+            lastBallEl.classList.add('ball-pop');
+        }
+    }
+
+    function startDrawing(state) {
+        if (!state || !state.active || state.phase === 'intro' || state.paused) return;
+        const pool = remainingBalls(state.calledBalls, state.ballCount);
+        if (pool.length === 0) return;
+        if (isDrawing) return;
+        isDrawing = true;
+        layer?.classList.add('is-drawing');
+        populateTumbleBalls(state);
+        if (lastBallEl) lastBallEl.classList.add('is-rolling');
+
+        drawInterval = setInterval(function () {
+            const decoy = pickRandomDecoy(state.calledBalls, state.ballCount);
+            if (decoy != null && lastBallEl) {
+                lastBallEl.textContent = decoy;
+            }
+            if (ballMachineRamp && decoy != null) {
+                ballMachineRamp.textContent = decoy;
+            }
+        }, 75);
+
+        drawRampInterval = setInterval(function () {
+            if (!ballMachineRamp) return;
+            const d = pickRandomDecoy(state.calledBalls, state.ballCount);
+            if (d != null) ballMachineRamp.textContent = d;
+        }, 420);
+    }
+
+    function scheduleBetweenCallsDraw(state) {
+        clearTimeout(dwellTimer);
+        if (!state.active || state.paused || state.phase === 'intro') return;
+        if (remainingBalls(state.calledBalls, state.ballCount).length === 0) return;
+        const base = state.autoCall ? Math.max(600, (state.callIntervalMs || 5000) * 0.4) : 1800;
+        dwellTimer = setTimeout(function () {
+            if (lastState && lastState.active && !lastState.paused && lastState.phase === 'calling') {
+                startDrawing(lastState);
+            }
+        }, base);
+    }
+
+    function revealBallWithMachine(state, ball) {
+        if (!isDrawing) {
+            if (lastBallEl) {
+                lastBallEl.textContent = ball;
+                lastBallEl.classList.remove('ball-pop');
+                void lastBallEl.offsetWidth;
+                lastBallEl.classList.add('ball-pop');
+            }
+            scheduleBetweenCallsDraw(state);
+            return;
+        }
+        const calledBefore = (state.calledBalls || []).filter(function (n) {
+            return n !== ball;
+        });
+        let steps = 0;
+        const lander = setInterval(function () {
+            steps++;
+            const decoy = pickRandomDecoy(calledBefore, state.ballCount);
+            if (lastBallEl && decoy != null && steps < 6) {
+                lastBallEl.textContent = decoy;
+            } else {
+                clearInterval(lander);
+                stopDrawing(ball);
+                scheduleBetweenCallsDraw(state);
+            }
+        }, 90);
+    }
 
     function getDisplayGridCols() {
         return window.matchMedia('(max-width: 900px)').matches ? 9 : 10;
@@ -272,6 +415,8 @@
         }
         prevVoiceCall = !!state.voiceCall;
         if (!state.active) {
+            stopDrawing();
+            clearDrawTimers();
             setFullscreenActive(false);
             lastPlayingFor = null;
             introEndsAtLocal = null;
@@ -293,6 +438,9 @@
         if (ballCount !== gridBuiltFor) buildGrid(ballCount);
 
         if (state.paused) {
+            stopDrawing();
+            clearTimeout(dwellTimer);
+            dwellTimer = null;
             pausedBadge?.removeAttribute('hidden');
             layer?.classList.add('is-paused');
         } else {
@@ -320,16 +468,23 @@
             }
         } else if (state.lastBall != null && state.lastBall !== lastBallSeen) {
             lastBallSeen = state.lastBall;
-            if (lastBallEl) {
-                lastBallEl.textContent = state.lastBall;
-                lastBallEl.classList.remove('ball-pop');
-                void lastBallEl.offsetWidth;
-                lastBallEl.classList.add('ball-pop');
-            }
+            revealBallWithMachine(state, state.lastBall);
             maybeAnnounceBall(state);
         } else if (state.lastBall == null && lastBallEl && state.phase !== 'intro') {
+            stopDrawing();
             lastBallEl.textContent = '—';
-            lastBallEl.classList.remove('ball-pop');
+            lastBallEl.classList.remove('ball-pop', 'is-rolling');
+            if (!state.paused && (state.calledBalls || []).length === 0) {
+                startDrawing(state);
+            }
+        } else if (
+            state.phase === 'calling' &&
+            !state.paused &&
+            !isDrawing &&
+            !dwellTimer &&
+            state.lastBall != null
+        ) {
+            scheduleBetweenCallsDraw(state);
         }
 
         if (metaEl && state.phase !== 'intro') {

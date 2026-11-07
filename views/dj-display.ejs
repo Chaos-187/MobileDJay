@@ -8,7 +8,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
-    <link href="/css/bingo.css?v=12" rel="stylesheet">
+    <link href="/css/bingo.css?v=13" rel="stylesheet">
+    <link href="/css/racing.css?v=1" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -1244,6 +1245,24 @@
         <div class="winner-title-text" id="yesNoWinnerTitle"></div>
     </div>
 
+    <!-- Virtual racing — full-screen -->
+    <div class="racing-display-layer" id="racingDisplayLayer" aria-live="polite" aria-hidden="true">
+        <header class="racing-fs-header">
+            <h1 class="racing-fs-title" id="racingDisplayTitle">Virtual racing</h1>
+            <p class="racing-fs-meta" id="racingDisplayMeta">Ready</p>
+        </header>
+        <div class="racing-track-wrap" id="racingDisplayTrack"></div>
+        <div class="racing-countdown-stage" id="racingCountdownStage" hidden>
+            <div class="racing-countdown-num" id="racingCountdownNum">5</div>
+        </div>
+        <div class="racing-winner-overlay" id="racingWinnerOverlay" hidden>
+            <div class="racing-winner-card">
+                <h2 id="racingWinnerTitle">Winner</h2>
+                <p id="racingWinnerSub">Photo finish</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Bingo — full-screen (must sit above message / QR UI) -->
     <div class="bingo-display-layer" id="bingoDisplayLayer" aria-live="polite" aria-hidden="true">
         <div class="bingo-fs-ambient" aria-hidden="true"></div>
@@ -1281,6 +1300,16 @@
                 <aside class="bingo-fs-hero">
                     <p class="bingo-fs-hero-label">Now calling</p>
                     <div class="bingo-fs-ball-stage">
+                        <div class="bingo-ball-machine" id="bingoBallMachine" aria-hidden="true">
+                            <div class="bbm-cabinet">
+                                <div class="bbm-globe">
+                                    <div class="bbm-globe-shine" aria-hidden="true"></div>
+                                    <div class="bbm-tumble" id="bingoBallMachineTumble"></div>
+                                </div>
+                                <div class="bbm-neck" aria-hidden="true"></div>
+                                <div class="bbm-ramp" aria-hidden="true"><span class="bbm-ramp-ball" id="bingoBallMachineRamp"></span></div>
+                            </div>
+                        </div>
                         <div class="bingo-fs-ball-ring" aria-hidden="true"></div>
                         <div class="bingo-fs-ball-glow" aria-hidden="true"></div>
                         <div class="bingo-display-last-ball" id="bingoDisplayLastBall">—</div>
@@ -1455,6 +1484,7 @@
     </script>
     <script src="/js/mdj-binary-spinner.js"></script>
     <script src="/js/dj-display.js?v=7"></script>
-    <script src="/js/dj-display-bingo.js?v=7"></script>
+    <script src="/js/dj-display-bingo.js?v=8"></script>
+    <script src="/js/dj-display-racing.js?v=1"></script>
 </body>
 </html>

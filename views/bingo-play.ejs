@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0a12">
+    <title>Bingo — <%= event.name %></title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="/css/bingo.css?v=14" rel="stylesheet">
+    <link href="/css/guest-hub.css?v=5" rel="stylesheet">
+    <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
+</head>
+<body class="mdj-eyup-brand mdj-guest-bingo-page">
+    <main class="guest-bingo-main container">
+        <header class="guest-bingo-header">
+            <a href="/event/<%= eventSlug %>" class="guest-bingo-back"><i class="fas fa-arrow-left"></i> Hub</a>
+            <h1 class="guest-bingo-title"><%= event.name %></h1>
+            <p class="guest-bingo-sub" id="guestBingoGameTitle">Bingo</p>
+        </header>
+
+        <div id="guestBingoJoin" class="guest-bingo-panel">
+            <p class="text-muted small mb-3">Pick a game to get a digital card on your phone.</p>
+            <div id="guestBingoGamesList" class="guest-bingo-games-list"></div>
+        </div>
+
+        <div id="guestBingoPlay" class="guest-bingo-panel" hidden>
+            <p class="guest-bingo-meta" id="guestBingoMeta"></p>
+            <p class="guest-bingo-serial">Card <strong id="guestBingoSerial"></strong></p>
+            <div id="guestBingoCard" class="guest-bingo-card" aria-label="Your bingo card"></div>
+            <div class="guest-bingo-called">
+                <span class="guest-bingo-called-label">Last call</span>
+                <span class="guest-bingo-called-ball" id="guestBingoLastBall">—</span>
+            </div>
+            <p class="guest-bingo-playing-for" id="guestBingoPlayingFor"></p>
+            <div class="guest-bingo-claim-row">
+                <button type="button" class="btn btn-warning btn-sm guest-bingo-claim" data-claim="line">1 Line</button>
+                <button type="button" class="btn btn-warning btn-sm guest-bingo-claim" data-claim="two-lines">2 Lines</button>
+                <button type="button" class="btn btn-warning btn-sm guest-bingo-claim" data-claim="house">Full house</button>
+            </div>
+            <p id="guestBingoClaimResult" class="guest-bingo-claim-result small" role="status"></p>
+        </div>
+    </main>
+    <script src="/js/guest-session.js"></script>
+    <script>
+        window.eventSlug = '<%= eventSlug %>';
+        window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
+    </script>
+    <script src="/js/guest-bingo.js?v=1"></script>
+</body>
+</html>

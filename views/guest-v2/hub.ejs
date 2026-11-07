@@ -68,12 +68,13 @@ window.GuestHubConfig = {
         karaoke: <%= (!ghEvent || ghEvent.enable_karaoke_requests !== 0) ? 'true' : 'false' %>,
         messages: <%= (!ghEvent || ghEvent.enable_messages !== 0) ? 'true' : 'false' %>,
         photos: <%= (ghEvent && ghEvent.enable_photos) ? 'true' : 'false' %>,
-        tips: <%= (ghEvent && ghEvent.enable_tips && ghTipLinks.length > 0) ? 'true' : 'false' %>
+        tips: <%= (ghEvent && ghEvent.enable_tips && ghTipLinks.length > 0) ? 'true' : 'false' %>,
+        bingo: <%= (ghEvent && ghEvent.enable_bingo) ? 'true' : 'false' %>
     },
     tipLinks: <%- JSON.stringify(ghTipLinks) %>
 };
 </script>
 <script src="/js/guest-session.js"></script>
-<script src="/js/guest-v2/guest-hub-spa.js?v=4"></script>
+<script src="/js/guest-v2/guest-hub-spa.js?v=5"></script>
 </body>
 </html>

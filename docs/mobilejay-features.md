@@ -71,6 +71,14 @@ Click a guest row to open a **conversation modal** — full timeline of messages
 - **Prompts** — send animated on-screen prompts to `/dj/display/:slug`
 - **Photo showcase** — push a guest photo to the display
 
+### Games — Bingo
+
+Dashboard **Games** tab: create per-event games, generate/print cards, open mobile join, run balls on the venue display, verify serials. See **[`bingo-mobile.md`](bingo-mobile.md)** for the full flow.
+
+### Games — Virtual horse & dog racing
+
+In **Games**, choose **Virtual horses** or **Virtual dogs**: set runners (4–8), countdown and race length, draw a **new lineup**, then **Start race** on the venue display (`/dj/display/:slug`). DJ APIs require dashboard auth; the display polls public race state only.
+
 ---
 
 ## Event management (`/dj/events`)
@@ -83,6 +91,7 @@ Click a guest row to open a **conversation modal** — full timeline of messages
 | Karaoke requests | Karaoke search and submit |
 | Messages | Send message to DJ |
 | Guest photos | Camera/upload flow |
+| **Mobile bingo** | Hub tile + `/event/:slug/bingo` — join games and play on phone |
 | Enable tips | Tip modal with payment links |
 | **Show recently played on song request page** | Recently Played button + modal on song request screen |
 | **Show on public events page** | Listed on `/` when global setting enabled |
@@ -128,7 +137,8 @@ Requests, messages, replies, photos, tracks played, and guest records are stored
 ## Related docs
 
 - [`mobilejay-events-api.md`](mobilejay-events-api.md) — REST endpoints
+- [`bingo-mobile.md`](bingo-mobile.md) — mobile bingo games and guest play
 - [`NOW-PLAYING-API.md`](NOW-PLAYING-API.md) — now playing integration
 - [`events-portal-api-endpoints.md`](events-portal-api-endpoints.md) — separate customer/DJ portal (`/api/v1`)
 
-*Document version: 1.1 — Jul 2026*
+*Document version: 1.2 — Nov 2026*

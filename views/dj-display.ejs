@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
     <link href="/css/bingo.css?v=13" rel="stylesheet">
-    <link href="/css/racing.css?v=5" rel="stylesheet">
+    <link href="/css/racing.css?v=6" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -1256,6 +1256,11 @@
             <h1 class="racing-fs-title" id="racingDisplayTitle">Virtual racing</h1>
             <p class="racing-fs-meta" id="racingDisplayMeta">Ready</p>
         </header>
+        <div class="racing-lobby-stage" id="racingLobbyStage" hidden>
+            <p class="racing-lobby-eyebrow">Race lobby</p>
+            <h2 class="racing-lobby-headline" id="racingLobbyHeadline">Today&rsquo;s runners</h2>
+            <div class="racing-lobby-grid" id="racingLobbyGrid" role="list"></div>
+        </div>
         <div class="racing-track-scene" id="racingTrackScene">
             <div class="racing-track-rail racing-track-rail--far" aria-hidden="true"></div>
             <div class="racing-track-wrap" id="racingTrackSceneInner">
@@ -1504,6 +1509,6 @@
     <script src="/js/mdj-binary-spinner.js"></script>
     <script src="/js/dj-display.js?v=7"></script>
     <script src="/js/dj-display-bingo.js?v=8"></script>
-    <script src="/js/dj-display-racing.js?v=6"></script>
+    <script src="/js/dj-display-racing.js?v=7"></script>
 </body>
 </html>

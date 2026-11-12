@@ -13,6 +13,9 @@
     const trackScene = document.getElementById('racingTrackScene');
     const countdownStage = document.getElementById('racingCountdownStage');
     const countdownNum = document.getElementById('racingCountdownNum');
+    const lobbyStage = document.getElementById('racingLobbyStage');
+    const lobbyGrid = document.getElementById('racingLobbyGrid');
+    const lobbyHeadline = document.getElementById('racingLobbyHeadline');
     const winnerOverlay = document.getElementById('racingWinnerOverlay');
     const winnerSub = document.getElementById('racingWinnerSub');
     const winnerHeadline = document.getElementById('racingWinnerHeadline');
@@ -219,18 +222,62 @@
         });
     }
 
+    function renderLobby(state) {
+        const runners = state.runners || [];
+        const variant = state.variant || 'horse';
+        const isDog = variant === 'dog';
+        if (lobbyHeadline) {
+            lobbyHeadline.textContent =
+                runners.length + ' runner' + (runners.length === 1 ? '' : 's') + ' · Next race soon';
+        }
+        if (!lobbyGrid) return;
+        const glyph = runnerGlyph(variant);
+        lobbyGrid.innerHTML = runners
+            .map(function (r) {
+                return (
+                    '<article class="racing-lobby-card" role="listitem">' +
+                    '<span class="racing-lobby-card__num">#' +
+                    escapeHtml(String(r.number ?? '')) +
+                    '</span>' +
+                    '<span class="racing-lobby-card__silk" style="background:' +
+                    escapeHtml(r.silk || '#64748b') +
+                    '"></span>' +
+                    '<span class="racing-lobby-card__glyph" aria-hidden="true">' +
+                    glyph +
+                    '</span>' +
+                    '<span class="racing-lobby-card__name">' +
+                    escapeHtml(r.name) +
+                    '</span>' +
+                    '</article>'
+                );
+            })
+            .join('');
+        if (titleEl) {
+            titleEl.textContent = isDog ? 'Virtual greyhound racing' : 'Virtual horse racing';
+        }
+        if (eyebrowEl) {
+            eyebrowEl.innerHTML = isDog
+                ? '<i class="fas fa-dog me-2"></i>Lobby · runners on screen'
+                : '<i class="fas fa-horse me-2"></i>Lobby · runners on screen';
+        }
+        if (metaEl) metaEl.textContent = 'Waiting for the start — good luck!';
+    }
+
     function renderState(state) {
         lastState = state;
         if (state.serverNow) {
             clockSkewMs = Date.now() - state.serverNow;
         }
-        if (!state.active) {
+        const lobbyMode = !!state.lobby;
+        if (!state.active && !lobbyMode) {
             setFullscreenActive(false);
             countdownStage?.setAttribute('hidden', '');
             winnerOverlay?.setAttribute('hidden', '');
+            lobbyStage?.setAttribute('hidden', '');
             if (layer) {
-                layer.classList.remove('racing-variant-dog', 'racing-variant-horse');
+                layer.classList.remove('racing-variant-dog', 'racing-variant-horse', 'racing-lobby-mode');
             }
+            if (trackScene) trackScene.removeAttribute('hidden');
             return;
         }
         setFullscreenActive(true);
@@ -238,7 +285,20 @@
         if (layer) {
             layer.classList.toggle('racing-variant-dog', isDog);
             layer.classList.toggle('racing-variant-horse', !isDog);
+            layer.classList.toggle('racing-lobby-mode', lobbyMode);
         }
+
+        if (lobbyMode) {
+            countdownStage?.setAttribute('hidden', '');
+            winnerOverlay?.setAttribute('hidden', '');
+            if (trackScene) trackScene.setAttribute('hidden', '');
+            lobbyStage?.removeAttribute('hidden');
+            renderLobby(state);
+            return;
+        }
+
+        lobbyStage?.setAttribute('hidden', '');
+        if (trackScene) trackScene.removeAttribute('hidden');
         if (titleEl) {
             titleEl.textContent =
                 state.variantLabel || (isDog ? 'Virtual greyhound racing' : 'Virtual horse racing');

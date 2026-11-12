@@ -2019,32 +2019,70 @@ body.bingo-screen-active {
     align-items: center;
 }
 
-.bingo-print-page {
+.bingo-print-sheet {
     background: #fff;
-    padding: 1rem 1.25rem 1.25rem;
-    margin-bottom: 1.5rem;
+    padding: 8mm 7mm 10mm;
+    margin-bottom: 1.25rem;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
+.bingo-print-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6mm 5mm;
+    align-items: start;
+}
+
+.bingo-print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    border: 1px dashed #ccc;
+    padding: 4mm 4mm 3mm;
+    min-width: 0;
+}
+
 .bingo-print-header {
-    margin-bottom: 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin-bottom: 0.4rem;
+}
+
+.bingo-print-header__text {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.bingo-print-barcode-wrap {
+    flex-shrink: 0;
+    max-width: 42%;
+}
+
+.bingo-print-barcode-wrap .bingo-barcode {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 11mm;
 }
 
 .bingo-print-brand {
     font-weight: 700;
-    font-size: 0.85rem;
-    letter-spacing: 0.08em;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
 }
 
 .bingo-print-serial {
-    font-size: 1.1rem;
-    margin: 0.25rem 0;
+    font-size: 0.82rem;
+    margin: 0.15rem 0;
+    line-height: 1.2;
 }
 
 .bingo-print-event {
     color: #555;
-    font-size: 0.9rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
 }
 
 .bingo-card-table {
@@ -2055,17 +2093,18 @@ body.bingo-screen-active {
 
 .bingo-card-table th,
 .bingo-card-table td {
-    border: 2px solid #222;
+    border: 1.5px solid #222;
     text-align: center;
-    padding: 0.45rem 0.15rem;
+    padding: 0.22rem 0.05rem;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.72rem;
 }
 
 .bingo-card-table th {
     background: #f5f5f5;
-    font-size: 0.65rem;
+    font-size: 0.5rem;
     font-weight: 600;
+    padding: 0.15rem 0.05rem;
 }
 
 .bingo-cell-blank {
@@ -2073,9 +2112,43 @@ body.bingo-screen-active {
 }
 
 .bingo-print-foot {
-    font-size: 0.75rem;
+    font-size: 0.58rem;
     color: #666;
-    margin: 0.75rem 0 0;
+    margin: 0.35rem 0 0;
+    line-height: 1.25;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+
+    body.bingo-print-body {
+        padding: 0;
+        background: #fff;
+    }
+
+    .bingo-print-sheet {
+        box-shadow: none;
+        margin: 0;
+        padding: 6mm 5mm;
+        break-after: page;
+        page-break-after: always;
+    }
+
+    .bingo-print-sheet:last-child {
+        break-after: auto;
+        page-break-after: auto;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 5mm;
+    }
+
+    .bingo-print-card {
+        border-color: #bbb;
+    }
 }
 
 /* —— Games tab hub (dashboard) —— */
@@ -2241,4 +2314,35 @@ body.mdj-bingo-caller-page .mdj-bingo-grid-scroll--caller {
 
 body.mdj-bingo-caller-page .mdj-bingo-run-hero--caller .mdj-bingo-hero-ball {
     font-size: clamp(2.5rem, 12vw, 4rem);
+}
+
+/* Games tab: allow scroll — prepare panels must not clip buttons */
+.mdj-games-tab {
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.75rem;
+}
+
+body:not(.mdj-dashboard-games-focus) .mdj-games-tab {
+    max-height: none;
+    overflow: visible;
+}
+
+body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-console,
+body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-console--prepare-only {
+    overflow: visible;
+    flex: none;
+    min-height: auto;
+}
+
+body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-tab-panels {
+    overflow: visible;
+}
+
+.mdj-bingo-prepare-only .mdj-bingo-prepare-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
 }

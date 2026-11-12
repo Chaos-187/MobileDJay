@@ -88,8 +88,13 @@
     function statusBadge(state) {
         if (!els.status) return;
         if (!state?.active) {
-            els.status.textContent = 'Idle';
-            els.status.className = 'badge bg-secondary mdj-bingo-status-pill';
+            if (state?.lobby && (state.runners || []).length) {
+                els.status.textContent = 'Lobby on display';
+                els.status.className = 'badge bg-info text-dark mdj-bingo-status-pill';
+            } else {
+                els.status.textContent = 'Idle';
+                els.status.className = 'badge bg-secondary mdj-bingo-status-pill';
+            }
             return;
         }
         const phase = state.phase || 'idle';

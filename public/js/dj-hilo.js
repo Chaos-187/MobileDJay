@@ -61,14 +61,16 @@
     function syncButtons(state) {
         const hasSlug = !!slug();
         const active = !!state?.active;
-        const canGuess = active && (state?.cardsLeft || 0) > 0;
+        const gameOver = !!state?.gameOver;
+        const playing = active && !gameOver;
+        const canGuess = playing && (state?.cardsLeft || 0) > 0;
         const set = (id, prop, val) => {
             const el = document.getElementById(id);
             if (el) el[prop] = val;
         };
-        set('hiloStartBtn', 'disabled', !hasSlug || active);
+        set('hiloStartBtn', 'disabled', !hasSlug || playing);
         set('hiloStopBtn', 'disabled', !hasSlug || !active);
-        set('hiloNewDeckBtn', 'disabled', !hasSlug);
+        set('hiloNewDeckBtn', 'disabled', !hasSlug || playing);
         set('hiloHigherBtn', 'disabled', !hasSlug || !canGuess);
         set('hiloLowerBtn', 'disabled', !hasSlug || !canGuess);
         set('hiloSaveConfigBtn', 'disabled', !hasSlug || active);
@@ -78,6 +80,11 @@
 
     function statusBadge(state) {
         if (!els.status) return;
+        if (state?.gameOver) {
+            els.status.textContent = 'Game over';
+            els.status.className = 'badge bg-danger mdj-bingo-status-pill';
+            return;
+        }
         if (!state?.active) {
             els.status.textContent = 'Idle';
             els.status.className = 'badge bg-secondary mdj-bingo-status-pill';
@@ -89,6 +96,11 @@
 
     function renderLastResult(state) {
         if (!els.lastResult) return;
+        if (state?.gameOver) {
+            els.lastResult.textContent = 'Game over — tap Start for a new game.';
+            els.lastResult.className = 'small text-danger mb-0 fw-semibold';
+            return;
+        }
         if (!state?.lastResult || !state.lastGuess) {
             els.lastResult.textContent = '';
             els.lastResult.className = 'small text-muted mb-0';

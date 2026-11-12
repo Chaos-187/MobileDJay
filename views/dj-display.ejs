@@ -10,7 +10,7 @@
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
     <link href="/css/bingo.css?v=13" rel="stylesheet">
     <link href="/css/racing.css?v=7" rel="stylesheet">
-    <link href="/css/hilo.css?v=1" rel="stylesheet">
+    <link href="/css/hilo.css?v=2" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -1261,6 +1261,12 @@
         <div class="hilo-result-banner" id="hiloResultBanner" hidden>
             <span id="hiloResultText"></span>
         </div>
+        <div class="hilo-lose-overlay" id="hiloLoseOverlay" hidden role="alert">
+            <div class="hilo-lose-burst" aria-hidden="true"></div>
+            <p class="hilo-lose-eyebrow">Unlucky</p>
+            <h2 class="hilo-lose-title">You lose</h2>
+            <p class="hilo-lose-sub" id="hiloLoseSub"></p>
+        </div>
     </div>
 
     <!-- Virtual racing — full-screen -->
@@ -1529,6 +1535,6 @@
     <script src="/js/dj-display.js?v=7"></script>
     <script src="/js/dj-display-bingo.js?v=8"></script>
     <script src="/js/dj-display-racing.js?v=8"></script>
-    <script src="/js/dj-display-hilo.js?v=1"></script>
+    <script src="/js/dj-display-hilo.js?v=2"></script>
 </body>
 </html>

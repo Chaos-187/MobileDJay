@@ -12,6 +12,8 @@
     const metaEl = document.getElementById('hiloDisplayMeta');
     const resultBanner = document.getElementById('hiloResultBanner');
     const resultText = document.getElementById('hiloResultText');
+    const loseOverlay = document.getElementById('hiloLoseOverlay');
+    const loseSub = document.getElementById('hiloLoseSub');
     const waitingMessage = document.getElementById('waitingMessage');
     const qrOverlay = document.getElementById('qrOverlay');
     const controlPanel = document.getElementById('controlPanel');
@@ -36,14 +38,15 @@
         if (on) hideUnderlays();
     }
 
-    function cardHtml(card, extraClass) {
+    function cardHtml(card) {
         if (!card) return '';
         const red = card.suit === 'hearts' || card.suit === 'diamonds';
         const sym = SUIT_SYM[card.suit] || '';
         return (
             '<div class="hilo-playing-card' +
             (red ? ' hilo-playing-card--red' : ' hilo-playing-card--black') +
-            (extraClass ? ' ' + extraClass : '') +
+            '" data-card-id="' +
+            (card.id || '') +
             '">' +
             '<span class="hilo-card-corner hilo-card-corner--tl"><span class="hilo-card-rank">' +
             card.rank +
@@ -61,47 +64,95 @@
         );
     }
 
+    function mountCard(slot, card, animate) {
+        if (!slot) return;
+        if (!card) {
+            slot.innerHTML = '';
+            return;
+        }
+        const cardId = card.id || card.rank + '-' + card.suit;
+        const existing = slot.querySelector('.hilo-playing-card');
+        if (existing && existing.getAttribute('data-card-id') === cardId) {
+            return;
+        }
+        slot.innerHTML = cardHtml(card);
+        if (animate) {
+            const el = slot.querySelector('.hilo-playing-card');
+            if (el) {
+                el.classList.add('hilo-playing-card--pop');
+                el.addEventListener(
+                    'animationend',
+                    function () {
+                        el.classList.remove('hilo-playing-card--pop');
+                    },
+                    { once: true }
+                );
+            }
+        }
+    }
+
     function renderState(state) {
-        if (!state?.active) {
+        const showLayer = !!state?.active;
+        if (!showLayer) {
             setActive(false);
             return;
         }
         setActive(true);
 
+        const gameOver = !!state.gameOver;
+
+        if (layer) layer.classList.toggle('hilo--game-over', gameOver);
+
         if (metaEl) {
-            const ace = state.aceHigh ? 'Ace high' : 'Ace low';
-            const ties = state.tiesWin ? ' · ties win' : '';
-            metaEl.textContent = `${ace}${ties} · ${state.cardsLeft} cards left`;
+            if (gameOver) {
+                metaEl.textContent = 'Game over — waiting for a new game';
+            } else {
+                const ace = state.aceHigh ? 'Ace high' : 'Ace low';
+                const ties = state.tiesWin ? ' · ties win' : '';
+                metaEl.textContent = `${ace}${ties} · ${state.cardsLeft} cards left`;
+            }
         }
         if (streakEl) {
-            streakEl.textContent = String(state.streak ?? 0);
+            streakEl.textContent = gameOver ? String(state.streakAtLoss ?? 0) : String(state.streak ?? 0);
         }
 
-        if (currentSlot) {
-            currentSlot.innerHTML = cardHtml(state.currentCard, 'hilo-playing-card--current');
-        }
+        const animateCurrent = state.revision !== lastRevision && !gameOver;
+        mountCard(currentSlot, state.currentCard, animateCurrent);
+
         if (previousSlot) {
-            const showPrev = state.revealedCard && state.previousCard;
-            previousSlot.innerHTML = showPrev
-                ? cardHtml(state.previousCard, 'hilo-playing-card--previous')
-                : '';
-            previousSlot.classList.toggle('has-card', !!showPrev);
+            const showPrev = (state.revealedCard && state.previousCard) || gameOver;
+            if (showPrev && state.previousCard) {
+                mountCard(previousSlot, state.previousCard, false);
+            } else {
+                previousSlot.innerHTML = '';
+            }
+            previousSlot.classList.toggle('has-card', showPrev && !!state.previousCard);
+        }
+
+        if (loseOverlay) {
+            loseOverlay.hidden = !gameOver;
+        }
+        if (loseSub && gameOver) {
+            const n = state.streakAtLoss ?? 0;
+            const guess = state.lastGuess === 'higher' ? 'Higher' : 'Lower';
+            loseSub.textContent =
+                n > 0
+                    ? `You called ${guess} — streak ended at ${n}. DJ: start a new game.`
+                    : `Wrong call (${guess}). DJ: start a new game.`;
         }
 
         if (resultBanner && resultText) {
-            const show =
-                state.lastResult &&
+            const showWin =
+                !gameOver &&
+                state.lastResult === 'win' &&
                 state.resultRemainingMs > 0 &&
                 state.revealedCard;
-            if (show) {
+            if (showWin) {
                 const guess = state.lastGuess === 'higher' ? 'Higher' : 'Lower';
-                const won = state.lastResult === 'win';
                 resultBanner.hidden = false;
-                resultBanner.classList.toggle('hilo-result--win', won);
-                resultBanner.classList.toggle('hilo-result--lose', !won);
-                resultText.textContent = won
-                    ? `${guess} — correct!`
-                    : `${guess} — wrong`;
+                resultBanner.classList.add('hilo-result--win');
+                resultBanner.classList.remove('hilo-result--lose');
+                resultText.textContent = `${guess} — correct!`;
             } else {
                 resultBanner.hidden = true;
             }
@@ -120,7 +171,7 @@
         }
     }
 
-    pollTimer = setInterval(pollState, 400);
+    pollTimer = setInterval(pollState, 800);
     pollState();
 
     document.addEventListener('visibilitychange', function () {
@@ -128,7 +179,7 @@
             clearInterval(pollTimer);
         } else {
             clearInterval(pollTimer);
-            pollTimer = setInterval(pollState, 400);
+            pollTimer = setInterval(pollState, 800);
             pollState();
         }
     });

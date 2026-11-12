@@ -11,6 +11,16 @@ const midLeader = finishOrder
     .sort((x, y) => y.p - x.p)[0].id;
 const winnerMidP = progressFromPlan(plan[finishOrder[0]], 0.4);
 
+finishOrder.forEach((id) => {
+    const kf = plan[id].keyframes;
+    for (let i = 1; i < kf.length; i++) {
+        if (kf[i].p + 1e-6 < kf[i - 1].p) {
+            console.error('Non-monotonic keyframes for', id, kf);
+            process.exit(1);
+        }
+    }
+});
+
 let swaps = 0;
 for (let t = 0.1; t <= 0.7; t += 0.1) {
     const ranking = finishOrder

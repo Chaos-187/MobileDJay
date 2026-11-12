@@ -8,13 +8,15 @@
     const layer = document.getElementById('racingDisplayLayer');
     const titleEl = document.getElementById('racingDisplayTitle');
     const metaEl = document.getElementById('racingDisplayMeta');
+    const eyebrowEl = document.querySelector('.racing-fs-eyebrow');
     const trackEl = document.getElementById('racingDisplayTrack');
     const trackScene = document.getElementById('racingTrackScene');
     const countdownStage = document.getElementById('racingCountdownStage');
     const countdownNum = document.getElementById('racingCountdownNum');
     const winnerOverlay = document.getElementById('racingWinnerOverlay');
-    const winnerTitle = document.getElementById('racingWinnerTitle');
     const winnerSub = document.getElementById('racingWinnerSub');
+    const winnerHeadline = document.getElementById('racingWinnerHeadline');
+    const podiumStage = document.getElementById('racingPodiumStage');
     const waitingMessage = document.getElementById('waitingMessage');
     const qrOverlay = document.getElementById('qrOverlay');
     const controlPanel = document.getElementById('controlPanel');
@@ -37,12 +39,13 @@
             const b = kf[i + 1];
             if (normalizedT >= a.t && normalizedT <= b.t) {
                 const u = (normalizedT - a.t) / (b.t - a.t);
-                const ease = u * u * (3 - 2 * u);
-                return a.p + (b.p - a.p) * ease;
+                return a.p + (b.p - a.p) * u;
             }
         }
         return kf[kf.length - 1].p;
     }
+
+    const displayProgress = new Map();
 
     function liveProgressForState(state) {
         if (!state || !state.runners) return [];
@@ -94,6 +97,7 @@
         trackEl.dataset.variant = variant;
         runnerEls.clear();
         laneEls.clear();
+        displayProgress.clear();
         runners.forEach(function (r, index) {
             const lane = document.createElement('div');
             lane.className = 'racing-lane';
@@ -128,22 +132,87 @@
         return d.innerHTML;
     }
 
-    function updatePositions(progressList) {
+    const PODIUM_LABELS = { 1: '1st', 2: '2nd', 3: '3rd' };
+    const PODIUM_ORDER = [2, 1, 3];
+
+    function renderPodium(state) {
+        if (!podiumStage) return;
+        const rows = (state.podium && state.podium.length
+            ? state.podium
+            : state.winnerName
+              ? [
+                    {
+                        place: 1,
+                        number: state.winnerNumber,
+                        name: state.winnerName,
+                        silk: '#fbbf24'
+                    }
+                ]
+              : []
+        ).slice(0, 3);
+        if (!rows.length) {
+            podiumStage.innerHTML = '';
+            return;
+        }
+        const byPlace = {};
+        rows.forEach((r) => {
+            byPlace[r.place] = r;
+        });
+        const glyph = runnerGlyph(state.variant);
+        let html = '';
+        PODIUM_ORDER.forEach((place) => {
+            const r = byPlace[place];
+            if (!r) return;
+            html +=
+                '<div class="racing-podium-col racing-podium-col--place-' +
+                place +
+                '" role="listitem">' +
+                '<div class="racing-podium-block">' +
+                '<span class="racing-podium-rank">' +
+                escapeHtml(PODIUM_LABELS[place] || place) +
+                '</span>' +
+                '<span class="racing-podium-glyph" aria-hidden="true">' +
+                glyph +
+                '</span>' +
+                '<span class="racing-podium-silk" style="background:' +
+                escapeHtml(r.silk || '#64748b') +
+                '"></span>' +
+                '<span class="racing-podium-num">#' +
+                escapeHtml(String(r.number ?? '?')) +
+                '</span>' +
+                '<span class="racing-podium-name">' +
+                escapeHtml(r.name) +
+                '</span>' +
+                '</div></div>';
+        });
+        podiumStage.innerHTML = html;
+    }
+
+    function updatePositions(progressList, smooth) {
         const maxPct = 86;
         let lead = 0;
         progressList.forEach(function (item) {
-            lead = Math.max(lead, item.progress || 0);
+            const target = Math.max(0, Math.min(1, Number(item.progress) || 0));
+            let pct = target;
+            if (smooth) {
+                const prev = displayProgress.has(item.id) ? displayProgress.get(item.id) : target;
+                pct = Math.max(prev, prev + (target - prev) * 0.35);
+            }
+            displayProgress.set(item.id, pct);
+            item._displayPct = pct;
+            lead = Math.max(lead, pct);
         });
         if (layer) layer.style.setProperty('--race-energy', String(lead));
 
-        const sorted = progressList.slice().sort((a, b) => a.progress - b.progress);
+        const sorted = progressList.slice().sort((a, b) => a._displayPct - b._displayPct);
         sorted.forEach(function (item, z) {
             const el = runnerEls.get(item.id);
             const lane = laneEls.get(item.id);
             if (!el) return;
-            const pct = Math.max(0, Math.min(1, Number(item.progress) || 0));
+            const pct = item._displayPct;
             el.style.setProperty('--race-pct', String(pct));
-            el.style.transform = 'translateY(-50%) translateX(calc(' + pct * maxPct + 'vw))';
+            el.style.transform =
+                'translate3d(calc(' + pct * maxPct + 'vw - 0px), -50%, 0)';
             el.classList.toggle('racing-runner--lead', z === sorted.length - 1);
             el.classList.toggle('racing-runner--sprint', pct > 0.05);
             if (lane) lane.style.zIndex = String(10 + z);
@@ -165,11 +234,20 @@
             return;
         }
         setFullscreenActive(true);
+        const isDog = state.variant === 'dog';
         if (layer) {
-            layer.classList.toggle('racing-variant-dog', state.variant === 'dog');
-            layer.classList.toggle('racing-variant-horse', state.variant !== 'dog');
+            layer.classList.toggle('racing-variant-dog', isDog);
+            layer.classList.toggle('racing-variant-horse', !isDog);
         }
-        if (titleEl) titleEl.textContent = state.variantLabel || 'Virtual racing';
+        if (titleEl) {
+            titleEl.textContent =
+                state.variantLabel || (isDog ? 'Virtual greyhound racing' : 'Virtual horse racing');
+        }
+        if (eyebrowEl) {
+            eyebrowEl.innerHTML = isDog
+                ? '<i class="fas fa-dog me-2"></i>Greyhound racing · live on screen'
+                : '<i class="fas fa-horse me-2"></i>Horse racing · live on screen';
+        }
         if (metaEl) {
             if (state.phase === 'countdown') metaEl.textContent = 'Under starter’s orders…';
             else if (state.phase === 'racing') metaEl.textContent = 'And they’re off!';
@@ -177,7 +255,7 @@
             else metaEl.textContent = 'Ready to race';
         }
         ensureLanes(state.runners || [], state.variant);
-        updatePositions(liveProgressForState(state));
+        updatePositions(liveProgressForState(state), false);
 
         if (state.phase === 'countdown') {
             winnerOverlay?.setAttribute('hidden', '');
@@ -188,14 +266,17 @@
             countdownStage?.setAttribute('hidden', '');
         }
 
-        if (state.phase === 'finish' && state.winnerName) {
+        if (state.phase === 'finish' && (state.podium?.length || state.winnerName)) {
             winnerOverlay?.removeAttribute('hidden');
-            if (winnerTitle) {
-                winnerTitle.textContent = '#' + (state.winnerNumber || '?') + ' ' + state.winnerName;
-            }
             if (winnerSub) {
-                winnerSub.textContent = state.variant === 'dog' ? 'Winner!' : 'Winner by a nose!';
+                winnerSub.textContent =
+                    state.variant === 'dog' ? 'Greyhounds over the line' : 'They’re past the post!';
             }
+            if (winnerHeadline) {
+                winnerHeadline.textContent =
+                    state.variant === 'dog' ? 'Race result' : 'Photo finish';
+            }
+            renderPodium(state);
         } else if (state.phase !== 'finish') {
             winnerOverlay?.setAttribute('hidden', '');
         }
@@ -205,7 +286,7 @@
 
     function tick() {
         if (lastState?.active && (lastState.phase === 'racing' || lastState.phase === 'finish')) {
-            updatePositions(liveProgressForState(lastState));
+            updatePositions(liveProgressForState(lastState), true);
         }
         animFrame = requestAnimationFrame(tick);
     }

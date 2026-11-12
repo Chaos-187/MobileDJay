@@ -25,12 +25,19 @@
         return kind === 'dog' ? 'dog' : 'horse';
     }
 
-    function setVariant(kind) {
+    async function setVariant(kind) {
         currentVariant = variantFromKind(kind);
         panel.dataset.variant = currentVariant;
         const title = document.getElementById('racingPanelTitle');
         if (title) {
             title.textContent = currentVariant === 'dog' ? 'Virtual dogs' : 'Virtual horses';
+        }
+        if (!slug()) return;
+        const data = await api('PUT', '/games/racing/config', { variant: currentVariant });
+        if (data?.success) {
+            renderStatus(data.state);
+        } else if (data?.error) {
+            fetchState();
         }
     }
 
@@ -125,7 +132,14 @@
         if (state?.raceDurationMs && els.raceDuration) {
             els.raceDuration.value = Math.round(state.raceDurationMs / 1000);
         }
-        if (state?.variant) currentVariant = state.variant;
+        if (state?.variant) {
+            currentVariant = state.variant;
+            const title = document.getElementById('racingPanelTitle');
+            if (title) {
+                title.textContent = currentVariant === 'dog' ? 'Virtual dogs' : 'Virtual horses';
+            }
+            panel.dataset.variant = currentVariant;
+        }
         renderLineup(state);
     }
 

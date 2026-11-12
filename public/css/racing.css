@@ -135,7 +135,7 @@ body.racing-screen-active .racing-display-layer.active {
     font-weight: 600;
 }
 
-/* Track scene — perspective */
+/* Track scene — light depth without skewing the finish line */
 .racing-track-scene {
     position: relative;
     z-index: 3;
@@ -144,8 +144,14 @@ body.racing-screen-active .racing-display-layer.active {
     flex-direction: column;
     justify-content: center;
     padding: 0.5rem 3vw 8vh;
-    perspective: 900px;
     min-height: 0;
+}
+
+#racingTrackSceneInner {
+    position: relative;
+    transform: scaleY(0.96);
+    transform-origin: center center;
+    filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.55));
 }
 
 .racing-track-wrap {
@@ -153,9 +159,7 @@ body.racing-screen-active .racing-display-layer.active {
     flex-direction: column;
     justify-content: center;
     gap: clamp(0.4rem, 1.4vh, 0.75rem);
-    transform: rotateX(8deg);
-    transform-origin: center center;
-    filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.55));
+    padding-right: clamp(1.25rem, 3vw, 2.5rem);
 }
 
 .racing-track-rail {
@@ -180,14 +184,15 @@ body.racing-screen-active .racing-display-layer.active {
 
 .racing-finish-line {
     position: absolute;
-    right: 5vw;
-    top: 12%;
-    bottom: 10%;
-    width: 18px;
-    z-index: 5;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    z-index: 6;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-end;
     pointer-events: none;
 }
 
@@ -245,24 +250,6 @@ body.racing-screen-active .racing-display-layer.active {
     pointer-events: none;
 }
 
-.racing-lane::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    background: repeating-linear-gradient(
-        180deg,
-        #fff 0,
-        #fff 10px,
-        #0f172a 10px,
-        #0f172a 20px
-    );
-    border-radius: 0 8px 8px 0;
-    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.35);
-}
-
 .racing-lane__label {
     position: absolute;
     left: 0.5rem;
@@ -282,11 +269,18 @@ body.racing-screen-active .racing-display-layer.active {
     left: 2.5rem;
     top: 50%;
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 0.4rem;
     will-change: transform;
     z-index: 1;
-    transform: translateY(-50%) translateX(0);
+    transform: translate3d(0, -50%, 0);
+}
+
+.racing-variant-horse .racing-runner__glyph,
+.racing-variant-dog .racing-runner__glyph {
+    display: inline-block;
+    transform: scaleX(-1);
 }
 
 .racing-runner--sprint .racing-runner__glyph {
@@ -295,16 +289,20 @@ body.racing-screen-active .racing-display-layer.active {
 
 .racing-runner--lead .racing-runner__glyph {
     filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.75));
-    transform: scale(1.08);
+}
+
+.racing-runner--lead.racing-variant-horse .racing-runner__glyph,
+.racing-runner--lead.racing-variant-dog .racing-runner__glyph {
+    animation: racing-gallop 0.35s ease-in-out infinite;
 }
 
 @keyframes racing-gallop {
     0%,
     100% {
-        transform: translateY(0) scale(1);
+        transform: scaleX(-1) translateY(0) scale(1);
     }
     50% {
-        transform: translateY(-4px) scale(1.04);
+        transform: scaleX(-1) translateY(-4px) scale(1.06);
     }
 }
 
@@ -415,16 +413,16 @@ body.racing-screen-active .racing-display-layer.active {
     z-index: 1;
 }
 
-/* Winner */
+/* Winner / podium */
 .racing-winner-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(2, 8, 6, 0.82);
     z-index: 7;
-    backdrop-filter: blur(6px);
+    backdrop-filter: blur(8px);
 }
 
 .racing-winner-overlay[hidden] {
@@ -433,54 +431,185 @@ body.racing-screen-active .racing-display-layer.active {
 
 .racing-winner-burst {
     position: absolute;
-    width: min(80vw, 520px);
-    height: min(80vw, 520px);
+    width: min(95vw, 640px);
+    height: min(60vh, 420px);
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(251, 191, 36, 0.35), transparent 65%);
-    animation: racing-winner-burst 1.2s ease-out infinite alternate;
+    background: radial-gradient(ellipse, rgba(251, 191, 36, 0.28), transparent 68%);
+    animation: racing-winner-burst 1.4s ease-out infinite alternate;
+    pointer-events: none;
+}
+
+.racing-winner-confetti {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 20% 30%, rgba(253, 224, 71, 0.35) 0 3px, transparent 4px),
+        radial-gradient(circle at 80% 20%, rgba(248, 113, 113, 0.3) 0 2px, transparent 3px),
+        radial-gradient(circle at 60% 80%, rgba(96, 165, 250, 0.28) 0 2px, transparent 3px);
+    opacity: 0.65;
+    animation: racing-confetti-drift 6s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes racing-confetti-drift {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(12px);
+    }
 }
 
 @keyframes racing-winner-burst {
     from {
-        transform: scale(0.9);
-        opacity: 0.5;
+        transform: scale(0.92);
+        opacity: 0.45;
     }
     to {
-        transform: scale(1.05);
+        transform: scale(1.04);
         opacity: 1;
     }
 }
 
-.racing-winner-card {
+.racing-podium-card {
     position: relative;
-    text-align: center;
-    padding: clamp(1.5rem, 4vw, 2.5rem) clamp(2rem, 5vw, 3.5rem);
-    border-radius: 1.25rem;
-    background: linear-gradient(145deg, #fde047, #ea580c);
-    color: #1a0800;
+    width: min(92vw, 720px);
+    padding: clamp(1.25rem, 3vw, 2rem) clamp(1.25rem, 4vw, 2.5rem) clamp(1.5rem, 3.5vw, 2.25rem);
+    border-radius: 1.5rem;
+    background: linear-gradient(165deg, rgba(15, 23, 20, 0.94), rgba(6, 12, 10, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow:
-        0 24px 80px rgba(0, 0, 0, 0.55),
-        0 0 0 1px rgba(255, 255, 255, 0.35) inset;
-    animation: racing-winner-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+        0 32px 80px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(52, 211, 153, 0.15) inset;
+    color: #f8fafc;
+    animation: racing-winner-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.15);
 }
 
-.racing-winner-card h2 {
-    font-size: clamp(1.6rem, 4.5vw, 2.8rem);
-    font-weight: 900;
-    margin: 0 0 0.35rem;
-}
-
-.racing-winner-card p {
+.racing-podium-eyebrow {
     margin: 0;
+    text-align: center;
+    font-size: clamp(0.75rem, 1.6vw, 0.95rem);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(248, 250, 252, 0.65);
+    font-weight: 600;
+}
+
+.racing-podium-headline {
+    margin: 0.35rem 0 1.25rem;
+    text-align: center;
+    font-size: clamp(1.35rem, 3.5vw, 2rem);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fde047;
+    text-shadow: 0 0 24px rgba(253, 224, 71, 0.35);
+}
+
+.racing-podium-stage {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(0.5rem, 2vw, 1.25rem);
+    min-height: clamp(200px, 32vh, 280px);
+    padding-top: 0.5rem;
+}
+
+.racing-podium-col {
+    flex: 1;
+    max-width: 210px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.racing-podium-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 1rem 0.65rem 1.1rem;
+    border-radius: 0.85rem 0.85rem 0.35rem 0.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.racing-podium-col--place-1 .racing-podium-block {
+    min-height: clamp(160px, 26vh, 200px);
+    background: linear-gradient(180deg, rgba(253, 224, 71, 0.22), rgba(234, 88, 12, 0.12));
+    border-color: rgba(253, 224, 71, 0.45);
+    transform: translateY(-8px);
+    box-shadow:
+        0 12px 40px rgba(251, 191, 36, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.racing-podium-col--place-2 .racing-podium-block {
+    min-height: clamp(130px, 21vh, 165px);
+    background: linear-gradient(180deg, rgba(203, 213, 225, 0.18), rgba(100, 116, 139, 0.08));
+    border-color: rgba(203, 213, 225, 0.35);
+}
+
+.racing-podium-col--place-3 .racing-podium-block {
+    min-height: clamp(115px, 18vh, 145px);
+    background: linear-gradient(180deg, rgba(251, 146, 60, 0.16), rgba(120, 53, 15, 0.1));
+    border-color: rgba(251, 146, 60, 0.35);
+}
+
+.racing-podium-rank {
+    font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 0.35rem;
+}
+
+.racing-podium-col--place-1 .racing-podium-rank {
+    color: #fde047;
+}
+
+.racing-podium-glyph {
+    font-size: clamp(1.75rem, 4vw, 2.35rem);
+    line-height: 1;
+    transform: scaleX(-1);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.45));
+}
+
+.racing-podium-silk {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    margin: 0.35rem 0 0.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.racing-podium-num {
+    font-size: clamp(1.1rem, 2.8vw, 1.45rem);
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.racing-podium-name {
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
     font-weight: 700;
-    opacity: 0.9;
-    font-size: clamp(1rem, 2vw, 1.25rem);
+    margin-top: 0.15rem;
+    line-height: 1.25;
+    color: rgba(248, 250, 252, 0.95);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
 }
 
 @keyframes racing-winner-in {
     from {
         opacity: 0;
-        transform: scale(0.88) translateY(12px);
+        transform: scale(0.9) translateY(16px);
     }
     to {
         opacity: 1;

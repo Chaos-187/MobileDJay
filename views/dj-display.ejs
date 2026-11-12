@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
     <link href="/css/bingo.css?v=13" rel="stylesheet">
-    <link href="/css/racing.css?v=3" rel="stylesheet">
+    <link href="/css/racing.css?v=5" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -1246,7 +1246,7 @@
     </div>
 
     <!-- Virtual racing — full-screen -->
-    <div class="racing-display-layer racing-variant-horse" id="racingDisplayLayer" aria-live="polite" aria-hidden="true" style="--race-energy: 0">
+    <div class="racing-display-layer" id="racingDisplayLayer" aria-live="polite" aria-hidden="true" style="--race-energy: 0">
         <div class="racing-fs-ambient" aria-hidden="true"></div>
         <div class="racing-fs-crowd-glow" aria-hidden="true"></div>
         <div class="racing-fs-floodlights" aria-hidden="true"></div>
@@ -1257,12 +1257,14 @@
             <p class="racing-fs-meta" id="racingDisplayMeta">Ready</p>
         </header>
         <div class="racing-track-scene" id="racingTrackScene">
-            <div class="racing-finish-line" aria-hidden="true">
-                <span class="racing-finish-line__post"></span>
-                <span class="racing-finish-line__banner">FINISH</span>
-            </div>
             <div class="racing-track-rail racing-track-rail--far" aria-hidden="true"></div>
-            <div class="racing-track-wrap" id="racingDisplayTrack"></div>
+            <div class="racing-track-wrap" id="racingTrackSceneInner">
+                <div class="racing-finish-line" aria-hidden="true">
+                    <span class="racing-finish-line__post"></span>
+                    <span class="racing-finish-line__banner">FINISH</span>
+                </div>
+                <div class="racing-track-wrap" id="racingDisplayTrack"></div>
+            </div>
             <div class="racing-track-rail racing-track-rail--near" aria-hidden="true"></div>
         </div>
         <div class="racing-countdown-stage" id="racingCountdownStage" hidden>
@@ -1271,9 +1273,11 @@
         </div>
         <div class="racing-winner-overlay" id="racingWinnerOverlay" hidden>
             <div class="racing-winner-burst" aria-hidden="true"></div>
-            <div class="racing-winner-card">
-                <h2 id="racingWinnerTitle">Winner</h2>
-                <p id="racingWinnerSub">Photo finish</p>
+            <div class="racing-winner-confetti" aria-hidden="true"></div>
+            <div class="racing-podium-card">
+                <p class="racing-podium-eyebrow" id="racingWinnerSub">Photo finish</p>
+                <h2 class="racing-podium-headline" id="racingWinnerHeadline">Official result</h2>
+                <div class="racing-podium-stage" id="racingPodiumStage" role="list" aria-label="Race podium"></div>
             </div>
         </div>
     </div>
@@ -1500,6 +1504,6 @@
     <script src="/js/mdj-binary-spinner.js"></script>
     <script src="/js/dj-display.js?v=7"></script>
     <script src="/js/dj-display-bingo.js?v=8"></script>
-    <script src="/js/dj-display-racing.js?v=3"></script>
+    <script src="/js/dj-display-racing.js?v=6"></script>
 </body>
 </html>

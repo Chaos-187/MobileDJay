@@ -1,14 +1,16 @@
-/* Virtual horse / dog racing — venue display */
+/* Virtual horse / dog racing — venue display (immersive) */
 
 .racing-display-layer {
+    --race-energy: 0;
     position: fixed;
     inset: 0;
     z-index: 12000;
     display: none;
     flex-direction: column;
-    background: linear-gradient(180deg, #0c1a14 0%, #1a2f23 40%, #0d2818 100%);
-    color: #f0fdf4;
+    color: #f8fafc;
     overflow: hidden;
+    font-family: 'Orbitron', 'Segoe UI', system-ui, sans-serif;
+    isolation: isolate;
 }
 
 .racing-display-layer.active {
@@ -19,180 +21,470 @@ body.racing-screen-active .racing-display-layer.active {
     display: flex;
 }
 
+/* Ambient stadium */
+.racing-fs-ambient {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 90% 55% at 50% 100%, rgba(34, 197, 94, 0.35), transparent 55%),
+        radial-gradient(ellipse 70% 40% at 50% 0%, rgba(56, 189, 248, 0.12), transparent 50%),
+        linear-gradient(180deg, #020b08 0%, #0a1f14 35%, #061510 100%);
+    z-index: 0;
+}
+
+.racing-variant-dog .racing-fs-ambient {
+    background:
+        radial-gradient(ellipse 85% 50% at 50% 100%, rgba(148, 163, 184, 0.28), transparent 55%),
+        radial-gradient(ellipse 65% 35% at 50% 0%, rgba(251, 191, 36, 0.14), transparent 50%),
+        linear-gradient(180deg, #0a0c12 0%, #151922 40%, #0c0e14 100%);
+}
+
+.racing-fs-crowd-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255, 255, 255, 0.06), transparent 55%);
+    animation: racing-crowd-pulse 4s ease-in-out infinite;
+    z-index: 1;
+    pointer-events: none;
+}
+
+@keyframes racing-crowd-pulse {
+    0%,
+    100% {
+        opacity: 0.65;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.racing-fs-floodlights {
+    position: absolute;
+    inset: -20% 0 0;
+    background: conic-gradient(
+        from 180deg at 50% 0%,
+        transparent 0deg,
+        rgba(255, 255, 255, 0.05) 25deg,
+        transparent 50deg,
+        rgba(255, 255, 255, 0.04) 130deg,
+        transparent 180deg,
+        rgba(255, 255, 255, 0.05) 310deg,
+        transparent 360deg
+    );
+    animation: racing-lights-sweep 18s linear infinite;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+@keyframes racing-lights-sweep {
+    to {
+        transform: rotate(8deg);
+    }
+}
+
+.racing-fs-scroll-parallax {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        105deg,
+        transparent 0,
+        transparent 48px,
+        rgba(255, 255, 255, 0.02) 48px,
+        rgba(255, 255, 255, 0.02) 50px
+    );
+    transform: translateX(calc(var(--race-energy) * -12vw));
+    transition: transform 0.35s ease-out;
+    z-index: 1;
+    pointer-events: none;
+}
+
 .racing-fs-header {
+    position: relative;
+    z-index: 4;
     text-align: center;
-    padding: clamp(0.75rem, 2vw, 1.5rem) 1rem 0.5rem;
+    padding: clamp(0.65rem, 2vw, 1.25rem) 1rem 0.35rem;
+}
+
+.racing-fs-eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.65;
+    font-weight: 600;
 }
 
 .racing-fs-title {
-    font-size: clamp(1.4rem, 3.5vw, 2.2rem);
+    font-size: clamp(1.6rem, 4.2vw, 2.75rem);
     font-weight: 900;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     margin: 0;
+    text-shadow: 0 0 28px rgba(52, 211, 153, 0.45);
+}
+
+.racing-variant-dog .racing-fs-title {
+    text-shadow: 0 0 28px rgba(251, 191, 36, 0.45);
 }
 
 .racing-fs-meta {
-    font-size: 0.9rem;
-    opacity: 0.75;
-    margin: 0.25rem 0 0;
+    font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+    opacity: 0.8;
+    margin: 0.35rem 0 0;
+    font-weight: 600;
 }
 
+/* Track scene — perspective */
+.racing-track-scene {
+    position: relative;
+    z-index: 3;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.5rem 3vw 8vh;
+    perspective: 900px;
+    min-height: 0;
+}
+
+.racing-track-wrap {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(0.4rem, 1.4vh, 0.75rem);
+    transform: rotateX(8deg);
+    transform-origin: center center;
+    filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.55));
+}
+
+.racing-track-rail {
+    position: absolute;
+    left: 3vw;
+    right: 3vw;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.racing-track-rail--far {
+    top: 18%;
+    opacity: 0.35;
+}
+
+.racing-track-rail--near {
+    bottom: 14%;
+    opacity: 0.55;
+}
+
+.racing-finish-line {
+    position: absolute;
+    right: 5vw;
+    top: 12%;
+    bottom: 10%;
+    width: 18px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+}
+
+.racing-finish-line__post {
+    flex: 1;
+    width: 6px;
+    border-radius: 3px;
+    background: repeating-linear-gradient(180deg, #fff 0, #fff 12px, #111 12px, #111 24px);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.35);
+}
+
+.racing-finish-line__banner {
+    font-size: 0.65rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    color: #fbbf24;
+    text-shadow: 0 0 12px rgba(251, 191, 36, 0.8);
+    margin-bottom: 0.5rem;
+}
+
+.racing-lane {
+    position: relative;
+    height: clamp(2.8rem, 7vh, 4.2rem);
+    border-radius: 8px;
+    overflow: visible;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 40%),
+        linear-gradient(90deg, rgba(21, 128, 61, 0.55), rgba(22, 101, 52, 0.35));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.racing-variant-dog .racing-lane {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 40%),
+        linear-gradient(90deg, rgba(71, 85, 105, 0.75), rgba(51, 65, 85, 0.55));
+}
+
+.racing-lane__track-line {
+    position: absolute;
+    inset: 55% 0 auto;
+    height: 2px;
+    background: repeating-linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.15) 0,
+        rgba(255, 255, 255, 0.15) 16px,
+        transparent 16px,
+        transparent 32px
+    );
+    opacity: 0.5;
+    transform: translateX(calc(var(--race-energy) * -18vw));
+    transition: transform 0.4s ease-out;
+    pointer-events: none;
+}
+
+.racing-lane::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: repeating-linear-gradient(
+        180deg,
+        #fff 0,
+        #fff 10px,
+        #0f172a 10px,
+        #0f172a 20px
+    );
+    border-radius: 0 8px 8px 0;
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.35);
+}
+
+.racing-lane__label {
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    font-weight: 900;
+    opacity: 0.7;
+    z-index: 2;
+    width: 1.75rem;
+    text-align: center;
+    text-shadow: 0 1px 4px #000;
+}
+
+.racing-runner {
+    position: absolute;
+    left: 2.5rem;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    will-change: transform;
+    z-index: 1;
+    transform: translateY(-50%) translateX(0);
+}
+
+.racing-runner--sprint .racing-runner__glyph {
+    animation: racing-gallop 0.35s ease-in-out infinite;
+}
+
+.racing-runner--lead .racing-runner__glyph {
+    filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.75));
+    transform: scale(1.08);
+}
+
+@keyframes racing-gallop {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+    50% {
+        transform: translateY(-4px) scale(1.04);
+    }
+}
+
+.racing-runner__silk {
+    width: clamp(1.85rem, 3vw, 2.35rem);
+    height: clamp(1.85rem, 3vw, 2.35rem);
+    border-radius: 50%;
+    border: 2px solid #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.racing-runner__glyph {
+    font-size: clamp(1.6rem, 4vw, 2.6rem);
+    line-height: 1;
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.55));
+    transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.racing-runner__dust {
+    position: absolute;
+    left: -0.75rem;
+    bottom: -0.25rem;
+    width: 1.5rem;
+    height: 0.5rem;
+    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.35), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.racing-runner--sprint .racing-runner__dust {
+    opacity: calc(0.25 + var(--race-pct, 0) * 0.75);
+    animation: racing-dust 0.4s ease-out infinite;
+}
+
+@keyframes racing-dust {
+    0% {
+        transform: scaleX(0.6);
+        opacity: 0.3;
+    }
+    100% {
+        transform: scaleX(1.4);
+        opacity: 0;
+    }
+}
+
+.racing-runner__name {
+    font-size: clamp(0.7rem, 1.4vw, 0.9rem);
+    font-weight: 700;
+    white-space: nowrap;
+    text-shadow: 0 2px 6px #000;
+    display: none;
+    max-width: 28vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (min-width: 720px) {
+    .racing-runner__name {
+        display: block;
+    }
+}
+
+/* Countdown */
 .racing-countdown-stage {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.55);
-    z-index: 3;
+    background: rgba(0, 0, 0, 0.62);
+    z-index: 6;
+    backdrop-filter: blur(4px);
 }
 
 .racing-countdown-stage[hidden] {
     display: none !important;
 }
 
-.racing-countdown-num {
-    font-size: clamp(4rem, 18vw, 9rem);
-    font-weight: 900;
-    color: #fbbf24;
-    text-shadow: 0 0 40px rgba(251, 191, 36, 0.5);
-}
-
-.racing-track-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 0 4vw 6vh;
-    gap: clamp(0.35rem, 1.2vh, 0.65rem);
-}
-
-.racing-lane {
-    position: relative;
-    height: clamp(2.4rem, 6vh, 3.5rem);
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    overflow: visible;
-}
-
-.racing-lane::before {
-    content: '';
+.racing-countdown-ring {
     position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: repeating-linear-gradient(
-        180deg,
-        #fff 0,
-        #fff 8px,
-        #1e293b 8px,
-        #1e293b 16px
-    );
-    border-radius: 0 6px 6px 0;
-}
-
-.racing-lane__label {
-    position: absolute;
-    left: 0.35rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.65rem;
-    font-weight: 800;
-    opacity: 0.55;
-    z-index: 2;
-    width: 1.5rem;
-    text-align: center;
-}
-
-.racing-runner {
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    will-change: left;
-    transition: left 80ms linear;
-    z-index: 1;
-}
-
-.racing-runner__silk {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: min(32vw, 220px);
+    height: min(32vw, 220px);
     border-radius: 50%;
-    border: 2px solid #fff;
-    flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    border: 4px solid rgba(251, 191, 36, 0.25);
+    animation: racing-countdown-ring 1s ease-in-out infinite;
 }
 
-.racing-runner__glyph {
-    font-size: clamp(1.4rem, 3.5vw, 2rem);
-    line-height: 1;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
-}
-
-.racing-runner__name {
-    font-size: 0.75rem;
-    font-weight: 700;
-    white-space: nowrap;
-    text-shadow: 0 1px 3px #000;
-    display: none;
-}
-
-@media (min-width: 768px) {
-    .racing-runner__name {
-        display: block;
+@keyframes racing-countdown-ring {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.08);
+        opacity: 1;
     }
 }
 
+.racing-countdown-num {
+    font-size: clamp(4.5rem, 20vw, 10rem);
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow:
+        0 0 40px rgba(251, 191, 36, 0.6),
+        0 0 80px rgba(234, 88, 12, 0.35);
+    z-index: 1;
+}
+
+/* Winner */
 .racing-winner-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.72);
-    z-index: 4;
-    animation: racing-winner-in 0.5s ease;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 7;
+    backdrop-filter: blur(6px);
 }
 
 .racing-winner-overlay[hidden] {
     display: none !important;
 }
 
+.racing-winner-burst {
+    position: absolute;
+    width: min(80vw, 520px);
+    height: min(80vw, 520px);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.35), transparent 65%);
+    animation: racing-winner-burst 1.2s ease-out infinite alternate;
+}
+
+@keyframes racing-winner-burst {
+    from {
+        transform: scale(0.9);
+        opacity: 0.5;
+    }
+    to {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+}
+
 .racing-winner-card {
+    position: relative;
     text-align: center;
-    padding: 2rem 3rem;
-    border-radius: 1rem;
-    background: linear-gradient(145deg, #fbbf24, #ea580c);
+    padding: clamp(1.5rem, 4vw, 2.5rem) clamp(2rem, 5vw, 3.5rem);
+    border-radius: 1.25rem;
+    background: linear-gradient(145deg, #fde047, #ea580c);
     color: #1a0800;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.55),
+        0 0 0 1px rgba(255, 255, 255, 0.35) inset;
+    animation: racing-winner-in 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
 
 .racing-winner-card h2 {
-    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    font-size: clamp(1.6rem, 4.5vw, 2.8rem);
     font-weight: 900;
-    margin: 0 0 0.25rem;
+    margin: 0 0 0.35rem;
 }
 
 .racing-winner-card p {
     margin: 0;
-    font-weight: 600;
-    opacity: 0.85;
+    font-weight: 700;
+    opacity: 0.9;
+    font-size: clamp(1rem, 2vw, 1.25rem);
 }
 
 @keyframes racing-winner-in {
     from {
         opacity: 0;
-        transform: scale(0.92);
+        transform: scale(0.88) translateY(12px);
     }
     to {
         opacity: 1;
-        transform: scale(1);
+        transform: scale(1) translateY(0);
     }
 }
 

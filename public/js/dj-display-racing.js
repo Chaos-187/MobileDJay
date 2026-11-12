@@ -95,12 +95,15 @@
         if (trackEl.dataset.sig === sig && trackEl.dataset.variant === variant) {
             return;
         }
-        trackEl.innerHTML = '';
+        trackEl.querySelectorAll('.racing-lane').forEach(function (lane) {
+            lane.remove();
+        });
         trackEl.dataset.sig = sig;
         trackEl.dataset.variant = variant;
         runnerEls.clear();
         laneEls.clear();
         displayProgress.clear();
+        const finish = trackEl.querySelector('.racing-finish-line');
         runners.forEach(function (r, index) {
             const lane = document.createElement('div');
             lane.className = 'racing-lane';
@@ -123,10 +126,24 @@
                 '</span>' +
                 '<span class="racing-runner__dust" aria-hidden="true"></span>' +
                 '</div>';
-            trackEl.appendChild(lane);
+            if (finish) trackEl.insertBefore(lane, finish);
+            else trackEl.appendChild(lane);
             laneEls.set(r.id, lane);
             runnerEls.set(r.id, lane.querySelector('.racing-runner'));
         });
+    }
+
+    function laneTravelMaxPx(lane, runnerEl) {
+        if (!lane || !runnerEl) return 0;
+        const finishEl = trackEl && trackEl.querySelector('.racing-finish-line');
+        const startPx = parseFloat(getComputedStyle(runnerEl).left) || 40;
+        if (finishEl) {
+            const laneRect = lane.getBoundingClientRect();
+            const finishRect = finishEl.getBoundingClientRect();
+            return Math.max(0, finishRect.left - laneRect.left - startPx - 28);
+        }
+        const laneW = lane.clientWidth;
+        return Math.max(0, laneW - startPx - 36);
     }
 
     function escapeHtml(t) {
@@ -192,7 +209,6 @@
     }
 
     function updatePositions(progressList, smooth) {
-        const maxPct = 86;
         let lead = 0;
         progressList.forEach(function (item) {
             const target = Math.max(0, Math.min(1, Number(item.progress) || 0));
@@ -213,9 +229,9 @@
             const lane = laneEls.get(item.id);
             if (!el) return;
             const pct = item._displayPct;
+            const travel = laneTravelMaxPx(lane, el);
             el.style.setProperty('--race-pct', String(pct));
-            el.style.transform =
-                'translate3d(calc(' + pct * maxPct + 'vw - 0px), -50%, 0)';
+            el.style.transform = 'translate3d(' + pct * travel + 'px, -50%, 0)';
             el.classList.toggle('racing-runner--lead', z === sorted.length - 1);
             el.classList.toggle('racing-runner--sprint', pct > 0.05);
             if (lane) lane.style.zIndex = String(10 + z);

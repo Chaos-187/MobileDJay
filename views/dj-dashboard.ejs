@@ -14,6 +14,7 @@
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/bingo.css?v=13" rel="stylesheet">
     <link href="/css/racing.css?v=1" rel="stylesheet">
+    <link href="/css/hilo.css?v=1" rel="stylesheet">
     <style>
         .request-card {
             transition: all 0.3s ease;
@@ -1012,10 +1013,13 @@
 
             <!-- Games Tab -->
             <div class="tab-pane fade mdj-games-tab" id="games" role="tabpanel">
-                <p class="mdj-games-hub-lede small text-muted mb-2">Prepare games here. Run bingo on a dedicated caller screen; racing runs on the venue display.</p>
+                <p class="mdj-games-hub-lede small text-muted mb-2">Prepare games here. Bingo uses the caller screen; Hi-Lo, racing and more run on the venue display.</p>
                 <ul class="nav nav-pills mdj-games-kind-picker mb-3 gap-1" id="mdjGamesKindPicker" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button type="button" class="nav-link active" data-games-kind="bingo" id="gamesKindBingo"><i class="fas fa-table-cells me-1"></i>Bingo</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button type="button" class="nav-link" data-games-kind="hilo" id="gamesKindHilo"><i class="fas fa-clone me-1"></i>Hi-Lo</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button type="button" class="nav-link" data-games-kind="horse" id="gamesKindHorse"><i class="fas fa-horse me-1"></i>Virtual horses</button>
@@ -1048,6 +1052,20 @@
                         </a>
                     </div>
                     <p class="mdj-games-hub-note small text-muted mb-0">Caller opens in a new tab — ideal for a tablet beside the mic.</p>
+                </div>
+
+                <div class="mdj-games-hub-card mb-3" id="mdjHiloHub" hidden aria-label="Hi-Lo quick actions">
+                    <div class="mdj-games-hub-card-head">
+                        <span class="mdj-games-hub-icon mdj-games-hub-icon--bingo"><i class="fas fa-clone" aria-hidden="true"></i></span>
+                        <div>
+                            <h2 class="mdj-games-hub-title">Hi-Lo</h2>
+                            <p class="small text-muted mb-0">Standard 52-card higher or lower on the big screen.</p>
+                        </div>
+                        <span id="hiloRunStatus" class="badge bg-secondary mdj-bingo-status-pill">Idle</span>
+                    </div>
+                    <a id="openDisplayLinkHilo" href="#" target="_blank" rel="noopener" class="btn btn-outline-primary mdj-games-hub-secondary">
+                        <i class="fas fa-tv me-1" aria-hidden="true"></i>Open venue display
+                    </a>
                 </div>
 
                 <div class="mdj-games-hub-card mb-3" id="mdjRacingHub" hidden aria-label="Virtual race quick actions">
@@ -1161,6 +1179,54 @@
                                     <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-danger-outline" id="bingoResetCallsBtn">Reset number board</button>
                                 </section>
                             </div>
+                    </div>
+                </div>
+
+                <div id="gamePanelHilo" class="mdj-hilo-console mdj-bingo-console" data-game-panel="hilo" hidden>
+                    <p class="mdj-bingo-hint small text-muted mb-3">Start a round, show the card on the display, then tap <strong>Higher</strong> or <strong>Lower</strong> for the room&rsquo;s call.</p>
+                    <div class="mdj-bingo-prepare-stack">
+                        <section class="mdj-bingo-surface" aria-label="Hi-Lo controls">
+                            <h3 class="mdj-bingo-surface-title"><i class="fas fa-clone me-1 text-success"></i>Play</h3>
+                            <div class="mdj-hilo-stat-row">
+                                <div class="mdj-hilo-stat">
+                                    <div class="text-muted small">Streak</div>
+                                    <div class="mdj-hilo-stat-value" id="hiloStreak">0</div>
+                                </div>
+                                <div class="mdj-hilo-stat">
+                                    <div class="text-muted small">Best</div>
+                                    <div class="mdj-hilo-stat-value" id="hiloBestStreak">0</div>
+                                </div>
+                                <div class="mdj-hilo-stat">
+                                    <div class="text-muted small">Cards left</div>
+                                    <div class="mdj-hilo-stat-value" id="hiloCardsLeft">0</div>
+                                </div>
+                            </div>
+                            <p class="mdj-bingo-field-label mb-1">Current card</p>
+                            <div class="mb-3" id="hiloCardPreview"></div>
+                            <div class="mdj-hilo-guess-grid mb-2">
+                                <button type="button" class="btn btn-lg mdj-bingo-touch-action mdj-hilo-btn-higher" id="hiloHigherBtn"><i class="fas fa-arrow-up me-1"></i> Higher</button>
+                                <button type="button" class="btn btn-lg mdj-bingo-touch-action mdj-hilo-btn-lower" id="hiloLowerBtn"><i class="fas fa-arrow-down me-1"></i> Lower</button>
+                            </div>
+                            <p id="hiloLastResult" class="small text-muted mb-3"></p>
+                            <div class="mdj-bingo-action-grid mb-2">
+                                <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-go" id="hiloStartBtn"><i class="fas fa-play"></i> Start</button>
+                                <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-stop" id="hiloStopBtn"><i class="fas fa-stop"></i> Stop</button>
+                                <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-outline mdj-bingo-touch-action--wide" id="hiloNewDeckBtn"><i class="fas fa-shuffle"></i> New deck</button>
+                            </div>
+                        </section>
+                        <section class="mdj-bingo-surface" aria-label="Hi-Lo rules">
+                            <h3 class="mdj-bingo-surface-title"><i class="fas fa-gear me-1 text-secondary"></i>Rules</h3>
+                            <p class="mdj-bingo-pane-lead mb-3">Save before you start. Same rank counts as wrong unless ties win is on.</p>
+                            <div class="form-check form-switch mb-2 ps-0 w-100 mdj-bingo-switch-row">
+                                <input class="form-check-input" type="checkbox" id="hiloAceHigh" checked>
+                                <label class="form-check-label" for="hiloAceHigh">Ace high (off = ace low)</label>
+                            </div>
+                            <div class="form-check form-switch mb-3 ps-0 w-100 mdj-bingo-switch-row">
+                                <input class="form-check-input" type="checkbox" id="hiloTiesWin">
+                                <label class="form-check-label" for="hiloTiesWin">Ties count as a win</label>
+                            </div>
+                            <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-muted" id="hiloSaveConfigBtn">Save rules</button>
+                        </section>
                     </div>
                 </div>
 
@@ -1363,9 +1429,10 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/dj-dashboard.js?v=4"></script>
-    <script src="/js/dj-games-picker.js?v=2"></script>
+    <script src="/js/dj-games-picker.js?v=3"></script>
     <script src="/js/dj-bingo.js?v=14"></script>
     <script src="/js/dj-racing.js?v=3"></script>
+    <script src="/js/dj-hilo.js?v=1"></script>
 
     <script>
     document.getElementById('djLogoutBtn')?.addEventListener('click', function () {
@@ -1538,6 +1605,7 @@
             const link = document.getElementById('openDisplayLink');
             const linkGames = document.getElementById('openDisplayLinkGames');
             const linkRacing = document.getElementById('openDisplayLinkRacing');
+            const linkHilo = document.getElementById('openDisplayLinkHilo');
             const bingoCaller = document.getElementById('bingoCallerLink');
             const bingoDisplay = document.getElementById('bingoDisplayLink');
             const slug = getSelectedEventSlug() || getPromptTargetSlug();
@@ -1551,6 +1619,9 @@
                 if (linkRacing) {
                     linkRacing.href = displayPath;
                     linkRacing.style.display = '';
+                }
+                if (linkHilo) {
+                    linkHilo.href = displayPath;
                 }
                 if (bingoDisplay) {
                     bingoDisplay.href = displayPath;

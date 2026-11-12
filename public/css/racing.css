@@ -147,11 +147,13 @@ body.racing-screen-active .racing-display-layer.active {
     min-height: 0;
 }
 
+.racing-track-inner,
 #racingTrackSceneInner {
     position: relative;
     transform: scaleY(0.96);
     transform-origin: center center;
     filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.55));
+    width: 100%;
 }
 
 .racing-track-wrap {
@@ -159,7 +161,12 @@ body.racing-screen-active .racing-display-layer.active {
     flex-direction: column;
     justify-content: center;
     gap: clamp(0.4rem, 1.4vh, 0.75rem);
-    padding-right: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+#racingDisplayTrack {
+    position: relative;
+    width: 100%;
+    padding-right: 0;
 }
 
 .racing-track-rail {
@@ -184,7 +191,7 @@ body.racing-screen-active .racing-display-layer.active {
 
 .racing-finish-line {
     position: absolute;
-    right: 0;
+    right: 8px;
     top: 0;
     bottom: 0;
     width: 14px;

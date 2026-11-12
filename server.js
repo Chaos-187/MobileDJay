@@ -52,6 +52,7 @@ const {
 const { generateUK90Ticket, verifyClaim, claimLabel } = require('./lib/bingo');
 const bingoSession = require('./lib/bingo-session');
 const virtualRaceSession = require('./lib/virtual-race-session');
+const hiloSession = require('./lib/hilo-session');
 const portalRouter = require('./portal/router');
 const djWebAuth = require('./portal/dj-web-auth');
 const app = express();
@@ -2255,6 +2256,53 @@ app.post('/api/display/:eventSlug/games/racing/skip-countdown', djWebAuth.requir
 app.post('/api/display/:eventSlug/games/racing/stop', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
     const slug = racingSlugFromReq(req);
     res.json(virtualRaceSession.stopRace(slug));
+});
+
+// ==================== Display games — Hi-Lo cards ====================
+
+app.get('/api/display/:eventSlug/games/hilo/state', (req, res) => {
+    const slug = req.params.eventSlug;
+    if (!eventDb.getBySlug(slug)) return res.status(404).json({ error: 'Event not found' });
+    res.json(hiloSession.publicState(slug));
+});
+
+app.put('/api/display/:eventSlug/games/hilo/config', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const result = hiloSession.updateConfig(slug, {
+        aceHigh: req.body.aceHigh,
+        tiesWin: req.body.tiesWin
+    });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+});
+
+app.post('/api/display/:eventSlug/games/hilo/start', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const result = hiloSession.startGame(slug, {
+        aceHigh: req.body.aceHigh,
+        tiesWin: req.body.tiesWin
+    });
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+});
+
+app.post('/api/display/:eventSlug/games/hilo/stop', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    res.json(hiloSession.stopGame(slug));
+});
+
+app.post('/api/display/:eventSlug/games/hilo/new-deck', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const result = hiloSession.newDeck(slug);
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
+});
+
+app.post('/api/display/:eventSlug/games/hilo/guess', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const slug = req.params.eventSlug;
+    const result = hiloSession.makeGuess(slug, req.body.guess);
+    if (result.error) return res.status(400).json(result);
+    res.json(result);
 });
 
 app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {

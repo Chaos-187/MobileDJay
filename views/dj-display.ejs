@@ -9,7 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
     <link href="/css/bingo.css?v=13" rel="stylesheet">
-    <link href="/css/racing.css?v=6" rel="stylesheet">
+    <link href="/css/racing.css?v=7" rel="stylesheet">
+    <link href="/css/hilo.css?v=1" rel="stylesheet">
     <style>
         :root{
             --bg1: #000428;
@@ -1245,6 +1246,23 @@
         <div class="winner-title-text" id="yesNoWinnerTitle"></div>
     </div>
 
+    <!-- Hi-Lo cards — full-screen -->
+    <div class="hilo-display-layer" id="hiloDisplayLayer" aria-live="polite" aria-hidden="true">
+        <header class="hilo-fs-header">
+            <p class="hilo-fs-eyebrow"><i class="fas fa-clone me-2"></i>Play your cards</p>
+            <h1 class="hilo-fs-title">Hi-Lo</h1>
+            <p class="hilo-fs-meta" id="hiloDisplayMeta">Higher or lower?</p>
+            <div class="hilo-streak-pill">Streak <strong id="hiloDisplayStreak">0</strong></div>
+        </header>
+        <div class="hilo-table">
+            <div class="hilo-card-slot hilo-card-slot--previous" id="hiloCardPrevious"></div>
+            <div class="hilo-card-slot" id="hiloCardCurrent"></div>
+        </div>
+        <div class="hilo-result-banner" id="hiloResultBanner" hidden>
+            <span id="hiloResultText"></span>
+        </div>
+    </div>
+
     <!-- Virtual racing — full-screen -->
     <div class="racing-display-layer" id="racingDisplayLayer" aria-live="polite" aria-hidden="true" style="--race-energy: 0">
         <div class="racing-fs-ambient" aria-hidden="true"></div>
@@ -1263,12 +1281,13 @@
         </div>
         <div class="racing-track-scene" id="racingTrackScene">
             <div class="racing-track-rail racing-track-rail--far" aria-hidden="true"></div>
-            <div class="racing-track-wrap" id="racingTrackSceneInner">
-                <div class="racing-finish-line" aria-hidden="true">
-                    <span class="racing-finish-line__post"></span>
-                    <span class="racing-finish-line__banner">FINISH</span>
+            <div class="racing-track-inner" id="racingTrackSceneInner">
+                <div class="racing-track-wrap" id="racingDisplayTrack">
+                    <div class="racing-finish-line" aria-hidden="true">
+                        <span class="racing-finish-line__post"></span>
+                        <span class="racing-finish-line__banner">FINISH</span>
+                    </div>
                 </div>
-                <div class="racing-track-wrap" id="racingDisplayTrack"></div>
             </div>
             <div class="racing-track-rail racing-track-rail--near" aria-hidden="true"></div>
         </div>
@@ -1509,6 +1528,7 @@
     <script src="/js/mdj-binary-spinner.js"></script>
     <script src="/js/dj-display.js?v=7"></script>
     <script src="/js/dj-display-bingo.js?v=8"></script>
-    <script src="/js/dj-display-racing.js?v=7"></script>
+    <script src="/js/dj-display-racing.js?v=8"></script>
+    <script src="/js/dj-display-hilo.js?v=1"></script>
 </body>
 </html>

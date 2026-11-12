@@ -1425,7 +1425,10 @@ const bingoDb = {
     listBatches(eventId) {
         return db
             .prepare(
-                `SELECT batch_id, COUNT(*) AS card_count, MIN(created_at) AS created_at
+                `SELECT batch_id,
+                        COUNT(*) AS card_count,
+                        MIN(created_at) AS created_at,
+                        SUM(CASE WHEN assigned_to IS NOT NULL AND TRIM(assigned_to) != '' THEN 1 ELSE 0 END) AS assigned_count
                  FROM bingo_cards WHERE event_id = ?
                  GROUP BY batch_id ORDER BY created_at DESC`
             )
@@ -1467,6 +1470,21 @@ const bingoDb = {
         return db
             .prepare('DELETE FROM bingo_cards WHERE event_id = ? AND batch_id = ?')
             .run(eventId, batchId).changes;
+    },
+
+    countAssignedInBatch(eventId, batchId) {
+        const row = db
+            .prepare(
+                `SELECT COUNT(*) AS n FROM bingo_cards
+                 WHERE event_id = ? AND batch_id = ?
+                   AND assigned_to IS NOT NULL AND TRIM(assigned_to) != ''`
+            )
+            .get(eventId, batchId);
+        return row?.n || 0;
+    },
+
+    deleteCardsForGame(gameId) {
+        return db.prepare('DELETE FROM bingo_cards WHERE game_id = ?').run(gameId).changes;
     },
 
     countUnassignedForGame(gameId) {
@@ -1625,6 +1643,21 @@ const bingoGameDb = {
 
     getById(gameId) {
         return this._parseRow(db.prepare('SELECT * FROM bingo_games WHERE id = ?').get(gameId));
+    },
+
+    getByBatchId(eventId, batchId) {
+        const row = db
+            .prepare(`SELECT * FROM bingo_games WHERE event_id = ? AND batch_id = ? LIMIT 1`)
+            .get(eventId, batchId);
+        return this._parseRow(row);
+    },
+
+    deleteIfNotLive(gameId) {
+        const game = this.getById(gameId);
+        if (!game) return { deleted: false, reason: 'not_found' };
+        if (game.status === 'live') return { deleted: false, reason: 'live' };
+        db.prepare('DELETE FROM bingo_games WHERE id = ?').run(gameId);
+        return { deleted: true, game };
     },
 
     getLiveForEvent(eventId) {

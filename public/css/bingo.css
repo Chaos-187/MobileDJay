@@ -563,6 +563,15 @@ body:not(.dark-mode) .mdj-bingo-batch-row {
     min-width: 76px;
 }
 
+.mdj-bingo-batch-actions {
+    flex-shrink: 0;
+    gap: 0.25rem;
+}
+
+.mdj-bingo-batch-row {
+    align-items: center;
+}
+
 .mdj-bingo-switch-row {
     display: flex;
     align-items: center;

@@ -2335,6 +2335,60 @@ app.get('/api/events/:id/bingo/batches', djWebAuth.requireDjApiAuth, djWebAuth.r
     res.json({ batches: bingoDb.listBatches(req.event.id) });
 });
 
+app.delete('/api/events/:id/bingo/batches/:batchId', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const eventId = req.event.id;
+    const batchId = String(req.params.batchId || '').trim().slice(0, 32);
+    if (!batchId) {
+        return res.status(400).json({ error: 'batchId is required' });
+    }
+    const count = bingoDb.countByBatch(eventId, batchId);
+    if (count === 0) {
+        return res.status(404).json({ error: 'No cards in this batch' });
+    }
+    const assigned = bingoDb.countAssignedInBatch(eventId, batchId);
+    if (assigned > 0) {
+        return res.status(409).json({
+            error: `${assigned} card(s) in this batch are assigned to guests — unassign or use a new batch instead.`
+        });
+    }
+    const linkedGame = bingoGameDb.getByBatchId(eventId, batchId);
+    if (linkedGame && linkedGame.status === 'live') {
+        return res.status(409).json({ error: 'This batch is linked to a live game — end the game first.' });
+    }
+    const removed = bingoDb.deleteBatch(eventId, batchId);
+    if (linkedGame && linkedGame.status !== 'live') {
+        bingoGameDb.deleteIfNotLive(linkedGame.id);
+    }
+    res.json({ success: true, deleted: removed, batchId });
+});
+
+app.delete('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const gameId = parseInt(req.params.gameId, 10);
+    const game = bingoGameDb.getById(gameId);
+    if (!game || game.eventId !== req.event.id) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+    if (game.status === 'live') {
+        return res.status(409).json({ error: 'Cannot delete a live game — stop bingo first.' });
+    }
+    const assignments = bingoDb.listAssignmentsForGame(gameId);
+    if (assignments.length > 0) {
+        return res.status(409).json({
+            error: `${assignments.length} player(s) have cards in this game — end the game or reassign before deleting.`
+        });
+    }
+    const removedByGame = bingoDb.deleteCardsForGame(gameId);
+    let removedByBatch = 0;
+    if (game.batchId) {
+        removedByBatch = bingoDb.deleteBatch(req.event.id, game.batchId);
+    }
+    const del = bingoGameDb.deleteIfNotLive(gameId);
+    if (!del.deleted) {
+        return res.status(409).json({ error: 'Could not delete game' });
+    }
+    res.json({ success: true, deletedCards: removedByGame + removedByBatch, gameId });
+});
+
 // --- Bingo games (per event) ---
 app.get('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const games = bingoGameDb.listByEvent(req.event.id).map((g) => ({

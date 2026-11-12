@@ -190,6 +190,9 @@
                         ? `<button type="button" class="btn btn-outline-warning bingo-game-end" data-id="${g.id}">End</button>`
                         : '') +
                     `<button type="button" class="btn btn-outline-primary bingo-game-use" data-id="${g.id}">Use</button>` +
+                    (g.status !== 'live' && (g.assignments || 0) === 0
+                        ? `<button type="button" class="btn btn-outline-danger bingo-game-delete" data-id="${g.id}">Delete</button>`
+                        : '') +
                     `</div></div>`
                 );
             })
@@ -211,6 +214,39 @@
                 fetchState();
             });
         });
+        els.gamesList.querySelectorAll('.bingo-game-delete').forEach((btn) => {
+            btn.addEventListener('click', () => deletePreparedGame(btn.dataset.id));
+        });
+    }
+
+    async function deletePreparedGame(gameId) {
+        const eid = eventId();
+        if (!eid) return;
+        const g = gamesCache.find((x) => x.id === parseInt(gameId, 10));
+        const label = g && g.title ? `"${g.title}"` : 'this game';
+        if (
+            !confirm(
+                `Delete ${label} and all its prepared cards? This cannot be undone.`
+            )
+        ) {
+            return;
+        }
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gameId}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'Could not delete game');
+                return;
+            }
+            if (getActiveGameId() === parseInt(gameId, 10)) {
+                persistSelectedGame(null);
+                if (els.gameSelect) els.gameSelect.value = '';
+            }
+            await loadGames();
+            loadBatches();
+        } catch (e) {
+            alert('Could not delete game');
+        }
     }
 
     async function setGameStatus(gameId, status) {
@@ -613,6 +649,37 @@
         }
     });
 
+    async function deleteCardBatch(batchId, cardCount, assigned) {
+        const eid = eventId();
+        if (!eid) return;
+        if (assigned > 0) {
+            alert('Some cards in this batch are assigned to guests.');
+            return;
+        }
+        if (
+            !confirm(
+                `Delete batch "${batchId}" (${cardCount} cards)? This cannot be undone.`
+            )
+        ) {
+            return;
+        }
+        try {
+            const res = await mdjFetch(
+                `/api/events/${eid}/bingo/batches/${encodeURIComponent(batchId)}`,
+                { method: 'DELETE' }
+            );
+            const data = await res.json();
+            if (!res.ok) {
+                alert(data.error || 'Could not delete batch');
+                return;
+            }
+            loadBatches();
+            loadGames();
+        } catch (e) {
+            alert('Could not delete batch');
+        }
+    }
+
     async function loadBatches() {
         const eid = eventId();
         if (!els.batchesList || !eid) return;
@@ -629,15 +696,35 @@
             batches.forEach((b) => {
                 const row = document.createElement('div');
                 row.className = 'mdj-bingo-batch-row';
-                row.innerHTML = `<span><strong>${b.batch_id}</strong> <span class="text-muted">(${b.card_count})</span></span>`;
+                const assigned = Number(b.assigned_count) || 0;
+                const assignedNote =
+                    assigned > 0
+                        ? ` <span class="text-warning">· ${assigned} assigned</span>`
+                        : '';
+                row.innerHTML =
+                    `<span><strong>${escapeHtml(b.batch_id)}</strong> <span class="text-muted">(${b.card_count} cards)${assignedNote}</span></span>`;
+                const actions = document.createElement('div');
+                actions.className = 'mdj-bingo-batch-actions btn-group';
                 const printBtn = document.createElement('button');
                 printBtn.type = 'button';
-                printBtn.className = 'btn btn-outline-primary';
+                printBtn.className = 'btn btn-outline-primary btn-sm';
                 printBtn.textContent = 'Print';
                 printBtn.addEventListener('click', () => {
                     window.open(`/dj/bingo/${eid}/print?batch=${encodeURIComponent(b.batch_id)}`, '_blank');
                 });
-                row.appendChild(printBtn);
+                actions.appendChild(printBtn);
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'btn btn-outline-danger btn-sm';
+                delBtn.textContent = 'Delete';
+                delBtn.disabled = assigned > 0;
+                delBtn.title =
+                    assigned > 0
+                        ? 'Cannot delete — some cards are assigned to guests'
+                        : 'Remove all cards in this batch';
+                delBtn.addEventListener('click', () => deleteCardBatch(b.batch_id, b.card_count, assigned));
+                actions.appendChild(delBtn);
+                row.appendChild(actions);
                 els.batchesList.appendChild(row);
             });
         } catch (e) {

@@ -2701,6 +2701,10 @@ app.get('/dj/photos/:eventSlug', djWebAuth.requireDjWebAuth, djWebAuth.requireEv
     res.render('dj-photos', { event, photos });
 });
 
+app.get('/dj/bingo/:eventSlug', djWebAuth.requireDjWebAuth, djWebAuth.requireEventAccessBySlugParam('eventSlug'), (req, res) => {
+    res.render('dj-bingo-caller', { event: req.event });
+});
+
 // Event-specific display config
 app.get('/dj/display-config/:eventSlug', djWebAuth.requireDjWebAuth, djWebAuth.requireEventAccessBySlugParam('eventSlug'), (req, res) => {
     const event = req.event;

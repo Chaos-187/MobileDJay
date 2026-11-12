@@ -7,10 +7,8 @@
 
     const bingoPanel = document.getElementById('gamePanelBingo');
     const racingPanel = document.getElementById('gamePanelRacing');
-    const topbarBingo = document.getElementById('mdjGamesTopbarBingo');
-    const topbarRacing = document.getElementById('mdjGamesTopbarRacing');
-    const bingoGameSelect = document.getElementById('bingoGameSelectWrap');
-    const bingoHint = document.getElementById('bingoTargetHint');
+    const bingoHub = document.getElementById('mdjBingoHub');
+    const racingHub = document.getElementById('mdjRacingHub');
 
     function setKind(kind) {
         picker.querySelectorAll('[data-games-kind]').forEach(function (btn) {
@@ -21,11 +19,8 @@
         const isRace = kind === 'horse' || kind === 'dog';
         if (bingoPanel) bingoPanel.hidden = !isBingo;
         if (racingPanel) racingPanel.hidden = !isRace;
-        if (topbarBingo) topbarBingo.hidden = !isBingo;
-        if (topbarRacing) topbarRacing.hidden = !isRace;
-        if (bingoGameSelect) bingoGameSelect.hidden = !isBingo;
-        if (bingoHint) bingoHint.hidden = !isBingo;
-        document.body.classList.toggle('mdj-dashboard-games-focus', isBingo);
+        if (bingoHub) bingoHub.hidden = !isBingo;
+        if (racingHub) racingHub.hidden = !isRace;
         window.dispatchEvent(new CustomEvent('mdj-games-kind-changed', { detail: { kind: kind } }));
     }
 
@@ -40,7 +35,4 @@
         setKind(active ? active.getAttribute('data-games-kind') : 'bingo');
     });
 
-    document.getElementById('games-tab')?.addEventListener('hidden.bs.tab', function () {
-        document.body.classList.remove('mdj-dashboard-games-focus');
-    });
 })();

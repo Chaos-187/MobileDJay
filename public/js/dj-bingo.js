@@ -5,8 +5,11 @@
     const panel = document.getElementById('gamePanelBingo');
     if (!panel) return;
 
+    const isCallerPage = document.body.classList.contains('mdj-bingo-caller-page');
+
     const els = {
         status: document.getElementById('bingoRunStatus'),
+        hubLastBall: document.getElementById('bingoHubLastBall'),
         ballCount: document.getElementById('bingoBallCount'),
         callInterval: document.getElementById('bingoCallInterval'),
         introSeconds: document.getElementById('bingoIntroSeconds'),
@@ -43,19 +46,10 @@
     let selectedPlayingFor = 'line';
     let adminGridResizeObserver = null;
 
-    function setGamesDashboardFocus(on) {
-        document.body.classList.toggle('mdj-dashboard-games-focus', !!on);
-        if (on) {
-            requestAnimationFrame(() => {
-                fitAdminGridCellFont();
-            });
-        }
-    }
-
-    /** Size number text so all 90 cells fit the board area without an inner scrollbar (Games focus layout). */
+    /** Size number text so all cells fit the board area without an inner scrollbar. */
     function fitAdminGridCellFont() {
-        if (!document.body.classList.contains('mdj-dashboard-games-focus')) return;
-        const wrap = document.querySelector('#bingoSubControl .mdj-bingo-grid-scroll');
+        if (!isCallerPage) return;
+        const wrap = document.querySelector('.mdj-bingo-grid-scroll--caller');
         const grid = els.adminGrid;
         if (!wrap || !grid || !grid.children.length) return;
         const pad = 6;
@@ -72,8 +66,13 @@
         grid.style.setProperty('--mdj-bingo-admin-cell-fs', px + 'px');
     }
 
+    function adminGridScrollEl() {
+        if (isCallerPage) return document.querySelector('.mdj-bingo-grid-scroll--caller');
+        return document.querySelector('#bingoSubControl .mdj-bingo-grid-scroll');
+    }
+
     function bindAdminGridFit() {
-        const wrap = document.querySelector('#bingoSubControl .mdj-bingo-grid-scroll');
+        const wrap = adminGridScrollEl();
         if (!wrap || typeof ResizeObserver === 'undefined') return;
         if (adminGridResizeObserver) adminGridResizeObserver.disconnect();
         adminGridResizeObserver = new ResizeObserver(() => fitAdminGridCellFont());
@@ -385,9 +384,9 @@
     }
 
     function renderCalledBalls(state) {
-        if (els.lastBall) {
-            els.lastBall.textContent = state.lastBall != null ? String(state.lastBall) : '—';
-        }
+        const ball = state.lastBall != null ? String(state.lastBall) : '—';
+        if (els.lastBall) els.lastBall.textContent = ball;
+        if (els.hubLastBall) els.hubLastBall.textContent = ball;
     }
 
     function renderStatus(state) {
@@ -397,6 +396,7 @@
             els.status.className = 'badge bg-secondary mdj-bingo-status-pill';
             updateActionButtons(state);
             if (els.voiceCall && state.voiceCall != null) els.voiceCall.checked = !!state.voiceCall;
+            renderCalledBalls({ lastBall: null });
             syncAdminGrid({ ballCount: Number(els.ballCount?.value) || 90, calledBalls: [], lastBall: null });
             return;
         }
@@ -654,10 +654,10 @@
         });
     });
 
-    document.getElementById('bingoSubPrepare-tab')?.addEventListener('shown.bs.tab', () => {
+    function refreshPrepareData() {
         loadBatches();
         loadGames();
-    });
+    }
 
     document.getElementById('bingoCreateGameBtn')?.addEventListener('click', async () => {
         const eid = eventId();
@@ -738,17 +738,13 @@
         fetchState();
     });
 
-    document.getElementById('bingoSubControl-tab')?.addEventListener('shown.bs.tab', () => {
-        fitAdminGridCellFont();
-    });
-
-    let gamesFocusResizeTimer = null;
+    let gridResizeTimer = null;
     window.addEventListener(
         'resize',
         () => {
-            if (!document.body.classList.contains('mdj-dashboard-games-focus')) return;
-            clearTimeout(gamesFocusResizeTimer);
-            gamesFocusResizeTimer = setTimeout(fitAdminGridCellFont, 120);
+            if (!isCallerPage) return;
+            clearTimeout(gridResizeTimer);
+            gridResizeTimer = setTimeout(fitAdminGridCellFont, 120);
         },
         { passive: true }
     );
@@ -758,26 +754,27 @@
         pollTimer = setInterval(fetchState, 2500);
     }
 
-    document.getElementById('games-tab')?.addEventListener('shown.bs.tab', () => {
-        setGamesDashboardFocus(true);
-        bindAdminGridFit();
-        fetchState();
-        if (document.getElementById('bingoSubPrepare')?.classList.contains('active')) {
-            loadBatches();
-            loadGames();
-        }
-        startPoll();
-        requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
-    });
-
-    document.getElementById('games-tab')?.addEventListener('hidden.bs.tab', () => {
-        setGamesDashboardFocus(false);
-        if (adminGridResizeObserver) {
-            adminGridResizeObserver.disconnect();
-            adminGridResizeObserver = null;
-        }
+    function stopPoll() {
         clearInterval(pollTimer);
-    });
+        pollTimer = null;
+    }
+
+    if (isCallerPage) {
+        bindAdminGridFit();
+        startPoll();
+        loadGames();
+        requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
+    } else {
+        document.getElementById('games-tab')?.addEventListener('shown.bs.tab', () => {
+            fetchState();
+            refreshPrepareData();
+            startPoll();
+        });
+
+        document.getElementById('games-tab')?.addEventListener('hidden.bs.tab', () => {
+            stopPoll();
+        });
+    }
 
     window.addEventListener('mdj-dashboard-event-changed', () => {
         fetchState();
@@ -786,14 +783,15 @@
         updateTargetHint();
     });
 
-    buildAdminGrid(Number(els.ballCount?.value) || 90);
+    if (els.adminGrid) buildAdminGrid(Number(els.ballCount?.value) || 90);
     updateTargetHint();
     fetchState();
 
-    const gamesPane = document.getElementById('games');
-    if (gamesPane?.classList.contains('active') || gamesPane?.classList.contains('show')) {
-        setGamesDashboardFocus(true);
-        bindAdminGridFit();
-        requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
+    if (!isCallerPage) {
+        const gamesPane = document.getElementById('games');
+        if (gamesPane?.classList.contains('active') || gamesPane?.classList.contains('show')) {
+            refreshPrepareData();
+            startPoll();
+        }
     }
 })();

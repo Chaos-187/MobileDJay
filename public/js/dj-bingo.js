@@ -179,7 +179,7 @@
                 return (
                     `<div class="mdj-bingo-game-row${sel}" data-game-id="${g.id}">` +
                     `<div><strong>${escapeHtml(g.title)}</strong><br><span class="text-muted">${statusLabel(g.status)} · ${g.unassignedCards} free · ${g.assignments} players</span></div>` +
-                    `<div class="btn-group btn-group-sm">` +
+                    `<div class="mdj-bingo-game-actions">` +
                     (g.status === 'preparing'
                         ? `<button type="button" class="btn btn-outline-success bingo-game-open-join" data-id="${g.id}">Open join</button>`
                         : '') +
@@ -642,6 +642,7 @@
                 alert(data.error || 'Could not generate cards');
                 return;
             }
+            showBingoPrepPanel('cards');
             loadBatches();
             if (data.printUrl) window.open(data.printUrl, '_blank', 'noopener');
         } catch (e) {
@@ -701,22 +702,24 @@
                     assigned > 0
                         ? ` <span class="text-warning">· ${assigned} assigned</span>`
                         : '';
-                row.innerHTML =
-                    `<span><strong>${escapeHtml(b.batch_id)}</strong> <span class="text-muted">(${b.card_count} cards)${assignedNote}</span></span>`;
+                const info = document.createElement('div');
+                info.className = 'mdj-bingo-batch-info';
+                info.innerHTML = `<strong>${escapeHtml(b.batch_id)}</strong> <span class="text-muted">(${b.card_count} cards)${assignedNote}</span>`;
+                row.appendChild(info);
                 const actions = document.createElement('div');
-                actions.className = 'mdj-bingo-batch-actions btn-group';
+                actions.className = 'mdj-bingo-batch-actions';
                 const printBtn = document.createElement('button');
                 printBtn.type = 'button';
-                printBtn.className = 'btn btn-outline-primary btn-sm';
-                printBtn.textContent = 'Print';
+                printBtn.className = 'btn btn-outline-primary btn-sm mdj-bingo-touch-action';
+                printBtn.innerHTML = '<i class="fas fa-print me-1" aria-hidden="true"></i>Print';
                 printBtn.addEventListener('click', () => {
                     window.open(`/dj/bingo/${eid}/print?batch=${encodeURIComponent(b.batch_id)}`, '_blank');
                 });
                 actions.appendChild(printBtn);
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
-                delBtn.className = 'btn btn-outline-danger btn-sm';
-                delBtn.textContent = 'Delete';
+                delBtn.className = 'btn btn-outline-danger btn-sm mdj-bingo-touch-action';
+                delBtn.innerHTML = '<i class="fas fa-trash-alt me-1" aria-hidden="true"></i>Delete';
                 delBtn.disabled = assigned > 0;
                 delBtn.title =
                     assigned > 0
@@ -740,6 +743,24 @@
             getVerifyClaimType();
         });
     });
+
+    function showBingoPrepPanel(key) {
+        document.querySelectorAll('[data-bingo-prep]').forEach((btn) => {
+            btn.classList.toggle('active', btn.getAttribute('data-bingo-prep') === key);
+        });
+        document.querySelectorAll('[data-bingo-prep-panel]').forEach((panel) => {
+            panel.hidden = panel.getAttribute('data-bingo-prep-panel') !== key;
+        });
+        if (key === 'cards') loadBatches();
+    }
+
+    function bindBingoPrepareTabs() {
+        document.querySelectorAll('[data-bingo-prep]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                showBingoPrepPanel(btn.getAttribute('data-bingo-prep'));
+            });
+        });
+    }
 
     function refreshPrepareData() {
         loadBatches();
@@ -875,6 +896,7 @@
     fetchState();
 
     if (!isCallerPage) {
+        bindBingoPrepareTabs();
         const gamesPane = document.getElementById('games');
         if (gamesPane?.classList.contains('active') || gamesPane?.classList.contains('show')) {
             refreshPrepareData();

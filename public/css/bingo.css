@@ -98,11 +98,21 @@ body.mdj-guest-bingo-page {
 
 .mdj-bingo-game-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 0.5rem;
     padding: 0.5rem 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mdj-bingo-game-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+    flex: 0 1 auto;
+    max-width: 100%;
 }
 
 .mdj-bingo-game-row.is-selected {
@@ -563,9 +573,18 @@ body:not(.dark-mode) .mdj-bingo-batch-row {
     min-width: 76px;
 }
 
+.mdj-bingo-batch-info {
+    flex: 1 1 10rem;
+    min-width: 0;
+}
+
 .mdj-bingo-batch-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
     flex-shrink: 0;
-    gap: 0.25rem;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .mdj-bingo-batch-row {
@@ -2267,6 +2286,37 @@ body:not(.dark-mode) .mdj-games-hub-card {
     margin-top: 0.75rem;
 }
 
+.mdj-games-hub-game-pick {
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+body:not(.dark-mode) .mdj-games-hub-game-pick {
+    border-top-color: #e2e8f0;
+}
+
+.mdj-bingo-prepare-tabs {
+    flex-wrap: wrap;
+}
+
+.mdj-bingo-prepare-tabs .nav-link {
+    font-weight: 600;
+    padding: 0.45rem 0.85rem;
+}
+
+.mdj-bingo-prepare-panels .mdj-bingo-prepare-panel[hidden] {
+    display: none !important;
+}
+
+.mdj-bingo-batches-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
 .mdj-games-hub-actions .btn.disabled,
 .mdj-games-hub-actions a.disabled {
     pointer-events: none;
@@ -2281,48 +2331,319 @@ body:not(.dark-mode) .mdj-games-hub-card {
     gap: 0.85rem;
 }
 
-/* —— Standalone bingo caller page —— */
-body.mdj-bingo-caller-page .mdj-bingo-caller-main {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem 1rem 2rem;
-}
-
-body.mdj-bingo-caller-page .mdj-bingo-caller-top {
+/* —— Standalone bingo caller page (tablet / podium console) —— */
+body.mdj-bingo-caller-page {
+    min-height: 100dvh;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    flex-direction: column;
+    background:
+        radial-gradient(ellipse 120% 90% at 50% 0%, rgba(34, 197, 94, 0.08), transparent 50%),
+        radial-gradient(ellipse 80% 60% at 100% 100%, rgba(255, 122, 26, 0.06), transparent 45%),
+        linear-gradient(180deg, #0c1219 0%, #070b10 40%, #05080c 100%);
+    overflow-x: hidden;
 }
 
-body.mdj-bingo-caller-page .mdj-bingo-caller-title {
-    font-size: clamp(1.35rem, 4vw, 1.75rem);
-    font-weight: 800;
-    margin-bottom: 0.25rem;
+body.mdj-bingo-caller-page .mdj-scanlines {
+    display: none;
 }
 
-body.mdj-bingo-caller-page .mdj-bingo-caller-layout {
+.mdj-caller-header {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.85rem;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    padding: 0.65rem clamp(0.85rem, 3vw, 1.5rem);
+    padding-top: max(0.65rem, env(safe-area-inset-top));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
 }
 
-@media (max-width: 991px) {
-    body.mdj-bingo-caller-page .mdj-bingo-caller-layout {
+.mdj-caller-header__left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    grid-column: 1;
+}
+
+.mdj-caller-header__game {
+    grid-column: 2;
+    min-width: 0;
+}
+
+.mdj-caller-header__right {
+    grid-column: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.mdj-caller-display-hint {
+    grid-column: 1 / -1;
+    font-size: 0.78rem;
+    opacity: 0.65;
+    padding-left: 2.75rem;
+}
+
+.mdj-caller-back {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.mdj-caller-back:hover {
+    color: #fff;
+    background: rgba(255, 122, 26, 0.2);
+    border-color: rgba(255, 122, 26, 0.4);
+}
+
+.mdj-caller-eyebrow {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.55;
+}
+
+.mdj-caller-event {
+    display: block;
+    font-weight: 700;
+    font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+    line-height: 1.2;
+    max-width: 28ch;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mdj-caller-game-select {
+    min-height: 44px;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.35) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
+}
+
+.mdj-caller-game-meta {
+    font-size: 0.72rem;
+    opacity: 0.65;
+    margin-top: 0.2rem;
+}
+
+.mdj-caller-status {
+    font-size: 0.75rem;
+}
+
+.mdj-caller-display-btn {
+    min-height: 44px;
+}
+
+body.mdj-bingo-caller-page .mdj-bingo-caller-main {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: clamp(0.75rem, 2vh, 1.25rem) clamp(0.75rem, 3vw, 1.5rem);
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    gap: 0.75rem;
+}
+
+.mdj-caller-stage {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 0.75rem;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+    .mdj-caller-header {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .mdj-caller-header__game {
+        grid-column: 1 / -1;
+        order: 3;
+    }
+
+    .mdj-caller-display-hint {
+        padding-left: 0;
+    }
+
+    .mdj-caller-stage {
         grid-template-columns: 1fr;
     }
 }
 
-body.mdj-bingo-caller-page .mdj-bingo-grid-scroll--caller {
-    max-height: min(38vh, 420px);
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
+.mdj-caller-panel {
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    padding: clamp(0.85rem, 2vw, 1.15rem);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 
-body.mdj-bingo-caller-page .mdj-bingo-run-hero--caller .mdj-bingo-hero-ball {
-    font-size: clamp(2.5rem, 12vw, 4rem);
+.mdj-caller-panel--run {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.mdj-caller-ball-spotlight {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: clamp(1rem, 3vh, 1.75rem) 1rem;
+    border-radius: 20px;
+    background:
+        radial-gradient(ellipse 80% 70% at 50% 30%, rgba(255, 122, 26, 0.22), transparent 60%),
+        linear-gradient(165deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.2));
+    border: 1px solid rgba(255, 160, 60, 0.25);
+    position: relative;
+    min-height: clamp(140px, 22vh, 200px);
+}
+
+.mdj-caller-paused {
+    position: absolute;
+    top: 0.65rem;
+    right: 0.65rem;
+}
+
+.mdj-caller-hero-ball {
+    font-family: Orbitron, ui-monospace, monospace;
+    font-size: clamp(4rem, 16vw, 7.5rem) !important;
+    line-height: 1;
+    margin: 0.15rem 0;
+    text-shadow:
+        0 0 32px rgba(255, 140, 40, 0.55),
+        0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.mdj-caller-segments .btn {
+    min-height: 50px;
+    font-size: 0.95rem;
+}
+
+.mdj-caller-cta {
+    width: 100%;
+    min-height: clamp(64px, 10vh, 80px);
+    font-size: clamp(1.15rem, 3vw, 1.45rem);
+    font-weight: 800;
+    border-radius: 14px;
+    border: none;
+    color: #1a0800;
+    background: linear-gradient(145deg, #ffb347, #ff7a1a 45%, #ea580c);
+    box-shadow:
+        0 8px 28px rgba(255, 122, 26, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.mdj-caller-cta:disabled {
+    opacity: 0.45;
+    box-shadow: none;
+}
+
+.mdj-caller-cta:not(:disabled):active {
+    transform: scale(0.98);
+}
+
+.mdj-caller-controls-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.mdj-caller-controls-row .btn {
+    min-height: 52px;
+}
+
+.mdj-caller-panel-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 0.35rem;
+}
+
+.mdj-caller-panel-lede {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-bottom: 0.75rem;
+}
+
+.mdj-caller-claims .btn {
+    min-height: 52px;
+    font-size: 0.95rem;
+}
+
+.mdj-caller-serial-input {
+    min-height: 52px;
+    font-size: 1.1rem;
+}
+
+.mdj-caller-verify-btn {
+    min-height: 54px;
+}
+
+.mdj-caller-board {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.28);
+    padding: 0.65rem 0.75rem 0.75rem;
+    overflow: hidden;
+}
+
+.mdj-caller-board-head {
+    flex-shrink: 0;
+    margin-bottom: 0.35rem;
+}
+
+.mdj-caller-board-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.65;
+    margin: 0;
+}
+
+body.mdj-bingo-caller-page .mdj-bingo-grid-scroll--caller {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+body.mdj-bingo-caller-page .mdj-caller-admin-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    align-content: start;
+}
+
+@media (min-height: 700px) {
+    body.mdj-bingo-caller-page .mdj-caller-admin-grid {
+        height: 100%;
+    }
 }
 
 /* Games tab: allow scroll — prepare panels must not clip buttons */

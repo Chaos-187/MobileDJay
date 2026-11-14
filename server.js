@@ -60,6 +60,7 @@ const {
     normalizePlayingFor
 } = require('./lib/bingo');
 const bingoSession = require('./lib/bingo-session');
+const { clampBingoMaxVirtualPerGuest } = require('./lib/bingo-limits');
 const virtualRaceSession = require('./lib/virtual-race-session');
 const hiloSession = require('./lib/hilo-session');
 const portalRouter = require('./portal/router');
@@ -729,12 +730,12 @@ function rejectBingoGuestIfBlocked(event, customerName, deviceId, res) {
 
 function bingoMaxVirtualCardsForEvent(event) {
     const n = parseInt(event?.bingo_max_virtual_cards, 10);
-    return Number.isFinite(n) && n >= 1 ? Math.min(10, n) : 1;
+    return Number.isFinite(n) && n >= 1 ? clampBingoMaxVirtualPerGuest(n) : 1;
 }
 
 function bingoMaxVirtualCardsForGame(event, game) {
     const g = parseInt(game?.maxVirtualCards, 10);
-    if (Number.isFinite(g) && g >= 1) return Math.min(10, g);
+    if (Number.isFinite(g) && g >= 1) return clampBingoMaxVirtualPerGuest(g);
     return bingoMaxVirtualCardsForEvent(event);
 }
 

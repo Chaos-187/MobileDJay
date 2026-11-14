@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const crypto = require('crypto');
+const { clampBingoMaxVirtualPerGuest } = require('../lib/bingo-limits');
 
 // Initialize database
 const dbPath = path.join(__dirname, 'mobiledj.db');
@@ -1661,7 +1662,7 @@ const bingoDb = {
         const name = normalizeGuestName(customerName);
         const device = this._normalizeDevice(deviceId);
         if (!name || !device) return { error: 'invalid_identity' };
-        const maxCards = Math.max(1, Math.min(10, Number(options.maxCards) || 1));
+        const maxCards = clampBingoMaxVirtualPerGuest(Number(options.maxCards) || 1);
         const eventId = Number(options.eventId);
         const eventSlug = options.eventSlug != null ? String(options.eventSlug) : '';
         const ballCount = Math.max(9, Math.min(90, Number(options.ballCount) || 90));
@@ -1758,7 +1759,7 @@ const bingoDb = {
         }
         const existingAssignee = parsed.assignedTo ? normalizeGuestName(parsed.assignedTo) : '';
         if (existingAssignee && existingAssignee !== name) return { error: 'serial_taken' };
-        const cardLimit = Math.max(1, Math.min(10, Number(maxCards) || 1));
+        const cardLimit = clampBingoMaxVirtualPerGuest(Number(maxCards) || 1);
         const assigned = this.listAssignedCardsForPlayer(gameId, name);
         const assignedCount = assigned.length;
         const alreadyLinked = assigned.some((c) => c.id === parsed.id);
@@ -1888,7 +1889,7 @@ const bingoGameDb = {
         const bc = Math.max(9, Math.min(90, Number(ballCount) || 90));
         let mvc = null;
         if (maxVirtualCards != null && maxVirtualCards !== '') {
-            mvc = Math.max(1, Math.min(10, Number(maxVirtualCards) || 1));
+            mvc = clampBingoMaxVirtualPerGuest(Number(maxVirtualCards) || 1);
         }
         const startAt =
             advertisedStartAt != null && String(advertisedStartAt).trim()
@@ -1948,7 +1949,7 @@ const bingoGameDb = {
         if (patch.maxVirtualCards !== undefined) {
             let mvc = null;
             if (patch.maxVirtualCards != null && patch.maxVirtualCards !== '') {
-                mvc = Math.max(1, Math.min(10, Number(patch.maxVirtualCards) || 1));
+                mvc = clampBingoMaxVirtualPerGuest(Number(patch.maxVirtualCards) || 1);
             }
             db.prepare(
                 `UPDATE bingo_games SET max_virtual_cards = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`

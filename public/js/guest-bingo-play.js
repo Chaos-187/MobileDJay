@@ -293,7 +293,7 @@
                 '<p class="guest-bingo-buy-modal__lede" data-bingo-buy-lede>Choose how many virtual cards to add on this phone.</p>' +
                 '<div class="guest-bingo-buy-modal__qty">' +
                 '<button type="button" class="guest-bingo-buy-modal__step" data-bingo-buy-less aria-label="Fewer tickets">−</button>' +
-                '<input type="number" class="guest-bingo-buy-modal__input" data-bingo-buy-qty min="1" max="10" value="1" inputmode="numeric" autocomplete="off">' +
+                '<input type="number" class="guest-bingo-buy-modal__input" data-bingo-buy-qty min="1" max="99" value="1" inputmode="numeric" autocomplete="off">' +
                 '<button type="button" class="guest-bingo-buy-modal__step" data-bingo-buy-more aria-label="More tickets">+</button>' +
                 '</div>' +
                 '<p class="guest-bingo-buy-modal__hint" data-bingo-buy-hint></p>' +
@@ -926,7 +926,7 @@
         async function joinVirtual(gameId, quantity) {
             const name = opts.customerName();
             if (!name) return { ok: false, error: 'name' };
-            const qty = Math.max(1, Math.min(10, Number(quantity) || 1));
+            const qty = Math.max(1, Number(quantity) || 1);
             try {
                 const res = await fetch(
                     '/api/event/' + encodeURIComponent(slug) + '/bingo/games/' + gameId + '/join',

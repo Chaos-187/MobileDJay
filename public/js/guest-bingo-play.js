@@ -859,6 +859,10 @@
                             g.id +
                             '" data-has-cards="' +
                             (hasCards ? '1' : '0') +
+                            '" data-card-limit="' +
+                            Number(g.cardLimit) +
+                            '" data-guest-card-count="' +
+                            Number(g.guestCardCount || 0) +
                             '">' +
                             '<span class="gh-bingo-game-pick__title">' +
                             escapeHtml(g.title) +
@@ -899,7 +903,10 @@
                             }
                             startPlay();
                         } else {
-                            const rem = ticketsRemaining(g.cardLimit, g.guestCardCount || 0);
+                            const rem = ticketsRemaining(
+                                btn.getAttribute('data-card-limit'),
+                                btn.getAttribute('data-guest-card-count')
+                            );
                             openBuyTicketsModal(gid, rem);
                         }
                     });

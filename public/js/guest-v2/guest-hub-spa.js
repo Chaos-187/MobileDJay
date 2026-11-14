@@ -242,8 +242,10 @@
                 '<div class="guest-bingo-cards-stack guest-bingo-tickets" data-bingo-cards-stack></div>' +
                 '<span data-bingo-last-ball hidden aria-hidden="true">—</span>' +
                 '<p class="gh-bingo-prize visually-hidden" data-bingo-playing-for></p>' +
-                '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call" data-bingo-call>Call</button>' +
-                '<p class="gh-bingo-claim-result" data-bingo-claim-result role="status"></p>' +
+                '<div class="guest-bingo-call-dock" data-bingo-call-dock>' +
+                    '<p class="gh-bingo-claim-result guest-bingo-call-dock__status" data-bingo-claim-result role="status"></p>' +
+                    '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call>Call</button>' +
+                '</div>' +
             '</div>' +
         '</div>';
     }

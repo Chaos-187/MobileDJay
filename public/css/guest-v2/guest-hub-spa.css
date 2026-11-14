@@ -1024,8 +1024,18 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     padding-bottom: 0.25rem;
 }
 
-.gh-bingo-panel[data-bingo-play] {
-    padding-bottom: 0.5rem;
+.gh-bingo-panel[data-bingo-play]:not([hidden]) {
+    padding-bottom: calc(
+        var(--guest-bingo-call-dock-h, 5.75rem) + var(--gh-nav-h) + env(safe-area-inset-bottom) + 0.75rem
+    );
+}
+
+.gh-bingo .guest-bingo-call-dock {
+    width: min(520px, calc(100% - 2rem));
+}
+
+.gh-bingo .guest-bingo-call-dock__status {
+    color: var(--gh-muted);
 }
 
 .gh-bingo .guest-bingo-card-head {
@@ -1071,7 +1081,8 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     margin: 0 0 0.75rem;
 }
 
-.gh-bingo-call {
+.gh-bingo-call,
+.guest-bingo-call-dock__btn {
     width: 100%;
     min-height: 52px;
     font-size: 1.05rem;
@@ -1081,6 +1092,10 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
 .gh-bingo-claim-result {
     margin: 0.65rem 0 0;
     font-size: 0.82rem;
+}
+
+.guest-bingo-call-dock .gh-bingo-claim-result {
+    margin: 0 0 0.35rem;
 }
 
 .gh-bingo-claim-result.is-ok {

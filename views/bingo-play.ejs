@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=22" rel="stylesheet">
+    <link href="/css/bingo.css?v=23" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
 </head>
@@ -44,7 +44,10 @@
             <div class="guest-bingo-cards-stack guest-bingo-tickets" data-bingo-cards-stack></div>
             <span id="guestBingoLastBall" data-bingo-last-ball hidden aria-hidden="true">—</span>
             <p class="guest-bingo-playing-for" id="guestBingoPlayingFor" data-bingo-playing-for></p>
-            <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn" data-bingo-call>Call</button>
+            <div class="guest-bingo-call-dock" data-bingo-call-dock>
+                <p id="guestBingoClaimResult" class="guest-bingo-claim-result guest-bingo-call-dock__status small" data-bingo-claim-result role="status"></p>
+                <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn guest-bingo-call-dock__btn" data-bingo-call>Call</button>
+            </div>
             <details class="guest-bingo-more-claims small mt-2">
                 <summary>Other claims</summary>
                 <div class="guest-bingo-claim-row mt-2">
@@ -53,7 +56,6 @@
                     <button type="button" class="btn btn-outline-warning btn-sm guest-bingo-claim" data-bingo-claim data-claim="house">Full house</button>
                 </div>
             </details>
-            <p id="guestBingoClaimResult" class="guest-bingo-claim-result small" data-bingo-claim-result role="status"></p>
         </div>
     </main>
     <script src="/js/guest-session.js"></script>

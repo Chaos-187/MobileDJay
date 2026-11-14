@@ -519,6 +519,65 @@ body.mdj-guest-bingo-page {
     margin-top: 0.35rem;
 }
 
+/* Sticky Call — fixed above hub bottom nav or screen safe area */
+:root {
+    --guest-bingo-call-dock-h: 5.75rem;
+}
+
+.guest-bingo-call-dock {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: max(0.65rem, env(safe-area-inset-bottom));
+    width: min(520px, calc(100% - 2rem));
+    z-index: 60;
+    padding: 0.45rem 0 0.35rem;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(
+        180deg,
+        rgba(10, 10, 18, 0.72) 0%,
+        rgba(10, 10, 18, 0.94) 40%,
+        rgba(7, 7, 13, 0.98) 100%
+    );
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+body.gh-spa .guest-bingo-call-dock {
+    bottom: calc(var(--gh-nav-h, 4.25rem) + 0.35rem + env(safe-area-inset-bottom));
+}
+
+.guest-bingo-call-dock__status {
+    margin: 0 0 0.35rem;
+    min-height: 0;
+    text-align: center;
+    font-size: 0.78rem;
+    line-height: 1.25;
+}
+
+.guest-bingo-call-dock__status:empty {
+    display: none;
+}
+
+.guest-bingo-call-dock__btn,
+.guest-bingo-call-dock .guest-bingo-call-btn {
+    margin-top: 0;
+}
+
+.guest-bingo-panel[data-bingo-play]:not([hidden]) {
+    padding-bottom: calc(
+        var(--guest-bingo-call-dock-h) + max(0.65rem, env(safe-area-inset-bottom)) + 0.5rem
+    );
+}
+
+body.gh-spa .gh-bingo-panel[data-bingo-play]:not([hidden]) {
+    padding-bottom: calc(
+        var(--guest-bingo-call-dock-h) + var(--gh-nav-h, 4.25rem) + env(safe-area-inset-bottom) + 0.75rem
+    );
+}
+
 .guest-bingo-claim-result.is-ok {
     color: #4ade80;
 }

@@ -753,6 +753,17 @@ function guestBingoCardProgress(card, slug, gameId) {
     return progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
 }
 
+/** Caller running or any balls drawn — no extra virtual cards mid-game. */
+function bingoGuestPlayInProgress(slug, gameId) {
+    const state = bingoSession.getBingoState(slug, gameId);
+    return !!(state.active || (state.calledBalls && state.calledBalls.length > 0));
+}
+
+function guestCanGrabMoreVirtualCards(slug, gameId, assignedCount, cardLimit) {
+    if (bingoGuestPlayInProgress(slug, gameId)) return false;
+    return assignedCount < cardLimit;
+}
+
 function pickGuestBingoPlayCard(cards, slug, gameId, serial) {
     if (!cards || !cards.length) return null;
     const want = serial != null ? String(serial).trim() : '';
@@ -2812,10 +2823,12 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
             if (!assigned.length || !deviceOk) return base;
             const guestCards = guestBingoCardsSummary(assigned, slug, g.id);
             const bestToGo = guestCards.length ? guestCards[0].toGo : null;
+            const playInProgress = bingoGuestPlayInProgress(slug, g.id);
             return {
                 ...base,
                 guestCardCount: assigned.length,
-                canGrabMore: assigned.length < cardLimit,
+                playInProgress,
+                canGrabMore: guestCanGrabMoreVirtualCards(slug, g.id, assigned.length, cardLimit),
                 guestCards,
                 guestBestToGo: bestToGo,
                 guestBestLabel: guestCards[0]?.progressLabel || null
@@ -2848,6 +2861,13 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
     const customerName = normalizeGuestNameForApi(req.body.customerName);
     const deviceId = normalizeGuestDeviceId(req.body.deviceId);
     if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
+    const slug = req.event.slug;
+    const existingCount = bingoDb.countAssignedCardsForPlayer(gameId, customerName);
+    if (existingCount > 0 && bingoGuestPlayInProgress(slug, gameId)) {
+        return res.status(400).json({
+            error: 'Game in progress — you can’t grab another virtual card now'
+        });
+    }
     const maxCards = bingoMaxVirtualCardsForGame(req.event, game);
     const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, {
         maxCards,
@@ -2921,7 +2941,12 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         cardLimit,
         guestCards,
         allCards,
-        canGrabMore: access.cards.length < cardLimit,
+        canGrabMore: guestCanGrabMoreVirtualCards(
+            slug,
+            gameId,
+            access.cards.length,
+            cardLimit
+        ),
         card: { serial: card.serial, grid: card.grid },
         calledBalls: calledList,
         lastBall: state.lastBall,
@@ -3029,14 +3054,18 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
     const requested = normalizePlayingFor(claimType);
     const playingFor = normalizePlayingFor(state.playingFor);
     const valid = verifyClaim(card.grid, state.calledBalls, claimType);
-    bingoClaimDb.add(gameId, {
-        customerName,
-        serial: card.serial,
-        claimType,
-        validOnCard: valid
-    });
+
+    function recordGuestClaim(validOnCard) {
+        bingoClaimDb.add(gameId, {
+            customerName,
+            serial: card.serial,
+            claimType,
+            validOnCard: !!validOnCard
+        });
+    }
 
     if (!valid) {
+        recordGuestClaim(false);
         return res.json({
             success: true,
             valid: false,
@@ -3047,6 +3076,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
     }
 
     if (!state.active) {
+        recordGuestClaim(false);
         return res.json({
             success: true,
             valid: true,
@@ -3057,6 +3087,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
     }
 
     if (requested !== playingFor) {
+        recordGuestClaim(false);
         return res.json({
             success: true,
             valid: false,
@@ -3068,6 +3099,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
     }
 
     if (bingoClaimDb.guestHasValidClaim(gameId, customerName, playingFor)) {
+        recordGuestClaim(false);
         return res.json({
             success: true,
             valid: false,
@@ -3078,6 +3110,8 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
             message: 'You already verified this prize — wait for the next round.'
         });
     }
+
+    recordGuestClaim(true);
 
     const flash = bingoSession.setClaimFlash(slug, gameId, claimType, {
         serial: card.serial,

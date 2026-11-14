@@ -115,23 +115,25 @@
     function renderRecentBalls(trackEl, calledBalls, opts) {
         if (!trackEl) return;
         const list = calledBalls || [];
-        const recent = list.slice(-5);
+        const recent = list.slice(-8);
         if (!recent.length) {
             trackEl.innerHTML = '<span class="guest-bingo-recent-empty">—</span>';
             return;
         }
-        const latest = recent[recent.length - 1];
-        const older = recent.slice(0, -1);
-        let html = '';
-        html +=
-            '<span class="guest-bingo-callball guest-bingo-callball--latest" aria-current="true">' +
-            escapeHtml(String(latest)) +
-            '</span>';
-        older.forEach(function (n) {
-            html +=
-                '<span class="guest-bingo-callball">' + escapeHtml(String(n)) + '</span>';
-        });
-        trackEl.innerHTML = html;
+        trackEl.innerHTML = recent
+            .map(function (n, i) {
+                const isLatest = i === recent.length - 1;
+                return (
+                    '<span class="guest-bingo-callball' +
+                    (isLatest ? ' guest-bingo-callball--latest' : '') +
+                    '"' +
+                    (isLatest ? ' aria-current="true"' : '') +
+                    '>' +
+                    escapeHtml(String(n)) +
+                    '</span>'
+                );
+            })
+            .join('');
         if (opts && opts.progressEl && opts.calledCount != null && opts.ballCount) {
             opts.progressEl.hidden = false;
             opts.progressEl.textContent = opts.calledCount + '/' + opts.ballCount;
@@ -280,11 +282,9 @@
                         : cardOrderSerials);
                 }
                 if (lastStackPayload) {
-                    renderCardStack(
-                        lastStackPayload.cards,
-                        lastStackPayload.calledBalls,
-                        activeSerial
-                    );
+                    const ordered = stabilizeCardOrder(lastStackPayload.cards);
+                    lastStackPayload.cards = ordered;
+                    renderCardStack(ordered, lastStackPayload.calledBalls, activeSerial);
                 }
             });
         }
@@ -301,9 +301,16 @@
             const list = cards || [];
             if (!list.length) return list;
             if (autoDab) {
-                return list
-                    .slice()
-                    .sort((a, b) => (a.assignOrder || 0) - (b.assignOrder || 0));
+                return list.slice().sort(function (a, b) {
+                    const aToGo = Number(
+                        a.progress && a.progress.toGo != null ? a.progress.toGo : a.toGo != null ? a.toGo : 999
+                    );
+                    const bToGo = Number(
+                        b.progress && b.progress.toGo != null ? b.progress.toGo : b.toGo != null ? b.toGo : 999
+                    );
+                    if (aToGo !== bToGo) return aToGo - bToGo;
+                    return (a.assignOrder || 0) - (b.assignOrder || 0);
+                });
             }
             list.forEach(function (c) {
                 if (c.serial && cardOrderSerials.indexOf(c.serial) === -1) {
@@ -584,9 +591,11 @@
                     .map(function (g) {
                         const hasCards = (g.guestCardCount || 0) > 0;
                         const slots = hasCards
-                            ? g.canGrabMore
-                                ? 'More virtual cards available'
-                                : 'Max virtual cards for this game'
+                            ? g.playInProgress
+                                ? 'Game in progress'
+                                : g.canGrabMore
+                                  ? 'More virtual cards available'
+                                  : 'Max virtual cards for this game'
                             : 'Virtual card on your phone — created when you join';
                         const startLine = g.advertisedStartAt
                             ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
@@ -800,7 +809,11 @@
                 lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
                 if (els.grabAnother) {
-                    els.grabAnother.hidden = !data.canGrabMore;
+                    const inProgress =
+                        !!data.active ||
+                        data.phase === 'intro' ||
+                        (data.calledCount != null && data.calledCount > 0);
+                    els.grabAnother.hidden = !data.canGrabMore || inProgress;
                 }
                 updateCallUi(stackCards, activeSerial, data);
                 maybeAnnounceBall(data);

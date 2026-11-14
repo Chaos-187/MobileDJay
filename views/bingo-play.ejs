@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=25" rel="stylesheet">
+    <link href="/css/bingo.css?v=26" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
 </head>
@@ -24,18 +24,33 @@
         </div>
 
         <div id="guestBingoPlay" class="guest-bingo-panel" data-bingo-play hidden>
-            <button type="button" class="btn btn-link guest-bingo-back-lobby px-0" data-bingo-back-lobby>
-                <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>All games &amp; cards
-            </button>
-            <p class="guest-bingo-meta" id="guestBingoMeta" data-bingo-meta></p>
-            <label class="guest-bingo-auto-dab form-check form-switch">
-                <input class="form-check-input" type="checkbox" data-bingo-auto-dab checked>
-                <span>Auto-dabber (marks called numbers)</span>
-            </label>
-            <label class="guest-bingo-caller-sound form-check form-switch">
-                <input class="form-check-input" type="checkbox" data-bingo-caller-sound checked>
-                <span>Hear called numbers on this device</span>
-            </label>
+            <div class="guest-bingo-play-head">
+                <button type="button" class="guest-bingo-back-lobby" data-bingo-back-lobby>
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                    <span>Games &amp; cards</span>
+                </button>
+                <p class="guest-bingo-meta" id="guestBingoMeta" data-bingo-meta></p>
+            </div>
+            <div class="guest-bingo-play-options" role="group" aria-label="Play options">
+                <label class="guest-bingo-opt">
+                    <span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-highlighter"></i></span>
+                    <span class="guest-bingo-opt__copy">
+                        <span class="guest-bingo-opt__title">Auto-dabber</span>
+                        <span class="guest-bingo-opt__hint">Marks called numbers</span>
+                    </span>
+                    <input class="guest-bingo-opt__input" type="checkbox" data-bingo-auto-dab checked>
+                    <span class="guest-bingo-opt__switch" aria-hidden="true"></span>
+                </label>
+                <label class="guest-bingo-opt">
+                    <span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-volume-low"></i></span>
+                    <span class="guest-bingo-opt__copy">
+                        <span class="guest-bingo-opt__title">Caller sound</span>
+                        <span class="guest-bingo-opt__hint">Speak each ball on this phone</span>
+                    </span>
+                    <input class="guest-bingo-opt__input" type="checkbox" data-bingo-caller-sound checked>
+                    <span class="guest-bingo-opt__switch" aria-hidden="true"></span>
+                </label>
+            </div>
             <div class="guest-bingo-callboard" data-bingo-recent-strip aria-label="Called numbers and prizes">
                 <div class="guest-bingo-callboard__main">
                     <div class="guest-bingo-callboard__balls" data-bingo-recent-balls>
@@ -67,7 +82,7 @@
         window.eventSlug = '<%= eventSlug %>';
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
-    <script src="/js/guest-bingo-play.js?v=14"></script>
+    <script src="/js/guest-bingo-play.js?v=17"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

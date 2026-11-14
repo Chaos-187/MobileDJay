@@ -224,15 +224,25 @@
             '<div class="gh-bingo-panel" data-bingo-join>' +
             '<div data-bingo-games-list class="gh-bingo-games"></div></div>' +
             '<div class="gh-bingo-panel" data-bingo-play hidden>' +
-                '<button type="button" class="gh-btn gh-btn--ghost gh-bingo-back-lobby" data-bingo-back-lobby>' +
-                    '<i class="fas fa-arrow-left me-1" aria-hidden="true"></i>All games &amp; cards</button>' +
-                '<p class="gh-bingo-meta" data-bingo-meta></p>' +
-                '<label class="gh-bingo-auto-dab">' +
-                    '<input type="checkbox" data-bingo-auto-dab checked> Auto-dabber' +
-                '</label>' +
-                '<label class="gh-bingo-caller-sound">' +
-                    '<input type="checkbox" data-bingo-caller-sound checked> Hear called numbers' +
-                '</label>' +
+                '<div class="guest-bingo-play-head">' +
+                    '<button type="button" class="guest-bingo-back-lobby gh-bingo-back-lobby" data-bingo-back-lobby>' +
+                        '<i class="fas fa-arrow-left" aria-hidden="true"></i><span>Games &amp; cards</span></button>' +
+                    '<p class="gh-bingo-meta guest-bingo-meta" data-bingo-meta></p></div>' +
+                '<div class="guest-bingo-play-options" role="group" aria-label="Play options">' +
+                    '<label class="guest-bingo-opt">' +
+                        '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-highlighter"></i></span>' +
+                        '<span class="guest-bingo-opt__copy">' +
+                            '<span class="guest-bingo-opt__title">Auto-dabber</span>' +
+                            '<span class="guest-bingo-opt__hint">Marks called numbers</span></span>' +
+                        '<input class="guest-bingo-opt__input" type="checkbox" data-bingo-auto-dab checked>' +
+                        '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label>' +
+                    '<label class="guest-bingo-opt">' +
+                        '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-volume-low"></i></span>' +
+                        '<span class="guest-bingo-opt__copy">' +
+                            '<span class="guest-bingo-opt__title">Caller sound</span>' +
+                            '<span class="guest-bingo-opt__hint">Speak each ball on this phone</span></span>' +
+                        '<input class="guest-bingo-opt__input" type="checkbox" data-bingo-caller-sound checked>' +
+                        '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label></div>' +
                 '<button type="button" class="gh-btn gh-btn--outline gh-bingo-grab-another mb-2" data-bingo-grab-another hidden>Grab another virtual card</button>' +
                 '<div class="guest-bingo-callboard" data-bingo-recent-strip aria-label="Called numbers and prizes">' +
                     '<div class="guest-bingo-callboard__main">' +

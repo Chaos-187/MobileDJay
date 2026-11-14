@@ -988,19 +988,31 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     margin: 0 0 0.65rem;
 }
 
-.gh-bingo-auto-dab {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    margin-bottom: 0.65rem;
-    cursor: pointer;
+.gh-bingo .guest-bingo-play-head {
+    margin-bottom: 0.5rem;
 }
 
-.gh-bingo-auto-dab input {
-    accent-color: var(--gh-accent);
-    width: 1.1rem;
-    height: 1.1rem;
+.gh-bingo .guest-bingo-play-head .guest-bingo-meta,
+.gh-bingo .guest-bingo-play-head .gh-bingo-meta {
+    color: var(--gh-muted);
+}
+
+.gh-bingo .guest-bingo-play-options {
+    background: color-mix(in srgb, var(--gh-surface, #14141f) 88%, transparent);
+    border-color: var(--gh-border);
+}
+
+.gh-bingo .guest-bingo-opt__icon {
+    background: color-mix(in srgb, var(--gh-accent, #1a5c66) 35%, var(--gh-surface, #14141f));
+    color: color-mix(in srgb, var(--gh-accent) 80%, white);
+}
+
+.gh-bingo .guest-bingo-opt__input:checked + .guest-bingo-opt__switch {
+    background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--gh-accent) 90%, white),
+        var(--gh-accent, #1a5c66)
+    );
 }
 
 .gh-bingo .guest-bingo-card-wrap {
@@ -1112,18 +1124,15 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
 }
 
 .gh-bingo-back-lobby {
-    width: 100%;
-    justify-content: flex-start;
-    padding-left: 0;
-    padding-right: 0;
-    margin-bottom: 0.35rem;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--gh-text-muted, rgba(255, 255, 255, 0.72));
+    border: none;
+    background: color-mix(in srgb, var(--gh-surface) 92%, transparent);
+    color: var(--gh-text-muted, rgba(255, 255, 255, 0.78));
 }
 
 .gh-bingo-back-lobby:hover {
     color: var(--gh-accent, var(--event-accent-color, #ff3366));
+    border-color: color-mix(in srgb, var(--gh-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--gh-accent) 12%, var(--gh-surface));
 }
 
 .gh-bingo-game-pick.guest-bingo-togo--3 {

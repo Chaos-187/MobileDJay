@@ -210,7 +210,8 @@
                             '<button type="button" class="gh-btn gh-btn--outline gh-bingo-paper-btn" data-paper-link="' +
                             g.id +
                             '">Link paper</button>' +
-                            '</div></div>';
+                            '</div></div>'
+                        );
                     })
                     .join('');
 

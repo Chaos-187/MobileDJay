@@ -288,20 +288,36 @@
         return 5500;
     }
 
+    function shortCardRef(serial) {
+        const s = String(serial || '').trim();
+        if (!s) return '';
+        if (s.length <= 14) return s;
+        return s.slice(0, 6) + '…' + s.slice(-4);
+    }
+
     function showClaim(flash) {
         if (!flash || !claimOverlay) return;
         clearTimeout(claimHideTimer);
-        if (flash.winnerName && flash.valid !== false) {
-            claimTitle.textContent = flash.winnerName;
+        const name = flash.winnerName && String(flash.winnerName).trim();
+        if (flash.valid !== false && name) {
+            claimTitle.textContent = name;
             const parts = [];
             if (flash.label) parts.push(flash.label);
-            if (flash.serial) parts.push('Card ' + flash.serial);
+            const cardRef = shortCardRef(flash.serial);
+            if (cardRef) parts.push('Card ' + cardRef);
             claimSub.textContent = parts.length ? parts.join(' · ') : 'Verified winner';
+        } else if (flash.valid === true) {
+            claimTitle.textContent = name || flash.label || 'Winner';
+            const parts = [];
+            if (name && flash.label) parts.push(flash.label);
+            const cardRef = shortCardRef(flash.serial);
+            if (cardRef) parts.push('Card ' + cardRef);
+            if (!parts.length) parts.push('Verified winner');
+            claimSub.textContent = parts.join(' · ');
         } else {
             claimTitle.textContent = flash.label || 'Bingo';
             let sub = '';
-            if (flash.serial) sub += 'Serial ' + flash.serial;
-            if (flash.valid === true) sub += (sub ? ' · ' : '') + 'Verified winner';
+            if (flash.serial) sub += 'Card ' + shortCardRef(flash.serial);
             if (flash.valid === false) sub += (sub ? ' · ' : '') + 'Not verified';
             if (!sub) sub = 'Calling paused';
             claimSub.textContent = sub;

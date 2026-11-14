@@ -227,18 +227,27 @@
                 '<button type="button" class="gh-btn gh-btn--ghost gh-bingo-back-lobby" data-bingo-back-lobby>' +
                     '<i class="fas fa-arrow-left me-1" aria-hidden="true"></i>All games &amp; cards</button>' +
                 '<p class="gh-bingo-meta" data-bingo-meta></p>' +
-                '<p class="gh-bingo-serial-line">Card <strong data-bingo-serial></strong></p>' +
                 '<label class="gh-bingo-auto-dab">' +
                     '<input type="checkbox" data-bingo-auto-dab checked> Auto-dabber' +
                 '</label>' +
                 '<button type="button" class="gh-btn gh-btn--outline gh-bingo-grab-another mb-2" data-bingo-grab-another hidden>Grab another virtual card</button>' +
                 '<div class="guest-bingo-card-picks" data-bingo-card-picks hidden></div>' +
-                '<div data-bingo-card class="gh-bingo-card guest-bingo-card-wrap" aria-label="Your bingo card"></div>' +
-                '<div class="gh-bingo-live">' +
-                    '<div><span class="gh-bingo-live__label">Last call</span>' +
-                    '<span class="gh-bingo-live__ball" data-bingo-last-ball>—</span></div>' +
-                    '<div class="guest-bingo-togo-block" data-bingo-togo-block><span class="gh-bingo-live__label">To go</span>' +
-                    '<span class="gh-bingo-live__togo" data-bingo-progress>—</span></div>' +
+                '<div class="guest-bingo-card-wrap" data-bingo-card-wrap>' +
+                    '<header class="guest-bingo-card-head">' +
+                        '<div class="guest-bingo-card-head__cell guest-bingo-card-head__serial">' +
+                            '<span class="guest-bingo-card-head__label">Card</span>' +
+                            '<strong class="guest-bingo-card-head__serial-val" data-bingo-serial>—</strong>' +
+                        '</div>' +
+                        '<div class="guest-bingo-card-head__cell guest-bingo-card-head__last">' +
+                            '<span class="guest-bingo-card-head__label">Last call</span>' +
+                            '<span class="guest-bingo-card-head__ball" data-bingo-last-ball>—</span>' +
+                        '</div>' +
+                        '<div class="guest-bingo-card-head__cell guest-bingo-card-head__togo guest-bingo-togo-block" data-bingo-togo-block>' +
+                            '<span class="guest-bingo-card-head__label">To go</span>' +
+                            '<span class="guest-bingo-card-head__togo-val" data-bingo-progress>—</span>' +
+                        '</div>' +
+                    '</header>' +
+                    '<div data-bingo-card class="guest-bingo-card-grid gh-bingo-card" aria-label="Your bingo card"></div>' +
                 '</div>' +
                 '<p class="gh-bingo-prize" data-bingo-playing-for></p>' +
                 '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call" data-bingo-call>Call</button>' +

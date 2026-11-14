@@ -1003,42 +1003,35 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     height: 1.1rem;
 }
 
-.gh-bingo-card {
-    border-radius: 14px;
+.gh-bingo .guest-bingo-card-wrap {
     background: var(--gh-surface);
-    padding: 0.35rem;
-    border: 1px solid var(--gh-border);
+    border-color: var(--gh-border);
+}
+
+.gh-bingo .guest-bingo-card-head {
+    background: color-mix(in srgb, var(--gh-surface) 70%, var(--gh-bg, #0a0a12));
+    border-bottom-color: var(--gh-border);
+}
+
+.gh-bingo .guest-bingo-card-head__label {
+    color: var(--gh-muted);
+}
+
+.gh-bingo .guest-bingo-card-head__ball {
+    color: color-mix(in srgb, var(--gh-accent) 85%, white);
+}
+
+.gh-bingo-card.guest-bingo-card-grid,
+.gh-bingo .guest-bingo-card-grid.gh-bingo-card {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 0.3rem 0.35rem 0.4rem;
 }
 
 .gh-bingo-card .guest-bingo-table th,
 .gh-bingo-card .guest-bingo-table td {
     border-color: var(--gh-border);
-}
-
-.gh-bingo-live {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin: 0.85rem 0;
-}
-
-.gh-bingo-live__label {
-    display: block;
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--gh-muted);
-}
-
-.gh-bingo-live__ball {
-    font-size: 1.75rem;
-    font-weight: 800;
-    color: color-mix(in srgb, var(--gh-accent) 80%, white);
-}
-
-.gh-bingo-live__togo {
-    font-size: 1rem;
-    font-weight: 700;
 }
 
 .gh-bingo-prize {
@@ -1085,12 +1078,6 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
 
 .gh-bingo-back-lobby:hover {
     color: var(--gh-accent, var(--event-accent-color, #ff3366));
-}
-
-.gh-bingo-live .guest-bingo-togo-block {
-    border-radius: 12px;
-    padding: 0.35rem 0.5rem;
-    border: 1px solid var(--gh-border);
 }
 
 .gh-bingo-game-pick.guest-bingo-togo--3 {

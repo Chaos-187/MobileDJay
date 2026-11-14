@@ -731,6 +731,21 @@ function bingoMaxVirtualCardsForEvent(event) {
     return Number.isFinite(n) && n >= 1 ? Math.min(10, n) : 1;
 }
 
+function bingoMaxVirtualCardsForGame(event, game) {
+    const g = parseInt(game?.maxVirtualCards, 10);
+    if (Number.isFinite(g) && g >= 1) return Math.min(10, g);
+    return bingoMaxVirtualCardsForEvent(event);
+}
+
+function normalizeBingoAdvertisedStart(raw) {
+    if (raw == null || raw === '') return null;
+    const s = String(raw).trim();
+    if (!s) return null;
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString();
+}
+
 function guestBingoCardProgress(card, slug, gameId) {
     const state = bingoSession.publicBingoState(slug, gameId);
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
@@ -2276,9 +2291,12 @@ app.post('/api/display/:eventSlug/games/bingo/claim-flash', djWebAuth.requireDjA
     if (!['line', 'two-lines', 'house'].includes(claimType)) {
         return res.status(400).json({ error: 'claimType must be line, two-lines, or house' });
     }
+    const winnerName = req.body.winnerName || req.body.customerName || null;
     const flash = bingoSession.setClaimFlash(slug, gid, claimType, {
         serial: req.body.serial || null,
-        valid: req.body.valid
+        valid: req.body.valid,
+        winnerName,
+        customerName: winnerName
     });
     res.json({ success: true, flash, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
 });
@@ -2412,13 +2430,26 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
     }
     const state = bingoSession.getBingoState(slug, gid);
     const valid = verifyClaim(card.grid, state.calledBalls, claimType);
-    const flash = bingoSession.setClaimFlash(slug, gid, claimType, { serial, valid });
+    const winnerName = card.assignedTo ? normalizeGuestNameForApi(card.assignedTo) : null;
+    const flash = bingoSession.setClaimFlash(slug, gid, claimType, {
+        serial,
+        valid,
+        winnerName: valid && winnerName ? winnerName : null,
+        customerName: winnerName
+    });
+    const playingFor = normalizePlayingFor(state.playingFor);
+    const requested = normalizePlayingFor(claimType);
+    if (valid && requested === playingFor) {
+        bingoSession.advancePlayingForAfterWin(slug, gid);
+        bingoSession.resumeCalling(slug, gid, makeBingoCaller(slug, gid));
+    }
     res.json({
         success: true,
         valid,
         serial,
         claimType,
         claimLabel: claimLabel(claimType),
+        winnerName: valid ? winnerName : null,
         flash,
         state: bingoSession.publicBingoState(slug, gid),
         gameId: gid
@@ -2504,9 +2535,9 @@ app.delete('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, dj
         return res.status(409).json({ error: 'Cannot delete a live game — stop bingo first.' });
     }
     const assignments = bingoDb.listAssignmentsForGame(gameId);
-    if (assignments.length > 0) {
+    if (game.status !== 'ended' && assignments.length > 0) {
         return res.status(409).json({
-            error: `${assignments.length} player(s) have cards in this game — end the game or reassign before deleting.`
+            error: `${assignments.length} player(s) have cards in this game — end the game first, or delete after it has ended.`
         });
     }
     const removedByGame = bingoDb.deleteCardsForGame(gameId);
@@ -2528,16 +2559,24 @@ app.get('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.req
         unassignedCards: bingoDb.countUnassignedForGame(g.id),
         assignments: bingoDb.listAssignmentsForGame(g.id).length
     }));
-    res.json({ games });
+    res.json({
+        games,
+        eventDefaults: { maxVirtualCards: bingoMaxVirtualCardsForEvent(req.event) }
+    });
 });
 
 app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const cardCount = Math.max(0, Math.min(200, Number(req.body.cardCount) || 0));
     const openJoin = !!req.body.openJoin;
+    const advertisedStartAt =
+        normalizeBingoAdvertisedStart(req.body.advertisedStartAt) ||
+        (req.body.advertisedStartAt ? String(req.body.advertisedStartAt).trim().slice(0, 40) : null);
     const game = bingoGameDb.create(req.event.id, {
         title: req.body.title,
         batchId: req.body.batchId,
-        ballCount: req.body.ballCount
+        ballCount: req.body.ballCount,
+        maxVirtualCards: req.body.maxVirtualCards,
+        advertisedStartAt
     });
     if (cardCount > 0) {
         generateBingoCardBatch(req.event, {
@@ -2555,13 +2594,53 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
     });
 });
 
+app.post('/api/events/:id/bingo/games/:gameId/restart', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
+    const gameId = parseInt(req.params.gameId, 10);
+    const game = bingoGameDb.getById(gameId);
+    if (!game || game.eventId !== req.event.id) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+    if (game.status === 'live') {
+        return res.status(409).json({ error: 'Stop the live caller before restarting this game.' });
+    }
+    if (game.status !== 'ended') {
+        return res.status(400).json({
+            error: 'Only ended games can be restarted — end the game first (Stop bingo or End in the games list).'
+        });
+    }
+    const slug = req.event.slug;
+    bingoSession.restartGameSession(slug, gameId);
+    bingoClaimDb.dismissAll(gameId);
+    const openJoin = req.body.openJoin !== false;
+    const nextStatus = openJoin ? 'join_open' : 'preparing';
+    bingoGameDb.setStatus(gameId, nextStatus);
+  res.json({
+        success: true,
+        game: bingoGameDb.getById(gameId),
+        state: bingoSession.publicBingoState(slug, gameId),
+        message: openJoin
+            ? 'Game restarted — guests can join again; start the caller when ready.'
+            : 'Game restarted — open join when you are ready to run it again.'
+    });
+});
+
 app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
     const gameId = parseInt(req.params.gameId, 10);
     const game = bingoGameDb.getById(gameId);
     if (!game || game.eventId !== req.event.id) {
         return res.status(404).json({ error: 'Game not found' });
     }
-    bingoGameDb.update(gameId, { title: req.body.title, ballCount: req.body.ballCount });
+    const adv =
+        req.body.advertisedStartAt !== undefined
+            ? normalizeBingoAdvertisedStart(req.body.advertisedStartAt) ||
+              (req.body.advertisedStartAt ? String(req.body.advertisedStartAt).trim().slice(0, 40) : null)
+            : undefined;
+    bingoGameDb.update(gameId, {
+        title: req.body.title,
+        ballCount: req.body.ballCount,
+        maxVirtualCards: req.body.maxVirtualCards,
+        advertisedStartAt: adv
+    });
     if (req.body.status) {
         bingoGameDb.setStatus(gameId, String(req.body.status));
     }
@@ -2614,20 +2693,21 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
         return res.json({ enabled: false, games: [] });
     }
     const slug = req.event.slug;
-    const cardLimit = bingoMaxVirtualCardsForEvent(req.event);
     const customerName = normalizeGuestNameForApi(req.query.customerName);
     const deviceId = normalizeGuestDeviceId(req.query.deviceId);
   let games = bingoGameDb
         .listByEvent(req.event.id)
         .filter((g) => g.status === 'join_open' || g.status === 'live')
         .map((g) => {
+            const cardLimit = bingoMaxVirtualCardsForGame(req.event, g);
             const base = {
                 id: g.id,
                 title: g.title,
                 status: g.status,
                 ballCount: g.ballCount,
                 slotsRemaining: bingoDb.countUnassignedForGame(g.id),
-                cardLimit
+                cardLimit,
+                advertisedStartAt: g.advertisedStartAt || null
             };
             if (!customerName || !deviceId) return base;
             const assigned = bingoDb.listAssignedCardsForPlayer(g.id, customerName);
@@ -2655,7 +2735,7 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
         if (aHas !== bHas) return aHas ? -1 : 1;
         return (b.slotsRemaining || 0) - (a.slotsRemaining || 0);
     });
-    res.json({ enabled: true, cardLimit, games });
+    res.json({ enabled: true, cardLimit: bingoMaxVirtualCardsForEvent(req.event), games });
 });
 
 app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson, (req, res) => {
@@ -2673,7 +2753,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
     const customerName = normalizeGuestNameForApi(req.body.customerName);
     const deviceId = normalizeGuestDeviceId(req.body.deviceId);
     if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
-    const maxCards = bingoMaxVirtualCardsForEvent(req.event);
+    const maxCards = bingoMaxVirtualCardsForGame(req.event, game);
     const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, { maxCards });
     if (assignResult?.error) {
         return bingoAssignErrorResponse(res, assignResult.error);
@@ -2716,7 +2796,7 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     if (!card) {
         return bingoAssignErrorResponse(res, 'not_assigned');
     }
-    const cardLimit = bingoMaxVirtualCardsForEvent(req.event);
+    const cardLimit = bingoMaxVirtualCardsForGame(req.event, game);
     const guestCards = guestBingoCardsSummary(access.cards, slug, gameId);
     const state = bingoSession.publicBingoState(slug, gameId);
     const called = new Set(state.calledBalls || []);
@@ -2766,7 +2846,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/link-card', getEventFromSlug
         serial,
         customerName,
         deviceId,
-        bingoMaxVirtualCardsForEvent(req.event)
+        bingoMaxVirtualCardsForGame(req.event, game)
     );
     if (linkResult?.error) {
         return bingoAssignErrorResponse(res, linkResult.error);

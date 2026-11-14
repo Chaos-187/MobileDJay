@@ -355,6 +355,12 @@ try {
     /* exists */
 }
 try {
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN max_virtual_cards INTEGER`);
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN advertised_start_at TEXT`);
+} catch (e) {
+    /* exists */
+}
+try {
     db.exec(`ALTER TABLE bingo_cards ADD COLUMN assigned_to TEXT`);
 } catch (e) {
     /* exists */
@@ -1704,6 +1710,8 @@ const bingoGameDb = {
             batchId: row.batch_id,
             status: row.status,
             ballCount: row.ball_count,
+            maxVirtualCards: row.max_virtual_cards != null ? Number(row.max_virtual_cards) : null,
+            advertisedStartAt: row.advertised_start_at || null,
             createdAt: row.created_at,
             updatedAt: row.updated_at
         };
@@ -1743,15 +1751,24 @@ const bingoGameDb = {
         );
     },
 
-    create(eventId, { title, batchId, ballCount = 90 }) {
+    create(eventId, { title, batchId, ballCount = 90, maxVirtualCards = null, advertisedStartAt = null }) {
         const t = String(title || 'Bingo game').trim().slice(0, 120) || 'Bingo game';
         const batch = String(batchId || `G${Date.now().toString(36)}`).slice(0, 32);
         const bc = Math.max(9, Math.min(90, Number(ballCount) || 90));
+        let mvc = null;
+        if (maxVirtualCards != null && maxVirtualCards !== '') {
+            mvc = Math.max(1, Math.min(10, Number(maxVirtualCards) || 1));
+        }
+        const startAt =
+            advertisedStartAt != null && String(advertisedStartAt).trim()
+                ? String(advertisedStartAt).trim().slice(0, 40)
+                : null;
         const result = db
             .prepare(
-                `INSERT INTO bingo_games (event_id, title, batch_id, status, ball_count) VALUES (?, ?, ?, 'preparing', ?)`
+                `INSERT INTO bingo_games (event_id, title, batch_id, status, ball_count, max_virtual_cards, advertised_start_at)
+                 VALUES (?, ?, ?, 'preparing', ?, ?, ?)`
             )
-            .run(eventId, t, batch, bc);
+            .run(eventId, t, batch, bc, mvc, startAt);
         return this.getById(result.lastInsertRowid);
     },
 
@@ -1784,6 +1801,24 @@ const bingoGameDb = {
                 Math.max(9, Math.min(90, Number(patch.ballCount) || 90)),
                 gameId
             );
+        }
+        if (patch.maxVirtualCards !== undefined) {
+            let mvc = null;
+            if (patch.maxVirtualCards != null && patch.maxVirtualCards !== '') {
+                mvc = Math.max(1, Math.min(10, Number(patch.maxVirtualCards) || 1));
+            }
+            db.prepare(
+                `UPDATE bingo_games SET max_virtual_cards = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+            ).run(mvc, gameId);
+        }
+        if (patch.advertisedStartAt !== undefined) {
+            const startAt =
+                patch.advertisedStartAt != null && String(patch.advertisedStartAt).trim()
+                    ? String(patch.advertisedStartAt).trim().slice(0, 40)
+                    : null;
+            db.prepare(
+                `UPDATE bingo_games SET advertised_start_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+            ).run(startAt, gameId);
         }
         return this.getById(gameId);
     }

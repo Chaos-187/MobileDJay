@@ -112,11 +112,66 @@ body.mdj-guest-bingo-page {
     font-weight: 800;
 }
 
-.guest-bingo-status-row {
+.guest-bingo-card-wrap {
+    border-radius: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    margin: 0.5rem 0 0.65rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.guest-bingo-card-head {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin: 0.5rem 0;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) minmax(0, 1fr);
+    gap: 0.35rem;
+    padding: 0.45rem 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.22);
+}
+
+.guest-bingo-card-head__cell {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.12rem;
+}
+
+.guest-bingo-card-head__label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.65;
+}
+
+.guest-bingo-card-head__serial-val {
+    font-size: 0.72rem;
+    font-weight: 700;
+    word-break: break-all;
+    line-height: 1.2;
+}
+
+.guest-bingo-card-head__ball {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: #ffb340;
+    line-height: 1.1;
+}
+
+.guest-bingo-card-head__togo-val {
+    font-weight: 800;
+    font-size: 0.88rem;
+    line-height: 1.2;
+}
+
+.guest-bingo-card-head__togo.guest-bingo-togo-block {
+    border-radius: 8px;
+    padding: 0.2rem 0.35rem;
+    margin: -0.15rem 0;
+}
+
+.guest-bingo-card-grid {
+    padding: 0.3rem 0.35rem 0.4rem;
 }
 
 .guest-bingo-togo-value {
@@ -161,43 +216,53 @@ body.mdj-guest-bingo-page {
 
 .guest-bingo-togo--3.guest-bingo-togo-block,
 .guest-bingo-togo--3.guest-bingo-card-pick,
-.guest-bingo-togo--3.gh-bingo-game-pick {
+.guest-bingo-togo--3.gh-bingo-game-pick,
+.guest-bingo-card-wrap.guest-bingo-togo--3 {
     border-color: rgba(245, 158, 11, 0.65);
+}
+
+.guest-bingo-togo--3.guest-bingo-card-head__togo,
+.guest-bingo-togo--3.guest-bingo-togo-block:not(.guest-bingo-card-head__togo) {
     background: rgba(245, 158, 11, 0.14);
 }
 
 .guest-bingo-togo--2.guest-bingo-togo-block,
 .guest-bingo-togo--2.guest-bingo-card-pick,
-.guest-bingo-togo--2.gh-bingo-game-pick {
+.guest-bingo-togo--2.gh-bingo-game-pick,
+.guest-bingo-card-wrap.guest-bingo-togo--2 {
     border-color: rgba(239, 68, 68, 0.75);
+}
+
+.guest-bingo-togo--2.guest-bingo-card-head__togo,
+.guest-bingo-togo--2.guest-bingo-togo-block:not(.guest-bingo-card-head__togo) {
     background: rgba(239, 68, 68, 0.16);
 }
 
 .guest-bingo-togo--1.guest-bingo-togo-block,
 .guest-bingo-togo--1.guest-bingo-card-pick,
 .guest-bingo-togo--1.gh-bingo-game-pick,
-.guest-bingo-togo--1.guest-bingo-card-wrap {
+.guest-bingo-card-wrap.guest-bingo-togo--1 {
     border-color: #ef4444;
     animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
 }
 
+.guest-bingo-togo--1 .guest-bingo-card-head__togo {
+    background: rgba(239, 68, 68, 0.22);
+}
+
 .guest-bingo-togo--ready.guest-bingo-togo-block,
-.guest-bingo-togo--ready.guest-bingo-card-pick {
+.guest-bingo-togo--ready.guest-bingo-card-pick,
+.guest-bingo-card-wrap.guest-bingo-togo--ready {
     border-color: rgba(74, 222, 128, 0.75);
+}
+
+.guest-bingo-togo--ready .guest-bingo-card-head__togo {
     background: rgba(74, 222, 128, 0.12);
 }
 
 .guest-bingo-togo-block {
-    border-radius: 12px;
-    padding: 0.35rem 0.5rem;
     border: 1px solid transparent;
     transition: background 0.25s, border-color 0.25s;
-}
-
-.guest-bingo-card-wrap {
-    border-radius: 14px;
-    border: 2px solid transparent;
-    transition: border-color 0.2s;
 }
 
 .guest-bingo-card-picks {
@@ -323,6 +388,59 @@ body.mdj-guest-bingo-page {
     justify-content: flex-end;
     flex: 0 1 auto;
     max-width: 100%;
+}
+
+.mdj-bingo-wizard-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.75rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: bingo-wiz;
+}
+
+.mdj-bingo-wizard-step {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+}
+
+body:not(.dark-mode) .mdj-bingo-wizard-step {
+    color: rgba(15, 23, 42, 0.45);
+}
+
+.mdj-bingo-wizard-step.is-active {
+    color: #ffb340;
+    border-color: rgba(255, 179, 64, 0.45);
+    background: rgba(255, 179, 64, 0.1);
+}
+
+.mdj-bingo-wizard-step.is-done {
+    color: rgba(74, 222, 128, 0.85);
+}
+
+.mdj-bingo-wizard-review dt {
+    font-weight: 600;
+    margin-top: 0.65rem;
+}
+
+.mdj-bingo-wizard-review dt:first-child {
+    margin-top: 0;
+}
+
+.mdj-bingo-wizard-review dd {
+    margin: 0.15rem 0 0;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+body:not(.dark-mode) .mdj-bingo-wizard-review dd {
+    color: rgba(15, 23, 42, 0.72);
 }
 
 .mdj-bingo-game-row.is-selected {

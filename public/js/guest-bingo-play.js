@@ -50,7 +50,7 @@
         if (n === 0) return 'guest-bingo-togo--ready';
         if (n === 1) return 'guest-bingo-togo--1';
         if (n === 2) return 'guest-bingo-togo--2';
-        if (n === 3) return 'guest-bingo-togo--3';
+        if (n >= 3) return 'guest-bingo-togo--3';
         return '';
     }
 
@@ -65,6 +65,23 @@
         const s = String(serial || '');
         if (s.length <= 10) return s;
         return s.slice(0, 4) + '…' + s.slice(-4);
+    }
+
+    function formatAdvertisedStart(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return '';
+            return d.toLocaleString(undefined, {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return '';
+        }
     }
 
     /**
@@ -88,6 +105,7 @@
             gameTitle: q('[data-bingo-game-title]'),
             meta: q('[data-bingo-meta]'),
             serial: q('[data-bingo-serial]'),
+            cardWrap: q('[data-bingo-card-wrap]'),
             card: q('[data-bingo-card]'),
             lastBall: q('[data-bingo-last-ball]'),
             progress: q('[data-bingo-progress]'),
@@ -315,6 +333,9 @@
                     .map(function (g) {
                         const slots =
                             g.slotsRemaining > 0 ? g.slotsRemaining + ' virtual cards left' : 'Virtual cards full';
+                        const startLine = g.advertisedStartAt
+                            ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
+                            : '';
                         const hasCards = (g.guestCardCount || 0) > 0;
                         const tier = g.guestBestToGo != null ? toGoTierClass(g.guestBestToGo) : '';
                         const progressChip =
@@ -348,6 +369,7 @@
                             escapeHtml(String(g.status).replace('_', ' ')) +
                             ' · ' +
                             slots +
+                            (startLine ? ' · Starts ' + escapeHtml(startLine) : '') +
                             '</span>' +
                             (progressChip ? '<span class="gh-bingo-game-pick__progress">' + progressChip + '</span>' : '') +
                             '<span class="gh-bingo-game-pick__cta"><i class="fas fa-mobile-screen me-1"></i>' +
@@ -523,7 +545,7 @@
                 }
                 const toGo = data.progress ? Number(data.progress.toGo) : NaN;
                 applyToGoClasses(els.togoBlock, toGo);
-                applyToGoClasses(els.card, toGo);
+                applyToGoClasses(els.cardWrap, toGo);
                 if (els.callBtn && toGo === 0) {
                     els.callBtn.classList.add('guest-bingo-call--ready');
                 } else if (els.callBtn) {

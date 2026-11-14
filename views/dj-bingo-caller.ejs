@@ -11,7 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=14" rel="stylesheet">
+    <link href="/css/bingo.css?v=28" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -46,12 +46,26 @@
                     <div id="bingoLastBall" class="mdj-bingo-hero-ball mdj-caller-hero-ball">—</div>
                     <span id="bingoPausedHint" class="mdj-bingo-paused-chip mdj-caller-paused" hidden><i class="fas fa-pause-circle"></i> Paused</span>
                 </div>
+                <div class="mdj-caller-mini-board-wrap">
+                    <p class="mdj-bingo-field-label mb-1">
+                        Called <span id="bingoCalledCountMini" class="mdj-caller-called-count">0 / 90</span>
+                    </p>
+                    <div
+                        id="bingoCallerMiniGrid"
+                        class="mdj-bingo-admin-grid mdj-caller-mini-grid"
+                        aria-label="Numbers called"
+                    ></div>
+                </div>
 
                 <p class="mdj-bingo-field-label mb-1">Playing for</p>
                 <div class="mdj-bingo-playing-for btn-group w-100 mdj-caller-segments" role="group" aria-label="Playing for">
                     <button type="button" class="btn mdj-bingo-touch-seg active" data-playing-for="line">1 Line</button>
                     <button type="button" class="btn mdj-bingo-touch-seg" data-playing-for="two-lines">2 Lines</button>
                     <button type="button" class="btn mdj-bingo-touch-seg" data-playing-for="house">House</button>
+                </div>
+                <div class="mdj-caller-winners-wrap">
+                    <p class="mdj-bingo-field-label mb-1">Winners</p>
+                    <div id="bingoPrizeWinners" class="mdj-caller-winners" aria-live="polite"></div>
                 </div>
                 <div class="mdj-bingo-prize-fields row g-2 mt-2 mb-2">
                     <div class="col-12 col-md-4">
@@ -158,6 +172,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=20"></script>
+    <script src="/js/dj-bingo.js?v=22"></script>
 </body>
 </html>

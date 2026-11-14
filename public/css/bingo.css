@@ -3565,6 +3565,98 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
     font-size: 0.95rem;
 }
 
+.mdj-caller-mini-board-wrap {
+    margin: 0.5rem 0 0.75rem;
+}
+
+.mdj-caller-called-count {
+    font-weight: 800;
+    color: rgba(255, 180, 100, 0.95);
+    letter-spacing: 0.02em;
+}
+
+.mdj-caller-mini-grid {
+    gap: 2px;
+    max-width: 100%;
+}
+
+.mdj-caller-mini-grid .mdj-bingo-admin-cell {
+    font-size: clamp(0.42rem, 1.6vw, 0.52rem);
+    font-weight: 800;
+    border-radius: 3px;
+    padding: 0;
+}
+
+.mdj-caller-mini-grid .mdj-bingo-admin-cell.is-called {
+    background: rgba(40, 167, 69, 0.4);
+}
+
+.mdj-caller-mini-grid .mdj-bingo-admin-cell.is-last {
+    transform: scale(1.05);
+    z-index: 1;
+}
+
+.mdj-caller-winners-wrap {
+    margin: 0.65rem 0 0.5rem;
+}
+
+.mdj-caller-winners {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+}
+
+.mdj-caller-winner-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.45rem 0.35rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.22);
+    min-width: 0;
+}
+
+.mdj-caller-winner-chip.is-won {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.1);
+    box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.15);
+}
+
+.mdj-caller-winner-chip__tier {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+    text-align: center;
+    line-height: 1.2;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mdj-caller-winner-chip.is-won .mdj-caller-winner-chip__tier {
+    color: rgba(255, 220, 160, 0.85);
+}
+
+.mdj-caller-winner-chip__name {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.9);
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mdj-caller-winner-chip.is-won .mdj-caller-winner-chip__name {
+    color: #fde68a;
+}
+
 .mdj-caller-cta {
     width: 100%;
     min-height: clamp(64px, 10vh, 80px);

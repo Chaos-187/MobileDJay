@@ -764,6 +764,21 @@ function guestCanGrabMoreVirtualCards(slug, gameId, assignedCount, cardLimit) {
     return assignedCount < cardLimit;
 }
 
+/** After a verified prize on the current tier — advance, or end game after full house. */
+function bingoCompletePrizeWin(slug, gameId, wonTier) {
+    const pf = normalizePlayingFor(wonTier);
+    if (pf === 'house') {
+        bingoSession.clearAutoTimer(slug, gameId);
+        bingoSession.stopBingo(slug, gameId);
+        const game = gameId ? bingoGameDb.getById(gameId) : null;
+        if (game) bingoGameDb.setStatus(game.id, 'ended');
+        return { gameEnded: true };
+    }
+    bingoSession.advancePlayingForAfterWin(slug, gameId);
+    bingoSession.resumeCalling(slug, gameId, makeBingoCaller(slug, gameId));
+    return { gameEnded: false };
+}
+
 function pickGuestBingoPlayCard(cards, slug, gameId, serial) {
     if (!cards || !cards.length) return null;
     const want = serial != null ? String(serial).trim() : '';
@@ -2503,8 +2518,7 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
     const playingFor = normalizePlayingFor(state.playingFor);
     const requested = normalizePlayingFor(claimType);
     if (valid && requested === playingFor) {
-        bingoSession.advancePlayingForAfterWin(slug, gid);
-        bingoSession.resumeCalling(slug, gid, makeBingoCaller(slug, gid));
+        bingoCompletePrizeWin(slug, gid, playingFor);
     }
     res.json({
         success: true,
@@ -3122,24 +3136,23 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
         winnerName: customerName,
         customerName
     });
-    bingoSession.advancePlayingForAfterWin(slug, gameId);
+    const outcome = bingoCompletePrizeWin(slug, gameId, playingFor);
     const nextState = bingoSession.publicBingoState(slug, gameId);
-    bingoSession.resumeCalling(slug, gameId, makeBingoCaller(slug, gameId));
 
     const nextLabel = nextState.playingForLabel || 'the next prize';
     res.json({
         success: true,
         valid: true,
         verified: true,
+        gameEnded: !!outcome.gameEnded,
         serial: card.serial,
         claimType,
         flash,
         playingFor: nextState.playingFor,
         playingForLabel: nextState.playingForLabel,
-        message:
-            claimType === 'house'
-                ? `Full house! ${customerName} — showing on the big screen.`
-                : `Winner! Showing on screen — now playing for ${nextLabel}.`
+        message: outcome.gameEnded
+            ? `Full house! ${customerName} — game over.`
+            : `Winner! Showing on screen — now playing for ${nextLabel}.`
     });
 });
 

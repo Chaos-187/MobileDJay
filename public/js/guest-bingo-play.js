@@ -338,8 +338,20 @@
         }
 
         function speakBallNumber(num) {
-            if (global.MdjBingoCallerVoice && typeof global.MdjBingoCallerVoice.speak === 'function') {
-                global.MdjBingoCallerVoice.speak(num);
+            if (typeof window === 'undefined' || !window.speechSynthesis) return;
+            try {
+                window.speechSynthesis.cancel();
+            } catch (e) {
+                /* ignore */
+            }
+            const u = new SpeechSynthesisUtterance('Number ' + num);
+            u.lang = 'en-GB';
+            u.rate = 0.92;
+            u.pitch = 1;
+            try {
+                window.speechSynthesis.speak(u);
+            } catch (e) {
+                /* ignore */
             }
         }
 
@@ -918,7 +930,7 @@
                 }
                 if (els.callBtn) {
                     const label = data.playingForLabel || 'prize';
-                    els.callBtn.textContent = 'Call — ' + label;
+                    els.callBtn.textContent = 'Claim — ' + label;
                 }
             } catch (e) {
                 /* ignore transient */

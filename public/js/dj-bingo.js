@@ -25,6 +25,8 @@
         batchesList: document.getElementById('bingoBatchesList'),
         targetHint: document.getElementById('bingoTargetHint'),
         adminGrid: document.getElementById('bingoAdminGrid'),
+        miniGrid: document.getElementById('bingoCallerMiniGrid'),
+        calledCountMini: document.getElementById('bingoCalledCountMini'),
         pausedHint: document.getElementById('bingoPausedHint'),
         pauseBtn: document.getElementById('bingoPauseBtn'),
         resumeBtn: document.getElementById('bingoResumeBtn'),
@@ -33,6 +35,7 @@
         prizeHouse: document.getElementById('bingoPrizeHouse'),
         gameSelect: document.getElementById('bingoActiveGameSelect'),
         gameMeta: document.getElementById('bingoActiveGameMeta'),
+        prizeWinners: document.getElementById('bingoPrizeWinners'),
         gamesList: document.getElementById('bingoGamesList'),
         playersList: document.getElementById('bingoPlayersList'),
         assignName: document.getElementById('bingoAssignName'),
@@ -90,6 +93,8 @@
     };
     let adminCells = new Map();
     let adminGridSize = 0;
+    let miniCells = new Map();
+    let miniGridSize = 0;
     let selectedPlayingFor = 'line';
     let adminGridResizeObserver = null;
 
@@ -611,14 +616,42 @@
         fitAdminGridCellFont();
     }
 
+    function buildMiniGrid(ballCount) {
+        if (!els.miniGrid) return;
+        els.miniGrid.innerHTML = '';
+        miniCells.clear();
+        miniGridSize = ballCount;
+        for (let n = 1; n <= ballCount; n++) {
+            const cell = document.createElement('div');
+            cell.className = 'mdj-bingo-admin-cell';
+            cell.textContent = n;
+            cell.dataset.num = String(n);
+            cell.setAttribute('aria-label', 'Ball ' + n);
+            els.miniGrid.appendChild(cell);
+            miniCells.set(n, cell);
+        }
+    }
+
+    function syncGridCells(cells, called, lastBall) {
+        cells.forEach((cell, n) => {
+            cell.classList.toggle('is-called', called.has(n));
+            cell.classList.toggle('is-last', lastBall === n);
+        });
+    }
+
     function syncAdminGrid(state) {
         const ballCount = state.ballCount || 90;
-        if (ballCount !== adminGridSize) buildAdminGrid(ballCount);
         const called = new Set(state.calledBalls || []);
-        adminCells.forEach((cell, n) => {
-            cell.classList.toggle('is-called', called.has(n));
-            cell.classList.toggle('is-last', state.lastBall === n);
-        });
+        const calledCount = (state.calledBalls || []).length;
+        if (ballCount !== adminGridSize) buildAdminGrid(ballCount);
+        syncGridCells(adminCells, called, state.lastBall);
+        if (els.miniGrid) {
+            if (ballCount !== miniGridSize) buildMiniGrid(ballCount);
+            syncGridCells(miniCells, called, state.lastBall);
+        }
+        if (els.calledCountMini) {
+            els.calledCountMini.textContent = calledCount + ' / ' + ballCount;
+        }
     }
 
     function updateActionButtons(state) {
@@ -663,6 +696,39 @@
         if (els.hubLastBall) els.hubLastBall.textContent = ball;
     }
 
+    function renderPrizeWinners(state) {
+        if (!els.prizeWinners) return;
+        const pw = state && state.prizeWinners ? state.prizeWinners : {};
+        const prizes = state && state.prizes ? state.prizes : {};
+        const rows = [
+            { id: 'line', fallback: '1 Line' },
+            { id: 'two-lines', fallback: '2 Lines' },
+            { id: 'house', fallback: 'House' }
+        ];
+        els.prizeWinners.innerHTML = rows
+            .map(function (r) {
+                const tierLabel =
+                    (r.id === 'line' && prizes.line) ||
+                    (r.id === 'two-lines' && prizes['two-lines']) ||
+                    (r.id === 'house' && prizes.house) ||
+                    r.fallback;
+                const winner = pw[r.id];
+                const hasWinner = !!(winner && String(winner).trim());
+                return (
+                    '<div class="mdj-caller-winner-chip' +
+                    (hasWinner ? ' is-won' : '') +
+                    '">' +
+                    '<span class="mdj-caller-winner-chip__tier">' +
+                    escapeHtml(String(tierLabel)) +
+                    '</span>' +
+                    '<span class="mdj-caller-winner-chip__name">' +
+                    (hasWinner ? escapeHtml(String(winner).trim()) : '—') +
+                    '</span></div>'
+                );
+            })
+            .join('');
+    }
+
     function renderStatus(state) {
         if (!els.status) return;
         if (!state.active) {
@@ -672,6 +738,7 @@
             if (els.voiceCall && state.voiceCall != null) els.voiceCall.checked = !!state.voiceCall;
             renderCalledBalls({ lastBall: null });
             syncAdminGrid({ ballCount: Number(els.ballCount?.value) || 90, calledBalls: [], lastBall: null });
+            renderPrizeWinners(state);
             return;
         }
         if (state.phase === 'intro') {
@@ -699,6 +766,7 @@
         syncAdminGrid(state);
         if (state.playingFor) syncPlayingForUI(state.playingFor);
         if (state.prizes) syncPrizeFields(state.prizes);
+        renderPrizeWinners(state);
     }
 
     async function fetchState() {

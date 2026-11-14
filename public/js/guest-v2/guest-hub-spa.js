@@ -269,7 +269,7 @@
                 '<p class="gh-bingo-prize visually-hidden" data-bingo-playing-for></p>' +
                 '<div class="guest-bingo-call-dock" data-bingo-call-dock>' +
                     '<p class="gh-bingo-claim-result guest-bingo-call-dock__status" data-bingo-claim-result role="status"></p>' +
-                    '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call>Call</button>' +
+                    '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call>Claim</button>' +
                 '</div>' +
             '</div>' +
         '</div>';

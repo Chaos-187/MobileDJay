@@ -51,6 +51,7 @@ const {
 } = require('./db/database');
 const {
     generateUK90Ticket,
+    generateUK90TicketForBatch,
     verifyClaim,
     claimLabel,
     progressTowardClaim,
@@ -2517,10 +2518,13 @@ function generateBingoCardBatch(event, { count, ballCount, batchId, gameId }) {
         .toUpperCase();
     const existingInBatch = bingoDb.countByBatch(eventId, batch);
     const cards = [];
+    const gridsSoFar = [];
     for (let i = 0; i < count; i++) {
         const seq = String(existingInBatch + i + 1).padStart(4, '0');
         const serial = `${prefix}-${batch}-${seq}`;
-        cards.push({ serial, grid: generateUK90Ticket(bc) });
+        const grid = generateUK90TicketForBatch(bc, gridsSoFar);
+        gridsSoFar.push(grid);
+        cards.push({ serial, grid });
     }
     bingoDb.addMany(eventId, batch, cards, gameId || null);
     return { batchId: batch, count: cards.length, ballCount: bc };
@@ -2596,6 +2600,7 @@ app.delete('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, dj
     if (game.batchId) {
         removedByBatch = bingoDb.deleteBatch(req.event.id, game.batchId);
     }
+    bingoDb.deleteBatch(req.event.id, bingoDb.virtualBatchId(gameId));
     const del = bingoGameDb.deleteIfNotLive(gameId);
     if (!del.deleted) {
         return res.status(409).json({ error: 'Could not delete game' });
@@ -2795,6 +2800,7 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
                 status: g.status,
                 ballCount: g.ballCount,
                 slotsRemaining: bingoDb.countUnassignedForGame(g.id),
+                virtualOnDemand: true,
                 cardLimit,
                 advertisedStartAt: g.advertisedStartAt || null
             };
@@ -2843,7 +2849,12 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
     const deviceId = normalizeGuestDeviceId(req.body.deviceId);
     if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
     const maxCards = bingoMaxVirtualCardsForGame(req.event, game);
-    const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, { maxCards });
+    const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, {
+        maxCards,
+        eventId: req.event.id,
+        eventSlug: req.event.slug,
+        ballCount: game.ballCount
+    });
     if (assignResult?.error) {
         return bingoAssignErrorResponse(res, assignResult.error);
     }

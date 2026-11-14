@@ -260,7 +260,7 @@
     function gameListMeta(g) {
         const bits = [
             statusLabel(g.status),
-            `${g.unassignedCards} free`,
+            `${g.unassignedCards} print free`,
             `${g.assignments} players`
         ];
         if (g.maxVirtualCards != null) bits.push(`max ${g.maxVirtualCards} virtual/guest`);
@@ -1079,7 +1079,7 @@
             wizardEls.maxVirtualHint.textContent = `Event default: ${def} card${def === 1 ? '' : 's'} — change per game here.`;
         }
         if (wizardEls.openJoin) wizardEls.openJoin.checked = true;
-        if (wizardEls.cardCount) wizardEls.cardCount.value = '30';
+        if (wizardEls.cardCount) wizardEls.cardCount.value = '0';
         const balls = Number(els.ballCount?.value) || 90;
         if (wizardEls.ballCount) wizardEls.ballCount.value = String(balls);
         if (wizardEls.intro) wizardEls.intro.value = els.introSeconds?.value || '30';

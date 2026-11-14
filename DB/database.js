@@ -384,6 +384,11 @@ try {
 } catch (e) {
     /* exists */
 }
+try {
+    db.exec(`ALTER TABLE bingo_cards ADD COLUMN card_source TEXT NOT NULL DEFAULT 'print'`);
+} catch (e) {
+    /* exists */
+}
 
 // Backfill share tokens for existing events
 {
@@ -1423,12 +1428,17 @@ const bingoDb = {
             gameId: row.game_id,
             serial: row.serial,
             batchId: row.batch_id,
+            cardSource: row.card_source || 'print',
             grid,
             assignedTo: row.assigned_to,
             deviceId: row.device_id,
             assignedAt: row.assigned_at,
             createdAt: row.created_at
         };
+    },
+
+    virtualBatchId(gameId) {
+        return `VIRT-G${gameId}`;
     },
 
     getBySerial(eventId, serial) {
@@ -1446,6 +1456,8 @@ const bingoDb = {
                         MIN(created_at) AS created_at,
                         SUM(CASE WHEN assigned_to IS NOT NULL AND TRIM(assigned_to) != '' THEN 1 ELSE 0 END) AS assigned_count
                  FROM bingo_cards WHERE event_id = ?
+                   AND (card_source IS NULL OR card_source = 'print')
+                   AND batch_id NOT LIKE 'VIRT-G%'
                  GROUP BY batch_id ORDER BY created_at DESC`
             )
             .all(eventId);
@@ -1454,7 +1466,9 @@ const bingoDb = {
     listByBatch(eventId, batchId) {
         const rows = db
             .prepare(
-                `SELECT * FROM bingo_cards WHERE event_id = ? AND batch_id = ? ORDER BY id ASC`
+                `SELECT * FROM bingo_cards WHERE event_id = ? AND batch_id = ?
+                   AND (card_source IS NULL OR card_source = 'print')
+                 ORDER BY id ASC`
             )
             .all(eventId, batchId);
         return rows.map((r) => this._parseRow(r));
@@ -1467,15 +1481,16 @@ const bingoDb = {
         return row?.n || 0;
     },
 
-    addMany(eventId, batchId, cards, gameId = null) {
+    addMany(eventId, batchId, cards, gameId = null, cardSource = 'print') {
         const insert = db.prepare(`
-            INSERT INTO bingo_cards (event_id, serial, batch_id, grid_json, game_id)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO bingo_cards (event_id, serial, batch_id, grid_json, game_id, card_source)
+            VALUES (?, ?, ?, ?, ?, ?)
         `);
         const gid = gameId != null ? gameId : null;
+        const src = cardSource === 'virtual' ? 'virtual' : 'print';
         const txn = db.transaction((items) => {
             for (const item of items) {
-                insert.run(eventId, item.serial, batchId, JSON.stringify(item.grid), gid);
+                insert.run(eventId, item.serial, batchId, JSON.stringify(item.grid), gid, src);
             }
         });
         txn(cards);
@@ -1506,10 +1521,67 @@ const bingoDb = {
     countUnassignedForGame(gameId) {
         const row = db
             .prepare(
-                `SELECT COUNT(*) AS n FROM bingo_cards WHERE game_id = ? AND (assigned_to IS NULL OR TRIM(assigned_to) = '')`
+                `SELECT COUNT(*) AS n FROM bingo_cards
+                 WHERE game_id = ? AND (card_source IS NULL OR card_source = 'print')
+                   AND (assigned_to IS NULL OR TRIM(assigned_to) = '')`
             )
             .get(gameId);
         return row?.n || 0;
+    },
+
+    countVirtualCardsForGame(gameId) {
+        const row = db
+            .prepare(
+                `SELECT COUNT(*) AS n FROM bingo_cards WHERE game_id = ? AND card_source = 'virtual'`
+            )
+            .get(gameId);
+        return row?.n || 0;
+    },
+
+    recentVirtualGridsForGame(gameId, limit = 40) {
+        const lim = Math.max(1, Math.min(200, Number(limit) || 40));
+        const rows = db
+            .prepare(
+                `SELECT grid_json FROM bingo_cards
+                 WHERE game_id = ? AND card_source = 'virtual'
+                 ORDER BY id DESC LIMIT ?`
+            )
+            .all(gameId, lim);
+        const out = [];
+        for (const row of rows) {
+            try {
+                const grid = JSON.parse(row.grid_json);
+                if (grid) out.push(grid);
+            } catch (e) {
+                /* skip */
+            }
+        }
+        return out;
+    },
+
+    buildVirtualSerial(eventSlug, gameId) {
+        const prefix = String(eventSlug || 'EVT')
+            .replace(/[^a-z0-9]/gi, '')
+            .slice(0, 6)
+            .toUpperCase();
+        const n = this.countVirtualCardsForGame(gameId) + 1;
+        return `${prefix}-V${gameId}-${String(n).padStart(5, '0')}`;
+    },
+
+    insertVirtualCardAssigned(eventId, gameId, serial, grid, customerName, deviceId) {
+        const name = normalizeGuestName(customerName);
+        const device = this._normalizeDevice(deviceId);
+        if (!name || !device || !grid) return null;
+        const batchId = this.virtualBatchId(gameId);
+        const result = db
+            .prepare(
+                `INSERT INTO bingo_cards (
+                    event_id, serial, batch_id, grid_json, game_id, card_source,
+                    assigned_to, device_id, assigned_at
+                 ) VALUES (?, ?, ?, ?, ?, 'virtual', ?, ?, CURRENT_TIMESTAMP)`
+            )
+            .run(eventId, serial, batchId, JSON.stringify(grid), gameId, name, device);
+        return this._parseRow(db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(result.lastInsertRowid));
     },
 
     _normalizeDevice(deviceId) {
@@ -1585,10 +1657,16 @@ const bingoDb = {
     },
 
     assignNextAvailable(gameId, customerName, deviceId, options = {}) {
+        const { generateUK90TicketForBatch } = require('../lib/bingo');
         const name = normalizeGuestName(customerName);
         const device = this._normalizeDevice(deviceId);
         if (!name || !device) return { error: 'invalid_identity' };
         const maxCards = Math.max(1, Math.min(10, Number(options.maxCards) || 1));
+        const eventId = Number(options.eventId);
+        const eventSlug = options.eventSlug != null ? String(options.eventSlug) : '';
+        const ballCount = Math.max(9, Math.min(90, Number(options.ballCount) || 90));
+        if (!Number.isFinite(eventId) || eventId <= 0) return { error: 'invalid_identity' };
+
         const assigned = this.listAssignedCardsForPlayer(gameId, name);
         for (const c of assigned) {
             if (c.deviceId && c.deviceId !== device) {
@@ -1601,27 +1679,20 @@ const bingoDb = {
         if (assigned.length > 0 && maxCards === 1) {
             const bound = this._bindGuestDeviceOnCards(assigned, device);
             if (bound.error) return bound;
-            return { card: bound[0], cardCount: 1, cardLimit: maxCards };
+            return { card: bound[0], cardCount: 1, cardLimit: maxCards, canGrabMore: false };
         }
-        const assign = db.transaction(() => {
-            const row = db
-                .prepare(
-                    `SELECT id FROM bingo_cards
-                     WHERE game_id = ? AND (assigned_to IS NULL OR TRIM(assigned_to) = '')
-                     ORDER BY id ASC LIMIT 1`
-                )
-                .get(gameId);
-            if (!row) return null;
-            db.prepare(
-                `UPDATE bingo_cards SET assigned_to = ?, device_id = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`
-            ).run(name, device, row.id);
-            return db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(row.id);
-        });
-        const row = assign();
-        if (!row) return { error: 'sold_out' };
+
+        const diversityGrids = [
+            ...assigned.map((c) => c.grid).filter(Boolean),
+            ...this.recentVirtualGridsForGame(gameId, 50)
+        ];
+        const grid = generateUK90TicketForBatch(ballCount, diversityGrids);
+        const serial = this.buildVirtualSerial(eventSlug, gameId);
+        const card = this.insertVirtualCardAssigned(eventId, gameId, serial, grid, name, device);
+        if (!card) return { error: 'invalid_identity' };
         const newCount = this.countAssignedCardsForPlayer(gameId, name);
         return {
-            card: this._parseRow(row),
+            card,
             cardCount: newCount,
             cardLimit: maxCards,
             canGrabMore: newCount < maxCards
@@ -1638,7 +1709,8 @@ const bingoDb = {
             const row = db
                 .prepare(
                     `SELECT id FROM bingo_cards
-                     WHERE game_id = ? AND (assigned_to IS NULL OR TRIM(assigned_to) = '')
+                     WHERE game_id = ? AND (card_source IS NULL OR card_source = 'print')
+                       AND (assigned_to IS NULL OR TRIM(assigned_to) = '')
                      ORDER BY id ASC LIMIT 1`
                 )
                 .get(gameId);
@@ -1677,6 +1749,9 @@ const bingoDb = {
             .get(eventId, trimmed);
         if (!row) return { error: 'serial_not_found' };
         const parsed = this._parseRow(row);
+        if (parsed.cardSource === 'virtual') {
+            return { error: 'serial_not_found' };
+        }
         if (parsed.gameId && parsed.gameId !== gameId) return { error: 'wrong_game' };
         if (!parsed.gameId) {
             db.prepare('UPDATE bingo_cards SET game_id = ? WHERE id = ?').run(gameId, parsed.id);

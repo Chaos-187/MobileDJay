@@ -467,12 +467,15 @@
                 }
                 els.gamesList.innerHTML = data.games
                     .map(function (g) {
-                        const slots =
-                            g.slotsRemaining > 0 ? g.slotsRemaining + ' virtual cards left' : 'Virtual cards full';
+                        const hasCards = (g.guestCardCount || 0) > 0;
+                        const slots = hasCards
+                            ? g.canGrabMore
+                                ? 'More virtual cards available'
+                                : 'Max virtual cards for this game'
+                            : 'Virtual card on your phone — created when you join';
                         const startLine = g.advertisedStartAt
                             ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
                             : '';
-                        const hasCards = (g.guestCardCount || 0) > 0;
                         const tier = g.guestBestToGo != null ? toGoTierClass(g.guestBestToGo) : '';
                         const progressChip =
                             g.guestBestToGo != null

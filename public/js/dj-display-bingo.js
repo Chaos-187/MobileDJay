@@ -291,13 +291,21 @@
     function showClaim(flash) {
         if (!flash || !claimOverlay) return;
         clearTimeout(claimHideTimer);
-        claimTitle.textContent = flash.label || 'Bingo';
-        let sub = '';
-        if (flash.serial) sub += 'Serial ' + flash.serial;
-        if (flash.valid === true) sub += (sub ? ' · ' : '') + 'Verified winner';
-        if (flash.valid === false) sub += (sub ? ' · ' : '') + 'Not verified';
-        if (!sub) sub = 'Calling paused';
-        claimSub.textContent = sub;
+        if (flash.winnerName && flash.valid !== false) {
+            claimTitle.textContent = flash.winnerName;
+            const parts = [];
+            if (flash.label) parts.push(flash.label);
+            if (flash.serial) parts.push('Card ' + flash.serial);
+            claimSub.textContent = parts.length ? parts.join(' · ') : 'Verified winner';
+        } else {
+            claimTitle.textContent = flash.label || 'Bingo';
+            let sub = '';
+            if (flash.serial) sub += 'Serial ' + flash.serial;
+            if (flash.valid === true) sub += (sub ? ' · ' : '') + 'Verified winner';
+            if (flash.valid === false) sub += (sub ? ' · ' : '') + 'Not verified';
+            if (!sub) sub = 'Calling paused';
+            claimSub.textContent = sub;
+        }
         claimCard?.classList.toggle('invalid', flash.valid === false);
         applyClaimTierClasses(claimOverlay, flash);
         const badge = document.getElementById('bingoClaimFlashBadge');
@@ -442,6 +450,12 @@
             clearTimeout(dwellTimer);
             dwellTimer = null;
             pausedBadge?.removeAttribute('hidden');
+            if (pausedBadge) {
+                const manual = state.pausedReason === 'manual';
+                pausedBadge.innerHTML =
+                    '<i class="fas fa-pause-circle me-1" aria-hidden="true"></i>' +
+                    (manual ? 'Game paused' : 'Claim check');
+            }
             layer?.classList.add('is-paused');
         } else {
             pausedBadge?.setAttribute('hidden', '');

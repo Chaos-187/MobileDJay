@@ -1066,3 +1066,71 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
 .gh-bingo-claim-result.is-warn {
     color: #fbbf24;
 }
+
+.gh-bingo-grab-another {
+    width: 100%;
+    font-size: 0.88rem;
+}
+
+.gh-bingo-back-lobby {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: 0;
+    padding-right: 0;
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gh-text-muted, rgba(255, 255, 255, 0.72));
+}
+
+.gh-bingo-back-lobby:hover {
+    color: var(--gh-accent, var(--event-accent-color, #ff3366));
+}
+
+.gh-bingo-live .guest-bingo-togo-block {
+    border-radius: 12px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--gh-border);
+}
+
+.gh-bingo-game-pick.guest-bingo-togo--3 {
+    border-color: rgba(245, 158, 11, 0.55);
+}
+
+.gh-bingo-game-pick.guest-bingo-togo--2 {
+    border-color: rgba(239, 68, 68, 0.55);
+}
+
+.gh-bingo-game-pick.guest-bingo-togo--1 {
+    border-color: #ef4444;
+    animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
+}
+
+@keyframes guestBingoTogoFlash {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+}
+
+.guest-bingo-game-togo.guest-bingo-togo--3 {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: rgba(245, 158, 11, 0.55);
+    color: #fcd34d;
+}
+
+.guest-bingo-game-togo.guest-bingo-togo--2 {
+    background: rgba(239, 68, 68, 0.18);
+    border-color: rgba(239, 68, 68, 0.55);
+    color: #fca5a5;
+}
+
+.guest-bingo-game-togo.guest-bingo-togo--1 {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+    color: #fff;
+    animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
+}

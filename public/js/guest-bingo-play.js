@@ -38,6 +38,35 @@
         ];
     }
 
+    const TOGO_CLASSES = [
+        'guest-bingo-togo--ready',
+        'guest-bingo-togo--1',
+        'guest-bingo-togo--2',
+        'guest-bingo-togo--3'
+    ];
+
+    function toGoTierClass(toGo) {
+        const n = Number(toGo);
+        if (n === 0) return 'guest-bingo-togo--ready';
+        if (n === 1) return 'guest-bingo-togo--1';
+        if (n === 2) return 'guest-bingo-togo--2';
+        if (n === 3) return 'guest-bingo-togo--3';
+        return '';
+    }
+
+    function applyToGoClasses(el, toGo) {
+        if (!el) return;
+        TOGO_CLASSES.forEach((c) => el.classList.remove(c));
+        const tier = toGoTierClass(toGo);
+        if (tier) el.classList.add(tier);
+    }
+
+    function shortSerial(serial) {
+        const s = String(serial || '');
+        if (s.length <= 10) return s;
+        return s.slice(0, 4) + '…' + s.slice(-4);
+    }
+
     /**
      * @param {object} opts
      * @param {string} opts.slug
@@ -67,10 +96,34 @@
             callBtn: q('[data-bingo-call]'),
             claimResult: q('[data-bingo-claim-result]'),
             paperSerial: q('[data-bingo-paper-serial]'),
-            paperLinkBtn: q('[data-bingo-paper-link]')
+            paperLinkBtn: q('[data-bingo-paper-link]'),
+            cardPicks: q('[data-bingo-card-picks]'),
+            togoBlock: q('[data-bingo-togo-block]'),
+            grabAnother: q('[data-bingo-grab-another]'),
+            backLobby: q('[data-bingo-back-lobby]')
         };
 
+        const LOBBY_KEY = 'mdj_bingo_lobby_' + slug;
+
+        function readLobbyPref() {
+            try {
+                return sessionStorage.getItem(LOBBY_KEY) === '1';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function setLobbyPref(inLobby) {
+            try {
+                if (inLobby) sessionStorage.setItem(LOBBY_KEY, '1');
+                else sessionStorage.removeItem(LOBBY_KEY);
+            } catch (e) {
+                /* ignore */
+            }
+        }
+
         let activeGameId = opts.initialGameId || null;
+        let activeSerial = null;
         let pollTimer = null;
         let autoDab = readAutoDab();
         let manualMarks = emptyManualMarks();
@@ -78,6 +131,18 @@
         let lastCalled = [];
         let playingFor = 'line';
         let cardMode = '';
+
+        if (els.grabAnother) {
+            els.grabAnother.addEventListener('click', function () {
+                if (activeGameId) joinVirtual(activeGameId);
+            });
+        }
+
+        if (els.backLobby) {
+            els.backLobby.addEventListener('click', function () {
+                backToLobby();
+            });
+        }
 
         if (els.autoDab) {
             els.autoDab.checked = autoDab;
@@ -96,6 +161,60 @@
         function showPlay() {
             if (els.join) els.join.hidden = true;
             if (els.play) els.play.hidden = false;
+            setLobbyPref(false);
+        }
+
+        function backToLobby() {
+            stopPoll();
+            setLobbyPref(true);
+            if (els.claimResult) els.claimResult.textContent = '';
+            showJoin();
+            loadGames();
+        }
+
+        function renderCardPicks(guestCards, currentSerial) {
+            if (!els.cardPicks) return;
+            if (!guestCards || guestCards.length <= 1) {
+                els.cardPicks.hidden = true;
+                els.cardPicks.innerHTML = '';
+                return;
+            }
+            els.cardPicks.hidden = false;
+            els.cardPicks.innerHTML =
+                '<p class="guest-bingo-card-picks__label">Your cards (closest first)</p>' +
+                guestCards
+                    .map(function (gc) {
+                        const tier = toGoTierClass(gc.toGo);
+                        const active = gc.serial === currentSerial ? ' is-active' : '';
+                        const label =
+                            gc.toGo === 0
+                                ? 'Call!'
+                                : gc.toGo === 1
+                                  ? '1 to go'
+                                  : gc.toGo + ' to go';
+                        return (
+                            '<button type="button" class="guest-bingo-card-pick ' +
+                            tier +
+                            active +
+                            '" data-pick-serial="' +
+                            escapeHtml(gc.serial) +
+                            '">' +
+                            '<span class="guest-bingo-card-pick__short">' +
+                            escapeHtml(shortSerial(gc.serial)) +
+                            '</span>' +
+                            '<span class="guest-bingo-card-pick__togo">' +
+                            escapeHtml(label) +
+                            '</span></button>'
+                        );
+                    })
+                    .join('');
+            els.cardPicks.querySelectorAll('[data-pick-serial]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    activeSerial = btn.getAttribute('data-pick-serial');
+                    manualMarks = emptyManualMarks();
+                    refreshPlay();
+                });
+            });
         }
 
         function effectiveMarks(serverMarks) {
@@ -171,7 +290,17 @@
             if (!els.gamesList) return;
             els.gamesList.innerHTML = '<p class="gh-bingo-muted">Loading games…</p>';
             try {
-                const res = await fetch('/api/event/' + encodeURIComponent(slug) + '/bingo/games');
+                const name = opts.customerName();
+                const dev = opts.deviceId();
+                let gamesUrl = '/api/event/' + encodeURIComponent(slug) + '/bingo/games';
+                if (name && dev) {
+                    gamesUrl +=
+                        '?customerName=' +
+                        encodeURIComponent(name) +
+                        '&deviceId=' +
+                        encodeURIComponent(dev);
+                }
+                const res = await fetch(gamesUrl);
                 const data = await res.json();
                 if (!data.enabled) {
                     els.gamesList.innerHTML = '<p class="gh-bingo-warn">Bingo is not enabled for this event.</p>';
@@ -186,12 +315,31 @@
                     .map(function (g) {
                         const slots =
                             g.slotsRemaining > 0 ? g.slotsRemaining + ' virtual cards left' : 'Virtual cards full';
+                        const hasCards = (g.guestCardCount || 0) > 0;
+                        const tier = g.guestBestToGo != null ? toGoTierClass(g.guestBestToGo) : '';
+                        const progressChip =
+                            g.guestBestToGo != null
+                                ? '<span class="guest-bingo-game-togo ' +
+                                  tier +
+                                  '">' +
+                                  escapeHtml(g.guestBestLabel || g.guestBestToGo + ' to go') +
+                                  '</span>'
+                                : '';
+                        const cta = hasCards
+                            ? g.canGrabMore
+                                ? 'Play · grab another card'
+                                : 'Continue playing'
+                            : 'Grab virtual card';
                         return (
                             '<div class="gh-bingo-game-block" data-bingo-game-block="' +
                             g.id +
                             '">' +
-                            '<button type="button" class="gh-bingo-game-pick" data-game-id="' +
+                            '<button type="button" class="gh-bingo-game-pick ' +
+                            tier +
+                            '" data-game-id="' +
                             g.id +
+                            '" data-has-cards="' +
+                            (hasCards ? '1' : '0') +
                             '">' +
                             '<span class="gh-bingo-game-pick__title">' +
                             escapeHtml(g.title) +
@@ -201,7 +349,10 @@
                             ' · ' +
                             slots +
                             '</span>' +
-                            '<span class="gh-bingo-game-pick__cta"><i class="fas fa-mobile-screen me-1"></i>Grab virtual card</span>' +
+                            (progressChip ? '<span class="gh-bingo-game-pick__progress">' + progressChip + '</span>' : '') +
+                            '<span class="gh-bingo-game-pick__cta"><i class="fas fa-mobile-screen me-1"></i>' +
+                            escapeHtml(cta) +
+                            '</span>' +
                             '</button>' +
                             '<div class="gh-bingo-paper-row">' +
                             '<input type="text" class="gh-input gh-bingo-serial-input" data-paper-for="' +
@@ -217,7 +368,20 @@
 
                 els.gamesList.querySelectorAll('.gh-bingo-game-pick').forEach(function (btn) {
                     btn.addEventListener('click', function () {
-                        joinVirtual(parseInt(btn.getAttribute('data-game-id'), 10));
+                        const gid = parseInt(btn.getAttribute('data-game-id'), 10);
+                        if (btn.getAttribute('data-has-cards') === '1') {
+                            activeGameId = gid;
+                            activeSerial = null;
+                            manualMarks = emptyManualMarks();
+                            try {
+                                sessionStorage.setItem('mdj_bingo_game_' + slug, String(gid));
+                            } catch (err) {
+                                /* ignore */
+                            }
+                            startPlay();
+                        } else {
+                            joinVirtual(gid);
+                        }
                     });
                 });
                 els.gamesList.querySelectorAll('[data-paper-link]').forEach(function (btn) {
@@ -249,6 +413,7 @@
                     return { ok: false, error: data.error || 'Could not join' };
                 }
                 activeGameId = gameId;
+                activeSerial = data.serial || null;
                 cardMode = 'virtual';
                 manualMarks = emptyManualMarks();
                 try {
@@ -304,7 +469,7 @@
             const name = opts.customerName();
             if (!activeGameId || !name) return;
             try {
-                const url =
+                let url =
                     '/api/event/' +
                     encodeURIComponent(slug) +
                     '/bingo/games/' +
@@ -313,6 +478,9 @@
                     encodeURIComponent(name) +
                     '&deviceId=' +
                     encodeURIComponent(opts.deviceId() || '');
+                if (activeSerial) {
+                    url += '&serial=' + encodeURIComponent(activeSerial);
+                }
                 const res = await fetch(url);
                 const data = await res.json();
                 if (!res.ok) {
@@ -338,24 +506,44 @@
                 if (els.lastBall) els.lastBall.textContent = data.lastBall != null ? data.lastBall : '—';
                 if (els.playingFor)
                     els.playingFor.textContent = 'Playing for · ' + (data.playingForLabel || '');
+                activeSerial = data.card && data.card.serial ? data.card.serial : activeSerial;
+                renderCardPicks(data.guestCards, activeSerial);
+                if (els.grabAnother) {
+                    els.grabAnother.hidden = !data.canGrabMore;
+                }
                 if (els.progress) {
                     const p = data.progress;
                     if (p && p.label) {
-                        els.progress.textContent = p.toGo === 0 ? p.label : p.label;
+                        els.progress.textContent = p.label;
                         els.progress.dataset.toGo = String(p.toGo);
                     } else {
-                        els.progress.textContent = '';
+                        els.progress.textContent = '—';
+                        delete els.progress.dataset.toGo;
                     }
                 }
+                const toGo = data.progress ? Number(data.progress.toGo) : NaN;
+                applyToGoClasses(els.togoBlock, toGo);
+                applyToGoClasses(els.card, toGo);
+                if (els.callBtn && toGo === 0) {
+                    els.callBtn.classList.add('guest-bingo-call--ready');
+                } else if (els.callBtn) {
+                    els.callBtn.classList.remove('guest-bingo-call--ready');
+                }
                 if (els.meta) {
-                    let t = data.active ? (data.paused ? 'Paused — claim check' : 'Live') : 'Waiting to start';
+                    let t = data.active ? (data.paused ? 'Paused' : 'Live') : 'Waiting to start';
+                    if (data.paused) {
+                        t =
+                            data.pausedReason === 'manual'
+                                ? 'Paused — game on hold'
+                                : 'Paused — claim check';
+                    }
                     if (data.phase === 'intro') t = 'Starting soon…';
                     els.meta.textContent = t;
                 }
                 if (els.callBtn) {
                     const label = data.playingForLabel || 'prize';
                     els.callBtn.textContent = 'Call — ' + label;
-                    els.callBtn.disabled = !!data.paused && !data.active;
+                    els.callBtn.disabled = !data.active || !!data.paused;
                 }
                 renderCard(data.card.grid, data.calledBalls, data.marks);
             } catch (e) {
@@ -397,17 +585,22 @@
                         body: JSON.stringify({
                             customerName: name,
                             claimType: claimType || playingFor,
-                            deviceId: opts.deviceId()
+                            deviceId: opts.deviceId(),
+                            serial: activeSerial
                         })
                     }
                 );
                 const data = await res.json();
                 if (resultEl) {
-                    resultEl.textContent = data.message || (data.valid ? 'Claim sent to the DJ!' : 'Not yet — keep dabbing');
+                    resultEl.textContent =
+                        data.message || (data.valid ? 'Claim sent to the DJ!' : 'Not yet — keep dabbing');
                     resultEl.className =
                         (resultEl.classList.contains('guest-bingo-claim-result')
                             ? 'guest-bingo-claim-result '
                             : 'gh-bingo-claim-result ') + (data.valid ? 'is-ok' : 'is-warn');
+                }
+                if (data.verified) {
+                    refreshPlay();
                 }
             } catch (e) {
                 if (resultEl) resultEl.textContent = 'Could not send claim';
@@ -450,7 +643,9 @@
                 activeGameId = id;
             },
             showJoin,
-            showPlay
+            showPlay,
+            backToLobby,
+            prefersLobby: readLobbyPref
         };
     }
 

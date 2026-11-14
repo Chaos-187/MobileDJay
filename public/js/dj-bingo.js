@@ -26,7 +26,11 @@
         targetHint: document.getElementById('bingoTargetHint'),
         adminGrid: document.getElementById('bingoAdminGrid'),
         pausedHint: document.getElementById('bingoPausedHint'),
+        pauseBtn: document.getElementById('bingoPauseBtn'),
         resumeBtn: document.getElementById('bingoResumeBtn'),
+        prizeLine: document.getElementById('bingoPrizeLine'),
+        prizeTwoLines: document.getElementById('bingoPrizeTwoLines'),
+        prizeHouse: document.getElementById('bingoPrizeHouse'),
         gameSelect: document.getElementById('bingoActiveGameSelect'),
         gameMeta: document.getElementById('bingoActiveGameMeta'),
         gamesList: document.getElementById('bingoGamesList'),
@@ -323,6 +327,21 @@
         return active?.getAttribute('data-playing-for') || selectedPlayingFor || 'line';
     }
 
+    function getPrizePayload() {
+        return {
+            prizeLine: (els.prizeLine?.value || '').trim(),
+            prizeTwoLines: (els.prizeTwoLines?.value || '').trim(),
+            prizeHouse: (els.prizeHouse?.value || '').trim()
+        };
+    }
+
+    function syncPrizeFields(prizes) {
+        if (!prizes) return;
+        if (els.prizeLine && prizes.line != null) els.prizeLine.value = prizes.line || '';
+        if (els.prizeTwoLines && prizes['two-lines'] != null) els.prizeTwoLines.value = prizes['two-lines'] || '';
+        if (els.prizeHouse && prizes.house != null) els.prizeHouse.value = prizes.house || '';
+    }
+
     function getVerifyClaimType() {
         const active = document.querySelector('.mdj-bingo-verify-type [data-verify-claim].active');
         const val = active?.getAttribute('data-verify-claim') || 'house';
@@ -349,7 +368,8 @@
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
             playingFor: selectedPlayingFor,
-            introSeconds: Number(els.introSeconds?.value) || 0
+            introSeconds: Number(els.introSeconds?.value) || 0,
+            ...getPrizePayload()
         }));
         if (data?.success && data.state) renderStatus(data.state);
     }
@@ -411,11 +431,21 @@
         if (byId('bingoVerifyBtn')) byId('bingoVerifyBtn').disabled = !hasSlug;
         if (byId('bingoGenCardsBtn')) byId('bingoGenCardsBtn').disabled = !hasSlug;
         if (els.ballCount) els.ballCount.disabled = active;
+        if (els.pauseBtn) {
+            els.pauseBtn.hidden = !(active && !paused && !inIntro);
+        }
         if (els.resumeBtn) {
             els.resumeBtn.hidden = !(active && paused);
         }
         if (els.pausedHint) {
             els.pausedHint.hidden = !(active && paused);
+            if (active && paused && els.pausedHint) {
+                const reason = state.pausedReason || 'claim';
+                els.pausedHint.innerHTML =
+                    reason === 'manual'
+                        ? '<i class="fas fa-pause-circle"></i> Game paused'
+                        : '<i class="fas fa-pause-circle"></i> Claim check';
+            }
         }
     }
 
@@ -460,6 +490,7 @@
         renderCalledBalls(state);
         syncAdminGrid(state);
         if (state.playingFor) syncPlayingForUI(state.playingFor);
+        if (state.prizes) syncPrizeFields(state.prizes);
     }
 
     async function fetchState() {
@@ -519,7 +550,8 @@
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
             playingFor: getSelectedPlayingFor(),
-            introSeconds: Number(els.introSeconds?.value) || 0
+            introSeconds: Number(els.introSeconds?.value) || 0,
+            ...getPrizePayload()
         });
         if (data?.success) {
             renderStatus(data.state);
@@ -560,7 +592,8 @@
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
             playingFor: getSelectedPlayingFor(),
-            introSeconds: Number(els.introSeconds?.value) || 0
+            introSeconds: Number(els.introSeconds?.value) || 0,
+            ...getPrizePayload()
         });
         if (data?.success) renderStatus(data.state);
     });
@@ -577,8 +610,25 @@
         else if (data?.error) alert(data.error);
     });
 
+    document.getElementById('bingoPauseBtn')?.addEventListener('click', async () => {
+        const data = await apiPost('/games/bingo/pause');
+        if (data?.success && data.state) renderStatus(data.state);
+        else if (data?.error) alert(data.error);
+    });
+
     document.querySelectorAll('.mdj-bingo-playing-for [data-playing-for]').forEach((btn) => {
         btn.addEventListener('click', () => setPlayingFor(btn.getAttribute('data-playing-for')));
+    });
+
+    let prizeSaveTimer = null;
+    function schedulePrizeSave() {
+        if (!isCallerPage) return;
+        clearTimeout(prizeSaveTimer);
+        prizeSaveTimer = setTimeout(() => setPlayingFor(getSelectedPlayingFor()), 450);
+    }
+    [els.prizeLine, els.prizeTwoLines, els.prizeHouse].forEach((input) => {
+        input?.addEventListener('input', schedulePrizeSave);
+        input?.addEventListener('change', schedulePrizeSave);
     });
 
     document.getElementById('bingoFlashLineBtn')?.addEventListener('click', () => flashClaim('line'));

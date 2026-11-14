@@ -19,6 +19,20 @@ body.mdj-guest-bingo-page {
     font-size: 0.9rem;
 }
 
+.guest-bingo-back-lobby {
+    display: inline-flex;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.78);
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+}
+
+.guest-bingo-back-lobby:hover {
+    color: #fbbf24;
+}
+
 .guest-bingo-title {
     font-size: 1.25rem;
     font-weight: 800;
@@ -130,6 +144,148 @@ body.mdj-guest-bingo-page {
 
 .guest-bingo-claim-result.is-warn {
     color: #fbbf24;
+}
+
+/* —— Guest “to go” proximity (3 orange, 2 red, 1 flash) —— */
+@keyframes guestBingoTogoFlash {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+        transform: scale(1.02);
+    }
+}
+
+.guest-bingo-togo--3.guest-bingo-togo-block,
+.guest-bingo-togo--3.guest-bingo-card-pick,
+.guest-bingo-togo--3.gh-bingo-game-pick {
+    border-color: rgba(245, 158, 11, 0.65);
+    background: rgba(245, 158, 11, 0.14);
+}
+
+.guest-bingo-togo--2.guest-bingo-togo-block,
+.guest-bingo-togo--2.guest-bingo-card-pick,
+.guest-bingo-togo--2.gh-bingo-game-pick {
+    border-color: rgba(239, 68, 68, 0.75);
+    background: rgba(239, 68, 68, 0.16);
+}
+
+.guest-bingo-togo--1.guest-bingo-togo-block,
+.guest-bingo-togo--1.guest-bingo-card-pick,
+.guest-bingo-togo--1.gh-bingo-game-pick,
+.guest-bingo-togo--1.guest-bingo-card-wrap {
+    border-color: #ef4444;
+    animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
+}
+
+.guest-bingo-togo--ready.guest-bingo-togo-block,
+.guest-bingo-togo--ready.guest-bingo-card-pick {
+    border-color: rgba(74, 222, 128, 0.75);
+    background: rgba(74, 222, 128, 0.12);
+}
+
+.guest-bingo-togo-block {
+    border-radius: 12px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid transparent;
+    transition: background 0.25s, border-color 0.25s;
+}
+
+.guest-bingo-card-wrap {
+    border-radius: 14px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.guest-bingo-card-picks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.65rem;
+}
+
+.guest-bingo-card-picks__label {
+    width: 100%;
+    font-size: 0.75rem;
+    opacity: 0.75;
+    margin: 0 0 0.15rem;
+}
+
+.guest-bingo-card-pick {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    padding: 0.4rem 0.55rem;
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    min-width: 5.5rem;
+}
+
+.guest-bingo-card-pick.is-active {
+    outline: 2px solid color-mix(in srgb, var(--event-accent-color, #ff3366) 80%, white);
+    outline-offset: 2px;
+}
+
+.guest-bingo-card-pick__short {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}
+
+.guest-bingo-card-pick__togo {
+    font-weight: 800;
+    font-size: 0.85rem;
+}
+
+.guest-bingo-game-togo {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+}
+
+.guest-bingo-game-togo.guest-bingo-togo--3 {
+    background: rgba(245, 158, 11, 0.22);
+    border-color: rgba(245, 158, 11, 0.65);
+    color: #fcd34d;
+}
+
+.guest-bingo-game-togo.guest-bingo-togo--2 {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.75);
+    color: #fca5a5;
+}
+
+.guest-bingo-game-togo.guest-bingo-togo--1 {
+    background: rgba(239, 68, 68, 0.35);
+    border-color: #ef4444;
+    color: #fff;
+    animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
+}
+
+.guest-bingo-game-togo.guest-bingo-togo--ready {
+    background: rgba(74, 222, 128, 0.2);
+    border-color: rgba(74, 222, 128, 0.75);
+    color: #86efac;
+}
+
+.guest-bingo-game-pick__progress {
+    display: block;
+    margin-top: 0.35rem;
+}
+
+.guest-bingo-call--ready,
+.gh-bingo-call.guest-bingo-call--ready {
+    animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
 }
 
 .guest-bingo-called-ball {

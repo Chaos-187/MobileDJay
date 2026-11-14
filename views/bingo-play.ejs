@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=16" rel="stylesheet">
+    <link href="/css/bingo.css?v=17" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
 </head>
@@ -24,19 +24,23 @@
         </div>
 
         <div id="guestBingoPlay" class="guest-bingo-panel" data-bingo-play hidden>
+            <button type="button" class="btn btn-link guest-bingo-back-lobby px-0" data-bingo-back-lobby>
+                <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>All games &amp; cards
+            </button>
             <p class="guest-bingo-meta" id="guestBingoMeta" data-bingo-meta></p>
             <p class="guest-bingo-serial">Card <strong id="guestBingoSerial" data-bingo-serial></strong></p>
             <label class="guest-bingo-auto-dab form-check form-switch">
                 <input class="form-check-input" type="checkbox" data-bingo-auto-dab checked>
                 <span>Auto-dabber (marks called numbers)</span>
             </label>
-            <div id="guestBingoCard" class="guest-bingo-card" data-bingo-card aria-label="Your bingo card"></div>
+            <div class="guest-bingo-card-picks" data-bingo-card-picks hidden></div>
+            <div id="guestBingoCard" class="guest-bingo-card guest-bingo-card-wrap" data-bingo-card aria-label="Your bingo card"></div>
             <div class="guest-bingo-status-row">
                 <div class="guest-bingo-called">
                     <span class="guest-bingo-called-label">Last call</span>
                     <span class="guest-bingo-called-ball" id="guestBingoLastBall" data-bingo-last-ball>—</span>
                 </div>
-                <div class="guest-bingo-togo">
+                <div class="guest-bingo-togo guest-bingo-togo-block" data-bingo-togo-block>
                     <span class="guest-bingo-called-label">To go</span>
                     <span class="guest-bingo-togo-value" data-bingo-progress>—</span>
                 </div>
@@ -59,7 +63,7 @@
         window.eventSlug = '<%= eventSlug %>';
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
-    <script src="/js/guest-bingo-play.js?v=2"></script>
-    <script src="/js/guest-bingo.js?v=2"></script>
+    <script src="/js/guest-bingo-play.js?v=6"></script>
+    <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

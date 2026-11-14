@@ -59,6 +59,21 @@
                     <button type="button" class="btn mdj-bingo-touch-seg" data-playing-for="two-lines">2 Lines</button>
                     <button type="button" class="btn mdj-bingo-touch-seg" data-playing-for="house">House</button>
                 </div>
+                <div class="mdj-bingo-prize-fields row g-2 mt-2 mb-2">
+                    <div class="col-12 col-md-4">
+                        <label class="mdj-bingo-field-label" for="bingoPrizeLine">1 line prize</label>
+                        <input type="text" class="form-control mdj-bingo-input" id="bingoPrizeLine" maxlength="80" placeholder="e.g. £10 bar tab" autocomplete="off">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="mdj-bingo-field-label" for="bingoPrizeTwoLines">2 lines prize</label>
+                        <input type="text" class="form-control mdj-bingo-input" id="bingoPrizeTwoLines" maxlength="80" placeholder="e.g. bottle of wine" autocomplete="off">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="mdj-bingo-field-label" for="bingoPrizeHouse">Full house prize</label>
+                        <input type="text" class="form-control mdj-bingo-input" id="bingoPrizeHouse" maxlength="80" placeholder="e.g. £50 jackpot" autocomplete="off">
+                    </div>
+                </div>
+                <p class="small text-muted mb-0">Shown on the display and guest phones. Leave blank for default labels.</p>
 
                 <div class="mdj-caller-controls">
                     <button type="button" class="btn mdj-caller-cta mdj-bingo-btn-call" id="bingoCallBtn">
@@ -67,6 +82,7 @@
                     <div class="mdj-caller-controls-row">
                         <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-go" id="bingoStartBtn"><i class="fas fa-play"></i> Start</button>
                         <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-stop" id="bingoStopBtn"><i class="fas fa-stop"></i> Stop</button>
+                        <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-secondary" id="bingoPauseBtn" hidden><i class="fas fa-pause"></i> Pause</button>
                         <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-secondary" id="bingoResumeBtn" hidden><i class="fas fa-play-circle"></i> Resume</button>
                         <button type="button" class="btn mdj-bingo-touch-action mdj-bingo-btn-secondary" id="bingoSkipIntroBtn" hidden><i class="fas fa-forward"></i> Skip intro</button>
                     </div>
@@ -118,6 +134,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=14"></script>
+    <script src="/js/dj-bingo.js?v=16"></script>
 </body>
 </html>

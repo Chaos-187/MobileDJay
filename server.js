@@ -49,7 +49,15 @@ const {
     settingsDb,
     ensureDefaultEvent
 } = require('./db/database');
-const { generateUK90Ticket, verifyClaim, claimLabel, progressTowardClaim } = require('./lib/bingo');
+const {
+    generateUK90Ticket,
+    verifyClaim,
+    claimLabel,
+    progressTowardClaim,
+    prizeLabelForPlayingFor,
+    normalizePrizes,
+    normalizePlayingFor
+} = require('./lib/bingo');
 const bingoSession = require('./lib/bingo-session');
 const virtualRaceSession = require('./lib/virtual-race-session');
 const hiloSession = require('./lib/hilo-session');
@@ -718,6 +726,50 @@ function rejectBingoGuestIfBlocked(event, customerName, deviceId, res) {
     return false;
 }
 
+function bingoMaxVirtualCardsForEvent(event) {
+    const n = parseInt(event?.bingo_max_virtual_cards, 10);
+    return Number.isFinite(n) && n >= 1 ? Math.min(10, n) : 1;
+}
+
+function guestBingoCardProgress(card, slug, gameId) {
+    const state = bingoSession.publicBingoState(slug, gameId);
+    const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
+    return progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
+}
+
+function pickGuestBingoPlayCard(cards, slug, gameId, serial) {
+    if (!cards || !cards.length) return null;
+    const want = serial != null ? String(serial).trim() : '';
+    if (want) {
+        return (
+            cards.find((c) => String(c.serial).toLowerCase() === want.toLowerCase()) || null
+        );
+    }
+    let best = cards[0];
+    let bestToGo = Infinity;
+    for (const card of cards) {
+        const p = guestBingoCardProgress(card, slug, gameId);
+        if (p.toGo < bestToGo) {
+            bestToGo = p.toGo;
+            best = card;
+        }
+    }
+    return best;
+}
+
+function guestBingoCardsSummary(cards, slug, gameId) {
+    return cards
+        .map((card) => {
+            const p = guestBingoCardProgress(card, slug, gameId);
+            return {
+                serial: card.serial,
+                toGo: p.toGo,
+                progressLabel: p.label
+            };
+        })
+        .sort((a, b) => a.toGo - b.toGo || String(a.serial).localeCompare(String(b.serial)));
+}
+
 function bingoAssignErrorResponse(res, code) {
     const map = {
         invalid_identity: { status: 422, error: 'Display name and device are required' },
@@ -729,7 +781,11 @@ function bingoAssignErrorResponse(res, code) {
         serial_required: { status: 422, error: 'Enter the serial from your paper card' },
         serial_taken: { status: 409, error: 'That paper card is registered to another guest' },
         wrong_game: { status: 400, error: 'That card is for a different game' },
-        already_has_card: { status: 409, error: 'You already have a card for this game' }
+        already_has_card: { status: 409, error: 'You already have a card for this game' },
+        card_limit_reached: {
+            status: 409,
+            error: 'You already have the maximum virtual cards for this game'
+        }
     };
     const entry = map[code] || { status: 400, error: BINGO_GUEST_GENERIC_ERROR };
     res.status(entry.status).json({ error: entry.error });
@@ -2093,7 +2149,12 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
         autoCall: !!req.body.autoCall,
         voiceCall: !!req.body.voiceCall,
         playingFor: req.body.playingFor,
-        introSeconds: req.body.introSeconds
+        introSeconds: req.body.introSeconds,
+        prizes: normalizePrizes(req.body.prizes || {
+            line: req.body.prizeLine,
+            'two-lines': req.body.prizeTwoLines,
+            house: req.body.prizeHouse
+        })
     });
     const started = bingoSession.getBingoState(slug, gid);
     if (req.body.autoCall && !bingoSession.isInIntro(started)) {
@@ -2152,7 +2213,12 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
         autoCall: req.body.autoCall,
         voiceCall: req.body.voiceCall,
         playingFor: req.body.playingFor,
-        introSeconds: req.body.introSeconds
+        introSeconds: req.body.introSeconds,
+        prizes: normalizePrizes(req.body.prizes || {
+            line: req.body.prizeLine,
+            'two-lines': req.body.prizeTwoLines,
+            house: req.body.prizeHouse
+        })
     });
     bingoSession.clearAutoTimer(slug, gid);
     if (state.active && state.autoCall && !state.paused && !bingoSession.isInIntro(state)) {
@@ -2181,6 +2247,19 @@ app.post('/api/display/:eventSlug/games/bingo/resume', djWebAuth.requireDjApiAut
     let gid = gameId;
     if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
     const result = bingoSession.resumeCalling(slug, gid, makeBingoCaller(slug, gid));
+    if (result.error) {
+        return res.status(400).json(result);
+    }
+    res.json(result);
+});
+
+app.post('/api/display/:eventSlug/games/bingo/pause', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const ctx = resolveBingoGameContext(req);
+    if (!ctx) return res.status(404).json({ error: 'Event not found' });
+    const { slug, gameId } = ctx;
+    let gid = gameId;
+    if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
+    const result = bingoSession.pauseGame(slug, gid);
     if (result.error) {
         return res.status(400).json(result);
     }
@@ -2534,17 +2613,49 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
     if (!req.event.enable_bingo) {
         return res.json({ enabled: false, games: [] });
     }
-    const games = bingoGameDb
+    const slug = req.event.slug;
+    const cardLimit = bingoMaxVirtualCardsForEvent(req.event);
+    const customerName = normalizeGuestNameForApi(req.query.customerName);
+    const deviceId = normalizeGuestDeviceId(req.query.deviceId);
+  let games = bingoGameDb
         .listByEvent(req.event.id)
         .filter((g) => g.status === 'join_open' || g.status === 'live')
-        .map((g) => ({
-            id: g.id,
-            title: g.title,
-            status: g.status,
-            ballCount: g.ballCount,
-            slotsRemaining: bingoDb.countUnassignedForGame(g.id)
-        }));
-    res.json({ enabled: true, games });
+        .map((g) => {
+            const base = {
+                id: g.id,
+                title: g.title,
+                status: g.status,
+                ballCount: g.ballCount,
+                slotsRemaining: bingoDb.countUnassignedForGame(g.id),
+                cardLimit
+            };
+            if (!customerName || !deviceId) return base;
+            const assigned = bingoDb.listAssignedCardsForPlayer(g.id, customerName);
+            const deviceOk = assigned.every(
+                (c) => !c.deviceId || c.deviceId === deviceId
+            );
+            if (!assigned.length || !deviceOk) return base;
+            const guestCards = guestBingoCardsSummary(assigned, slug, g.id);
+            const bestToGo = guestCards.length ? guestCards[0].toGo : null;
+            return {
+                ...base,
+                guestCardCount: assigned.length,
+                canGrabMore: assigned.length < cardLimit,
+                guestCards,
+                guestBestToGo: bestToGo,
+                guestBestLabel: guestCards[0]?.progressLabel || null
+            };
+        });
+    games.sort((a, b) => {
+        const aHas = a.guestBestToGo != null;
+        const bHas = b.guestBestToGo != null;
+        if (aHas && bHas && a.guestBestToGo !== b.guestBestToGo) {
+            return a.guestBestToGo - b.guestBestToGo;
+        }
+        if (aHas !== bHas) return aHas ? -1 : 1;
+        return (b.slotsRemaining || 0) - (a.slotsRemaining || 0);
+    });
+    res.json({ enabled: true, cardLimit, games });
 });
 
 app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson, (req, res) => {
@@ -2562,7 +2673,8 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
     const customerName = normalizeGuestNameForApi(req.body.customerName);
     const deviceId = normalizeGuestDeviceId(req.body.deviceId);
     if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
-    const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId);
+    const maxCards = bingoMaxVirtualCardsForEvent(req.event);
+    const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, { maxCards });
     if (assignResult?.error) {
         return bingoAssignErrorResponse(res, assignResult.error);
     }
@@ -2571,6 +2683,9 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
         success: true,
         serial: card.serial,
         gameId: game.id,
+        cardCount: assignResult.cardCount,
+        cardLimit: assignResult.cardLimit,
+        canGrabMore: assignResult.canGrabMore,
         playUrl: `/event/${req.event.slug}/bingo?game=${game.id}`
     });
 });
@@ -2587,17 +2702,31 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     const customerName = normalizeGuestNameForApi(req.query.customerName);
     const deviceId = normalizeGuestDeviceId(req.query.deviceId);
     if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
-    const access = bingoDb.resolveGuestCardAccess(gameId, customerName, deviceId);
+    const access = bingoDb.resolveGuestCardAccess(
+        gameId,
+        customerName,
+        deviceId,
+        req.query.serial
+    );
     if (access.error) {
         return bingoAssignErrorResponse(res, access.error);
     }
-    const card = access.card;
     const slug = req.event.slug;
+    const card = pickGuestBingoPlayCard(access.cards, slug, gameId, req.query.serial);
+    if (!card) {
+        return bingoAssignErrorResponse(res, 'not_assigned');
+    }
+    const cardLimit = bingoMaxVirtualCardsForEvent(req.event);
+    const guestCards = guestBingoCardsSummary(access.cards, slug, gameId);
     const state = bingoSession.publicBingoState(slug, gameId);
     const called = new Set(state.calledBalls || []);
-    const progress = progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor);
+    const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
+    const progress = progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
     res.json({
         game: { id: game.id, title: game.title, status: game.status },
+        cardLimit,
+        guestCards,
+        canGrabMore: access.cards.length < cardLimit,
         card: { serial: card.serial, grid: card.grid },
         calledBalls: state.calledBalls || [],
         lastBall: state.lastBall,
@@ -2606,6 +2735,7 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         phase: state.phase,
         active: state.active,
         paused: state.paused,
+        pausedReason: state.pausedReason,
         marks: card.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
         progress
     });
@@ -2630,7 +2760,14 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/link-card', getEventFromSlug
     if (!serial) {
         return res.status(422).json({ error: 'Enter the serial from your paper card' });
     }
-    const linkResult = bingoDb.linkPaperCardForGuest(gameId, req.event.id, serial, customerName, deviceId);
+    const linkResult = bingoDb.linkPaperCardForGuest(
+        gameId,
+        req.event.id,
+        serial,
+        customerName,
+        deviceId,
+        bingoMaxVirtualCardsForEvent(req.event)
+    );
     if (linkResult?.error) {
         return bingoAssignErrorResponse(res, linkResult.error);
     }
@@ -2670,12 +2807,28 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
     if (bingoClaimRateLimited(gameId, deviceId)) {
         return res.status(429).json({ error: 'Please wait a moment before claiming again' });
     }
-    const access = bingoDb.resolveGuestCardAccess(gameId, customerName, deviceId);
+    const access = bingoDb.resolveGuestCardAccess(
+        gameId,
+        customerName,
+        deviceId,
+        req.body.serial
+    );
     if (access.error) {
         return bingoAssignErrorResponse(res, access.error);
     }
-    const card = access.card;
-    const state = bingoSession.getBingoState(req.event.slug, gameId);
+    const slug = req.event.slug;
+    const card = pickGuestBingoPlayCard(
+        access.cards,
+        slug,
+        gameId,
+        req.body.serial
+    );
+    if (!card) {
+        return bingoAssignErrorResponse(res, 'not_assigned');
+    }
+    const state = bingoSession.getBingoState(slug, gameId);
+    const requested = normalizePlayingFor(claimType);
+    const playingFor = normalizePlayingFor(state.playingFor);
     const valid = verifyClaim(card.grid, state.calledBalls, claimType);
     bingoClaimDb.add(gameId, {
         customerName,
@@ -2683,14 +2836,62 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
         claimType,
         validOnCard: valid
     });
+
+    if (!valid) {
+        return res.json({
+            success: true,
+            valid: false,
+            serial: card.serial,
+            claimType,
+            message: 'Not complete on your card yet — keep playing!'
+        });
+    }
+
+    if (!state.active) {
+        return res.json({
+            success: true,
+            valid: true,
+            serial: card.serial,
+            claimType,
+            message: 'Your card matches — the game is not live yet.'
+        });
+    }
+
+    if (requested !== playingFor) {
+        return res.json({
+            success: true,
+            valid: false,
+            serial: card.serial,
+            claimType,
+            playingFor,
+            message: 'That claim is not the current prize on screen — follow “Playing for”.'
+        });
+    }
+
+    const flash = bingoSession.setClaimFlash(slug, gameId, claimType, {
+        serial: card.serial,
+        valid: true,
+        winnerName: customerName,
+        customerName
+    });
+    bingoSession.advancePlayingForAfterWin(slug, gameId);
+    const nextState = bingoSession.publicBingoState(slug, gameId);
+    bingoSession.resumeCalling(slug, gameId, makeBingoCaller(slug, gameId));
+
+    const nextLabel = nextState.playingForLabel || 'the next prize';
     res.json({
         success: true,
-        valid,
+        valid: true,
+        verified: true,
         serial: card.serial,
         claimType,
-        message: valid
-            ? 'Looks good on your card — the DJ will verify on the big screen.'
-            : 'Not complete on your card yet — keep playing!'
+        flash,
+        playingFor: nextState.playingFor,
+        playingForLabel: nextState.playingForLabel,
+        message:
+            claimType === 'house'
+                ? `Full house! ${customerName} — showing on the big screen.`
+                : `Winner! Showing on screen — now playing for ${nextLabel}.`
     });
 });
 

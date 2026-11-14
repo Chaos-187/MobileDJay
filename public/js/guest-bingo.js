@@ -24,7 +24,10 @@
         if (guestSession && guestSession.registerCheckin) {
             guestSession.registerCheckin(name, slug);
         }
-        if (play.getActiveGameId()) {
+        if (play.prefersLobby && play.prefersLobby()) {
+            play.showJoin();
+            play.loadGames();
+        } else if (play.getActiveGameId()) {
             play.startPlay();
         } else {
             play.loadGames();

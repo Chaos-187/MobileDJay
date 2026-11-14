@@ -344,6 +344,7 @@ db.exec(`
 
 try {
     db.exec(`ALTER TABLE events ADD COLUMN enable_bingo INTEGER DEFAULT 0`);
+    db.exec(`ALTER TABLE events ADD COLUMN bingo_max_virtual_cards INTEGER DEFAULT 1`);
 } catch (e) {
     /* exists */
 }
@@ -566,10 +567,10 @@ const eventDb = {
                                'display_bg_slideshow_enabled', 'display_bg_slideshow_seconds',
                                'display_bg_overlay_opacity', 'display_show_waiting_message',
                                'display_card_color', 'display_card_opacity', 'display_message_style', 'photo_banner_style',
-                               'show_tracks_played_guest', 'show_public', 'enable_bingo'];
+                               'show_tracks_played_guest', 'show_public', 'enable_bingo', 'bingo_max_virtual_cards'];
         const intFlagFields = new Set([
             'is_active', 'enable_song_requests', 'enable_karaoke_requests', 'enable_messages',
-            'enable_tips', 'enable_photos', 'enable_bingo', 'show_tracks_played_guest', 'show_public',
+            'enable_tips', 'enable_photos', 'enable_bingo', 'bingo_max_virtual_cards', 'show_tracks_played_guest', 'show_public',
             'display_show_qr', 'display_bg_slideshow_enabled', 'display_show_waiting_message',
             'guest_menu_compact', 'guest_show_option_desc', 'guest_hero_compact'
         ]);
@@ -1512,47 +1513,80 @@ const bingoDb = {
         return this._parseRow(row);
     },
 
+    listAssignedCardsForPlayer(gameId, customerName) {
+        const name = normalizeGuestName(customerName);
+        if (!name) return [];
+        const rows = db
+            .prepare(
+                `SELECT * FROM bingo_cards WHERE game_id = ? AND assigned_to = ? COLLATE NOCASE ORDER BY id ASC`
+            )
+            .all(gameId, name);
+        return rows.map((r) => this._parseRow(r));
+    },
+
+    countAssignedCardsForPlayer(gameId, customerName) {
+        return this.listAssignedCardsForPlayer(gameId, customerName).length;
+    },
+
     /**
      * Resolve card for guest play/claim: name match + device binding (same model as event guest check-in).
      * Binds device_id on first access when the DJ assigned a card without a device.
      */
-    resolveGuestCardAccess(gameId, customerName, deviceId) {
-        const name = normalizeGuestName(customerName);
-        const device = this._normalizeDevice(deviceId);
-        if (!name || !device) return { error: 'invalid_identity' };
-        const card = this.getAssignedForPlayer(gameId, name);
-        if (!card) return { error: 'not_assigned' };
-        if (card.deviceId && card.deviceId !== device) {
-            return { error: 'device_mismatch' };
-        }
-        if (!card.deviceId) {
-            db.prepare('UPDATE bingo_cards SET device_id = ? WHERE id = ? AND (device_id IS NULL OR TRIM(device_id) = "")').run(
-                device,
-                card.id
-            );
-            const rebound = db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(card.id);
-            return { card: this._parseRow(rebound) };
-        }
-        return { card };
-    },
-
-    assignNextAvailable(gameId, customerName, deviceId) {
-        const name = normalizeGuestName(customerName);
-        const device = this._normalizeDevice(deviceId);
-        if (!name || !device) return { error: 'invalid_identity' };
-        const existing = this.getAssignedForPlayer(gameId, name);
-        if (existing) {
-            if (existing.deviceId && existing.deviceId !== device) {
-                return { error: 'name_taken' };
+    _bindGuestDeviceOnCards(cards, device) {
+        const deviceNorm = this._normalizeDevice(device);
+        if (!deviceNorm) return cards;
+        for (const c of cards) {
+            if (c.deviceId && c.deviceId !== deviceNorm) {
+                return { error: 'device_mismatch' };
             }
-            if (!existing.deviceId) {
+        }
+        for (const c of cards) {
+            if (!c.deviceId) {
                 db.prepare(
                     'UPDATE bingo_cards SET device_id = ? WHERE id = ? AND (device_id IS NULL OR TRIM(device_id) = "")'
-                ).run(device, existing.id);
-                const rebound = db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(existing.id);
-                return { card: this._parseRow(rebound) };
+                ).run(deviceNorm, c.id);
             }
-            return { card: existing };
+        }
+        return cards.map((c) => this._parseRow(db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(c.id)));
+    },
+
+    resolveGuestCardAccess(gameId, customerName, deviceId, serial = null) {
+        const name = normalizeGuestName(customerName);
+        const device = this._normalizeDevice(deviceId);
+        if (!name || !device) return { error: 'invalid_identity' };
+        const assigned = this.listAssignedCardsForPlayer(gameId, name);
+        if (!assigned.length) return { error: 'not_assigned' };
+        const bound = this._bindGuestDeviceOnCards(assigned, device);
+        if (bound.error) return bound;
+        let card = null;
+        const wantSerial = serial != null ? String(serial).trim() : '';
+        if (wantSerial) {
+            card = bound.find((c) => String(c.serial).toLowerCase() === wantSerial.toLowerCase());
+            if (!card) return { error: 'not_assigned' };
+        } else {
+            card = bound[0];
+        }
+        return { card, cards: bound };
+    },
+
+    assignNextAvailable(gameId, customerName, deviceId, options = {}) {
+        const name = normalizeGuestName(customerName);
+        const device = this._normalizeDevice(deviceId);
+        if (!name || !device) return { error: 'invalid_identity' };
+        const maxCards = Math.max(1, Math.min(10, Number(options.maxCards) || 1));
+        const assigned = this.listAssignedCardsForPlayer(gameId, name);
+        for (const c of assigned) {
+            if (c.deviceId && c.deviceId !== device) {
+                return { error: 'name_taken' };
+            }
+        }
+        if (assigned.length >= maxCards) {
+            return { error: 'card_limit_reached', limit: maxCards, count: assigned.length };
+        }
+        if (assigned.length > 0 && maxCards === 1) {
+            const bound = this._bindGuestDeviceOnCards(assigned, device);
+            if (bound.error) return bound;
+            return { card: bound[0], cardCount: 1, cardLimit: maxCards };
         }
         const assign = db.transaction(() => {
             const row = db
@@ -1570,7 +1604,13 @@ const bingoDb = {
         });
         const row = assign();
         if (!row) return { error: 'sold_out' };
-        return { card: this._parseRow(row) };
+        const newCount = this.countAssignedCardsForPlayer(gameId, name);
+        return {
+            card: this._parseRow(row),
+            cardCount: newCount,
+            cardLimit: maxCards,
+            canGrabMore: newCount < maxCards
+        };
     },
 
     /** DJ dashboard: reserve next card for a guest name without binding a device yet. */
@@ -1611,7 +1651,7 @@ const bingoDb = {
     /**
      * Guest links a printed (paper) card by serial — virtual dabber uses the same grid.
      */
-    linkPaperCardForGuest(gameId, eventId, serial, customerName, deviceId) {
+    linkPaperCardForGuest(gameId, eventId, serial, customerName, deviceId, maxCards = 1) {
         const name = normalizeGuestName(customerName);
         const device = this._normalizeDevice(deviceId);
         if (!name || !device) return { error: 'invalid_identity' };
@@ -1628,9 +1668,12 @@ const bingoDb = {
         }
         const assigned = parsed.assignedTo ? normalizeGuestName(parsed.assignedTo) : '';
         if (assigned && assigned !== name) return { error: 'serial_taken' };
-        const existingForPlayer = this.getAssignedForPlayer(gameId, name);
-        if (existingForPlayer && existingForPlayer.id !== parsed.id) {
-            return { error: 'already_has_card' };
+        const cardLimit = Math.max(1, Math.min(10, Number(maxCards) || 1));
+        const assigned = this.listAssignedCardsForPlayer(gameId, name);
+        const assignedCount = assigned.length;
+        const alreadyLinked = assigned.some((c) => c.id === parsed.id);
+        if (!alreadyLinked && assignedCount >= cardLimit) {
+            return { error: 'card_limit_reached' };
         }
         if (parsed.deviceId && parsed.deviceId !== device) return { error: 'device_mismatch' };
         db.prepare(

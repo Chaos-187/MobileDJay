@@ -5,6 +5,7 @@
     'use strict';
 
     var play = null;
+    var eventSlug = '';
 
   function deviceId() {
     var guestSession = global.MdjGuestSession;
@@ -22,6 +23,7 @@
     if (!panel || !cfg.features || !cfg.features.bingo) return;
 
     var slug = cfg.eventSlug || global.eventSlug || '';
+    eventSlug = slug;
     if (!global.MdjGuestBingoPlay) return;
 
     play = global.MdjGuestBingoPlay.create({
@@ -45,6 +47,11 @@
 
   function onTabShown() {
     if (!play) return;
+    if (play.prefersLobby && play.prefersLobby()) {
+      play.showJoin();
+      play.loadGames();
+      return;
+    }
     var id = play.getActiveGameId();
     if (id) {
       play.startPlay();

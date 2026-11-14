@@ -1813,8 +1813,39 @@ body.bingo-screen-active {
 .bingo-fs-header {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.75rem 1rem;
     flex-shrink: 0;
+}
+
+.bingo-fs-dj-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem 1rem;
+    margin-left: auto;
+    padding: 0.35rem 0.65rem;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.bingo-fs-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: clamp(0.75rem, 1.6vw, 0.88rem);
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.88);
+    cursor: pointer;
+    user-select: none;
+    margin: 0;
+}
+
+.bingo-fs-toggle input {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: #ffb347;
+    cursor: pointer;
 }
 
 .bingo-fs-brand {

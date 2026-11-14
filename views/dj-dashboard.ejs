@@ -1143,7 +1143,8 @@
 
                                 <section class="mdj-bingo-surface mdj-bingo-prepare-panel" data-bingo-prep-panel="setup" hidden aria-label="Game setup">
                                     <h3 class="mdj-bingo-surface-title"><i class="fas fa-gear me-1 text-secondary" aria-hidden="true"></i>Caller setup</h3>
-                                    <p class="mdj-bingo-pane-lead mb-3">Balls, intro timer, and auto-call (saved for the bingo caller).</p>
+                                    <p class="mdj-bingo-pane-lead mb-1">Balls, intro, auto-call, and voice — saved on the <strong>selected game</strong>.</p>
+                                    <p id="bingoCallerSetupGameHint" class="small text-warning mb-3">Select a game in the hub or games list first.</p>
                                     <div class="row g-2 mb-3">
                                         <div class="col-6">
                                             <label class="mdj-bingo-field-label" for="bingoBallCount">Balls</label>
@@ -1185,7 +1186,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-muted mb-2" id="bingoApplyConfigBtn">Save setup</button>
+                                    <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-muted mb-2" id="bingoApplyConfigBtn">Save caller setup for game</button>
                                     <button type="button" class="btn w-100 mdj-bingo-touch-action mdj-bingo-btn-danger-outline" id="bingoResetCallsBtn">Reset number board</button>
                                 </section>
                             </div>
@@ -1424,7 +1425,8 @@
                         <li class="mdj-bingo-wizard-step is-active" data-wizard-step="1">Details</li>
                         <li class="mdj-bingo-wizard-step" data-wizard-step="2">Guests</li>
                         <li class="mdj-bingo-wizard-step" data-wizard-step="3">Cards</li>
-                        <li class="mdj-bingo-wizard-step" data-wizard-step="4">Review</li>
+                        <li class="mdj-bingo-wizard-step" data-wizard-step="4">Caller</li>
+                        <li class="mdj-bingo-wizard-step" data-wizard-step="5">Review</li>
                     </ol>
                     <div class="mdj-bingo-wizard-panel" data-wizard-panel="1">
                         <p class="small text-muted">Name the game and optionally tell guests when you plan to start.</p>
@@ -1465,6 +1467,39 @@
                         <p class="form-text mb-0">Use <strong>0</strong> cards if you will only link printed serials later. Print sheet opens automatically when cards &gt; 0.</p>
                     </div>
                     <div class="mdj-bingo-wizard-panel" data-wizard-panel="4" hidden>
+                        <p class="small text-muted">Defaults for this game’s caller and venue display (change anytime before or during the game).</p>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="mdj-bingo-field-label" for="bingoWizardIntro">Intro (sec)</label>
+                                <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoWizardIntro" min="0" max="600" value="30">
+                            </div>
+                            <div class="col-6">
+                                <label class="mdj-bingo-field-label" for="bingoWizardInterval">Auto every (s)</label>
+                                <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoWizardInterval" min="2" max="120" value="5">
+                            </div>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" id="bingoWizardAutoCall">
+                            <label class="form-check-label" for="bingoWizardAutoCall">Auto-call next ball</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="bingoWizardVoiceCall">
+                            <label class="form-check-label" for="bingoWizardVoiceCall">Voice on venue display</label>
+                        </div>
+                        <p class="mdj-bingo-field-label mb-2">Prize names (optional)</p>
+                        <div class="row g-2">
+                            <div class="col-12 col-md-4">
+                                <input type="text" class="form-control mdj-bingo-input" id="bingoWizardPrizeLine" maxlength="80" placeholder="1 line" autocomplete="off">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <input type="text" class="form-control mdj-bingo-input" id="bingoWizardPrizeTwo" maxlength="80" placeholder="2 lines" autocomplete="off">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <input type="text" class="form-control mdj-bingo-input" id="bingoWizardPrizeHouse" maxlength="80" placeholder="Full house" autocomplete="off">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mdj-bingo-wizard-panel" data-wizard-panel="5" hidden>
                         <p class="small text-muted">Confirm, then create the game and optional print batch.</p>
                         <dl class="mdj-bingo-wizard-review small mb-0" id="bingoWizardReview"></dl>
                     </div>
@@ -1479,6 +1514,74 @@
                             <i class="fas fa-check me-1"></i>Create game
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bingo edit game -->
+    <div class="modal fade" id="bingoEditGameModal" tabindex="-1" aria-labelledby="bingoEditGameModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+            <div class="modal-content mdj-bingo-wizard-modal">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="bingoEditGameModalTitle">
+                        <i class="fas fa-pen me-2 text-warning" aria-hidden="true"></i>Edit bingo game
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="bingoEditGameId" value="">
+                    <p class="small text-muted mb-3">Update game details and caller defaults. Ball count cannot change while the game is live.</p>
+                    <div class="mb-3">
+                        <label class="mdj-bingo-field-label" for="bingoEditTitle">Game title</label>
+                        <input type="text" class="form-control form-control-lg mdj-bingo-input" id="bingoEditTitle" maxlength="120" autocomplete="off">
+                    </div>
+                    <div class="mb-3">
+                        <label class="mdj-bingo-field-label" for="bingoEditStart">Advertised start (optional)</label>
+                        <input type="datetime-local" class="form-control form-control-lg mdj-bingo-input" id="bingoEditStart">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="mdj-bingo-field-label" for="bingoEditMaxVirtual">Max virtual per guest</label>
+                            <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoEditMaxVirtual" min="1" max="10">
+                        </div>
+                        <div class="col-6">
+                            <label class="mdj-bingo-field-label" for="bingoEditBallCount">Balls in play</label>
+                            <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoEditBallCount" min="9" max="90">
+                        </div>
+                    </div>
+                    <h6 class="text-muted mb-2">Caller &amp; display</h6>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="mdj-bingo-field-label" for="bingoEditIntro">Intro (sec)</label>
+                            <input type="number" class="form-control mdj-bingo-input" id="bingoEditIntro" min="0" max="600">
+                        </div>
+                        <div class="col-6">
+                            <label class="mdj-bingo-field-label" for="bingoEditInterval">Auto every (s)</label>
+                            <input type="number" class="form-control mdj-bingo-input" id="bingoEditInterval" min="2" max="120">
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="bingoEditAutoCall">
+                        <label class="form-check-label" for="bingoEditAutoCall">Auto-call next ball</label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="bingoEditVoiceCall">
+                        <label class="form-check-label" for="bingoEditVoiceCall">Voice on venue display</label>
+                    </div>
+                    <p class="mdj-bingo-field-label mb-2">Prize names (optional)</p>
+                    <div class="row g-2 mb-0">
+                        <div class="col-md-4"><input type="text" class="form-control mdj-bingo-input" id="bingoEditPrizeLine" maxlength="80" placeholder="1 line" autocomplete="off"></div>
+                        <div class="col-md-4"><input type="text" class="form-control mdj-bingo-input" id="bingoEditPrizeTwo" maxlength="80" placeholder="2 lines" autocomplete="off"></div>
+                        <div class="col-md-4"><input type="text" class="form-control mdj-bingo-input" id="bingoEditPrizeHouse" maxlength="80" placeholder="Full house" autocomplete="off"></div>
+                    </div>
+                    <p id="bingoEditGameError" class="small text-danger mt-2 mb-0" hidden role="alert"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning" id="bingoEditGameSaveBtn">
+                        <i class="fas fa-save me-1" aria-hidden="true"></i>Save changes
+                    </button>
                 </div>
             </div>
         </div>
@@ -1515,7 +1618,7 @@
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/dj-dashboard.js?v=4"></script>
     <script src="/js/dj-games-picker.js?v=3"></script>
-    <script src="/js/dj-bingo.js?v=18"></script>
+    <script src="/js/dj-bingo.js?v=20"></script>
     <script src="/js/dj-racing.js?v=3"></script>
     <script src="/js/dj-hilo.js?v=2"></script>
 

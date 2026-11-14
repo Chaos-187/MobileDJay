@@ -45,6 +45,7 @@
     let selectedGameId = null;
     let wizardStep = 1;
     let createWizardModal = null;
+    let editGameModal = null;
 
     const wizardEls = {
         modal: document.getElementById('bingoCreateGameModal'),
@@ -56,11 +57,36 @@
         openJoin: document.getElementById('bingoWizardOpenJoin'),
         cardCount: document.getElementById('bingoWizardCardCount'),
         ballCount: document.getElementById('bingoWizardBallCount'),
+        intro: document.getElementById('bingoWizardIntro'),
+        interval: document.getElementById('bingoWizardInterval'),
+        autoCall: document.getElementById('bingoWizardAutoCall'),
+        voiceCall: document.getElementById('bingoWizardVoiceCall'),
+        prizeLine: document.getElementById('bingoWizardPrizeLine'),
+        prizeTwo: document.getElementById('bingoWizardPrizeTwo'),
+        prizeHouse: document.getElementById('bingoWizardPrizeHouse'),
         review: document.getElementById('bingoWizardReview'),
         error: document.getElementById('bingoWizardError'),
         backBtn: document.getElementById('bingoWizardBackBtn'),
         nextBtn: document.getElementById('bingoWizardNextBtn'),
         createBtn: document.getElementById('bingoWizardCreateBtn')
+    };
+
+    const editEls = {
+        modal: document.getElementById('bingoEditGameModal'),
+        id: document.getElementById('bingoEditGameId'),
+        title: document.getElementById('bingoEditTitle'),
+        start: document.getElementById('bingoEditStart'),
+        maxVirtual: document.getElementById('bingoEditMaxVirtual'),
+        ballCount: document.getElementById('bingoEditBallCount'),
+        intro: document.getElementById('bingoEditIntro'),
+        interval: document.getElementById('bingoEditInterval'),
+        autoCall: document.getElementById('bingoEditAutoCall'),
+        voiceCall: document.getElementById('bingoEditVoiceCall'),
+        prizeLine: document.getElementById('bingoEditPrizeLine'),
+        prizeTwo: document.getElementById('bingoEditPrizeTwo'),
+        prizeHouse: document.getElementById('bingoEditPrizeHouse'),
+        error: document.getElementById('bingoEditGameError'),
+        saveBtn: document.getElementById('bingoEditGameSaveBtn')
     };
     let adminCells = new Map();
     let adminGridSize = 0;
@@ -163,6 +189,74 @@
         }
     }
 
+    function isoToDatetimeLocal(iso) {
+        if (!iso) return '';
+        try {
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return '';
+            const pad = (n) => String(n).padStart(2, '0');
+            return (
+                d.getFullYear() +
+                '-' +
+                pad(d.getMonth() + 1) +
+                '-' +
+                pad(d.getDate()) +
+                'T' +
+                pad(d.getHours()) +
+                ':' +
+                pad(d.getMinutes())
+            );
+        } catch (e) {
+            return '';
+        }
+    }
+
+    function activeGameFromCache() {
+        const gid = getActiveGameId();
+        return gid ? gamesCache.find((x) => x.id === gid) : null;
+    }
+
+    function syncCallerSetupHint(game) {
+        const hint = document.getElementById('bingoCallerSetupGameHint');
+        if (!hint) return;
+        const g = game || activeGameFromCache();
+        if (!g) {
+            hint.textContent = 'Select a game in the hub or games list first.';
+            hint.className = 'small text-warning mb-3';
+            return;
+        }
+        hint.textContent = 'Saving to: ' + g.title;
+        hint.className = 'small text-success mb-3';
+    }
+
+    function applyGameToCallerSetup(g) {
+        if (!g) {
+            syncCallerSetupHint();
+            return;
+        }
+        if (els.ballCount) els.ballCount.value = String(g.ballCount || 90);
+        if (els.callInterval) {
+            els.callInterval.value = String(Math.round((g.callIntervalMs || 5000) / 1000));
+        }
+        if (els.introSeconds) els.introSeconds.value = String(g.introSeconds != null ? g.introSeconds : 30);
+        if (els.autoCall) els.autoCall.checked = !!g.autoCall;
+        if (els.voiceCall) els.voiceCall.checked = !!g.voiceCall;
+        syncPrizeFields(g.prizes);
+        syncCallerSetupHint(g);
+        if (els.ballCount) els.ballCount.disabled = g.status === 'live';
+    }
+
+    function buildCallerSaveBody() {
+        return {
+            ballCount: Number(els.ballCount?.value) || 90,
+            callIntervalSeconds: Number(els.callInterval?.value) || 5,
+            introSeconds: Number(els.introSeconds?.value) || 0,
+            autoCall: !!els.autoCall?.checked,
+            voiceCall: !!els.voiceCall?.checked,
+            ...getPrizePayload()
+        };
+    }
+
     function gameListMeta(g) {
         const bits = [
             statusLabel(g.status),
@@ -242,6 +336,7 @@
                     (g.status === 'ended'
                         ? `<button type="button" class="btn btn-outline-success bingo-game-restart" data-id="${g.id}">Restart</button>`
                         : '') +
+                    `<button type="button" class="btn btn-outline-secondary bingo-game-edit" data-id="${g.id}">Edit</button>` +
                     `<button type="button" class="btn btn-outline-primary bingo-game-use" data-id="${g.id}">Use</button>` +
                     (g.status === 'ended' || (g.status !== 'live' && (g.assignments || 0) === 0)
                         ? `<button type="button" class="btn btn-outline-danger bingo-game-delete" data-id="${g.id}">Delete</button>`
@@ -264,8 +359,12 @@
                 if (els.gameSelect) els.gameSelect.value = btn.dataset.id;
                 persistSelectedGame(parseInt(btn.dataset.id, 10));
                 syncGameMeta();
+                applyGameToCallerSetup(gamesCache.find((x) => x.id === parseInt(btn.dataset.id, 10)));
                 fetchState();
             });
+        });
+        els.gamesList.querySelectorAll('.bingo-game-edit').forEach((btn) => {
+            btn.addEventListener('click', () => openEditGame(parseInt(btn.dataset.id, 10)));
         });
         els.gamesList.querySelectorAll('.bingo-game-restart').forEach((btn) => {
             btn.addEventListener('click', () => restartEndedGame(btn.dataset.id));
@@ -377,6 +476,7 @@
             populateGameSelect();
             renderGamesList();
             loadPlayers();
+            applyGameToCallerSetup(activeGameFromCache());
         } catch (e) {
             if (els.gamesList) els.gamesList.innerHTML = '<span class="text-danger">Could not load games.</span>';
         }
@@ -412,6 +512,22 @@
         const d = document.createElement('div');
         d.textContent = t || '';
         return d.innerHTML;
+    }
+
+    let verifyCallSound = null;
+
+    function playVerifiedCallSoundLocal() {
+        if (!verifyCallSound) {
+            verifyCallSound = new Audio('/audio/verified_call.mp3');
+            verifyCallSound.preload = 'auto';
+        }
+        try {
+            verifyCallSound.currentTime = 0;
+            const p = verifyCallSound.play();
+            if (p && typeof p.catch === 'function') p.catch(function () {});
+        } catch (e) {
+            /* ignore */
+        }
     }
 
     function getSelectedPlayingFor() {
@@ -605,6 +721,7 @@
                 }
             }
             renderStatus(state);
+            if (!state.active) applyGameToCallerSetup(activeGameFromCache());
         } catch (e) {
             console.error('Bingo state fetch failed', e);
         }
@@ -677,18 +794,37 @@
         if (data?.success) renderStatus(data.state);
     });
 
-    document.getElementById('bingoApplyConfigBtn')?.addEventListener('click', async () => {
-        const data = await apiPut('/games/bingo/config', {
-            ballCount: Number(els.ballCount?.value) || 90,
-            callIntervalSeconds: Number(els.callInterval?.value) || 5,
-            autoCall: !!els.autoCall?.checked,
-            voiceCall: !!els.voiceCall?.checked,
-            playingFor: getSelectedPlayingFor(),
-            introSeconds: Number(els.introSeconds?.value) || 0,
-            ...getPrizePayload()
-        });
-        if (data?.success) renderStatus(data.state);
-    });
+    document.getElementById('bingoApplyConfigBtn')?.addEventListener('click', () => saveGameCallerSetup());
+
+    async function saveGameCallerSetup() {
+        const eid = eventId();
+        const gid = getActiveGameId();
+        if (!eid || !gid) {
+            alert('Select a game first.');
+            return;
+        }
+        const body = buildCallerSaveBody();
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gid}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const saved = await res.json();
+            if (!res.ok) {
+                alert(saved.error || 'Could not save game');
+                return;
+            }
+            const data = await apiPut('/games/bingo/config', {
+                ...body,
+                playingFor: getSelectedPlayingFor()
+            });
+            if (data?.success) renderStatus(data.state);
+            await loadGames();
+        } catch (e) {
+            alert('Could not save caller setup');
+        }
+    }
 
     async function flashClaim(claimType) {
         const data = await apiPost('/games/bingo/claim-flash', { claimType });
@@ -756,6 +892,7 @@
                 ? `Valid ${data.claimLabel} for serial ${data.serial} — flashed on display.`
                 : `Not valid for ${data.claimLabel} (serial ${data.serial}) — flashed on display.`;
             els.verifyResult.className = data.valid ? 'small text-success' : 'small text-warning';
+            if (data.valid) playVerifiedCallSoundLocal();
             if (data.state) renderStatus(data.state);
         } catch (e) {
             els.verifyResult.textContent = 'Could not verify.';
@@ -910,7 +1047,7 @@
     }
 
     function setWizardStep(step) {
-        wizardStep = Math.max(1, Math.min(4, step));
+        wizardStep = Math.max(1, Math.min(5, step));
         document.querySelectorAll('[data-wizard-panel]').forEach((panel) => {
             panel.hidden = parseInt(panel.getAttribute('data-wizard-panel'), 10) !== wizardStep;
         });
@@ -920,9 +1057,9 @@
             li.classList.toggle('is-done', n < wizardStep);
         });
         if (wizardEls.backBtn) wizardEls.backBtn.hidden = wizardStep <= 1;
-        if (wizardEls.nextBtn) wizardEls.nextBtn.hidden = wizardStep >= 4;
-        if (wizardEls.createBtn) wizardEls.createBtn.hidden = wizardStep !== 4;
-        if (wizardStep === 4) renderWizardReview();
+        if (wizardEls.nextBtn) wizardEls.nextBtn.hidden = wizardStep >= 5;
+        if (wizardEls.createBtn) wizardEls.createBtn.hidden = wizardStep !== 5;
+        if (wizardStep === 5) renderWizardReview();
         if (wizardEls.error) {
             wizardEls.error.hidden = true;
             wizardEls.error.textContent = '';
@@ -945,6 +1082,13 @@
         if (wizardEls.cardCount) wizardEls.cardCount.value = '30';
         const balls = Number(els.ballCount?.value) || 90;
         if (wizardEls.ballCount) wizardEls.ballCount.value = String(balls);
+        if (wizardEls.intro) wizardEls.intro.value = els.introSeconds?.value || '30';
+        if (wizardEls.interval) wizardEls.interval.value = els.callInterval?.value || '5';
+        if (wizardEls.autoCall) wizardEls.autoCall.checked = !!els.autoCall?.checked;
+        if (wizardEls.voiceCall) wizardEls.voiceCall.checked = !!els.voiceCall?.checked;
+        if (wizardEls.prizeLine) wizardEls.prizeLine.value = els.prizeLine?.value || '';
+        if (wizardEls.prizeTwo) wizardEls.prizeTwo.value = els.prizeTwoLines?.value || '';
+        if (wizardEls.prizeHouse) wizardEls.prizeHouse.value = els.prizeHouse?.value || '';
         setWizardStep(1);
     }
 
@@ -968,7 +1112,21 @@
         const ballCount = Number(wizardEls.ballCount?.value) || 90;
         const maxVirtualCards = Number(wizardEls.maxVirtual?.value) || eventBingoDefaults.maxVirtualCards || 1;
         const startRaw = wizardEls.start?.value || '';
-        return { title, cardCount, openJoin, ballCount, maxVirtualCards, advertisedStartAt: startRaw || null };
+        return {
+            title,
+            cardCount,
+            openJoin,
+            ballCount,
+            maxVirtualCards,
+            advertisedStartAt: startRaw || null,
+            introSeconds: Number(wizardEls.intro?.value) || 0,
+            callIntervalSeconds: Number(wizardEls.interval?.value) || 5,
+            autoCall: !!wizardEls.autoCall?.checked,
+            voiceCall: !!wizardEls.voiceCall?.checked,
+            prizeLine: (wizardEls.prizeLine?.value || '').trim(),
+            prizeTwoLines: (wizardEls.prizeTwo?.value || '').trim(),
+            prizeHouse: (wizardEls.prizeHouse?.value || '').trim()
+        };
     }
 
     function renderWizardReview() {
@@ -983,7 +1141,91 @@
             `<dt>Max virtual per guest</dt><dd>${escapeHtml(String(p.maxVirtualCards))}</dd>` +
             `<dt>Join on hub</dt><dd>${p.openJoin ? 'Yes — open straight away' : 'No — prepare first'}</dd>` +
             `<dt>Cards to generate</dt><dd>${escapeHtml(String(p.cardCount))}</dd>` +
-            `<dt>Balls</dt><dd>${escapeHtml(String(p.ballCount))}</dd>`;
+            `<dt>Balls</dt><dd>${escapeHtml(String(p.ballCount))}</dd>` +
+            `<dt>Caller</dt><dd>Intro ${escapeHtml(String(p.introSeconds))}s · every ${escapeHtml(String(p.callIntervalSeconds))}s` +
+            `${p.autoCall ? ' · auto' : ''}${p.voiceCall ? ' · voice' : ''}</dd>`;
+    }
+
+    function openEditGame(gameId) {
+        const g = gamesCache.find((x) => x.id === gameId);
+        if (!g || !editEls.modal) return;
+        if (editEls.id) editEls.id.value = String(gameId);
+        if (editEls.title) editEls.title.value = g.title || '';
+        if (editEls.start) editEls.start.value = isoToDatetimeLocal(g.advertisedStartAt);
+        if (editEls.maxVirtual) {
+            editEls.maxVirtual.value = String(g.maxVirtualCards != null ? g.maxVirtualCards : eventBingoDefaults.maxVirtualCards || 1);
+        }
+        if (editEls.ballCount) {
+            editEls.ballCount.value = String(g.ballCount || 90);
+            editEls.ballCount.disabled = g.status === 'live';
+        }
+        if (editEls.intro) editEls.intro.value = String(g.introSeconds != null ? g.introSeconds : 30);
+        if (editEls.interval) editEls.interval.value = String(Math.round((g.callIntervalMs || 5000) / 1000));
+        if (editEls.autoCall) editEls.autoCall.checked = !!g.autoCall;
+        if (editEls.voiceCall) editEls.voiceCall.checked = !!g.voiceCall;
+        if (editEls.prizeLine) editEls.prizeLine.value = g.prizes?.line || '';
+        if (editEls.prizeTwo) editEls.prizeTwo.value = g.prizes?.['two-lines'] || '';
+        if (editEls.prizeHouse) editEls.prizeHouse.value = g.prizes?.house || '';
+        if (editEls.error) {
+            editEls.error.hidden = true;
+            editEls.error.textContent = '';
+        }
+        if (!editGameModal && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            editGameModal = new bootstrap.Modal(editEls.modal);
+        }
+        editGameModal?.show();
+    }
+
+    async function submitEditGame() {
+        const eid = eventId();
+        const gameId = editEls.id?.value;
+        if (!eid || !gameId) return;
+        if (editEls.saveBtn) editEls.saveBtn.disabled = true;
+        if (editEls.error) {
+            editEls.error.hidden = true;
+            editEls.error.textContent = '';
+        }
+        const body = {
+            title: (editEls.title?.value || '').trim(),
+            maxVirtualCards: Number(editEls.maxVirtual?.value) || 1,
+            advertisedStartAt: editEls.start?.value || null,
+            ballCount: Number(editEls.ballCount?.value) || 90,
+            introSeconds: Number(editEls.intro?.value) || 0,
+            callIntervalSeconds: Number(editEls.interval?.value) || 5,
+            autoCall: !!editEls.autoCall?.checked,
+            voiceCall: !!editEls.voiceCall?.checked,
+            prizeLine: (editEls.prizeLine?.value || '').trim(),
+            prizeTwoLines: (editEls.prizeTwo?.value || '').trim(),
+            prizeHouse: (editEls.prizeHouse?.value || '').trim()
+        };
+        try {
+            const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gameId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                if (editEls.error) {
+                    editEls.error.textContent = data.error || 'Could not save';
+                    editEls.error.hidden = false;
+                }
+                return;
+            }
+            editGameModal?.hide();
+            await loadGames();
+            if (getActiveGameId() === parseInt(gameId, 10)) {
+                applyGameToCallerSetup(data.game);
+                fetchState();
+            }
+        } catch (e) {
+            if (editEls.error) {
+                editEls.error.textContent = 'Could not save game';
+                editEls.error.hidden = false;
+            }
+        } finally {
+            if (editEls.saveBtn) editEls.saveBtn.disabled = false;
+        }
     }
 
     async function submitCreateWizard() {
@@ -1017,7 +1259,7 @@
                 persistSelectedGame(data.game.id);
                 syncGameMeta();
             }
-            if (els.ballCount && data.game?.ballCount) els.ballCount.value = String(data.game.ballCount);
+            if (data.game) applyGameToCallerSetup(data.game);
         } catch (e) {
             if (wizardEls.error) {
                 wizardEls.error.textContent = 'Could not create game';
@@ -1030,12 +1272,13 @@
 
     document.getElementById('bingoOpenCreateWizardBtn')?.addEventListener('click', openCreateWizard);
     wizardEls.nextBtn?.addEventListener('click', () => {
-        if (wizardStep < 4) setWizardStep(wizardStep + 1);
+        if (wizardStep < 5) setWizardStep(wizardStep + 1);
     });
     wizardEls.backBtn?.addEventListener('click', () => {
         if (wizardStep > 1) setWizardStep(wizardStep - 1);
     });
     wizardEls.createBtn?.addEventListener('click', submitCreateWizard);
+    editEls.saveBtn?.addEventListener('click', submitEditGame);
 
     document.getElementById('bingoAssignBtn')?.addEventListener('click', async () => {
         const eid = eventId();
@@ -1079,6 +1322,7 @@
         syncGameMeta();
         renderGamesList();
         loadPlayers();
+        applyGameToCallerSetup(activeGameFromCache());
         fetchState();
     });
 

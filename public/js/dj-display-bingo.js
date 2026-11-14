@@ -25,6 +25,9 @@
     const waitingMessage = document.getElementById('waitingMessage');
     const qrOverlay = document.getElementById('qrOverlay');
     const controlPanel = document.getElementById('controlPanel');
+    const djControls = document.getElementById('bingoDisplayDjControls');
+    const displayAutoCall = document.getElementById('bingoDisplayAutoCall');
+    const displayVoiceCall = document.getElementById('bingoDisplayVoiceCall');
 
     const RING_LEN = 326.7;
     const cellByNumber = new Map();
@@ -43,6 +46,10 @@
     let gridColBreakpointMql = null;
     let lastSpokenBall = null;
     let prevVoiceCall = false;
+    let lastGameId = 0;
+    let displayConfigBusy = false;
+    let verifiedCallSound = null;
+    let lastVerifiedFlashAt = 0;
 
     /* Keep in sync with lib/bingo.js (remainingBalls, pickRandomDecoy) */
     function ballCap(maxBall) {
@@ -295,9 +302,32 @@
         return s.slice(0, 6) + '…' + s.slice(-4);
     }
 
+    function playVerifiedCallSound(flash) {
+        if (!flash || flash.valid !== true) return;
+        const stamp = flash.at || Date.now();
+        if (stamp === lastVerifiedFlashAt) return;
+        lastVerifiedFlashAt = stamp;
+        if (!verifiedCallSound) {
+            verifiedCallSound = new Audio('/audio/verified_call.mp3');
+            verifiedCallSound.preload = 'auto';
+        }
+        try {
+            verifiedCallSound.currentTime = 0;
+            const playPromise = verifiedCallSound.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(function () {
+                    /* autoplay policy — needs a user gesture on the tab */
+                });
+            }
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
     function showClaim(flash) {
         if (!flash || !claimOverlay) return;
         clearTimeout(claimHideTimer);
+        playVerifiedCallSound(flash);
         const name = flash.winnerName && String(flash.winnerName).trim();
         if (flash.valid !== false && name) {
             claimTitle.textContent = name;
@@ -432,8 +462,44 @@
         updateIntroUI();
     }
 
+    function syncDisplayDjControls(state) {
+        if (!djControls || !displayAutoCall) return;
+        if (!state.active) {
+            djControls.setAttribute('hidden', '');
+            return;
+        }
+        djControls.removeAttribute('hidden');
+        displayAutoCall.checked = !!state.autoCall;
+        if (displayVoiceCall) displayVoiceCall.checked = !!state.voiceCall;
+        lastGameId = state.gameId || lastGameId;
+    }
+
+    async function putDisplayCallerConfig(patch) {
+        if (displayConfigBusy || typeof window.mdjFetch !== 'function') return;
+        displayConfigBusy = true;
+        try {
+            const body = Object.assign({ gameId: lastGameId || undefined }, patch);
+            const res = await window.mdjFetch(
+                '/api/display/' + encodeURIComponent(slug) + '/games/bingo/config',
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                }
+            );
+            const data = await res.json();
+            if (data?.success && data.state) renderState(data.state);
+        } catch (e) {
+            /* not signed in — hide controls next poll */
+        } finally {
+            displayConfigBusy = false;
+        }
+    }
+
     function renderState(state) {
         lastState = state;
+        if (state.gameId) lastGameId = state.gameId;
+        syncDisplayDjControls(state);
         if (state.voiceCall && !prevVoiceCall) {
             lastSpokenBall = state.lastBall;
         }
@@ -550,9 +616,9 @@
 
     async function pollState() {
         try {
-            const res = await fetch(
-                '/api/display/' + encodeURIComponent(slug) + '/games/bingo/state?consume=1'
-            );
+            let url = '/api/display/' + encodeURIComponent(slug) + '/games/bingo/state?consume=1';
+            if (lastGameId) url += '&gameId=' + encodeURIComponent(lastGameId);
+            const res = await fetch(url);
             const state = await res.json();
             renderState(state);
             if (state.claimFlash) showClaim(state.claimFlash);
@@ -560,6 +626,13 @@
             /* ignore */
         }
     }
+
+    displayAutoCall?.addEventListener('change', function () {
+        putDisplayCallerConfig({ autoCall: displayAutoCall.checked });
+    });
+    displayVoiceCall?.addEventListener('change', function () {
+        putDisplayCallerConfig({ voiceCall: displayVoiceCall.checked });
+    });
 
     buildGrid(90);
     pollTimer = setInterval(pollState, 700);

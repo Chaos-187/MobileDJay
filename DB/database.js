@@ -361,6 +361,15 @@ try {
     /* exists */
 }
 try {
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN call_interval_ms INTEGER DEFAULT 5000`);
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN intro_seconds INTEGER DEFAULT 30`);
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN auto_call INTEGER DEFAULT 0`);
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN voice_call INTEGER DEFAULT 0`);
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN prizes_json TEXT`);
+} catch (e) {
+    /* exists */
+}
+try {
     db.exec(`ALTER TABLE bingo_cards ADD COLUMN assigned_to TEXT`);
 } catch (e) {
     /* exists */
@@ -1700,6 +1709,28 @@ const bingoDb = {
     }
 };
 
+function parseBingoGamePrizesJson(raw) {
+    if (!raw || !String(raw).trim()) {
+        return { line: '', 'two-lines': '', house: '' };
+    }
+    try {
+        const p = JSON.parse(raw);
+        if (!p || typeof p !== 'object') return { line: '', 'two-lines': '', house: '' };
+        return {
+            line: p.line != null ? String(p.line).trim().slice(0, 80) : '',
+            'two-lines':
+                p['two-lines'] != null
+                    ? String(p['two-lines']).trim().slice(0, 80)
+                    : p.twoLines != null
+                      ? String(p.twoLines).trim().slice(0, 80)
+                      : '',
+            house: p.house != null ? String(p.house).trim().slice(0, 80) : ''
+        };
+    } catch (e) {
+        return { line: '', 'two-lines': '', house: '' };
+    }
+}
+
 const bingoGameDb = {
     _parseRow(row) {
         if (!row) return null;
@@ -1712,6 +1743,17 @@ const bingoGameDb = {
             ballCount: row.ball_count,
             maxVirtualCards: row.max_virtual_cards != null ? Number(row.max_virtual_cards) : null,
             advertisedStartAt: row.advertised_start_at || null,
+            callIntervalMs:
+                row.call_interval_ms != null && Number(row.call_interval_ms) > 0
+                    ? Number(row.call_interval_ms)
+                    : 5000,
+            introSeconds:
+                row.intro_seconds != null && Number.isFinite(Number(row.intro_seconds))
+                    ? Number(row.intro_seconds)
+                    : 30,
+            autoCall: !!row.auto_call,
+            voiceCall: !!row.voice_call,
+            prizes: parseBingoGamePrizesJson(row.prizes_json),
             createdAt: row.created_at,
             updatedAt: row.updated_at
         };
@@ -1751,7 +1793,21 @@ const bingoGameDb = {
         );
     },
 
-    create(eventId, { title, batchId, ballCount = 90, maxVirtualCards = null, advertisedStartAt = null }) {
+    create(
+        eventId,
+        {
+            title,
+            batchId,
+            ballCount = 90,
+            maxVirtualCards = null,
+            advertisedStartAt = null,
+            callIntervalMs,
+            introSeconds,
+            autoCall,
+            voiceCall,
+            prizes
+        } = {}
+    ) {
         const t = String(title || 'Bingo game').trim().slice(0, 120) || 'Bingo game';
         const batch = String(batchId || `G${Date.now().toString(36)}`).slice(0, 32);
         const bc = Math.max(9, Math.min(90, Number(ballCount) || 90));
@@ -1763,12 +1819,24 @@ const bingoGameDb = {
             advertisedStartAt != null && String(advertisedStartAt).trim()
                 ? String(advertisedStartAt).trim().slice(0, 40)
                 : null;
+        const intervalMs = Math.max(2000, Math.min(120000, Number(callIntervalMs) || 5000));
+        const intro = Math.max(0, Math.min(600, Number(introSeconds) ?? 30));
+        const auto = autoCall ? 1 : 0;
+        const voice = voiceCall ? 1 : 0;
+        const prizesJson = JSON.stringify(
+            parseBingoGamePrizesJson(
+                prizes && typeof prizes === 'object' ? JSON.stringify(prizes) : prizes || ''
+            )
+        );
         const result = db
             .prepare(
-                `INSERT INTO bingo_games (event_id, title, batch_id, status, ball_count, max_virtual_cards, advertised_start_at)
-                 VALUES (?, ?, ?, 'preparing', ?, ?, ?)`
+                `INSERT INTO bingo_games (
+                    event_id, title, batch_id, status, ball_count, max_virtual_cards, advertised_start_at,
+                    call_interval_ms, intro_seconds, auto_call, voice_call, prizes_json
+                 )
+                 VALUES (?, ?, ?, 'preparing', ?, ?, ?, ?, ?, ?, ?, ?)`
             )
-            .run(eventId, t, batch, bc, mvc, startAt);
+            .run(eventId, t, batch, bc, mvc, startAt, intervalMs, intro, auto, voice, prizesJson);
         return this.getById(result.lastInsertRowid);
     },
 
@@ -1819,6 +1887,38 @@ const bingoGameDb = {
             db.prepare(
                 `UPDATE bingo_games SET advertised_start_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
             ).run(startAt, gameId);
+        }
+        if (patch.callIntervalMs != null) {
+            db.prepare(
+                `UPDATE bingo_games SET call_interval_ms = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+            ).run(Math.max(2000, Math.min(120000, Number(patch.callIntervalMs) || 5000)), gameId);
+        }
+        if (patch.introSeconds != null) {
+            db.prepare(`UPDATE bingo_games SET intro_seconds = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                Math.max(0, Math.min(600, Number(patch.introSeconds) || 0)),
+                gameId
+            );
+        }
+        if (patch.autoCall != null) {
+            db.prepare(`UPDATE bingo_games SET auto_call = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                patch.autoCall ? 1 : 0,
+                gameId
+            );
+        }
+        if (patch.voiceCall != null) {
+            db.prepare(`UPDATE bingo_games SET voice_call = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                patch.voiceCall ? 1 : 0,
+                gameId
+            );
+        }
+        if (patch.prizes != null) {
+            const normalized = parseBingoGamePrizesJson(
+                typeof patch.prizes === 'string' ? patch.prizes : JSON.stringify(patch.prizes)
+            );
+            db.prepare(`UPDATE bingo_games SET prizes_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                JSON.stringify(normalized),
+                gameId
+            );
         }
         return this.getById(gameId);
     }

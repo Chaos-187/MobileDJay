@@ -2118,6 +2118,42 @@ function makeBingoCaller(slug, gameId) {
     return () => bingoSession.callBall(slug, gameId);
 }
 
+function callerOptionsFromGame(game) {
+    if (!game) return {};
+    return {
+        ballCount: game.ballCount,
+        callIntervalMs: game.callIntervalMs,
+        introSeconds: game.introSeconds,
+        autoCall: game.autoCall,
+        voiceCall: game.voiceCall,
+        prizes: game.prizes
+    };
+}
+
+function persistGameCallerFromBody(gameId, body) {
+    if (!gameId || !body || typeof body !== 'object') return;
+    const patch = {};
+    if (body.autoCall != null) patch.autoCall = !!body.autoCall;
+    if (body.voiceCall != null) patch.voiceCall = !!body.voiceCall;
+    if (body.introSeconds != null) patch.introSeconds = Number(body.introSeconds);
+    if (body.callIntervalSeconds != null) {
+        patch.callIntervalMs = Math.max(2000, Number(body.callIntervalSeconds) * 1000);
+    } else if (body.callIntervalMs != null) {
+        patch.callIntervalMs = Number(body.callIntervalMs);
+    }
+    const prizes = normalizePrizes(
+        body.prizes || {
+            line: body.prizeLine,
+            'two-lines': body.prizeTwoLines,
+            house: body.prizeHouse
+        }
+    );
+    if (body.prizeLine != null || body.prizeTwoLines != null || body.prizeHouse != null || body.prizes) {
+        patch.prizes = prizes;
+    }
+    if (Object.keys(patch).length) bingoGameDb.update(gameId, patch);
+}
+
 app.get('/api/display/:eventSlug/games/bingo/state', (req, res) => {
     const ctx = resolveBingoGameContext(req);
     if (!ctx) return res.status(404).json({ error: 'Event not found' });
@@ -2156,21 +2192,35 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
     if (game) {
         bingoGameDb.setStatus(game.id, 'live');
     }
-    const callIntervalMs = Math.max(2000, (Number(req.body.callIntervalSeconds) || 5) * 1000);
+    const fromGame = game ? callerOptionsFromGame(game) : {};
+    const callIntervalMs = Math.max(
+        2000,
+        Number(req.body.callIntervalSeconds) > 0
+            ? Number(req.body.callIntervalSeconds) * 1000
+            : fromGame.callIntervalMs || 5000
+    );
     const ballCount = game?.ballCount || req.body.ballCount;
-    bingoSession.startBingo(slug, gid, {
+    const startOpts = {
         ballCount,
         callIntervalMs,
-        autoCall: !!req.body.autoCall,
-        voiceCall: !!req.body.voiceCall,
+        autoCall: req.body.autoCall != null ? !!req.body.autoCall : !!fromGame.autoCall,
+        voiceCall: req.body.voiceCall != null ? !!req.body.voiceCall : !!fromGame.voiceCall,
         playingFor: req.body.playingFor,
-        introSeconds: req.body.introSeconds,
-        prizes: normalizePrizes(req.body.prizes || {
-            line: req.body.prizeLine,
-            'two-lines': req.body.prizeTwoLines,
-            house: req.body.prizeHouse
-        })
-    });
+        introSeconds:
+            req.body.introSeconds != null ? req.body.introSeconds : fromGame.introSeconds ?? 30,
+        prizes: normalizePrizes(
+            req.body.prizes || {
+                line: req.body.prizeLine,
+                'two-lines': req.body.prizeTwoLines,
+                house: req.body.prizeHouse
+            }
+        )
+    };
+    if (!req.body.prizes && !req.body.prizeLine && fromGame.prizes) {
+        startOpts.prizes = normalizePrizes(fromGame.prizes);
+    }
+    bingoSession.startBingo(slug, gid, startOpts);
+    if (gid) persistGameCallerFromBody(gid, req.body);
     const started = bingoSession.getBingoState(slug, gid);
     if (req.body.autoCall && !bingoSession.isInIntro(started)) {
         bingoSession.scheduleAutoCall(slug, gid, makeBingoCaller(slug, gid));
@@ -2239,6 +2289,7 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
     if (state.active && state.autoCall && !state.paused && !bingoSession.isInIntro(state)) {
         bingoSession.scheduleAutoCall(slug, gid, makeBingoCaller(slug, gid));
     }
+    if (gid) persistGameCallerFromBody(gid, req.body);
     res.json({ success: true, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
 });
 
@@ -2571,12 +2622,24 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
     const advertisedStartAt =
         normalizeBingoAdvertisedStart(req.body.advertisedStartAt) ||
         (req.body.advertisedStartAt ? String(req.body.advertisedStartAt).trim().slice(0, 40) : null);
+    const prizes = normalizePrizes(
+        req.body.prizes || {
+            line: req.body.prizeLine,
+            'two-lines': req.body.prizeTwoLines,
+            house: req.body.prizeHouse
+        }
+    );
     const game = bingoGameDb.create(req.event.id, {
         title: req.body.title,
         batchId: req.body.batchId,
         ballCount: req.body.ballCount,
         maxVirtualCards: req.body.maxVirtualCards,
-        advertisedStartAt
+        advertisedStartAt,
+        callIntervalMs: Math.max(2000, (Number(req.body.callIntervalSeconds) || 5) * 1000),
+        introSeconds: req.body.introSeconds != null ? Number(req.body.introSeconds) : 30,
+        autoCall: !!req.body.autoCall,
+        voiceCall: !!req.body.voiceCall,
+        prizes
     });
     if (cardCount > 0) {
         generateBingoCardBatch(req.event, {
@@ -2630,17 +2693,43 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
     if (!game || game.eventId !== req.event.id) {
         return res.status(404).json({ error: 'Game not found' });
     }
+    if (game.status === 'live' && req.body.ballCount != null) {
+        return res.status(409).json({ error: 'Cannot change ball count while this game is live on the caller.' });
+    }
     const adv =
         req.body.advertisedStartAt !== undefined
             ? normalizeBingoAdvertisedStart(req.body.advertisedStartAt) ||
               (req.body.advertisedStartAt ? String(req.body.advertisedStartAt).trim().slice(0, 40) : null)
             : undefined;
-    bingoGameDb.update(gameId, {
+    const patch = {
         title: req.body.title,
-        ballCount: req.body.ballCount,
         maxVirtualCards: req.body.maxVirtualCards,
         advertisedStartAt: adv
-    });
+    };
+    if (req.body.ballCount != null && game.status !== 'live') {
+        patch.ballCount = req.body.ballCount;
+    }
+    if (req.body.callIntervalSeconds != null) {
+        patch.callIntervalMs = Math.max(2000, Number(req.body.callIntervalSeconds) * 1000);
+    }
+    if (req.body.introSeconds != null) patch.introSeconds = req.body.introSeconds;
+    if (req.body.autoCall != null) patch.autoCall = !!req.body.autoCall;
+    if (req.body.voiceCall != null) patch.voiceCall = !!req.body.voiceCall;
+    if (
+        req.body.prizeLine != null ||
+        req.body.prizeTwoLines != null ||
+        req.body.prizeHouse != null ||
+        req.body.prizes
+    ) {
+        patch.prizes = normalizePrizes(
+            req.body.prizes || {
+                line: req.body.prizeLine,
+                'two-lines': req.body.prizeTwoLines,
+                house: req.body.prizeHouse
+            }
+        );
+    }
+    bingoGameDb.update(gameId, patch);
     if (req.body.status) {
         bingoGameDb.setStatus(gameId, String(req.body.status));
     }

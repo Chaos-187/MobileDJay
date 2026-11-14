@@ -1339,6 +1339,16 @@
                     <i class="fas fa-table-cells" aria-hidden="true"></i>
                     <span>Bingo</span>
                 </div>
+                <div class="bingo-fs-dj-controls" id="bingoDisplayDjControls" hidden aria-label="Caller shortcuts">
+                    <label class="bingo-fs-toggle">
+                        <input type="checkbox" id="bingoDisplayAutoCall">
+                        <span>Auto-call</span>
+                    </label>
+                    <label class="bingo-fs-toggle">
+                        <input type="checkbox" id="bingoDisplayVoiceCall">
+                        <span>Voice</span>
+                    </label>
+                </div>
                 <p class="bingo-fs-meta" id="bingoDisplayMeta">Ready</p>
                 <span class="bingo-fs-paused-badge" id="bingoDisplayPaused" hidden>
                     <i class="fas fa-pause-circle me-1" aria-hidden="true"></i>Claim check
@@ -1533,7 +1543,8 @@
     </script>
     <script src="/js/mdj-binary-spinner.js"></script>
     <script src="/js/dj-display.js?v=7"></script>
-    <script src="/js/dj-display-bingo.js?v=11"></script>
+    <script src="/js/dj-api.js?v=1"></script>
+    <script src="/js/dj-display-bingo.js?v=13"></script>
     <script src="/js/dj-display-racing.js?v=8"></script>
     <script src="/js/dj-display-hilo.js?v=2"></script>
 </body>

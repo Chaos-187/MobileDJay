@@ -1666,8 +1666,8 @@ const bingoDb = {
         if (!parsed.gameId) {
             db.prepare('UPDATE bingo_cards SET game_id = ? WHERE id = ?').run(gameId, parsed.id);
         }
-        const assigned = parsed.assignedTo ? normalizeGuestName(parsed.assignedTo) : '';
-        if (assigned && assigned !== name) return { error: 'serial_taken' };
+        const existingAssignee = parsed.assignedTo ? normalizeGuestName(parsed.assignedTo) : '';
+        if (existingAssignee && existingAssignee !== name) return { error: 'serial_taken' };
         const cardLimit = Math.max(1, Math.min(10, Number(maxCards) || 1));
         const assigned = this.listAssignedCardsForPlayer(gameId, name);
         const assignedCount = assigned.length;

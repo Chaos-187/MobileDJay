@@ -11,7 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=28" rel="stylesheet">
+    <link href="/css/bingo.css?v=29" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -39,7 +39,7 @@
     </header>
 
     <main class="mdj-bingo-caller-main" id="gamePanelBingo" data-game-panel="bingo">
-        <div class="mdj-caller-stage">
+        <div class="mdj-caller-layout">
             <section class="mdj-caller-panel mdj-caller-panel--run" aria-label="Run game">
                 <div class="mdj-caller-ball-spotlight">
                     <span class="mdj-bingo-run-hero-label">Last ball</span>
@@ -67,19 +67,13 @@
                     <p class="mdj-bingo-field-label mb-1">Winners</p>
                     <div id="bingoPrizeWinners" class="mdj-caller-winners" aria-live="polite"></div>
                 </div>
-                <div class="mdj-bingo-prize-fields row g-2 mt-2 mb-2">
-                    <div class="col-12 col-md-4">
-                        <label class="mdj-bingo-field-label" for="bingoPrizeLine">1 line prize</label>
-                        <input type="text" class="form-control mdj-bingo-input" id="bingoPrizeLine" maxlength="80" placeholder="e.g. £10 bar tab" autocomplete="off">
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="mdj-bingo-field-label" for="bingoPrizeTwoLines">2 lines prize</label>
-                        <input type="text" class="form-control mdj-bingo-input" id="bingoPrizeTwoLines" maxlength="80" placeholder="e.g. bottle of wine" autocomplete="off">
-                    </div>
-                    <div class="col-12 col-md-4">
-                        <label class="mdj-bingo-field-label" for="bingoPrizeHouse">Full house prize</label>
-                        <input type="text" class="form-control mdj-bingo-input" id="bingoPrizeHouse" maxlength="80" placeholder="e.g. £50 jackpot" autocomplete="off">
-                    </div>
+                <div class="mdj-caller-prize-stack mdj-bingo-prize-fields">
+                    <label class="mdj-bingo-field-label" for="bingoPrizeLine">1 line prize</label>
+                    <input type="text" class="form-control mdj-bingo-input mb-2" id="bingoPrizeLine" maxlength="80" placeholder="e.g. £10 bar tab" autocomplete="off">
+                    <label class="mdj-bingo-field-label" for="bingoPrizeTwoLines">2 lines prize</label>
+                    <input type="text" class="form-control mdj-bingo-input mb-2" id="bingoPrizeTwoLines" maxlength="80" placeholder="e.g. bottle of wine" autocomplete="off">
+                    <label class="mdj-bingo-field-label" for="bingoPrizeHouse">Full house prize</label>
+                    <input type="text" class="form-control mdj-bingo-input mb-0" id="bingoPrizeHouse" maxlength="80" placeholder="e.g. £50 jackpot" autocomplete="off">
                 </div>
                 <p class="small text-muted mb-2">Shown on the display and guest phones. Leave blank for default labels.</p>
 
@@ -152,16 +146,16 @@
                     <p id="bingoVerifyResult" class="mdj-bingo-verify-result small mb-0 mt-2"></p>
                 </div>
             </section>
-        </div>
 
-        <section class="mdj-caller-board" aria-label="Number board">
-            <div class="mdj-caller-board-head">
-                <h2 class="mdj-caller-board-title">Number board</h2>
-            </div>
-            <div class="mdj-bingo-grid-scroll mdj-bingo-grid-scroll--caller">
-                <div id="bingoAdminGrid" class="mdj-bingo-admin-grid mdj-caller-admin-grid"></div>
-            </div>
-        </section>
+            <section class="mdj-caller-board mdj-caller-panel mdj-caller-panel--board" aria-label="Number board">
+                <div class="mdj-caller-board-head">
+                    <h2 class="mdj-caller-panel-title mdj-caller-board-title">Number board</h2>
+                </div>
+                <div class="mdj-bingo-grid-scroll mdj-bingo-grid-scroll--caller">
+                    <div id="bingoAdminGrid" class="mdj-bingo-admin-grid mdj-caller-admin-grid"></div>
+                </div>
+            </section>
+        </div>
         <div id="bingoCalledStrip" class="mdj-bingo-called-strip" hidden aria-hidden="true"></div>
     </main>
 

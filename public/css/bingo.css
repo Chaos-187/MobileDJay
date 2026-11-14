@@ -3481,21 +3481,24 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
     flex-direction: column;
     min-height: 0;
     width: 100%;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: clamp(0.75rem, 2vh, 1.25rem) clamp(0.75rem, 3vw, 1.5rem);
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-    gap: 0.75rem;
+    max-width: none;
+    margin: 0;
+    padding: clamp(0.65rem, 1.5vh, 1rem) clamp(0.65rem, 2vw, 1.25rem);
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    gap: 0;
 }
 
-.mdj-caller-stage {
+.mdj-caller-layout {
     display: grid;
-    grid-template-columns: 1.15fr 1fr;
-    gap: 0.75rem;
-    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: clamp(0.5rem, 1.2vw, 0.85rem);
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    align-items: stretch;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
     .mdj-caller-header {
         grid-template-columns: 1fr 1fr;
     }
@@ -3509,8 +3512,24 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
         padding-left: 0;
     }
 
-    .mdj-caller-stage {
+    .mdj-caller-layout {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .mdj-caller-panel--board {
+        grid-column: 1 / -1;
+        min-height: min(42vh, 480px);
+    }
+}
+
+@media (max-width: 720px) {
+    .mdj-caller-layout {
         grid-template-columns: 1fr;
+    }
+
+    .mdj-caller-panel--board {
+        grid-column: auto;
+        min-height: min(38vh, 420px);
     }
 }
 
@@ -3520,6 +3539,16 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
     background: rgba(255, 255, 255, 0.04);
     padding: clamp(0.85rem, 2vw, 1.15rem);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.mdj-caller-panel--run,
+.mdj-caller-panel--claims,
+.mdj-caller-panel--board {
+    min-height: 0;
+    max-height: calc(100dvh - 7.5rem);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 .mdj-caller-panel--run {
@@ -3716,16 +3745,20 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
     min-height: 54px;
 }
 
-.mdj-caller-board {
-    flex: 1 1 auto;
-    min-height: 0;
+.mdj-caller-panel--board {
+    overflow: hidden;
+    overflow-y: hidden;
+}
+
+.mdj-caller-board.mdj-caller-panel--board {
     display: flex;
     flex-direction: column;
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.28);
-    padding: 0.65rem 0.75rem 0.75rem;
-    overflow: hidden;
+    padding: clamp(0.65rem, 1.5vw, 0.85rem);
+}
+
+.mdj-caller-prize-stack {
+    margin-top: 0.25rem;
+    margin-bottom: 0.35rem;
 }
 
 .mdj-caller-board-head {

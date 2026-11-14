@@ -355,12 +355,45 @@ const CUSTOMER_EMAIL_TEMPLATES = new Set([
     'account_created_temporary_password'
 ]);
 
+function portalEmailSendErrorStatus(err) {
+    if (
+        err.code === 'template_not_configured' ||
+        err.code === 'brevo_not_configured' ||
+        err.code === 'sender_not_configured'
+    ) {
+        return 503;
+    }
+    if (err.code === 'validation_error' || err.status === 400) return 422;
+    if (err.status === 401 || err.status === 403 || err.status === 404) return 503;
+    return 502;
+}
+
+function portalEmailSendErrorCode(err) {
+    if (
+        err.code === 'template_not_configured' ||
+        err.code === 'brevo_not_configured' ||
+        err.code === 'sender_not_configured'
+    ) {
+        return 'service_unavailable';
+    }
+    if (err.status === 401 || err.status === 403) return 'service_unavailable';
+    return err.code === 'brevo_api_error' ? 'upstream_error' : 'upstream_error';
+}
+
 async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite }) {
     if (!brevoMail.isConfigured()) {
         return jsonError(
             res,
             'service_unavailable',
             'Brevo is not configured (set BREVO_API_KEY and template IDs)',
+            503
+        );
+    }
+    if (!brevoMail.isSenderConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Brevo sender is not configured (set BREVO_SENDER_EMAIL on the API server and verify it in Brevo)',
             503
         );
     }
@@ -413,10 +446,10 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
             });
         } catch (err) {
             console.error('[portal] send-password-reset', err);
-            const status = err.code === 'template_not_configured' ? 503 : err.status === 400 ? 422 : 502;
+            const status = portalEmailSendErrorStatus(err);
             return jsonError(
                 res,
-                err.code === 'template_not_configured' ? 'service_unavailable' : 'upstream_error',
+                portalEmailSendErrorCode(err),
                 err.message || 'Password reset email could not be sent',
                 status,
                 err.details ? { brevo: err.details } : {}
@@ -444,16 +477,21 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
         ...(templateKey !== brevoTemplateKey ? { requested_template: templateKey } : {})
     };
 
-    if (clearPassword) {
-        portalDb.updateUserPatch(userId, {
-            password_hash: null,
-            require_password_setup: 1
-        });
-        out.password_cleared = true;
-        out._hint =
-            'Password login was cleared. The email contains a one-time magic link; the customer will set a new password after signing in.';
-    } else if (!user.password_hash) {
-        portalDb.updateUserPatch(userId, { require_password_setup: 1 });
+    try {
+        if (clearPassword) {
+            portalDb.updateUserPatch(userId, {
+                password_hash: null,
+                require_password_setup: 1
+            });
+            out.password_cleared = true;
+            out._hint =
+                'Password login was cleared. The email contains a one-time magic link; the customer will set a new password after signing in.';
+        } else if (!user.password_hash) {
+            portalDb.updateUserPatch(userId, { require_password_setup: 1 });
+        }
+    } catch (patchErr) {
+        console.error('[portal] send-email user patch', patchErr);
+        return jsonError(res, 'internal_error', 'Could not update customer account before sending email', 500);
     }
 
     try {
@@ -489,10 +527,10 @@ async function sendCustomerPortalEmail(req, res, { userId, templateKey, reinvite
         return res.json(out);
     } catch (err) {
         console.error('[portal] send-email', err);
-        const status = err.code === 'template_not_configured' ? 503 : err.status === 400 ? 422 : 502;
+        const status = portalEmailSendErrorStatus(err);
         return jsonError(
             res,
-            err.code === 'template_not_configured' ? 'service_unavailable' : 'upstream_error',
+            portalEmailSendErrorCode(err),
             err.message || 'Email could not be sent',
             status,
             err.details ? { brevo: err.details } : {}
@@ -512,6 +550,8 @@ router.get('/integrations/status', (req, res) => {
         stripe_configured: stripePortal.isConfigured(),
         stripe_webhook_configured: stripePortal.isWebhookConfigured(),
         brevo_configured: brevoMail.isConfigured(),
+        brevo_sender_configured: brevoMail.isSenderConfigured(),
+        brevo_templates_configured: brevoMail.listConfiguredTemplates(),
         zoho_books: {
             ...zohoBooks.configSummary(),
             ...zohoOAuth.oauthStatus()
@@ -768,22 +808,34 @@ router.post('/zoho/sync-estimates', async (req, res) => {
     }
 });
 
-router.post('/users/:id/send-email', (req, res) => {
+router.post('/users/:id/send-email', async (req, res) => {
     const templateKey =
         req.body && req.body.template ? String(req.body.template).trim() : 'account_created';
-    return sendCustomerPortalEmail(req, res, {
-        userId: req.params.id,
-        templateKey,
-        reinvite: false
-    });
+    try {
+        await sendCustomerPortalEmail(req, res, {
+            userId: req.params.id,
+            templateKey,
+            reinvite: false
+        });
+    } catch (err) {
+        if (res.headersSent) return;
+        console.error('[portal] send-email unhandled', err);
+        jsonError(res, 'internal_error', err.message || 'Unexpected error sending email', 500);
+    }
 });
 
-router.post('/users/:id/reinvite', (req, res) => {
-    return sendCustomerPortalEmail(req, res, {
-        userId: req.params.id,
-        templateKey: 'account_created',
-        reinvite: true
-    });
+router.post('/users/:id/reinvite', async (req, res) => {
+    try {
+        await sendCustomerPortalEmail(req, res, {
+            userId: req.params.id,
+            templateKey: 'account_created',
+            reinvite: true
+        });
+    } catch (err) {
+        if (res.headersSent) return;
+        console.error('[portal] reinvite unhandled', err);
+        jsonError(res, 'internal_error', err.message || 'Unexpected error sending invite', 500);
+    }
 });
 
 router.get('/users/:id/bookings', (req, res) => {
@@ -1144,6 +1196,14 @@ router.post('/bookings/:id/send-email', async (req, res) => {
             res,
             'service_unavailable',
             'Brevo is not configured (set BREVO_API_KEY and template IDs)',
+            503
+        );
+    }
+    if (!brevoMail.isSenderConfigured()) {
+        return jsonError(
+            res,
+            'service_unavailable',
+            'Brevo sender is not configured (set BREVO_SENDER_EMAIL on the API server and verify it in Brevo)',
             503
         );
     }

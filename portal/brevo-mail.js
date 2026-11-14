@@ -53,6 +53,15 @@ function isConfigured() {
     return apiKey().length > 0;
 }
 
+function senderEmail() {
+    const raw = process.env.BREVO_SENDER_EMAIL;
+    return raw != null && String(raw).trim() ? String(raw).trim() : '';
+}
+
+function isSenderConfigured() {
+    return senderEmail().length > 0;
+}
+
 function getTemplateId(templateKey) {
     const entry = TEMPLATE_REGISTRY[templateKey];
     if (!entry) return null;
@@ -129,10 +138,16 @@ async function brevoRequest(method, path, body) {
         }
     }
     if (!res.ok) {
-        const msg =
+        let msg =
             (data && (data.message || data.error)) ||
             `Brevo request failed (${res.status})`;
-        const err = new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        if (typeof msg !== 'string') msg = JSON.stringify(msg);
+        if (res.status === 401 || res.status === 403) {
+            msg = `Brevo rejected the API key (${res.status}). Check BREVO_API_KEY on the server.`;
+        } else if (res.status === 404 && path.includes('/smtp/email')) {
+            msg = `Brevo template not found. Check template ID env vars (e.g. BREVO_TEMPLATE_ACCOUNT_CREATED).`;
+        }
+        const err = new Error(msg);
         err.code = 'brevo_api_error';
         err.status = res.status;
         err.details = data;
@@ -197,15 +212,21 @@ async function sendCustomerTemplateEmail({ templateKey, user, params, tags }) {
         tags: tags && tags.length ? tags : ['eyup-portal', templateKey]
     };
 
-    const senderEmail = process.env.BREVO_SENDER_EMAIL;
+    const fromEmail = senderEmail();
     const senderName = process.env.BREVO_SENDER_NAME;
-    if (senderEmail && String(senderEmail).trim()) {
+    if (fromEmail) {
         payload.sender = {
-            email: String(senderEmail).trim(),
+            email: fromEmail,
             ...(senderName && String(senderName).trim()
                 ? { name: String(senderName).trim() }
                 : {})
         };
+    } else {
+        const err = new Error(
+            'Brevo sender is not configured (set BREVO_SENDER_EMAIL and verify the address in Brevo)'
+        );
+        err.code = 'sender_not_configured';
+        throw err;
     }
 
     const data = await brevoRequest('POST', '/smtp/email', payload);
@@ -215,6 +236,8 @@ async function sendCustomerTemplateEmail({ templateKey, user, params, tags }) {
 module.exports = {
     TEMPLATE_REGISTRY,
     isConfigured,
+    isSenderConfigured,
+    senderEmail,
     getTemplateId,
     listConfiguredTemplates,
     portalLoginUrl,

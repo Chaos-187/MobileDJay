@@ -874,3 +874,195 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     color: var(--gh-muted);
     cursor: pointer;
 }
+
+/* ── Bingo tab (Guest Hub v2) ── */
+#ghPanelBingo {
+    overflow-y: auto;
+    padding-bottom: 0.5rem;
+}
+
+.gh-bingo-heading {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0 0 0.35rem;
+}
+
+.gh-bingo-lede {
+    font-size: 0.88rem;
+    color: var(--gh-muted);
+    margin: 0 0 1rem;
+}
+
+.gh-bingo-muted {
+    color: var(--gh-muted);
+    font-size: 0.88rem;
+}
+
+.gh-bingo-warn {
+    color: #fbbf24;
+    font-size: 0.88rem;
+}
+
+.gh-bingo-danger {
+    color: #f87171;
+    font-size: 0.88rem;
+}
+
+.gh-bingo-game-block {
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid var(--gh-border);
+}
+
+.gh-bingo-game-block:last-child {
+    border-bottom: none;
+}
+
+.gh-bingo-game-pick {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 1px solid color-mix(in srgb, var(--gh-accent) 45%, var(--gh-border));
+    background: var(--gh-surface);
+    border-radius: var(--gh-radius);
+    padding: 0.85rem 1rem;
+    color: inherit;
+    cursor: pointer;
+}
+
+.gh-bingo-game-pick__title {
+    display: block;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.gh-bingo-game-pick__meta {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--gh-muted);
+    margin-top: 0.15rem;
+}
+
+.gh-bingo-game-pick__cta {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--gh-accent) 85%, white);
+}
+
+.gh-bingo-paper-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.55rem;
+    align-items: stretch;
+}
+
+.gh-bingo-serial-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.gh-btn--outline {
+    background: transparent;
+    border: 1px solid var(--gh-border);
+    color: var(--gh-text);
+    padding: 0.55rem 0.85rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+
+.gh-bingo-paper-btn {
+    flex-shrink: 0;
+}
+
+.gh-bingo-meta {
+    font-size: 0.82rem;
+    color: var(--gh-muted);
+    margin: 0 0 0.35rem;
+}
+
+.gh-bingo-serial-line {
+    font-size: 0.88rem;
+    margin: 0 0 0.65rem;
+}
+
+.gh-bingo-auto-dab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.65rem;
+    cursor: pointer;
+}
+
+.gh-bingo-auto-dab input {
+    accent-color: var(--gh-accent);
+    width: 1.1rem;
+    height: 1.1rem;
+}
+
+.gh-bingo-card {
+    border-radius: 14px;
+    background: var(--gh-surface);
+    padding: 0.35rem;
+    border: 1px solid var(--gh-border);
+}
+
+.gh-bingo-card .guest-bingo-table th,
+.gh-bingo-card .guest-bingo-table td {
+    border-color: var(--gh-border);
+}
+
+.gh-bingo-live {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin: 0.85rem 0;
+}
+
+.gh-bingo-live__label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--gh-muted);
+}
+
+.gh-bingo-live__ball {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: color-mix(in srgb, var(--gh-accent) 80%, white);
+}
+
+.gh-bingo-live__togo {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.gh-bingo-prize {
+    font-size: 0.88rem;
+    color: var(--gh-muted);
+    margin: 0 0 0.75rem;
+}
+
+.gh-bingo-call {
+    width: 100%;
+    min-height: 52px;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.gh-bingo-claim-result {
+    margin: 0.65rem 0 0;
+    font-size: 0.82rem;
+}
+
+.gh-bingo-claim-result.is-ok {
+    color: #4ade80;
+}
+
+.gh-bingo-claim-result.is-warn {
+    color: #fbbf24;
+}

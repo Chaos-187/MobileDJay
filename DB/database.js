@@ -1608,6 +1608,38 @@ const bingoDb = {
         return this._parseRow(db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(row.id));
     },
 
+    /**
+     * Guest links a printed (paper) card by serial — virtual dabber uses the same grid.
+     */
+    linkPaperCardForGuest(gameId, eventId, serial, customerName, deviceId) {
+        const name = normalizeGuestName(customerName);
+        const device = this._normalizeDevice(deviceId);
+        if (!name || !device) return { error: 'invalid_identity' };
+        const trimmed = String(serial || '').trim();
+        if (!trimmed) return { error: 'serial_required' };
+        const row = db
+            .prepare('SELECT * FROM bingo_cards WHERE event_id = ? AND serial = ? COLLATE NOCASE')
+            .get(eventId, trimmed);
+        if (!row) return { error: 'serial_not_found' };
+        const parsed = this._parseRow(row);
+        if (parsed.gameId && parsed.gameId !== gameId) return { error: 'wrong_game' };
+        if (!parsed.gameId) {
+            db.prepare('UPDATE bingo_cards SET game_id = ? WHERE id = ?').run(gameId, parsed.id);
+        }
+        const assigned = parsed.assignedTo ? normalizeGuestName(parsed.assignedTo) : '';
+        if (assigned && assigned !== name) return { error: 'serial_taken' };
+        const existingForPlayer = this.getAssignedForPlayer(gameId, name);
+        if (existingForPlayer && existingForPlayer.id !== parsed.id) {
+            return { error: 'already_has_card' };
+        }
+        if (parsed.deviceId && parsed.deviceId !== device) return { error: 'device_mismatch' };
+        db.prepare(
+            `UPDATE bingo_cards SET assigned_to = ?, device_id = ?, assigned_at = COALESCE(assigned_at, CURRENT_TIMESTAMP) WHERE id = ?`
+        ).run(name, device, parsed.id);
+        const rebound = db.prepare('SELECT * FROM bingo_cards WHERE id = ?').get(parsed.id);
+        return { card: this._parseRow(rebound) };
+    },
+
     listAssignmentsForGame(gameId) {
         const rows = db
             .prepare(

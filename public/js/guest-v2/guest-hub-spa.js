@@ -112,6 +112,7 @@
                 '<section id="ghPanelHome" class="gh-panel is-active">' + homePanelHtml(f) + '</section>' +
                 (f.songs || f.karaoke ? '<section id="ghPanelMusic" class="gh-panel">' + musicPanelHtml(f) + '</section>' : '') +
                 (f.messages ? '<section id="ghPanelChat" class="gh-panel">' + chatPanelHtml() + '</section>' : '') +
+                (f.bingo ? '<section id="ghPanelBingo" class="gh-panel">' + bingoPanelHtml() + '</section>' : '') +
                 '<section id="ghPanelMore" class="gh-panel">' + morePanelHtml(f) + '</section>' +
             '</main>' +
             '<nav class="gh-nav" aria-label="Guest hub">' + navItems + '</nav>' +
@@ -133,6 +134,7 @@
             navBtn('home', 'fa-house', 'Home')
         ];
         if (f.songs || f.karaoke) items.push(navBtn('music', 'fa-compact-disc', 'Music'));
+        if (f.bingo) items.push(navBtn('bingo', 'fa-table-cells', 'Bingo'));
         if (f.messages) items.push(navBtn('chat', 'fa-comment-dots', 'Chat', 'ghChatBadge'));
         items.push(navBtn('more', 'fa-ellipsis', 'More'));
         return items.join('');
@@ -215,6 +217,32 @@
             '</div>';
     }
 
+    function bingoPanelHtml() {
+        return '<div class="gh-bingo" data-bingo-root>' +
+            '<h2 class="gh-bingo-heading">Bingo</h2>' +
+            '<p class="gh-bingo-lede">Virtual cards on this phone or link a printed card by serial.</p>' +
+            '<div class="gh-bingo-panel" data-bingo-join>' +
+            '<div data-bingo-games-list class="gh-bingo-games"></div></div>' +
+            '<div class="gh-bingo-panel" data-bingo-play hidden>' +
+                '<p class="gh-bingo-meta" data-bingo-meta></p>' +
+                '<p class="gh-bingo-serial-line">Card <strong data-bingo-serial></strong></p>' +
+                '<label class="gh-bingo-auto-dab">' +
+                    '<input type="checkbox" data-bingo-auto-dab checked> Auto-dabber' +
+                '</label>' +
+                '<div data-bingo-card class="gh-bingo-card" aria-label="Your bingo card"></div>' +
+                '<div class="gh-bingo-live">' +
+                    '<div><span class="gh-bingo-live__label">Last call</span>' +
+                    '<span class="gh-bingo-live__ball" data-bingo-last-ball>—</span></div>' +
+                    '<div><span class="gh-bingo-live__label">To go</span>' +
+                    '<span class="gh-bingo-live__togo" data-bingo-progress>—</span></div>' +
+                '</div>' +
+                '<p class="gh-bingo-prize" data-bingo-playing-for></p>' +
+                '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call" data-bingo-call>Call</button>' +
+                '<p class="gh-bingo-claim-result" data-bingo-claim-result role="status"></p>' +
+            '</div>' +
+        '</div>';
+    }
+
     function chatPanelHtml() {
         return '<div class="gh-chat guest-chat-shell">' +
             '<div id="ghChatThread" class="guest-chat-thread" role="log" aria-live="polite">' +
@@ -248,17 +276,7 @@
             items += moreItem('button', 'tips', 'fa-heart', 'Tip the DJ', 'Show your appreciation');
         }
         if (f.bingo) {
-            items +=
-                '<a class="gh-more-item" href="/event/' +
-                escAttr(slug) +
-                '/bingo">' +
-                '<span class="gh-more-item__icon"><i class="fas fa-table-cells"></i></span>' +
-                '<span class="gh-more-item__body">' +
-                '<p class="gh-more-item__title">Bingo</p>' +
-                '<p class="gh-more-item__sub">Join a game and mark your card</p>' +
-                '</span>' +
-                '<i class="fas fa-chevron-right" style="color:var(--gh-muted);font-size:0.8rem"></i>' +
-                '</a>';
+            items += moreItem('button', 'bingo', 'fa-table-cells', 'Bingo', 'Virtual card, paper link, auto-dabber');
         }
         items += moreItem('button', 'rename', 'fa-user-pen', 'Change name', 'Use a different display name');
         items += '<a class="gh-more-item" href="/event/' + escAttr(slug) + '/classic">' +
@@ -302,6 +320,7 @@
             home: document.getElementById('ghPanelHome'),
             music: document.getElementById('ghPanelMusic'),
             chat: document.getElementById('ghPanelChat'),
+            bingo: document.getElementById('ghPanelBingo'),
             more: document.getElementById('ghPanelMore')
         };
         els.vinyl = document.getElementById('ghVinyl');
@@ -367,8 +386,8 @@
                 var action = btn.getAttribute('data-action');
                 var tab = btn.getAttribute('data-tab');
                 if (action === 'camera') openCamera();
-                else if (action === 'bingo') {
-                    window.location.href = '/event/' + encodeURIComponent(slug) + '/bingo';
+                else if (action === 'bingo' || tab === 'bingo') {
+                    setTab('bingo');
                 } else if (tab === 'music') {
                     state.musicMode = action === 'karaoke' ? 'karaoke' : 'songs';
                     setTab('music');
@@ -383,6 +402,7 @@
                 if (action === 'camera') openCamera();
                 else if (action === 'tips') openTipSheet();
                 else if (action === 'rename') openRenameGate();
+                else if (action === 'bingo') setTab('bingo');
             });
         });
 
@@ -540,6 +560,11 @@
             startChatPoll();
             pollUnreadBadge();
         }
+        if (cfg.features && cfg.features.bingo && global.MdjGuestHubBingo) {
+            global.MdjGuestHubBingo.init(cfg, function () {
+                return state.guestName;
+            });
+        }
     }
 
     /* ── Tabs ── */
@@ -556,6 +581,11 @@
         });
         if (tab === 'chat' && cfg.features && cfg.features.messages) {
             loadChatTimeline(true);
+        }
+        if (tab === 'bingo' && global.MdjGuestHubBingo) {
+            global.MdjGuestHubBingo.onTabShown();
+        } else if (global.MdjGuestHubBingo) {
+            global.MdjGuestHubBingo.onTabHidden();
         }
     }
 

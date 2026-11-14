@@ -49,7 +49,7 @@ const {
     settingsDb,
     ensureDefaultEvent
 } = require('./db/database');
-const { generateUK90Ticket, verifyClaim, claimLabel } = require('./lib/bingo');
+const { generateUK90Ticket, verifyClaim, claimLabel, progressTowardClaim } = require('./lib/bingo');
 const bingoSession = require('./lib/bingo-session');
 const virtualRaceSession = require('./lib/virtual-race-session');
 const hiloSession = require('./lib/hilo-session');
@@ -724,7 +724,12 @@ function bingoAssignErrorResponse(res, code) {
         name_taken: { status: 409, error: 'That name is already playing on another device' },
         sold_out: { status: 409, error: 'No cards left — ask the DJ for more cards' },
         not_assigned: { status: 404, error: 'No card assigned — join the game first' },
-        device_mismatch: { status: 403, error: 'This card is linked to another device' }
+        device_mismatch: { status: 403, error: 'This card is linked to another device' },
+        serial_not_found: { status: 404, error: 'Card serial not found — check the number on your paper card' },
+        serial_required: { status: 422, error: 'Enter the serial from your paper card' },
+        serial_taken: { status: 409, error: 'That paper card is registered to another guest' },
+        wrong_game: { status: 400, error: 'That card is for a different game' },
+        already_has_card: { status: 409, error: 'You already have a card for this game' }
     };
     const entry = map[code] || { status: 400, error: BINGO_GUEST_GENERIC_ERROR };
     res.status(entry.status).json({ error: entry.error });
@@ -2590,6 +2595,7 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     const slug = req.event.slug;
     const state = bingoSession.publicBingoState(slug, gameId);
     const called = new Set(state.calledBalls || []);
+    const progress = progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor);
     res.json({
         game: { id: game.id, title: game.title, status: game.status },
         card: { serial: card.serial, grid: card.grid },
@@ -2600,8 +2606,35 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         phase: state.phase,
         active: state.active,
         paused: state.paused,
-        marks: card.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null)))
+        marks: card.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
+        progress
     });
+});
+
+app.post('/api/event/:eventSlug/bingo/games/:gameId/link-card', getEventFromSlugJson, (req, res) => {
+    if (!req.event.enable_bingo) {
+        return res.status(403).json({ error: 'Bingo is not enabled for this event' });
+    }
+    const gameId = parseInt(req.params.gameId, 10);
+    const game = bingoGameDb.getById(gameId);
+    if (!game || game.eventId !== req.event.id) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+    if (game.status !== 'join_open' && game.status !== 'live') {
+        return res.status(400).json({ error: 'This game is not open for linking cards' });
+    }
+    const customerName = normalizeGuestNameForApi(req.body.customerName);
+    const deviceId = normalizeGuestDeviceId(req.body.deviceId);
+    const serial = String(req.body.serial || '').trim();
+    if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
+    if (!serial) {
+        return res.status(422).json({ error: 'Enter the serial from your paper card' });
+    }
+    const linkResult = bingoDb.linkPaperCardForGuest(gameId, req.event.id, serial, customerName, deviceId);
+    if (linkResult?.error) {
+        return bingoAssignErrorResponse(res, linkResult.error);
+    }
+    res.json({ success: true, serial: linkResult.card.serial, gameId: game.id });
 });
 
 const bingoGuestClaimBuckets = new Map();

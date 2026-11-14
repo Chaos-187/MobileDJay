@@ -76,6 +76,60 @@ body.mdj-guest-bingo-page {
     background: linear-gradient(145deg, #ff7a1a, #e85d00);
     color: #1a0800;
     font-weight: 800;
+    position: relative;
+}
+
+.guest-bingo-table td.guest-bingo-cell--manual {
+    cursor: pointer;
+}
+
+.guest-bingo-table td .guest-bingo-dab {
+    position: absolute;
+    inset: 2px;
+    border-radius: 4px;
+    background: linear-gradient(145deg, #ff7a1a, #e85d00);
+    opacity: 0.92;
+    pointer-events: none;
+}
+
+.guest-bingo-table td.is-marked .guest-bingo-num {
+    position: relative;
+    z-index: 1;
+    font-weight: 800;
+}
+
+.guest-bingo-status-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.guest-bingo-togo-value {
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.guest-bingo-auto-dab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    margin: 0.5rem 0;
+}
+
+.guest-bingo-call-btn {
+    min-height: 52px;
+    font-weight: 800;
+    margin-top: 0.35rem;
+}
+
+.guest-bingo-claim-result.is-ok {
+    color: #4ade80;
+}
+
+.guest-bingo-claim-result.is-warn {
+    color: #fbbf24;
 }
 
 .guest-bingo-called-ball {

@@ -122,19 +122,44 @@ body.mdj-guest-bingo-page {
 }
 
 .guest-bingo-card-head {
-    display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) minmax(0, 1fr);
-    gap: 0.35rem;
-    padding: 0.45rem 0.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.22);
-}
-
-.guest-bingo-card-head__cell {
-    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.12rem;
+    gap: 0.45rem;
+    padding: 0.5rem 0.55rem 0.55rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.28);
+}
+
+.guest-bingo-card-head__top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0.65rem;
+}
+
+.guest-bingo-card-head__serial {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.guest-bingo-card-head__serial-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.1rem;
+}
+
+.guest-bingo-card-head__mode {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.12rem 0.4rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.85);
+    flex-shrink: 0;
 }
 
 .guest-bingo-card-head__label {
@@ -145,29 +170,70 @@ body.mdj-guest-bingo-page {
 }
 
 .guest-bingo-card-head__serial-val {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 700;
-    word-break: break-all;
+    font-family: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', monospace;
     line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
-.guest-bingo-card-head__ball {
-    font-size: 1.35rem;
-    font-weight: 900;
-    color: #ffb340;
-    line-height: 1.1;
+.guest-bingo-card-head__togo {
+    flex-shrink: 0;
+    text-align: right;
+    min-width: 4.75rem;
 }
 
 .guest-bingo-card-head__togo-val {
-    font-weight: 800;
-    font-size: 0.88rem;
-    line-height: 1.2;
+    font-weight: 900;
+    font-size: 1.05rem;
+    line-height: 1.15;
+    display: block;
 }
 
 .guest-bingo-card-head__togo.guest-bingo-togo-block {
-    border-radius: 8px;
-    padding: 0.2rem 0.35rem;
-    margin: -0.15rem 0;
+    border-radius: 10px;
+    padding: 0.28rem 0.5rem;
+}
+
+.guest-bingo-card-recent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+}
+
+.guest-bingo-card-recent__track {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.guest-bingo-recent-ball {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.15rem;
+    height: 2.15rem;
+    padding: 0 0.35rem;
+    border-radius: 10px;
+    font-weight: 800;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.guest-bingo-recent-ball.is-latest {
+    background: linear-gradient(145deg, #ffb340, #ff7a1a);
+    border-color: rgba(255, 180, 60, 0.55);
+    color: #1a0a00;
+    box-shadow: 0 0 0 2px rgba(255, 179, 64, 0.35);
+    transform: scale(1.06);
+}
+
+.guest-bingo-recent-empty {
+    opacity: 0.45;
+    font-weight: 600;
 }
 
 .guest-bingo-card-grid {
@@ -267,9 +333,21 @@ body.mdj-guest-bingo-page {
 
 .guest-bingo-card-picks {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0.4rem;
     margin-bottom: 0.65rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.guest-bingo-card-picks::-webkit-scrollbar {
+    height: 4px;
+}
+
+.guest-bingo-card-picks .guest-bingo-card-pick {
+    flex: 0 0 auto;
 }
 
 .guest-bingo-card-picks__label {

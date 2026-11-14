@@ -67,6 +67,34 @@
         return s.slice(0, 4) + '…' + s.slice(-4);
     }
 
+    function compactToGoLabel(p) {
+        if (!p || p.toGo == null) return '—';
+        const n = Number(p.toGo);
+        if (n === 0) return 'Call!';
+        if (n === 1) return '1 to go';
+        return n + ' to go';
+    }
+
+    function renderRecentBalls(trackEl, calledBalls) {
+        if (!trackEl) return;
+        const recent = (calledBalls || []).slice(-5).reverse();
+        if (!recent.length) {
+            trackEl.innerHTML = '<span class="guest-bingo-recent-empty">—</span>';
+            return;
+        }
+        trackEl.innerHTML = recent
+            .map(function (n, i) {
+                return (
+                    '<span class="guest-bingo-recent-ball' +
+                    (i === 0 ? ' is-latest' : '') +
+                    '">' +
+                    escapeHtml(String(n)) +
+                    '</span>'
+                );
+            })
+            .join('');
+    }
+
     function formatAdvertisedStart(iso) {
         if (!iso) return '';
         try {
@@ -117,6 +145,8 @@
             paperLinkBtn: q('[data-bingo-paper-link]'),
             cardPicks: q('[data-bingo-card-picks]'),
             togoBlock: q('[data-bingo-togo-block]'),
+            recentBalls: q('[data-bingo-recent-balls]'),
+            cardMode: q('[data-bingo-card-mode]'),
             grabAnother: q('[data-bingo-grab-another]'),
             backLobby: q('[data-bingo-back-lobby]')
         };
@@ -517,15 +547,23 @@
                 playingFor = data.playingFor || 'line';
                 if (els.gameTitle) els.gameTitle.textContent = data.game.title;
                 if (els.serial) {
-                    const mode =
-                        cardMode === 'paper'
-                            ? 'Paper · '
-                            : cardMode === 'virtual'
-                              ? 'Virtual · '
-                              : '';
-                    els.serial.textContent = mode + data.card.serial;
+                    const full = data.card.serial || '';
+                    els.serial.textContent = shortSerial(full);
+                    els.serial.title = full;
+                }
+                if (els.cardMode) {
+                    if (cardMode === 'paper') {
+                        els.cardMode.textContent = 'Paper';
+                        els.cardMode.hidden = false;
+                    } else if (cardMode === 'virtual') {
+                        els.cardMode.textContent = 'Virtual';
+                        els.cardMode.hidden = false;
+                    } else {
+                        els.cardMode.hidden = true;
+                    }
                 }
                 if (els.lastBall) els.lastBall.textContent = data.lastBall != null ? data.lastBall : '—';
+                renderRecentBalls(els.recentBalls, data.calledBalls);
                 if (els.playingFor)
                     els.playingFor.textContent = 'Playing for · ' + (data.playingForLabel || '');
                 activeSerial = data.card && data.card.serial ? data.card.serial : activeSerial;
@@ -536,10 +574,14 @@
                 if (els.progress) {
                     const p = data.progress;
                     if (p && p.label) {
-                        els.progress.textContent = p.label;
+                        els.progress.textContent = compactToGoLabel(p);
+                        els.progress.setAttribute('aria-label', p.label);
+                        els.progress.title = p.label;
                         els.progress.dataset.toGo = String(p.toGo);
                     } else {
                         els.progress.textContent = '—';
+                        els.progress.removeAttribute('aria-label');
+                        els.progress.removeAttribute('title');
                         delete els.progress.dataset.toGo;
                     }
                 }

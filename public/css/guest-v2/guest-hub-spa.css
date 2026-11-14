@@ -1017,8 +1017,19 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     color: var(--gh-muted);
 }
 
-.gh-bingo .guest-bingo-card-head__ball {
-    color: color-mix(in srgb, var(--gh-accent) 85%, white);
+.gh-bingo .guest-bingo-card-head__mode {
+    background: color-mix(in srgb, var(--gh-accent) 22%, transparent);
+    color: color-mix(in srgb, var(--gh-accent) 75%, white);
+}
+
+.gh-bingo .guest-bingo-recent-ball.is-latest {
+    background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--gh-accent) 90%, white),
+        var(--gh-accent, #ff3366)
+    );
+    border-color: color-mix(in srgb, var(--gh-accent) 50%, transparent);
+    color: #fff;
 }
 
 .gh-bingo-card.guest-bingo-card-grid,

@@ -1136,7 +1136,6 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
 
 .gh-bingo-game-pick.guest-bingo-togo--1 {
     border-color: #ef4444;
-    animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
 }
 
 @keyframes guestBingoTogoFlash {
@@ -1165,5 +1164,4 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     background: rgba(239, 68, 68, 0.3);
     border-color: #ef4444;
     color: #fff;
-    animation: guestBingoTogoFlash 1.15s ease-in-out infinite;
 }

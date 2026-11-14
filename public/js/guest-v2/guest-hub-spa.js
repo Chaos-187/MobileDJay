@@ -230,6 +230,9 @@
                 '<label class="gh-bingo-auto-dab">' +
                     '<input type="checkbox" data-bingo-auto-dab checked> Auto-dabber' +
                 '</label>' +
+                '<label class="gh-bingo-caller-sound">' +
+                    '<input type="checkbox" data-bingo-caller-sound checked> Hear called numbers' +
+                '</label>' +
                 '<button type="button" class="gh-btn gh-btn--outline gh-bingo-grab-another mb-2" data-bingo-grab-another hidden>Grab another virtual card</button>' +
                 '<div class="guest-bingo-callboard" data-bingo-recent-strip aria-label="Called numbers and prizes">' +
                     '<div class="guest-bingo-callboard__main">' +

@@ -2903,20 +2903,19 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
     const progress = progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
     const calledList = state.calledBalls || [];
-    const allCards = access.cards
-        .map((c) => {
-            const p = guestBingoCardProgress(c, slug, gameId);
-            const cardProgress = progressTowardClaim(c.grid, calledList, state.playingFor, prizeLabel);
-            return {
-                serial: c.serial,
-                grid: c.grid,
-                marks: c.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
-                toGo: p.toGo,
-                progressLabel: p.label,
-                progress: cardProgress
-            };
-        })
-        .sort((a, b) => a.toGo - b.toGo || String(a.serial).localeCompare(String(b.serial)));
+    const allCards = access.cards.map((c) => {
+        const p = guestBingoCardProgress(c, slug, gameId);
+        const cardProgress = progressTowardClaim(c.grid, calledList, state.playingFor, prizeLabel);
+        return {
+            assignOrder: c.id,
+            serial: c.serial,
+            grid: c.grid,
+            marks: c.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
+            toGo: p.toGo,
+            progressLabel: p.label,
+            progress: cardProgress
+        };
+    });
     res.json({
         game: { id: game.id, title: game.title, status: game.status },
         cardLimit,
@@ -2934,6 +2933,8 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         active: state.active,
         paused: state.paused,
         pausedReason: state.pausedReason,
+        voiceCall: !!state.voiceCall,
+        prizeWinners: state.prizeWinners || { line: null, 'two-lines': null, house: null },
         marks: card.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
         progress
     });
@@ -3063,6 +3064,18 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
             claimType,
             playingFor,
             message: 'That claim is not the current prize on screen — follow “Playing for”.'
+        });
+    }
+
+    if (bingoClaimDb.guestHasValidClaim(gameId, customerName, playingFor)) {
+        return res.json({
+            success: true,
+            valid: false,
+            alreadyVerified: true,
+            serial: card.serial,
+            claimType: playingFor,
+            playingFor,
+            message: 'You already verified this prize — wait for the next round.'
         });
     }
 

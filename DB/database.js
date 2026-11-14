@@ -2022,6 +2022,19 @@ const bingoClaimDb = {
         return db
             .prepare(`UPDATE bingo_player_claims SET status = 'dismissed' WHERE game_id = ? AND status = 'pending'`)
             .run(gameId).changes;
+    },
+
+    guestHasValidClaim(gameId, customerName, claimType) {
+        const name = normalizeGuestName(customerName);
+        if (!name || !claimType) return false;
+        const row = db
+            .prepare(
+                `SELECT 1 AS ok FROM bingo_player_claims
+                 WHERE game_id = ? AND customer_name = ? COLLATE NOCASE AND claim_type = ? AND valid_on_card = 1
+                 LIMIT 1`
+            )
+            .get(gameId, name, claimType);
+        return !!row;
     }
 };
 

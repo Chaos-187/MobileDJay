@@ -5,6 +5,7 @@
     'use strict';
 
     const AUTO_DAB_KEY = 'mdj_bingo_auto_dab';
+    const CALLER_SOUND_KEY = 'mdj_bingo_caller_sound';
 
     function escapeHtml(t) {
         const d = document.createElement('div');
@@ -25,6 +26,24 @@
     function writeAutoDab(on) {
         try {
             localStorage.setItem(AUTO_DAB_KEY, on ? '1' : '0');
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
+    function readCallerSound() {
+        try {
+            const v = localStorage.getItem(CALLER_SOUND_KEY);
+            if (v === '0') return false;
+        } catch (e) {
+            /* ignore */
+        }
+        return true;
+    }
+
+    function writeCallerSound(on) {
+        try {
+            localStorage.setItem(CALLER_SOUND_KEY, on ? '1' : '0');
         } catch (e) {
             /* ignore */
         }
@@ -121,22 +140,32 @@
         }
     }
 
-    function renderPrizeBar(barEl, playingFor) {
+    function renderPrizeBar(barEl, playingFor, prizeWinners) {
         if (!barEl) return;
         const chips = [
-            { id: 'line', label: '1L' },
-            { id: 'two-lines', label: '2L' },
-            { id: 'house', label: 'FH' }
+            { id: 'line', label: '1 Line' },
+            { id: 'two-lines', label: '2 Lines' },
+            { id: 'house', label: 'House' }
         ];
         const pf = String(playingFor || 'line');
+        const winners = prizeWinners || {};
         barEl.innerHTML = chips
             .map(function (c) {
+                const w = winners[c.id];
+                const winnerLine = w
+                    ? '<span class="guest-bingo-prize-winner" title="Winner">' + escapeHtml(w) + '</span>'
+                    : '<span class="guest-bingo-prize-winner guest-bingo-prize-winner--empty" aria-hidden="true"></span>';
                 return (
+                    '<div class="guest-bingo-prize-col' +
+                    (pf === c.id ? ' is-active' : '') +
+                    '">' +
                     '<span class="guest-bingo-prize-chip' +
                     (pf === c.id ? ' is-active' : '') +
                     '">' +
                     escapeHtml(c.label) +
-                    '</span>'
+                    '</span>' +
+                    winnerLine +
+                    '</div>'
                 );
             })
             .join('');
@@ -182,6 +211,7 @@
             lastBall: q('[data-bingo-last-ball]'),
             playingFor: q('[data-bingo-playing-for]'),
             autoDab: q('[data-bingo-auto-dab]'),
+            callerSound: q('[data-bingo-caller-sound]'),
             callBtn: q('[data-bingo-call]'),
             claimResult: q('[data-bingo-claim-result]'),
             paperSerial: q('[data-bingo-paper-serial]'),
@@ -217,10 +247,15 @@
         let activeSerial = null;
         let pollTimer = null;
         let autoDab = readAutoDab();
+        let callerSoundOn = readCallerSound();
         const manualMarksBySerial = Object.create(null);
         let lastStackPayload = null;
         let playingFor = 'line';
         let cardMode = '';
+        let cardOrderSerials = [];
+        const selfVerifiedTiers = new Set();
+        let claimInFlight = false;
+        let lastSpokenBall = null;
 
         if (els.grabAnother) {
             els.grabAnother.addEventListener('click', function () {
@@ -239,6 +274,11 @@
             els.autoDab.addEventListener('change', function () {
                 autoDab = !!els.autoDab.checked;
                 writeAutoDab(autoDab);
+                if (!autoDab) {
+                    cardOrderSerials = (lastStackPayload && lastStackPayload.cards
+                        ? lastStackPayload.cards.map((c) => c.serial)
+                        : cardOrderSerials);
+                }
                 if (lastStackPayload) {
                     renderCardStack(
                         lastStackPayload.cards,
@@ -246,6 +286,78 @@
                         activeSerial
                     );
                 }
+            });
+        }
+
+        if (els.callerSound) {
+            els.callerSound.checked = callerSoundOn;
+            els.callerSound.addEventListener('change', function () {
+                callerSoundOn = !!els.callerSound.checked;
+                writeCallerSound(callerSoundOn);
+            });
+        }
+
+        function stabilizeCardOrder(cards) {
+            const list = cards || [];
+            if (!list.length) return list;
+            if (autoDab) {
+                return list
+                    .slice()
+                    .sort((a, b) => (a.assignOrder || 0) - (b.assignOrder || 0));
+            }
+            list.forEach(function (c) {
+                if (c.serial && cardOrderSerials.indexOf(c.serial) === -1) {
+                    cardOrderSerials.push(c.serial);
+                }
+            });
+            cardOrderSerials = cardOrderSerials.filter(function (s) {
+                return list.some((c) => c.serial === s);
+            });
+            const bySerial = Object.create(null);
+            list.forEach(function (c) {
+                bySerial[c.serial] = c;
+            });
+            return cardOrderSerials.map(function (s) {
+                return bySerial[s];
+            }).filter(Boolean);
+        }
+
+        function speakBallNumber(num) {
+            if (typeof window === 'undefined' || !window.speechSynthesis) return;
+            try {
+                window.speechSynthesis.cancel();
+            } catch (e) {
+                /* ignore */
+            }
+            const u = new SpeechSynthesisUtterance('Number ' + num);
+            u.lang = 'en-GB';
+            u.rate = 0.92;
+            u.pitch = 1;
+            try {
+                window.speechSynthesis.speak(u);
+            } catch (e) {
+                /* ignore */
+            }
+        }
+
+        function maybeAnnounceBall(data) {
+            if (!callerSoundOn || !data) return;
+            if (!data.active || data.phase === 'intro' || data.paused) return;
+            if (data.lastBall == null) return;
+            if (data.lastBall === lastSpokenBall) return;
+            lastSpokenBall = data.lastBall;
+            speakBallNumber(data.lastBall);
+        }
+
+        function syncCallButtonDisabled(data) {
+            if (!els.callBtn) return;
+            const pf = data.playingFor || playingFor || 'line';
+            const tierVerified = selfVerifiedTiers.has(pf);
+            const baseDisabled = !data.active || !!data.paused || claimInFlight || tierVerified;
+            els.callBtn.disabled = baseDisabled;
+            qq('[data-bingo-claim]').forEach(function (btn) {
+                const ct = btn.getAttribute('data-claim');
+                btn.disabled = baseDisabled || ct !== pf;
             });
         }
 
@@ -317,11 +429,12 @@
             const item = (cards || []).find((c) => c.serial === focusSerial) || (cards || [])[0];
             if (!item || !els.callBtn) return;
             const toGo = Number(item.progress ? item.progress.toGo : item.toGo);
-            if (toGo === 0 && data.active && !data.paused) {
+            if (toGo === 0 && data.active && !data.paused && !els.callBtn.disabled) {
                 els.callBtn.classList.add('guest-bingo-call--ready');
             } else {
                 els.callBtn.classList.remove('guest-bingo-call--ready');
             }
+            syncCallButtonDisabled(data);
         }
 
         function renderCardStack(allCards, calledBalls, focusSerial) {
@@ -436,6 +549,8 @@
             stopPoll();
             setLobbyPref(true);
             if (els.claimResult) els.claimResult.textContent = '';
+            selfVerifiedTiers.clear();
+            cardOrderSerials = [];
             showJoin();
             loadGames();
         }
@@ -658,10 +773,10 @@
                     calledCount: data.calledCount,
                     ballCount: data.ballCount
                 });
-                renderPrizeBar(els.prizeBar, data.playingFor);
+                renderPrizeBar(els.prizeBar, data.playingFor, data.prizeWinners);
                 if (els.playingFor)
                     els.playingFor.textContent = 'Playing for · ' + (data.playingForLabel || '');
-                const stackCards =
+                let stackCards =
                     data.allCards && data.allCards.length
                         ? data.allCards
                         : data.card && data.card.grid
@@ -676,6 +791,7 @@
                                 }
                             ]
                           : [];
+                stackCards = stabilizeCardOrder(stackCards);
                 if (activeSerial && stackCards.every((c) => c.serial !== activeSerial)) {
                     activeSerial = data.card && data.card.serial ? data.card.serial : stackCards[0]?.serial;
                 } else if (!activeSerial && data.card) {
@@ -687,6 +803,7 @@
                     els.grabAnother.hidden = !data.canGrabMore;
                 }
                 updateCallUi(stackCards, activeSerial, data);
+                maybeAnnounceBall(data);
                 if (els.meta) {
                     let t = data.active ? (data.paused ? 'Paused' : 'Live') : 'Waiting to start';
                     if (data.paused) {
@@ -701,7 +818,6 @@
                 if (els.callBtn) {
                     const label = data.playingForLabel || 'prize';
                     els.callBtn.textContent = 'Call — ' + label;
-                    els.callBtn.disabled = !data.active || !!data.paused;
                 }
             } catch (e) {
                 /* ignore transient */
@@ -728,6 +844,12 @@
             const name = opts.customerName();
             const resultEl = els.claimResult;
             if (!activeGameId || !name) return;
+            const tier = claimType || playingFor;
+            if (selfVerifiedTiers.has(tier) || claimInFlight) return;
+            claimInFlight = true;
+            syncCallButtonDisabled(
+                lastStackPayload && lastStackPayload.data ? lastStackPayload.data : { active: true, playingFor: tier }
+            );
             if (resultEl) resultEl.textContent = 'Sending…';
             try {
                 const res = await fetch(
@@ -741,7 +863,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             customerName: name,
-                            claimType: claimType || playingFor,
+                            claimType: tier,
                             deviceId: opts.deviceId(),
                             serial: activeSerial
                         })
@@ -757,10 +879,19 @@
                             : 'gh-bingo-claim-result ') + (data.valid ? 'is-ok' : 'is-warn');
                 }
                 if (data.verified) {
+                    selfVerifiedTiers.add(tier);
+                    if (data.playingFor) playingFor = data.playingFor;
                     refreshPlay();
+                } else if (data.alreadyVerified) {
+                    selfVerifiedTiers.add(tier);
                 }
             } catch (e) {
                 if (resultEl) resultEl.textContent = 'Could not send claim';
+            } finally {
+                claimInFlight = false;
+                if (lastStackPayload && lastStackPayload.data) {
+                    syncCallButtonDisabled(lastStackPayload.data);
+                }
             }
         }
 

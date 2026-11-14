@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=26" rel="stylesheet">
+    <link href="/css/bingo.css?v=27" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
 </head>
@@ -51,6 +51,20 @@
                     <span class="guest-bingo-opt__switch" aria-hidden="true"></span>
                 </label>
             </div>
+            <div class="guest-bingo-intro" data-bingo-intro hidden aria-live="polite">
+                <div class="guest-bingo-intro__card">
+                    <p class="guest-bingo-intro__eyebrow"><i class="fas fa-table-cells" aria-hidden="true"></i> Bingo starting soon</p>
+                    <p class="guest-bingo-intro__prize" data-bingo-intro-prize>Playing for · 1 Line</p>
+                    <div class="guest-bingo-intro__ring-wrap">
+                        <svg class="guest-bingo-intro__ring" viewBox="0 0 120 120" aria-hidden="true">
+                            <circle class="guest-bingo-intro__ring-track" cx="60" cy="60" r="52"></circle>
+                            <circle class="guest-bingo-intro__ring-progress" data-bingo-intro-ring cx="60" cy="60" r="52"></circle>
+                        </svg>
+                        <div class="guest-bingo-intro__sec" data-bingo-intro-sec>30</div>
+                    </div>
+                    <p class="guest-bingo-intro__hint">Get your cards ready — numbers will be called when the countdown finishes.</p>
+                </div>
+            </div>
             <div class="guest-bingo-callboard" data-bingo-recent-strip aria-label="Called numbers and prizes">
                 <div class="guest-bingo-callboard__main">
                     <div class="guest-bingo-callboard__balls" data-bingo-recent-balls>
@@ -82,7 +96,8 @@
         window.eventSlug = '<%= eventSlug %>';
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
-    <script src="/js/guest-bingo-play.js?v=17"></script>
+    <script src="/js/bingo-caller-voice.js?v=1"></script>
+    <script src="/js/guest-bingo-play.js?v=20"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

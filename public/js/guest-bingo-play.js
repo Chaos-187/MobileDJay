@@ -6,6 +6,7 @@
 
     const AUTO_DAB_KEY = 'mdj_bingo_auto_dab';
     const CALLER_SOUND_KEY = 'mdj_bingo_caller_sound';
+    const GUEST_INTRO_RING_LEN = 326.7;
 
     function escapeHtml(t) {
         const d = document.createElement('div');
@@ -223,7 +224,11 @@
             prizeBar: q('[data-bingo-prize-bar]'),
             cardStack: q('[data-bingo-cards-stack]'),
             grabAnother: q('[data-bingo-grab-another]'),
-            backLobby: q('[data-bingo-back-lobby]')
+            backLobby: q('[data-bingo-back-lobby]'),
+            intro: q('[data-bingo-intro]'),
+            introPrize: q('[data-bingo-intro-prize]'),
+            introSec: q('[data-bingo-intro-sec]'),
+            introRing: q('[data-bingo-intro-ring]')
         };
 
         const LOBBY_KEY = 'mdj_bingo_lobby_' + slug;
@@ -258,6 +263,9 @@
         const selfVerifiedTiers = new Set();
         let claimInFlight = false;
         let lastSpokenBall = null;
+        let introEndsAtLocal = null;
+        let introTotalSec = 30;
+        let introTickTimer = null;
 
         if (els.grabAnother) {
             els.grabAnother.addEventListener('click', function () {
@@ -330,20 +338,8 @@
         }
 
         function speakBallNumber(num) {
-            if (typeof window === 'undefined' || !window.speechSynthesis) return;
-            try {
-                window.speechSynthesis.cancel();
-            } catch (e) {
-                /* ignore */
-            }
-            const u = new SpeechSynthesisUtterance('Number ' + num);
-            u.lang = 'en-GB';
-            u.rate = 0.92;
-            u.pitch = 1;
-            try {
-                window.speechSynthesis.speak(u);
-            } catch (e) {
-                /* ignore */
+            if (global.MdjBingoCallerVoice && typeof global.MdjBingoCallerVoice.speak === 'function') {
+                global.MdjBingoCallerVoice.speak(num);
             }
         }
 
@@ -356,11 +352,88 @@
             speakBallNumber(data.lastBall);
         }
 
+        function stopIntroTick() {
+            if (introTickTimer) {
+                clearInterval(introTickTimer);
+                introTickTimer = null;
+            }
+        }
+
+        function ensureIntroTick() {
+            if (introTickTimer) return;
+            introTickTimer = setInterval(function () {
+                if (!introEndsAtLocal) {
+                    stopIntroTick();
+                    return;
+                }
+                if (lastStackPayload && lastStackPayload.data) {
+                    paintGuestIntro(lastStackPayload.data);
+                }
+            }, 350);
+        }
+
+        function setPlayIntroMode(on) {
+            if (els.play) els.play.classList.toggle('guest-bingo--intro', !!on);
+            if (els.intro) {
+                if (on) els.intro.removeAttribute('hidden');
+                else els.intro.setAttribute('hidden', '');
+            }
+        }
+
+        function paintGuestIntro(data) {
+            if (!els.intro || !introEndsAtLocal) return;
+            const remainingMs = Math.max(0, introEndsAtLocal - Date.now());
+            const sec = Math.ceil(remainingMs / 1000);
+            if (els.introSec) els.introSec.textContent = String(sec);
+            if (els.introRing && introTotalSec > 0) {
+                const progress = remainingMs / (introTotalSec * 1000);
+                els.introRing.style.strokeDashoffset = String(GUEST_INTRO_RING_LEN * (1 - progress));
+            }
+            if (els.introPrize) {
+                els.introPrize.textContent =
+                    'Playing for · ' + (data.playingForLabel || data.playingFor || '1 Line');
+            }
+        }
+
+        function syncGuestIntro(data) {
+            const showIntro = !!(data && data.active && data.phase === 'intro');
+            if (showIntro) {
+                if (data.introSeconds) introTotalSec = data.introSeconds;
+                if (data.introRemainingMs != null) {
+                    introEndsAtLocal = Date.now() + data.introRemainingMs;
+                }
+                setPlayIntroMode(true);
+                paintGuestIntro(data);
+                ensureIntroTick();
+            } else {
+                introEndsAtLocal = null;
+                stopIntroTick();
+                setPlayIntroMode(false);
+            }
+        }
+
+        function claimCardSerial(cards) {
+            const list = cards && cards.length ? cards : [];
+            if (!list.length) return activeSerial;
+            if (autoDab) {
+                const ready = list.find(function (c) {
+                    const t = Number(c.progress && c.progress.toGo != null ? c.progress.toGo : c.toGo);
+                    return t === 0;
+                });
+                if (ready) return ready.serial;
+                return list[0].serial;
+            }
+            const focused = list.find(function (c) {
+                return c.serial === activeSerial;
+            });
+            return focused ? focused.serial : list[0].serial;
+        }
+
         function syncCallButtonDisabled(data) {
             if (!els.callBtn) return;
             const pf = data.playingFor || playingFor || 'line';
             const tierVerified = selfVerifiedTiers.has(pf);
-            const baseDisabled = !data.active || !!data.paused || claimInFlight || tierVerified;
+            const baseDisabled = !data.active || claimInFlight || tierVerified;
             els.callBtn.disabled = baseDisabled;
             qq('[data-bingo-claim]').forEach(function (btn) {
                 const ct = btn.getAttribute('data-claim');
@@ -435,8 +508,15 @@
         function updateCallUi(cards, focusSerial, data) {
             const item = (cards || []).find((c) => c.serial === focusSerial) || (cards || [])[0];
             if (!item || !els.callBtn) return;
-            const toGo = Number(item.progress ? item.progress.toGo : item.toGo);
-            if (toGo === 0 && data.active && !data.paused && !els.callBtn.disabled) {
+            const claimSerial = claimCardSerial(cards);
+            const claimItem =
+                (cards || []).find(function (c) {
+                    return c.serial === claimSerial;
+                }) || item;
+            const toGo = Number(
+                claimItem.progress ? claimItem.progress.toGo : claimItem.toGo
+            );
+            if (toGo === 0 && data.active && !els.callBtn.disabled) {
                 els.callBtn.classList.add('guest-bingo-call--ready');
             } else {
                 els.callBtn.classList.remove('guest-bingo-call--ready');
@@ -554,6 +634,9 @@
 
         function backToLobby() {
             stopPoll();
+            stopIntroTick();
+            introEndsAtLocal = null;
+            setPlayIntroMode(false);
             setLobbyPref(true);
             if (els.claimResult) els.claimResult.textContent = '';
             selfVerifiedTiers.clear();
@@ -801,6 +884,10 @@
                             ]
                           : [];
                 stackCards = stabilizeCardOrder(stackCards);
+                if (autoDab && stackCards.length) {
+                    const readySerial = claimCardSerial(stackCards);
+                    if (readySerial) activeSerial = readySerial;
+                }
                 if (activeSerial && stackCards.every((c) => c.serial !== activeSerial)) {
                     activeSerial = data.card && data.card.serial ? data.card.serial : stackCards[0]?.serial;
                 } else if (!activeSerial && data.card) {
@@ -816,6 +903,7 @@
                     els.grabAnother.hidden = !data.canGrabMore || inProgress;
                 }
                 updateCallUi(stackCards, activeSerial, data);
+                syncGuestIntro(data);
                 maybeAnnounceBall(data);
                 if (els.meta) {
                     let t = data.active ? (data.paused ? 'Paused' : 'Live') : 'Waiting to start';
@@ -851,6 +939,7 @@
         function stopPoll() {
             clearInterval(pollTimer);
             pollTimer = null;
+            stopIntroTick();
         }
 
         async function sendClaim(claimType) {
@@ -859,6 +948,9 @@
             if (!activeGameId || !name) return;
             const tier = claimType || playingFor;
             if (selfVerifiedTiers.has(tier) || claimInFlight) return;
+            const cardsForClaim =
+                lastStackPayload && lastStackPayload.cards ? lastStackPayload.cards : [];
+            const serialForClaim = claimCardSerial(cardsForClaim) || activeSerial;
             claimInFlight = true;
             syncCallButtonDisabled(
                 lastStackPayload && lastStackPayload.data ? lastStackPayload.data : { active: true, playingFor: tier }
@@ -878,7 +970,7 @@
                             customerName: name,
                             claimType: tier,
                             deviceId: opts.deviceId(),
-                            serial: activeSerial
+                            serial: serialForClaim
                         })
                     }
                 );

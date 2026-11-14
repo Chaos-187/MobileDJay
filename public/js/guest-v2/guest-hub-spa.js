@@ -244,6 +244,18 @@
                         '<input class="guest-bingo-opt__input" type="checkbox" data-bingo-caller-sound checked>' +
                         '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label></div>' +
                 '<button type="button" class="gh-btn gh-btn--outline gh-bingo-grab-another mb-2" data-bingo-grab-another hidden>Grab another virtual card</button>' +
+                '<div class="guest-bingo-intro" data-bingo-intro hidden aria-live="polite">' +
+                    '<div class="guest-bingo-intro__card">' +
+                        '<p class="guest-bingo-intro__eyebrow"><i class="fas fa-table-cells" aria-hidden="true"></i> Bingo starting soon</p>' +
+                        '<p class="guest-bingo-intro__prize" data-bingo-intro-prize>Playing for · 1 Line</p>' +
+                        '<div class="guest-bingo-intro__ring-wrap">' +
+                            '<svg class="guest-bingo-intro__ring" viewBox="0 0 120 120" aria-hidden="true">' +
+                                '<circle class="guest-bingo-intro__ring-track" cx="60" cy="60" r="52"></circle>' +
+                                '<circle class="guest-bingo-intro__ring-progress" data-bingo-intro-ring cx="60" cy="60" r="52"></circle>' +
+                            '</svg>' +
+                            '<div class="guest-bingo-intro__sec" data-bingo-intro-sec>30</div></div>' +
+                        '<p class="guest-bingo-intro__hint">Get your cards ready — numbers will be called when the countdown finishes.</p>' +
+                    '</div></div>' +
                 '<div class="guest-bingo-callboard" data-bingo-recent-strip aria-label="Called numbers and prizes">' +
                     '<div class="guest-bingo-callboard__main">' +
                         '<div class="guest-bingo-callboard__balls" data-bingo-recent-balls>' +

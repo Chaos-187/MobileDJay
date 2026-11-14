@@ -1008,6 +1008,26 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     border-color: var(--gh-border);
 }
 
+.gh-bingo .guest-bingo-callboard {
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--gh-accent, #1a5c66) 85%, #0a2830) 0%,
+        color-mix(in srgb, var(--gh-bg, #0a0a12) 70%, #0f4249) 100%
+    );
+}
+
+.gh-bingo .guest-bingo-prize-chip.is-active {
+    color: color-mix(in srgb, var(--gh-accent, #0f4249) 40%, #0a2830);
+}
+
+.gh-bingo .guest-bingo-cards-stack {
+    padding-bottom: 0.25rem;
+}
+
+.gh-bingo-panel[data-bingo-play] {
+    padding-bottom: 0.5rem;
+}
+
 .gh-bingo .guest-bingo-card-head {
     background: color-mix(in srgb, var(--gh-surface) 70%, var(--gh-bg, #0a0a12));
     border-bottom-color: var(--gh-border);

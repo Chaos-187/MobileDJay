@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=20" rel="stylesheet">
+    <link href="/css/bingo.css?v=22" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
 </head>
@@ -32,30 +32,16 @@
                 <input class="form-check-input" type="checkbox" data-bingo-auto-dab checked>
                 <span>Auto-dabber (marks called numbers)</span>
             </label>
-            <div class="guest-bingo-card-picks" data-bingo-card-picks hidden></div>
-            <div class="guest-bingo-card-wrap" data-bingo-card-wrap>
-                <header class="guest-bingo-card-head">
-                    <div class="guest-bingo-card-head__top">
-                        <div class="guest-bingo-card-head__serial">
-                            <span class="guest-bingo-card-head__label">Your card</span>
-                            <span class="guest-bingo-card-head__serial-row">
-                                <span class="guest-bingo-card-head__mode" data-bingo-card-mode hidden></span>
-                                <strong class="guest-bingo-card-head__serial-val" id="guestBingoSerial" data-bingo-serial title="">—</strong>
-                            </span>
-                        </div>
-                        <div class="guest-bingo-card-head__togo guest-bingo-togo-block" data-bingo-togo-block>
-                            <span class="guest-bingo-card-head__label">To go</span>
-                            <span class="guest-bingo-card-head__togo-val guest-bingo-togo-value" data-bingo-progress aria-label="">—</span>
-                        </div>
+            <div class="guest-bingo-callboard" data-bingo-recent-strip aria-label="Called numbers and prizes">
+                <div class="guest-bingo-callboard__main">
+                    <div class="guest-bingo-callboard__balls" data-bingo-recent-balls>
+                        <span class="guest-bingo-recent-empty">—</span>
                     </div>
-                    <div class="guest-bingo-card-recent" aria-label="Last five numbers called">
-                        <span class="guest-bingo-card-head__label">Recent calls</span>
-                        <div class="guest-bingo-card-recent__track" data-bingo-recent-balls>
-                            <span class="guest-bingo-recent-empty">—</span></div>
-                    </div>
-                </header>
-                <div id="guestBingoCard" class="guest-bingo-card-grid guest-bingo-card" data-bingo-card aria-label="Your bingo card"></div>
+                    <p class="guest-bingo-callboard__progress" data-bingo-call-progress hidden></p>
+                </div>
+                <div class="guest-bingo-prize-bar" data-bingo-prize-bar aria-label="Prizes"></div>
             </div>
+            <div class="guest-bingo-cards-stack guest-bingo-tickets" data-bingo-cards-stack></div>
             <span id="guestBingoLastBall" data-bingo-last-ball hidden aria-hidden="true">—</span>
             <p class="guest-bingo-playing-for" id="guestBingoPlayingFor" data-bingo-playing-for></p>
             <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn" data-bingo-call>Call</button>
@@ -75,7 +61,7 @@
         window.eventSlug = '<%= eventSlug %>';
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
-    <script src="/js/guest-bingo-play.js?v=10"></script>
+    <script src="/js/guest-bingo-play.js?v=12"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

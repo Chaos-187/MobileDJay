@@ -75,20 +75,67 @@
         return n + ' to go';
     }
 
-    function renderRecentBalls(trackEl, calledBalls) {
+    function tgSpineLabel(toGo) {
+        const n = Number(toGo);
+        if (n === 0) return 'WIN';
+        if (n === 1) return '1TG';
+        if (n === 2) return '2TG';
+        if (n === 3) return '3TG';
+        return n + 'TG';
+    }
+
+    function tgSpineClass(toGo) {
+        const n = Number(toGo);
+        if (n === 0) return 'guest-bingo-tg-spine--win';
+        if (n === 1) return 'guest-bingo-tg-spine--1';
+        if (n === 2) return 'guest-bingo-tg-spine--2';
+        if (n === 3) return 'guest-bingo-tg-spine--3';
+        return 'guest-bingo-tg-spine--far';
+    }
+
+    function renderRecentBalls(trackEl, calledBalls, opts) {
         if (!trackEl) return;
-        const recent = (calledBalls || []).slice(-5).reverse();
+        const list = calledBalls || [];
+        const recent = list.slice(-5);
         if (!recent.length) {
             trackEl.innerHTML = '<span class="guest-bingo-recent-empty">—</span>';
             return;
         }
-        trackEl.innerHTML = recent
-            .map(function (n, i) {
+        const latest = recent[recent.length - 1];
+        const older = recent.slice(0, -1);
+        let html = '';
+        html +=
+            '<span class="guest-bingo-callball guest-bingo-callball--latest" aria-current="true">' +
+            escapeHtml(String(latest)) +
+            '</span>';
+        older.forEach(function (n) {
+            html +=
+                '<span class="guest-bingo-callball">' + escapeHtml(String(n)) + '</span>';
+        });
+        trackEl.innerHTML = html;
+        if (opts && opts.progressEl && opts.calledCount != null && opts.ballCount) {
+            opts.progressEl.hidden = false;
+            opts.progressEl.textContent = opts.calledCount + '/' + opts.ballCount;
+        } else if (opts && opts.progressEl) {
+            opts.progressEl.hidden = true;
+        }
+    }
+
+    function renderPrizeBar(barEl, playingFor) {
+        if (!barEl) return;
+        const chips = [
+            { id: 'line', label: '1L' },
+            { id: 'two-lines', label: '2L' },
+            { id: 'house', label: 'FH' }
+        ];
+        const pf = String(playingFor || 'line');
+        barEl.innerHTML = chips
+            .map(function (c) {
                 return (
-                    '<span class="guest-bingo-recent-ball' +
-                    (i === 0 ? ' is-latest' : '') +
+                    '<span class="guest-bingo-prize-chip' +
+                    (pf === c.id ? ' is-active' : '') +
                     '">' +
-                    escapeHtml(String(n)) +
+                    escapeHtml(c.label) +
                     '</span>'
                 );
             })
@@ -132,21 +179,17 @@
             gamesList: q('[data-bingo-games-list]'),
             gameTitle: q('[data-bingo-game-title]'),
             meta: q('[data-bingo-meta]'),
-            serial: q('[data-bingo-serial]'),
-            cardWrap: q('[data-bingo-card-wrap]'),
-            card: q('[data-bingo-card]'),
             lastBall: q('[data-bingo-last-ball]'),
-            progress: q('[data-bingo-progress]'),
             playingFor: q('[data-bingo-playing-for]'),
             autoDab: q('[data-bingo-auto-dab]'),
             callBtn: q('[data-bingo-call]'),
             claimResult: q('[data-bingo-claim-result]'),
             paperSerial: q('[data-bingo-paper-serial]'),
             paperLinkBtn: q('[data-bingo-paper-link]'),
-            cardPicks: q('[data-bingo-card-picks]'),
-            togoBlock: q('[data-bingo-togo-block]'),
             recentBalls: q('[data-bingo-recent-balls]'),
-            cardMode: q('[data-bingo-card-mode]'),
+            callProgress: q('[data-bingo-call-progress]'),
+            prizeBar: q('[data-bingo-prize-bar]'),
+            cardStack: q('[data-bingo-cards-stack]'),
             grabAnother: q('[data-bingo-grab-another]'),
             backLobby: q('[data-bingo-back-lobby]')
         };
@@ -174,9 +217,8 @@
         let activeSerial = null;
         let pollTimer = null;
         let autoDab = readAutoDab();
-        let manualMarks = emptyManualMarks();
-        let lastGrid = null;
-        let lastCalled = [];
+        const manualMarksBySerial = Object.create(null);
+        let lastStackPayload = null;
         let playingFor = 'line';
         let cardMode = '';
 
@@ -197,91 +239,41 @@
             els.autoDab.addEventListener('change', function () {
                 autoDab = !!els.autoDab.checked;
                 writeAutoDab(autoDab);
-                if (lastGrid) renderCard(lastGrid, lastCalled, null);
+                if (lastStackPayload) {
+                    renderCardStack(
+                        lastStackPayload.cards,
+                        lastStackPayload.calledBalls,
+                        activeSerial
+                    );
+                }
             });
         }
 
-        function showJoin() {
-            if (els.join) els.join.hidden = false;
-            if (els.play) els.play.hidden = true;
+        function manualMarksFor(serial) {
+            const key = String(serial || '');
+            if (!manualMarksBySerial[key]) manualMarksBySerial[key] = emptyManualMarks();
+            return manualMarksBySerial[key];
         }
 
-        function showPlay() {
-            if (els.join) els.join.hidden = true;
-            if (els.play) els.play.hidden = false;
-            setLobbyPref(false);
+        function serialAttrEsc(serial) {
+            const s = String(serial || '');
+            return typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(s) : s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
         }
 
-        function backToLobby() {
-            stopPoll();
-            setLobbyPref(true);
-            if (els.claimResult) els.claimResult.textContent = '';
-            showJoin();
-            loadGames();
-        }
-
-        function renderCardPicks(guestCards, currentSerial) {
-            if (!els.cardPicks) return;
-            if (!guestCards || guestCards.length <= 1) {
-                els.cardPicks.hidden = true;
-                els.cardPicks.innerHTML = '';
-                return;
-            }
-            els.cardPicks.hidden = false;
-            els.cardPicks.innerHTML =
-                '<p class="guest-bingo-card-picks__label">Your cards (closest first)</p>' +
-                guestCards
-                    .map(function (gc) {
-                        const tier = toGoTierClass(gc.toGo);
-                        const active = gc.serial === currentSerial ? ' is-active' : '';
-                        const label =
-                            gc.toGo === 0
-                                ? 'Call!'
-                                : gc.toGo === 1
-                                  ? '1 to go'
-                                  : gc.toGo + ' to go';
-                        return (
-                            '<button type="button" class="guest-bingo-card-pick ' +
-                            tier +
-                            active +
-                            '" data-pick-serial="' +
-                            escapeHtml(gc.serial) +
-                            '">' +
-                            '<span class="guest-bingo-card-pick__short">' +
-                            escapeHtml(shortSerial(gc.serial)) +
-                            '</span>' +
-                            '<span class="guest-bingo-card-pick__togo">' +
-                            escapeHtml(label) +
-                            '</span></button>'
-                        );
-                    })
-                    .join('');
-            els.cardPicks.querySelectorAll('[data-pick-serial]').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    activeSerial = btn.getAttribute('data-pick-serial');
-                    manualMarks = emptyManualMarks();
-                    refreshPlay();
-                });
-            });
-        }
-
-        function effectiveMarks(serverMarks) {
-            if (autoDab && serverMarks) return serverMarks;
-            if (!lastGrid) return serverMarks;
-            return lastGrid.map((row, r) =>
+        function marksForCard(item) {
+            if (autoDab && item.marks) return item.marks;
+            if (!item.grid) return item.marks;
+            const manual = manualMarksFor(item.serial);
+            return item.grid.map((row, r) =>
                 row.map((n, c) => {
                     if (n == null) return null;
-                    if (autoDab && serverMarks && serverMarks[r]) return serverMarks[r][c];
-                    return manualMarks[r][c];
+                    return manual[r][c];
                 })
             );
         }
 
-        function renderCard(grid, calledBalls, serverMarks) {
-            if (!els.card || !grid) return;
-            lastGrid = grid;
-            lastCalled = calledBalls || [];
-            const marks = effectiveMarks(serverMarks);
+        function buildCardTableHtml(grid, marks, calledBalls) {
+            const called = calledBalls || [];
             const headers = ['1–9', '10–19', '20–29', '30–39', '40–49', '50–59', '60–69', '70–79', '80–90'];
             let html = '<table class="guest-bingo-table"><thead><tr>';
             headers.forEach(function (h) {
@@ -296,7 +288,6 @@
                     if (n == null) {
                         html += '<td class="is-blank"></td>';
                     } else {
-                        const called = lastCalled.indexOf(n) !== -1;
                         const dabClass = marked ? ' is-marked' : '';
                         const canTap = !autoDab ? ' guest-bingo-cell--manual' : '';
                         html +=
@@ -319,19 +310,134 @@
                 html += '</tr>';
             }
             html += '</tbody></table>';
-            els.card.innerHTML = html;
-            if (!autoDab) {
-                els.card.querySelectorAll('[data-cell-r]').forEach(function (td) {
-                    td.addEventListener('click', function () {
-                        const r = parseInt(td.getAttribute('data-cell-r'), 10);
-                        const c = parseInt(td.getAttribute('data-cell-c'), 10);
-                        const ball = parseInt(td.getAttribute('data-ball'), 10);
-                        if (lastCalled.indexOf(ball) === -1) return;
-                        manualMarks[r][c] = !manualMarks[r][c];
-                        renderCard(lastGrid, lastCalled, null);
-                    });
-                });
+            return html;
+        }
+
+        function updateCallUi(cards, focusSerial, data) {
+            const item = (cards || []).find((c) => c.serial === focusSerial) || (cards || [])[0];
+            if (!item || !els.callBtn) return;
+            const toGo = Number(item.progress ? item.progress.toGo : item.toGo);
+            if (toGo === 0 && data.active && !data.paused) {
+                els.callBtn.classList.add('guest-bingo-call--ready');
+            } else {
+                els.callBtn.classList.remove('guest-bingo-call--ready');
             }
+        }
+
+        function renderCardStack(allCards, calledBalls, focusSerial) {
+            if (!els.cardStack) return;
+            const cards = allCards && allCards.length ? allCards : [];
+            if (!cards.length) {
+                els.cardStack.innerHTML = '<p class="gh-bingo-muted guest-bingo-stack-empty">No card loaded.</p>';
+                return;
+            }
+            let focus = focusSerial;
+            if (!focus || !cards.some((c) => c.serial === focus)) {
+                focus = cards[0].serial;
+            }
+            activeSerial = focus;
+            const modeLabel =
+                cardMode === 'paper' ? 'Paper' : cardMode === 'virtual' ? 'Virtual' : '';
+
+            els.cardStack.innerHTML = cards
+                .map(function (item) {
+                    const toGoN = item.progress ? item.progress.toGo : item.toGo;
+                    const tier = toGoTierClass(toGoN);
+                    const isActive = item.serial === focus;
+                    const prog = item.progress || { toGo: item.toGo, label: item.progressLabel };
+                    const spineClass = tgSpineClass(toGoN);
+                    const spineLabel = tgSpineLabel(toGoN);
+                    return (
+                        '<article class="guest-bingo-ticket guest-bingo-card-wrap guest-bingo-card-wrap--stacked ' +
+                        tier +
+                        (isActive ? ' is-active-card' : '') +
+                        '" data-bingo-card-wrap data-card-serial="' +
+                        escapeHtml(item.serial) +
+                        '">' +
+                        '<div class="guest-bingo-ticket__body">' +
+                        '<p class="guest-bingo-ticket__serial" title="' +
+                        escapeHtml(item.serial) +
+                        '">' +
+                        (modeLabel ? '<span class="guest-bingo-ticket__mode">' + escapeHtml(modeLabel) + '</span> ' : '') +
+                        escapeHtml(shortSerial(item.serial)) +
+                        '</p>' +
+                        '<div class="guest-bingo-ticket__grid guest-bingo-card-grid gh-bingo-card" data-bingo-card-grid data-card-serial="' +
+                        escapeHtml(item.serial) +
+                        '" aria-label="Bingo card"></div>' +
+                        '</div>' +
+                        '<div class="guest-bingo-tg-spine ' +
+                        spineClass +
+                        '" title="' +
+                        escapeHtml(prog.label || '') +
+                        '" aria-label="' +
+                        escapeHtml(prog.label || spineLabel) +
+                        '">' +
+                        '<span class="guest-bingo-tg-spine__text">' +
+                        escapeHtml(spineLabel) +
+                        '</span></div>' +
+                        '</article>'
+                    );
+                })
+                .join('');
+
+            cards.forEach(function (item) {
+                const gridEl = els.cardStack.querySelector(
+                    '[data-bingo-card-grid][data-card-serial="' + serialAttrEsc(item.serial) + '"]'
+                );
+                if (!gridEl || !item.grid) return;
+                const marks = marksForCard(item);
+                gridEl.innerHTML = buildCardTableHtml(item.grid, marks, calledBalls);
+                if (!autoDab) wireManualCells(gridEl, item, calledBalls);
+            });
+
+            els.cardStack.querySelectorAll('[data-bingo-card-wrap]').forEach(function (wrap) {
+                wrap.addEventListener('click', function (e) {
+                    if (e.target.closest('[data-cell-r]')) return;
+                    const ser = wrap.getAttribute('data-card-serial');
+                    if (ser && ser !== activeSerial) {
+                        activeSerial = ser;
+                        renderCardStack(cards, calledBalls, activeSerial);
+                        if (lastStackPayload && lastStackPayload.data) {
+                            updateCallUi(cards, activeSerial, lastStackPayload.data);
+                        }
+                    }
+                });
+            });
+        }
+
+        function wireManualCells(gridEl, item, calledBalls) {
+            if (autoDab || !gridEl) return;
+            gridEl.querySelectorAll('[data-cell-r]').forEach(function (td) {
+                td.addEventListener('click', function () {
+                    const r = parseInt(td.getAttribute('data-cell-r'), 10);
+                    const c = parseInt(td.getAttribute('data-cell-c'), 10);
+                    const ball = parseInt(td.getAttribute('data-ball'), 10);
+                    if ((calledBalls || []).indexOf(ball) === -1) return;
+                    const manual = manualMarksFor(item.serial);
+                    manual[r][c] = !manual[r][c];
+                    gridEl.innerHTML = buildCardTableHtml(item.grid, marksForCard(item), calledBalls);
+                    wireManualCells(gridEl, item, calledBalls);
+                });
+            });
+        }
+
+        function showJoin() {
+            if (els.join) els.join.hidden = false;
+            if (els.play) els.play.hidden = true;
+        }
+
+        function showPlay() {
+            if (els.join) els.join.hidden = true;
+            if (els.play) els.play.hidden = false;
+            setLobbyPref(false);
+        }
+
+        function backToLobby() {
+            stopPoll();
+            setLobbyPref(true);
+            if (els.claimResult) els.claimResult.textContent = '';
+            showJoin();
+            loadGames();
         }
 
         async function loadGames() {
@@ -424,7 +530,6 @@
                         if (btn.getAttribute('data-has-cards') === '1') {
                             activeGameId = gid;
                             activeSerial = null;
-                            manualMarks = emptyManualMarks();
                             try {
                                 sessionStorage.setItem('mdj_bingo_game_' + slug, String(gid));
                             } catch (err) {
@@ -467,7 +572,6 @@
                 activeGameId = gameId;
                 activeSerial = data.serial || null;
                 cardMode = 'virtual';
-                manualMarks = emptyManualMarks();
                 try {
                     sessionStorage.setItem('mdj_bingo_game_' + slug, String(gameId));
                 } catch (err) {
@@ -504,7 +608,6 @@
                 }
                 activeGameId = gameId;
                 cardMode = 'paper';
-                manualMarks = emptyManualMarks();
                 try {
                     sessionStorage.setItem('mdj_bingo_game_' + slug, String(gameId));
                 } catch (err) {
@@ -546,53 +649,41 @@
                 showPlay();
                 playingFor = data.playingFor || 'line';
                 if (els.gameTitle) els.gameTitle.textContent = data.game.title;
-                if (els.serial) {
-                    const full = data.card.serial || '';
-                    els.serial.textContent = shortSerial(full);
-                    els.serial.title = full;
-                }
-                if (els.cardMode) {
-                    if (cardMode === 'paper') {
-                        els.cardMode.textContent = 'Paper';
-                        els.cardMode.hidden = false;
-                    } else if (cardMode === 'virtual') {
-                        els.cardMode.textContent = 'Virtual';
-                        els.cardMode.hidden = false;
-                    } else {
-                        els.cardMode.hidden = true;
-                    }
-                }
                 if (els.lastBall) els.lastBall.textContent = data.lastBall != null ? data.lastBall : '—';
-                renderRecentBalls(els.recentBalls, data.calledBalls);
+                renderRecentBalls(els.recentBalls, data.calledBalls, {
+                    progressEl: els.callProgress,
+                    calledCount: data.calledCount,
+                    ballCount: data.ballCount
+                });
+                renderPrizeBar(els.prizeBar, data.playingFor);
                 if (els.playingFor)
                     els.playingFor.textContent = 'Playing for · ' + (data.playingForLabel || '');
-                activeSerial = data.card && data.card.serial ? data.card.serial : activeSerial;
-                renderCardPicks(data.guestCards, activeSerial);
+                const stackCards =
+                    data.allCards && data.allCards.length
+                        ? data.allCards
+                        : data.card && data.card.grid
+                          ? [
+                                {
+                                    serial: data.card.serial,
+                                    grid: data.card.grid,
+                                    marks: data.marks,
+                                    progress: data.progress,
+                                    toGo: data.progress ? data.progress.toGo : null,
+                                    progressLabel: data.progress ? data.progress.label : null
+                                }
+                            ]
+                          : [];
+                if (activeSerial && stackCards.every((c) => c.serial !== activeSerial)) {
+                    activeSerial = data.card && data.card.serial ? data.card.serial : stackCards[0]?.serial;
+                } else if (!activeSerial && data.card) {
+                    activeSerial = data.card.serial;
+                }
+                lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
+                renderCardStack(stackCards, data.calledBalls, activeSerial);
                 if (els.grabAnother) {
                     els.grabAnother.hidden = !data.canGrabMore;
                 }
-                if (els.progress) {
-                    const p = data.progress;
-                    if (p && p.label) {
-                        els.progress.textContent = compactToGoLabel(p);
-                        els.progress.setAttribute('aria-label', p.label);
-                        els.progress.title = p.label;
-                        els.progress.dataset.toGo = String(p.toGo);
-                    } else {
-                        els.progress.textContent = '—';
-                        els.progress.removeAttribute('aria-label');
-                        els.progress.removeAttribute('title');
-                        delete els.progress.dataset.toGo;
-                    }
-                }
-                const toGo = data.progress ? Number(data.progress.toGo) : NaN;
-                applyToGoClasses(els.togoBlock, toGo);
-                applyToGoClasses(els.cardWrap, toGo);
-                if (els.callBtn && toGo === 0) {
-                    els.callBtn.classList.add('guest-bingo-call--ready');
-                } else if (els.callBtn) {
-                    els.callBtn.classList.remove('guest-bingo-call--ready');
-                }
+                updateCallUi(stackCards, activeSerial, data);
                 if (els.meta) {
                     let t = data.active ? (data.paused ? 'Paused' : 'Live') : 'Waiting to start';
                     if (data.paused) {
@@ -609,7 +700,6 @@
                     els.callBtn.textContent = 'Call — ' + label;
                     els.callBtn.disabled = !data.active || !!data.paused;
                 }
-                renderCard(data.card.grid, data.calledBalls, data.marks);
             } catch (e) {
                 /* ignore transient */
             }

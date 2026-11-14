@@ -2802,16 +2802,34 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     const called = new Set(state.calledBalls || []);
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
     const progress = progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
+    const calledList = state.calledBalls || [];
+    const allCards = access.cards
+        .map((c) => {
+            const p = guestBingoCardProgress(c, slug, gameId);
+            const cardProgress = progressTowardClaim(c.grid, calledList, state.playingFor, prizeLabel);
+            return {
+                serial: c.serial,
+                grid: c.grid,
+                marks: c.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
+                toGo: p.toGo,
+                progressLabel: p.label,
+                progress: cardProgress
+            };
+        })
+        .sort((a, b) => a.toGo - b.toGo || String(a.serial).localeCompare(String(b.serial)));
     res.json({
         game: { id: game.id, title: game.title, status: game.status },
         cardLimit,
         guestCards,
+        allCards,
         canGrabMore: access.cards.length < cardLimit,
         card: { serial: card.serial, grid: card.grid },
-        calledBalls: state.calledBalls || [],
+        calledBalls: calledList,
         lastBall: state.lastBall,
         playingFor: state.playingFor,
         playingForLabel: state.playingForLabel,
+        ballCount: state.ballCount || game.ballCount || 90,
+        calledCount: calledList.length,
         phase: state.phase,
         active: state.active,
         paused: state.paused,

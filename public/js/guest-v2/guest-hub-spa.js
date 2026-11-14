@@ -231,32 +231,17 @@
                     '<input type="checkbox" data-bingo-auto-dab checked> Auto-dabber' +
                 '</label>' +
                 '<button type="button" class="gh-btn gh-btn--outline gh-bingo-grab-another mb-2" data-bingo-grab-another hidden>Grab another virtual card</button>' +
-                '<div class="guest-bingo-card-picks" data-bingo-card-picks hidden></div>' +
-                '<div class="guest-bingo-card-wrap" data-bingo-card-wrap>' +
-                    '<header class="guest-bingo-card-head">' +
-                        '<div class="guest-bingo-card-head__top">' +
-                            '<div class="guest-bingo-card-head__serial">' +
-                                '<span class="guest-bingo-card-head__label">Your card</span>' +
-                                '<span class="guest-bingo-card-head__serial-row">' +
-                                    '<span class="guest-bingo-card-head__mode" data-bingo-card-mode hidden></span>' +
-                                    '<strong class="guest-bingo-card-head__serial-val" data-bingo-serial title="">—</strong>' +
-                                '</span>' +
-                            '</div>' +
-                            '<div class="guest-bingo-card-head__togo guest-bingo-togo-block" data-bingo-togo-block>' +
-                                '<span class="guest-bingo-card-head__label">To go</span>' +
-                                '<span class="guest-bingo-card-head__togo-val" data-bingo-progress aria-label="">—</span>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="guest-bingo-card-recent" aria-label="Last five numbers called">' +
-                            '<span class="guest-bingo-card-head__label">Recent calls</span>' +
-                            '<div class="guest-bingo-card-recent__track" data-bingo-recent-balls>' +
-                                '<span class="guest-bingo-recent-empty">—</span></div>' +
-                        '</div>' +
-                    '</header>' +
-                    '<div data-bingo-card class="guest-bingo-card-grid gh-bingo-card" aria-label="Your bingo card"></div>' +
+                '<div class="guest-bingo-callboard" data-bingo-recent-strip aria-label="Called numbers and prizes">' +
+                    '<div class="guest-bingo-callboard__main">' +
+                        '<div class="guest-bingo-callboard__balls" data-bingo-recent-balls>' +
+                            '<span class="guest-bingo-recent-empty">—</span></div>' +
+                        '<p class="guest-bingo-callboard__progress" data-bingo-call-progress hidden></p>' +
+                    '</div>' +
+                    '<div class="guest-bingo-prize-bar" data-bingo-prize-bar aria-label="Prizes"></div>' +
                 '</div>' +
+                '<div class="guest-bingo-cards-stack guest-bingo-tickets" data-bingo-cards-stack></div>' +
                 '<span data-bingo-last-ball hidden aria-hidden="true">—</span>' +
-                '<p class="gh-bingo-prize" data-bingo-playing-for></p>' +
+                '<p class="gh-bingo-prize visually-hidden" data-bingo-playing-for></p>' +
                 '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call" data-bingo-call>Call</button>' +
                 '<p class="gh-bingo-claim-result" data-bingo-claim-result role="status"></p>' +
             '</div>' +

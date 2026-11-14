@@ -2879,27 +2879,43 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
     const existingCount = bingoDb.countAssignedCardsForPlayer(gameId, customerName);
     if (existingCount > 0 && bingoGuestPlayInProgress(slug, gameId)) {
         return res.status(400).json({
-            error: 'Game in progress — you can’t grab another virtual card now'
+            error: 'Game in progress — buy more tickets when this game ends'
         });
     }
     const maxCards = bingoMaxVirtualCardsForGame(req.event, game);
-    const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, {
+    const remaining = Math.max(0, maxCards - existingCount);
+    if (remaining <= 0) {
+        return bingoAssignErrorResponse(res, 'card_limit_reached');
+    }
+    const wantQty = Math.max(1, Math.min(remaining, Number(req.body.quantity) || 1));
+    const assignOpts = {
         maxCards,
         eventId: req.event.id,
         eventSlug: req.event.slug,
         ballCount: game.ballCount
-    });
-    if (assignResult?.error) {
-        return bingoAssignErrorResponse(res, assignResult.error);
+    };
+    const cards = [];
+    let lastResult = null;
+    for (let i = 0; i < wantQty; i++) {
+        const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, assignOpts);
+        if (assignResult?.error) {
+            if (cards.length) break;
+            return bingoAssignErrorResponse(res, assignResult.error);
+        }
+        cards.push(assignResult.card);
+        lastResult = assignResult;
     }
-    const card = assignResult.card;
+    const card = cards[cards.length - 1];
     res.json({
         success: true,
         serial: card.serial,
+        serials: cards.map((c) => c.serial),
+        quantity: cards.length,
         gameId: game.id,
-        cardCount: assignResult.cardCount,
-        cardLimit: assignResult.cardLimit,
-        canGrabMore: assignResult.canGrabMore,
+        cardCount: lastResult.cardCount,
+        cardLimit: lastResult.cardLimit,
+        canGrabMore: lastResult.canGrabMore,
+        partial: cards.length < wantQty,
         playUrl: `/event/${req.event.slug}/bingo?game=${game.id}`
     });
 });

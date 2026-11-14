@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=27" rel="stylesheet">
+    <link href="/css/bingo.css?v=31" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
 </head>
@@ -19,7 +19,7 @@
         </header>
 
         <div id="guestBingoJoin" class="guest-bingo-panel" data-bingo-join>
-            <p class="text-muted small mb-3">Grab a <strong>virtual card</strong> on your phone or link a <strong>paper card</strong> by serial.</p>
+            <p class="text-muted small mb-3">Buy <strong>virtual tickets</strong> on your phone or link a <strong>paper card</strong> by serial.</p>
             <div id="guestBingoGamesList" class="guest-bingo-games-list" data-bingo-games-list></div>
         </div>
 
@@ -31,6 +31,9 @@
                 </button>
                 <p class="guest-bingo-meta" id="guestBingoMeta" data-bingo-meta></p>
             </div>
+            <button type="button" class="btn btn-outline-light guest-bingo-buy-tickets mb-2 w-100" data-bingo-buy-tickets hidden>
+                Buy tickets
+            </button>
             <div class="guest-bingo-play-options" role="group" aria-label="Play options">
                 <label class="guest-bingo-opt">
                     <span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-highlighter"></i></span>
@@ -96,7 +99,7 @@
         window.eventSlug = '<%= eventSlug %>';
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
-    <script src="/js/guest-bingo-play.js?v=22"></script>
+    <script src="/js/guest-bingo-play.js?v=24"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

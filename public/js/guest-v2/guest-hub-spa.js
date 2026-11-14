@@ -220,7 +220,7 @@
     function bingoPanelHtml() {
         return '<div class="gh-bingo" data-bingo-root>' +
             '<h2 class="gh-bingo-heading">Bingo</h2>' +
-            '<p class="gh-bingo-lede">Virtual cards on this phone or link a printed card by serial.</p>' +
+            '<p class="gh-bingo-lede">Buy virtual tickets on this phone or link a printed card by serial.</p>' +
             '<div class="gh-bingo-panel" data-bingo-join>' +
             '<div data-bingo-games-list class="gh-bingo-games"></div></div>' +
             '<div class="gh-bingo-panel" data-bingo-play hidden>' +
@@ -243,7 +243,7 @@
                             '<span class="guest-bingo-opt__hint">Speak each ball on this phone</span></span>' +
                         '<input class="guest-bingo-opt__input" type="checkbox" data-bingo-caller-sound checked>' +
                         '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label></div>' +
-                '<button type="button" class="gh-btn gh-btn--outline gh-bingo-grab-another mb-2" data-bingo-grab-another hidden>Grab another virtual card</button>' +
+                '<button type="button" class="gh-btn gh-btn--outline gh-bingo-buy-tickets mb-2" data-bingo-buy-tickets hidden>Buy tickets</button>' +
                 '<div class="guest-bingo-intro" data-bingo-intro hidden aria-live="polite">' +
                     '<div class="guest-bingo-intro__card">' +
                         '<p class="guest-bingo-intro__eyebrow"><i class="fas fa-table-cells" aria-hidden="true"></i> Bingo starting soon</p>' +

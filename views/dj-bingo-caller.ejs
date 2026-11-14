@@ -11,7 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=29" rel="stylesheet">
+    <link href="/css/bingo.css?v=30" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -145,6 +145,16 @@
                     </button>
                     <p id="bingoVerifyResult" class="mdj-bingo-verify-result small mb-0 mt-2"></p>
                 </div>
+
+                <div class="mdj-caller-players">
+                    <div class="mdj-caller-players-head">
+                        <h3 class="mdj-caller-panel-title mdj-caller-players-title mb-0">
+                            <i class="fas fa-users me-1 text-info" aria-hidden="true"></i> Players
+                        </h3>
+                        <span id="bingoCallerPlayerCount" class="mdj-caller-players-count" aria-live="polite"></span>
+                    </div>
+                    <div id="bingoPlayersList" class="mdj-caller-players-list" role="list" aria-label="Assigned players"></div>
+                </div>
             </section>
 
             <section class="mdj-caller-board mdj-caller-panel mdj-caller-panel--board" aria-label="Number board">
@@ -166,6 +176,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=22"></script>
+    <script src="/js/dj-bingo.js?v=23"></script>
 </body>
 </html>

@@ -38,6 +38,7 @@
         prizeWinners: document.getElementById('bingoPrizeWinners'),
         gamesList: document.getElementById('bingoGamesList'),
         playersList: document.getElementById('bingoPlayersList'),
+        callerPlayerCount: document.getElementById('bingoCallerPlayerCount'),
         assignName: document.getElementById('bingoAssignName'),
         assignResult: document.getElementById('bingoAssignResult')
     };
@@ -487,17 +488,85 @@
         }
     }
 
+    function shortCallerSerial(serial) {
+        const s = String(serial || '');
+        if (s.length <= 14) return s;
+        return s.slice(0, 5) + '…' + s.slice(-5);
+    }
+
+    function renderCallerPlayersList(players, pendingClaims) {
+        if (!els.playersList) return;
+        const pendingNames = new Set(
+            (pendingClaims || []).map((c) =>
+                String(c.customer_name || c.customerName || '')
+                    .trim()
+                    .toLowerCase()
+            )
+        );
+        const byName = new Map();
+        (players || []).forEach((p) => {
+            const name = String(p.assignedTo || '').trim() || '—';
+            if (!byName.has(name)) byName.set(name, []);
+            byName.get(name).push(p.serial);
+        });
+        const rows = [...byName.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }));
+        if (els.callerPlayerCount) {
+            const cardTotal = (players || []).length;
+            els.callerPlayerCount.textContent = rows.length
+                ? rows.length + ' · ' + cardTotal + ' card' + (cardTotal === 1 ? '' : 's')
+                : '';
+        }
+        if (!rows.length) {
+            els.playersList.innerHTML = '<p class="mdj-caller-players-empty">No assigned cards yet.</p>';
+            return;
+        }
+        els.playersList.innerHTML = rows
+            .map(function (entry) {
+                const name = entry[0];
+                const serials = entry[1];
+                const pending = pendingNames.has(name.toLowerCase());
+                const serialHint =
+                    serials.length === 1
+                        ? escapeHtml(shortCallerSerial(serials[0]))
+                        : serials.length + ' cards';
+                return (
+                    '<div class="mdj-caller-player-row' +
+                    (pending ? ' has-pending-claim' : '') +
+                    '" role="listitem">' +
+                    '<span class="mdj-caller-player-name">' +
+                    escapeHtml(name) +
+                    (pending ? ' <span class="mdj-caller-player-pending" title="Pending claim">●</span>' : '') +
+                    '</span>' +
+                    '<span class="mdj-caller-player-meta" title="' +
+                    escapeHtml(serials.join(', ')) +
+                    '">' +
+                    escapeHtml(serialHint) +
+                    '</span></div>'
+                );
+            })
+            .join('');
+    }
+
     async function loadPlayers() {
         const eid = eventId();
         const gid = getActiveGameId();
         if (!els.playersList || !eid || !gid) {
-            if (els.playersList) els.playersList.innerHTML = '<span class="text-muted">Select a game to see players.</span>';
+            if (els.playersList) {
+                els.playersList.innerHTML = isCallerPage
+                    ? '<p class="mdj-caller-players-empty">Select a game to see players.</p>'
+                    : '<span class="text-muted">Select a game to see players.</span>';
+            }
+            if (els.callerPlayerCount) els.callerPlayerCount.textContent = '';
             return;
         }
         try {
             const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gid}/players`);
             const data = await res.json();
             const players = data.players || [];
+            if (isCallerPage) {
+                renderCallerPlayersList(players, data.pendingClaims);
+                return;
+            }
             if (!players.length) {
                 els.playersList.innerHTML = '<span class="text-muted">No assigned cards yet.</span>';
                 return;
@@ -509,7 +578,9 @@
                 )
                 .join('');
         } catch (e) {
-            els.playersList.innerHTML = '<span class="text-danger">Could not load players.</span>';
+            els.playersList.innerHTML = isCallerPage
+                ? '<p class="mdj-caller-players-empty mdj-caller-players-empty--err">Could not load players.</p>'
+                : '<span class="text-danger">Could not load players.</span>';
         }
     }
 
@@ -789,6 +860,7 @@
                 }
             }
             renderStatus(state);
+            if (isCallerPage) loadPlayers();
             if (!state.active) applyGameToCallerSetup(activeGameFromCache());
         } catch (e) {
             console.error('Bingo state fetch failed', e);

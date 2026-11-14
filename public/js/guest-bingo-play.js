@@ -223,7 +223,7 @@
             callProgress: q('[data-bingo-call-progress]'),
             prizeBar: q('[data-bingo-prize-bar]'),
             cardStack: q('[data-bingo-cards-stack]'),
-            grabAnother: q('[data-bingo-grab-another]'),
+            buyTickets: q('[data-bingo-buy-tickets]'),
             backLobby: q('[data-bingo-back-lobby]'),
             intro: q('[data-bingo-intro]'),
             introPrize: q('[data-bingo-intro-prize]'),
@@ -267,9 +267,147 @@
         let introTotalSec = 30;
         let introTickTimer = null;
 
-        if (els.grabAnother) {
-            els.grabAnother.addEventListener('click', function () {
-                if (activeGameId) joinVirtual(activeGameId);
+        let buyModalEls = null;
+
+        function ticketsRemaining(cardLimit, currentCount) {
+            const limit = Math.max(1, Number(cardLimit) || 1);
+            const have = Math.max(0, Number(currentCount) || 0);
+            return Math.max(0, limit - have);
+        }
+
+        function ensureBuyTicketsModal() {
+            if (buyModalEls) return buyModalEls;
+            const host =
+                typeof document !== 'undefined' && document.body
+                    ? document.body
+                    : root.querySelector('[data-bingo-root]') ||
+                      root.querySelector('[data-bingo-play]') ||
+                      root;
+            const wrap = document.createElement('div');
+            wrap.className = 'guest-bingo-buy-modal';
+            wrap.setAttribute('data-bingo-buy-backdrop', '');
+            wrap.hidden = true;
+            wrap.innerHTML =
+                '<div class="guest-bingo-buy-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="guestBingoBuyTitle">' +
+                '<h2 class="guest-bingo-buy-modal__title" id="guestBingoBuyTitle">Buy tickets</h2>' +
+                '<p class="guest-bingo-buy-modal__lede" data-bingo-buy-lede>Choose how many virtual cards to add on this phone.</p>' +
+                '<div class="guest-bingo-buy-modal__qty">' +
+                '<button type="button" class="guest-bingo-buy-modal__step" data-bingo-buy-less aria-label="Fewer tickets">−</button>' +
+                '<input type="number" class="guest-bingo-buy-modal__input" data-bingo-buy-qty min="1" max="10" value="1" inputmode="numeric" autocomplete="off">' +
+                '<button type="button" class="guest-bingo-buy-modal__step" data-bingo-buy-more aria-label="More tickets">+</button>' +
+                '</div>' +
+                '<p class="guest-bingo-buy-modal__hint" data-bingo-buy-hint></p>' +
+                '<p class="guest-bingo-buy-modal__err" data-bingo-buy-err hidden></p>' +
+                '<div class="guest-bingo-buy-modal__actions">' +
+                '<button type="button" class="guest-bingo-buy-modal__cancel" data-bingo-buy-cancel>Cancel</button>' +
+                '<button type="button" class="guest-bingo-buy-modal__confirm gh-btn gh-btn--accent" data-bingo-buy-confirm>Get tickets</button>' +
+                '</div></div>';
+            host.appendChild(wrap);
+            buyModalEls = {
+                backdrop: wrap,
+                qty: wrap.querySelector('[data-bingo-buy-qty]'),
+                hint: wrap.querySelector('[data-bingo-buy-hint]'),
+                err: wrap.querySelector('[data-bingo-buy-err]'),
+                less: wrap.querySelector('[data-bingo-buy-less]'),
+                more: wrap.querySelector('[data-bingo-buy-more]'),
+                cancel: wrap.querySelector('[data-bingo-buy-cancel]'),
+                confirm: wrap.querySelector('[data-bingo-buy-confirm]')
+            };
+            let pendingGameId = null;
+
+            function closeBuyModal() {
+                wrap.hidden = true;
+                pendingGameId = null;
+                if (buyModalEls.err) {
+                    buyModalEls.err.hidden = true;
+                    buyModalEls.err.textContent = '';
+                }
+            }
+
+            function syncQtyBounds(max) {
+                const m = Math.max(1, max);
+                if (buyModalEls.qty) {
+                    buyModalEls.qty.max = String(m);
+                    buyModalEls.qty.min = '1';
+                    let v = parseInt(buyModalEls.qty.value, 10);
+                    if (!Number.isFinite(v) || v < 1) v = 1;
+                    if (v > m) v = m;
+                    buyModalEls.qty.value = String(v);
+                }
+                if (buyModalEls.hint) {
+                    buyModalEls.hint.textContent =
+                        'You can add up to ' + m + ' ticket' + (m === 1 ? '' : 's') + ' for this game.';
+                }
+            }
+
+            wrap.addEventListener('click', function (e) {
+                if (e.target === wrap) closeBuyModal();
+            });
+
+            buyModalEls.cancel.addEventListener('click', closeBuyModal);
+
+            buyModalEls.less.addEventListener('click', function () {
+                const max = parseInt(buyModalEls.qty.max, 10) || 1;
+                let v = parseInt(buyModalEls.qty.value, 10) || 1;
+                v = Math.max(1, v - 1);
+                buyModalEls.qty.value = String(v);
+            });
+
+            buyModalEls.more.addEventListener('click', function () {
+                const max = parseInt(buyModalEls.qty.max, 10) || 1;
+                let v = parseInt(buyModalEls.qty.value, 10) || 1;
+                v = Math.min(max, v + 1);
+                buyModalEls.qty.value = String(v);
+            });
+
+            buyModalEls.confirm.addEventListener('click', async function () {
+                if (!pendingGameId) return;
+                const qty = parseInt(buyModalEls.qty.value, 10) || 1;
+                buyModalEls.confirm.disabled = true;
+                if (buyModalEls.err) buyModalEls.err.hidden = true;
+                const result = await joinVirtual(pendingGameId, qty);
+                buyModalEls.confirm.disabled = false;
+                if (!result.ok) {
+                    if (buyModalEls.err) {
+                        buyModalEls.err.hidden = false;
+                        buyModalEls.err.textContent = result.error || 'Could not get tickets';
+                    }
+                    return;
+                }
+                closeBuyModal();
+            });
+
+            buyModalEls.open = function (gameId, remaining) {
+                pendingGameId = gameId;
+                const max = Math.max(1, remaining);
+                syncQtyBounds(max);
+                buyModalEls.qty.value = String(Math.min(max, max > 2 ? 2 : 1));
+                wrap.hidden = false;
+            };
+
+            return buyModalEls;
+        }
+
+        function openBuyTicketsModal(gameId, remaining) {
+            if (!opts.customerName()) return { ok: false, error: 'Enter your name on the hub first' };
+            if (remaining <= 0) return { ok: false, error: 'No more tickets available for this game' };
+            const modal = ensureBuyTicketsModal();
+            modal.open(gameId, remaining);
+            return { ok: true };
+        }
+
+        if (els.buyTickets) {
+            els.buyTickets.addEventListener('click', function () {
+                if (!activeGameId) return;
+                const data = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
+                const have =
+                    data && data.allCards
+                        ? data.allCards.length
+                        : data && data.guestCards
+                          ? data.guestCards.length
+                          : 0;
+                const rem = data ? ticketsRemaining(data.cardLimit, have) : 1;
+                openBuyTicketsModal(activeGameId, rem);
             });
         }
 
@@ -689,9 +827,9 @@
                             ? g.playInProgress
                                 ? 'Game in progress'
                                 : g.canGrabMore
-                                  ? 'More virtual cards available'
-                                  : 'Max virtual cards for this game'
-                            : 'Virtual card on your phone — created when you join';
+                                  ? 'More tickets available'
+                                  : 'Maximum tickets for this game'
+                            : 'Virtual tickets on your phone';
                         const startLine = g.advertisedStartAt
                             ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
                             : '';
@@ -705,10 +843,12 @@
                                   '</span>'
                                 : '';
                         const cta = hasCards
-                            ? g.canGrabMore
-                                ? 'Play · grab another card'
-                                : 'Continue playing'
-                            : 'Grab virtual card';
+                            ? g.playInProgress
+                                ? 'Continue playing'
+                                : g.canGrabMore
+                                  ? 'Continue · more tickets'
+                                  : 'Continue playing'
+                            : 'Buy tickets';
                         return (
                             '<div class="gh-bingo-game-block" data-bingo-game-block="' +
                             g.id +
@@ -759,7 +899,8 @@
                             }
                             startPlay();
                         } else {
-                            joinVirtual(gid);
+                            const rem = ticketsRemaining(g.cardLimit, g.guestCardCount || 0);
+                            openBuyTicketsModal(gid, rem);
                         }
                     });
                 });
@@ -775,16 +916,21 @@
             }
         }
 
-        async function joinVirtual(gameId) {
+        async function joinVirtual(gameId, quantity) {
             const name = opts.customerName();
             if (!name) return { ok: false, error: 'name' };
+            const qty = Math.max(1, Math.min(10, Number(quantity) || 1));
             try {
                 const res = await fetch(
                     '/api/event/' + encodeURIComponent(slug) + '/bingo/games/' + gameId + '/join',
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ customerName: name, deviceId: opts.deviceId() })
+                        body: JSON.stringify({
+                            customerName: name,
+                            deviceId: opts.deviceId(),
+                            quantity: qty
+                        })
                     }
                 );
                 const data = await res.json();
@@ -907,12 +1053,14 @@
                 }
                 lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
-                if (els.grabAnother) {
+                if (els.buyTickets) {
                     const inProgress =
                         !!data.active ||
                         data.phase === 'intro' ||
                         (data.calledCount != null && data.calledCount > 0);
-                    els.grabAnother.hidden = !data.canGrabMore || inProgress;
+                    const have = data.allCards ? data.allCards.length : 0;
+                    const rem = ticketsRemaining(data.cardLimit, have);
+                    els.buyTickets.hidden = !data.canGrabMore || inProgress || rem <= 0;
                 }
                 updateCallUi(stackCards, activeSerial, data);
                 syncGuestIntro(data);

@@ -443,6 +443,126 @@ body.mdj-guest-bingo-page {
     filter: blur(1px);
 }
 
+.guest-bingo-buy-tickets {
+    font-weight: 700;
+    border-color: rgba(255, 200, 120, 0.45) !important;
+    color: #fde68a !important;
+}
+
+.guest-bingo-buy-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(5, 8, 18, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+.guest-bingo-buy-modal[hidden] {
+    display: none !important;
+}
+
+.guest-bingo-buy-modal__dialog {
+    width: min(100%, 22rem);
+    padding: 1.15rem 1.1rem 1rem;
+    border-radius: 16px;
+    background: linear-gradient(165deg, rgba(30, 35, 55, 0.98), rgba(12, 14, 28, 0.98));
+    border: 1px solid rgba(255, 180, 90, 0.35);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+.guest-bingo-buy-modal__title {
+    margin: 0 0 0.35rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+}
+
+.guest-bingo-buy-modal__lede {
+    margin: 0 0 0.85rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.58);
+    line-height: 1.4;
+}
+
+.guest-bingo-buy-modal__qty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    margin-bottom: 0.55rem;
+}
+
+.guest-bingo-buy-modal__step {
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.guest-bingo-buy-modal__input {
+    width: 4.5rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    min-height: 2.75rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.35);
+    color: #fff;
+}
+
+.guest-bingo-buy-modal__hint {
+    margin: 0 0 0.65rem;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+}
+
+.guest-bingo-buy-modal__err {
+    margin: 0 0 0.5rem;
+    font-size: 0.78rem;
+    color: #fca5a5;
+    text-align: center;
+}
+
+.guest-bingo-buy-modal__err[hidden] {
+    display: none !important;
+}
+
+.guest-bingo-buy-modal__actions {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 0.5rem;
+}
+
+.guest-bingo-buy-modal__cancel {
+    min-height: 2.75rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.75);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.guest-bingo-buy-modal__confirm {
+    min-height: 2.75rem;
+    border-radius: 12px;
+    font-weight: 800;
+    border: none;
+    cursor: pointer;
+}
+
 .guest-bingo-play-options {
     display: flex;
     flex-direction: column;
@@ -3743,6 +3863,106 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
 
 .mdj-caller-verify-btn {
     min-height: 54px;
+}
+
+.mdj-caller-players {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
+.mdj-caller-players-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+    flex-shrink: 0;
+}
+
+.mdj-caller-players-title {
+    font-size: 0.95rem;
+}
+
+.mdj-caller-players-count {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+}
+
+.mdj-caller-players-list {
+    flex: 1 1 auto;
+    min-height: 6rem;
+    max-height: min(32vh, 280px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.mdj-caller-players-empty {
+    margin: 0;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.45);
+}
+
+.mdj-caller-players-empty--err {
+    color: #f87171;
+}
+
+.mdj-caller-player-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.55rem;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mdj-caller-player-row.has-pending-claim {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.08);
+}
+
+.mdj-caller-player-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mdj-caller-player-pending {
+    color: #fbbf24;
+    font-size: 0.65rem;
+    vertical-align: middle;
+}
+
+.mdj-caller-player-meta {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.48);
+    flex-shrink: 0;
+    max-width: 45%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mdj-caller-panel--claims {
+    display: flex;
+    flex-direction: column;
 }
 
 .mdj-caller-panel--board {

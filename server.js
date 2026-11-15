@@ -797,11 +797,12 @@ function inferCardFormatFromCards(cards) {
 
 /** Balls are being called (or claim break) — guests cannot buy more virtual cards. */
 function bingoGuestPlayInProgress(slug, gameId) {
-    const state = bingoSession.getBingoState(slug, gameId);
-    if (state.calledBalls && state.calledBalls.length > 0) return true;
-    const phase = String(state.phase || '');
-    if (phase === 'calling' || phase === 'claim_break') return true;
-    return false;
+    const pub = bingoSession.publicBingoState(slug, gameId);
+    if (!pub) return false;
+    if (pub.calledBalls && pub.calledBalls.length > 0) return true;
+    if (pub.phase === 'claim_break') return true;
+    if (pub.phase === 'intro' || pub.phase === 'resume') return false;
+    return !!(pub.active && pub.phase === 'calling');
 }
 
 function bingoGuestIdleBeforeCall(state) {

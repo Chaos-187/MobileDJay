@@ -167,8 +167,11 @@
     function guestCallerHasStarted(data) {
         if (!data) return false;
         if (guestBingoCalledCount(data) > 0) return true;
+        if (data.playInProgress) return true;
         const phase = String(data.phase || '');
-        return phase === 'calling' || phase === 'claim_break';
+        if (phase === 'claim_break') return true;
+        if (phase === 'intro' || phase === 'resume') return false;
+        return !!(data.active && phase === 'calling');
     }
 
     function bingoGuestPreClaimPlay(data) {
@@ -572,14 +575,19 @@
             return Math.max(0, limit - have);
         }
 
+        function guestModalHost() {
+            if (typeof document === 'undefined') return root;
+            return (
+                document.getElementById('ghApp') ||
+                document.body ||
+                root.querySelector('[data-bingo-root]') ||
+                root
+            );
+        }
+
         function ensureBuyTicketsModal() {
             if (buyModalEls) return buyModalEls;
-            const host =
-                typeof document !== 'undefined' && document.body
-                    ? document.body
-                    : root.querySelector('[data-bingo-root]') ||
-                      root.querySelector('[data-bingo-play]') ||
-                      root;
+            const host = guestModalHost();
             const wrap = document.createElement('div');
             wrap.className = 'guest-bingo-buy-modal';
             wrap.setAttribute('data-bingo-buy-backdrop', '');
@@ -614,6 +622,8 @@
 
             function closeBuyModal() {
                 wrap.hidden = true;
+                wrap.setAttribute('hidden', '');
+                document.documentElement.classList.remove('guest-bingo-buy-open');
                 pendingGameId = null;
                 if (buyModalEls.err) {
                     buyModalEls.err.hidden = true;
@@ -679,7 +689,9 @@
                 const max = Math.max(1, remaining);
                 syncQtyBounds(max);
                 buyModalEls.qty.value = String(Math.min(max, max > 2 ? 2 : 1));
+                wrap.removeAttribute('hidden');
                 wrap.hidden = false;
+                document.documentElement.classList.add('guest-bingo-buy-open');
             };
 
             return buyModalEls;
@@ -908,6 +920,9 @@
                     if (introEndsAtLocal) paintGuestIntro(lastStackPayload.data);
                     if (resumeEndsAtLocal) paintGuestResume(lastStackPayload.data);
                     paintGuestCountdownBar(lastStackPayload.data);
+                    if (introEndsAtLocal && guestIntroRemainingMs(lastStackPayload.data) <= 0) {
+                        refreshPlay();
+                    }
                 }
             }, 250);
         }
@@ -2259,16 +2274,22 @@
             }
         }
 
-        if (els.callBtn) {
-            els.callBtn.addEventListener('click', function () {
-                const mode = els.callBtn.getAttribute('data-dock-mode');
-                if (mode === 'lobby') {
-                    backToLobby();
-                    return;
-                }
-                if (mode === 'buy') {
-                    if (!activeGameId || els.callBtn.disabled) return;
-                    const data = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
+        function playDataForDock() {
+            return lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
+        }
+
+        function handleDockCallButtonClick(btn) {
+            if (!btn) return;
+            els.callBtn = btn;
+            const mode = btn.getAttribute('data-dock-mode');
+            if (mode === 'lobby') {
+                backToLobby();
+                return;
+            }
+            if (mode === 'buy') {
+                if (!activeGameId || btn.disabled) return;
+                const tryOpenBuy = function () {
+                    const data = playDataForDock();
                     const rem = guestTicketRemaining(data);
                     if (!data || !data.canGrabMore || rem <= 0) {
                         const resultEl = els.claimResult;
@@ -2284,11 +2305,22 @@
                     if (opened && opened.ok === false && opened.error && els.claimResult) {
                         els.claimResult.textContent = opened.error;
                     }
+                };
+                if (!playDataForDock()) {
+                    refreshPlay().then(tryOpenBuy);
                     return;
                 }
-                sendClaim(playingFor);
-            });
+                tryOpenBuy();
+                return;
+            }
+            sendClaim(playingFor);
         }
+
+        root.addEventListener('click', function (e) {
+            const btn = e.target && e.target.closest ? e.target.closest('[data-bingo-call]') : null;
+            if (!btn || !root.contains(btn)) return;
+            handleDockCallButtonClick(btn);
+        });
 
         qq('[data-bingo-claim]').forEach(function (btn) {
             btn.addEventListener('click', function () {

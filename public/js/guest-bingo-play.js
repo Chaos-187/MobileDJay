@@ -753,7 +753,13 @@
             if (data.lastBall == null) return;
             if (data.lastBall === lastSpokenBall) return;
             lastSpokenBall = data.lastBall;
-            speakBallNumber(data.lastBall);
+            const theme =
+                (data && (data.bingoTheme || (data.game && data.game.bingoTheme))) || 'default';
+            if (window.MdjBingoTheme && typeof window.MdjBingoTheme.announceCalledBall === 'function') {
+                window.MdjBingoTheme.announceCalledBall(theme, data.lastBall, speakBallNumber);
+            } else {
+                speakBallNumber(data.lastBall);
+            }
         }
 
         function stopIntroTick() {

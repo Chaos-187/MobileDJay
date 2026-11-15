@@ -61,7 +61,6 @@
     let prevVoiceCall = false;
     let lastGameId = 0;
     let displayConfigBusy = false;
-    let verifiedCallSound = null;
     let lastVerifiedFlashAt = 0;
     let lastBingoTheme = null;
 
@@ -331,17 +330,17 @@
         const stamp = flash.at || Date.now();
         if (stamp === lastVerifiedFlashAt) return;
         lastVerifiedFlashAt = stamp;
-        if (!verifiedCallSound) {
-            verifiedCallSound = new Audio('/audio/verified_call.mp3');
-            verifiedCallSound.preload = 'auto';
+        const theme = (lastState && lastState.bingoTheme) || 'default';
+        if (window.MdjBingoTheme && typeof window.MdjBingoTheme.playVerifiedCallSound === 'function') {
+            window.MdjBingoTheme.playVerifiedCallSound(theme);
+            return;
         }
         try {
-            verifiedCallSound.currentTime = 0;
-            const playPromise = verifiedCallSound.play();
+            const fallback = new Audio('/audio/verified_call.mp3');
+            fallback.currentTime = 0;
+            const playPromise = fallback.play();
             if (playPromise && typeof playPromise.catch === 'function') {
-                playPromise.catch(function () {
-                    /* autoplay policy — needs a user gesture on the tab */
-                });
+                playPromise.catch(function () {});
             }
         } catch (e) {
             /* ignore */
@@ -475,7 +474,12 @@
             return;
         }
         lastSpokenBall = state.lastBall;
-        speakBallNumber(state.lastBall);
+        const theme = state.bingoTheme || 'default';
+        if (window.MdjBingoTheme && typeof window.MdjBingoTheme.announceCalledBall === 'function') {
+            window.MdjBingoTheme.announceCalledBall(theme, state.lastBall, speakBallNumber);
+        } else {
+            speakBallNumber(state.lastBall);
+        }
     }
 
     function hideUnderlays() {

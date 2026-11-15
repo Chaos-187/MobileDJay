@@ -632,16 +632,16 @@
         return d.innerHTML;
     }
 
-    let verifyCallSound = null;
-
-    function playVerifiedCallSoundLocal() {
-        if (!verifyCallSound) {
-            verifyCallSound = new Audio('/audio/verified_call.mp3');
-            verifyCallSound.preload = 'auto';
+    function playVerifiedCallSoundLocal(theme) {
+        const t = theme || els.themeSelect?.value || 'default';
+        if (window.MdjBingoTheme && typeof window.MdjBingoTheme.playVerifiedCallSound === 'function') {
+            window.MdjBingoTheme.playVerifiedCallSound(t);
+            return;
         }
         try {
-            verifyCallSound.currentTime = 0;
-            const p = verifyCallSound.play();
+            const fallback = new Audio('/audio/verified_call.mp3');
+            fallback.currentTime = 0;
+            const p = fallback.play();
             if (p && typeof p.catch === 'function') p.catch(function () {});
         } catch (e) {
             /* ignore */

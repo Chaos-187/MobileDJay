@@ -1071,6 +1071,25 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     margin: 0 0 0.65rem;
 }
 
+.gh-bingo .guest-bingo-play-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    margin: 0 0 0.5rem;
+    padding-top: 0.1rem;
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--gh-bg, #0a0a0f) 96%, transparent) 70%,
+        transparent
+    );
+}
+
+.gh-bingo .guest-bingo-top-buy {
+    width: 100%;
+    min-height: 2.85rem;
+    font-weight: 800;
+}
+
 .gh-bingo .guest-bingo-play-toolbar {
     margin-bottom: 0.5rem;
 }

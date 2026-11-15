@@ -19,6 +19,27 @@ body.mdj-guest-bingo-page {
     font-size: 0.9rem;
 }
 
+.guest-bingo-play-topbar {
+    margin: 0 0 0.65rem;
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    padding-top: 0.15rem;
+}
+
+.guest-bingo-play-topbar[hidden] {
+    display: none !important;
+}
+
+.guest-bingo-top-buy {
+    width: 100%;
+    min-height: 2.85rem;
+    font-size: 1rem;
+    font-weight: 800;
+    border-radius: 14px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
 .guest-bingo-play-head,
 .guest-bingo-play-toolbar {
     display: flex;

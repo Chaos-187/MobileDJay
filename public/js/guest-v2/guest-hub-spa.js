@@ -225,6 +225,9 @@
             '<div class="gh-bingo-panel" data-bingo-join>' +
             '<div data-bingo-games-list class="gh-bingo-games"></div></div></div>' +
             '<div class="gh-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>' +
+                '<div class="guest-bingo-play-topbar" data-bingo-play-topbar hidden>' +
+                    '<button type="button" class="guest-bingo-top-buy gh-btn gh-btn--accent" data-bingo-buy-tickets>Buy tickets</button>' +
+                '</div>' +
                 '<div class="guest-bingo-play-toolbar">' +
                     '<button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn gh-bingo-back-lobby" data-bingo-back-lobby>' +
                         '<i class="fas fa-arrow-left" aria-hidden="true"></i><span>Back to lobby</span></button>' +
@@ -259,7 +262,7 @@
             '<div class="guest-bingo-play-dock" data-bingo-play-dock hidden>' +
                 '<div class="guest-bingo-action-bar guest-bingo-call-dock" data-bingo-call-dock>' +
                     '<p class="gh-bingo-claim-result guest-bingo-call-dock__status" data-bingo-claim-result role="status"></p>' +
-                    '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="buy">Buy tickets</button>' +
+                    '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="claim">Claim</button>' +
                     '<div class="guest-bingo-called-line" aria-label="Recent calls">' +
                         '<span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>' +
                         '<div class="guest-bingo-called-line__track" data-bingo-recent-balls dir="ltr">' +

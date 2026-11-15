@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=54" rel="stylesheet">
+    <link href="/css/bingo.css?v=55" rel="stylesheet">
     <link href="/css/bingo-themes.css?v=7" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
@@ -25,6 +25,9 @@
         </div>
 
         <div id="guestBingoPlay" class="guest-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>
+            <div class="guest-bingo-play-topbar" data-bingo-play-topbar hidden>
+                <button type="button" class="guest-bingo-top-buy btn btn-warning btn-lg w-100" data-bingo-buy-tickets>Buy tickets</button>
+            </div>
             <div class="guest-bingo-play-toolbar">
                 <button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn" data-bingo-back-lobby>
                     <i class="fas fa-arrow-left" aria-hidden="true"></i>
@@ -75,7 +78,7 @@
         <div class="guest-bingo-play-dock" data-bingo-play-dock hidden>
             <div class="guest-bingo-action-bar guest-bingo-call-dock" data-bingo-call-dock>
                 <p id="guestBingoClaimResult" class="guest-bingo-claim-result guest-bingo-call-dock__status small" data-bingo-claim-result role="status"></p>
-                <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="buy">Buy tickets</button>
+                <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="claim">Claim</button>
                 <div class="guest-bingo-called-line" aria-label="Recent calls">
                     <span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>
                     <div class="guest-bingo-called-line__track" data-bingo-recent-balls dir="ltr">
@@ -91,7 +94,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/guest-bingo-play.js?v=60"></script>
+    <script src="/js/guest-bingo-play.js?v=61"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

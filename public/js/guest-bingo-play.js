@@ -217,25 +217,46 @@
         return false;
     }
 
-    function syncBuyTicketsVisibility(buyEl, data) {
-        if (!buyEl) return;
-        const preClaim = bingoGuestPreClaimPlay(data);
+    function syncBuyTicketsVisibility(root, data) {
+        if (!root || !data) return;
         const rem = guestTicketRemaining(data);
-        const canBuy = !!(data && data.canGrabMore && rem > 0);
+        const canBuy = !!(data.canGrabMore && rem > 0 && !data.playInProgress);
         const have =
-            data && data.allCards && data.allCards.length
+            data.allCards && data.allCards.length
                 ? data.allCards.length
-                : data && data.guestCards
+                : data.guestCards
                   ? data.guestCards.length
                   : 0;
-        const show = !!(canBuy && have > 0 && preClaim);
-        if (show) {
-            buyEl.hidden = false;
-            buyEl.removeAttribute('hidden');
-            buyEl.textContent = rem > 1 ? 'Buy more · ' + rem + ' left' : 'Buy more tickets';
-        } else {
-            buyEl.hidden = true;
-            buyEl.setAttribute('hidden', '');
+        const qRoot = typeof root.querySelector === 'function' ? root : null;
+        const topBar = qRoot ? qRoot.querySelector('[data-bingo-play-topbar]') : null;
+        const label =
+            have === 0
+                ? rem > 1
+                    ? 'Get tickets · ' + rem + ' left'
+                    : 'Get tickets'
+                : rem > 1
+                  ? 'Buy tickets · ' + rem + ' left'
+                  : 'Buy tickets';
+        const buttons = qRoot ? qRoot.querySelectorAll('[data-bingo-buy-tickets]') : [];
+        buttons.forEach(function (buyEl) {
+            if (canBuy) {
+                buyEl.hidden = false;
+                buyEl.removeAttribute('hidden');
+                buyEl.disabled = false;
+                buyEl.textContent = label;
+            } else {
+                buyEl.hidden = true;
+                buyEl.setAttribute('hidden', '');
+            }
+        });
+        if (topBar) {
+            if (canBuy) {
+                topBar.removeAttribute('hidden');
+                topBar.hidden = false;
+            } else {
+                topBar.setAttribute('hidden', '');
+                topBar.hidden = true;
+            }
         }
     }
 
@@ -812,19 +833,29 @@
             hideWinnersModal();
         }
 
-        if (els.buyTickets) {
-            els.buyTickets.addEventListener('click', function () {
-                if (!activeGameId) return;
-                const data = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
-                const have =
-                    data && data.allCards
-                        ? data.allCards.length
-                        : data && data.guestCards
-                          ? data.guestCards.length
-                          : 0;
-                const rem = data ? ticketsRemaining(data.cardLimit, have) : 1;
-                openBuyTicketsModal(activeGameId, rem);
-            });
+        function openBuyFromPlayUi() {
+            if (!activeGameId) return;
+            const tryOpen = function () {
+                const data = playDataForDock();
+                const rem = guestTicketRemaining(data);
+                if (!data || !data.canGrabMore || rem <= 0 || data.playInProgress) {
+                    if (els.claimResult) {
+                        els.claimResult.textContent = data && data.playInProgress
+                            ? 'Extra tickets are only available before the game starts'
+                            : 'No more tickets available for this game';
+                    }
+                    return;
+                }
+                const opened = openBuyTicketsModal(activeGameId, rem);
+                if (opened && opened.ok === false && opened.error && els.claimResult) {
+                    els.claimResult.textContent = opened.error;
+                }
+            };
+            if (!playDataForDock()) {
+                refreshPlay().then(tryOpen);
+                return;
+            }
+            tryOpen();
         }
 
         if (els.backLobby) {
@@ -1145,75 +1176,37 @@
             if (!callBtn) return;
             els.callBtn = callBtn;
             const dock = q('[data-bingo-play-dock]');
-            if (dock) els.playDock = dock;
+            if (dock) {
+                els.playDock = dock;
+                dock.classList.remove('guest-bingo--dock-buy');
+                dock.classList.add('guest-bingo--dock-claim');
+            }
 
-            const list =
-                cards && cards.length
-                    ? cards
-                    : lastStackPayload && lastStackPayload.cards && lastStackPayload.cards.length
-                      ? lastStackPayload.cards
-                      : [];
-            const cardCount = guestPlayCardCount(list, data, lastStackPayload);
-            const dockAction = guestDockAction(data);
-            const rem = guestTicketRemaining(data);
-            const canBuy = !!(data && data.canGrabMore && rem > 0);
             const phase = data && data.phase ? String(data.phase) : '';
+            const label = (data && data.playingForLabel) || 'prize';
+            const showLobby =
+                guestShouldShowGameOver(data) || guestDockAction(data) === 'lobby';
 
             callBtn.classList.remove('guest-bingo-dock-btn--buy', 'guest-bingo-dock-btn--lobby');
 
-            if (dockAction === 'lobby') {
+            if (showLobby) {
                 callBtn.setAttribute('data-dock-mode', 'lobby');
                 callBtn.textContent = 'Back to lobby';
                 callBtn.disabled = false;
                 callBtn.classList.add('guest-bingo-dock-btn--lobby');
                 callBtn.classList.remove('guest-bingo-call--ready');
-                if (els.playDock) els.playDock.classList.add('guest-bingo--dock-buy');
                 return;
             }
 
-            if (dockAction === 'buy') {
-                if (els.playDock) {
-                    els.playDock.classList.add('guest-bingo--dock-buy');
-                    els.playDock.classList.remove('guest-bingo--dock-claim');
-                }
-                callBtn.setAttribute('data-dock-mode', 'buy');
-                callBtn.classList.remove('guest-bingo-call--ready', 'guest-bingo-dock-btn--lobby');
-                if (canBuy) {
-                    callBtn.textContent =
-                        cardCount === 0
-                            ? rem > 1
-                                ? 'Get tickets · ' + rem + ' left'
-                                : 'Get tickets'
-                            : rem > 1
-                              ? 'Buy tickets · ' + rem + ' left'
-                              : 'Buy tickets';
-                    callBtn.disabled = false;
-                    callBtn.classList.add('guest-bingo-dock-btn--buy');
-                } else {
-                    callBtn.textContent = cardCount === 0 ? 'Get tickets first' : 'Buy tickets';
-                    callBtn.disabled = true;
-                    callBtn.classList.remove('guest-bingo-dock-btn--buy');
-                }
-                return;
-            }
-
-            if (els.playDock) {
-                els.playDock.classList.remove('guest-bingo--dock-buy');
-                els.playDock.classList.add('guest-bingo--dock-claim');
-            }
             callBtn.setAttribute('data-dock-mode', 'claim');
-            callBtn.classList.remove('guest-bingo-dock-btn--buy', 'guest-bingo-dock-btn--lobby');
-            const label = (data && data.playingForLabel) || 'prize';
             if (phase === 'intro') {
                 const sec =
                     data.introRemainingSec != null
                         ? data.introRemainingSec
                         : Math.max(0, Math.ceil(guestIntroRemainingMs(data) / 1000));
                 callBtn.textContent = 'Claim — starts in ' + sec + 's';
-                callBtn.disabled = true;
             } else if (phase === 'resume') {
                 callBtn.textContent = 'Claim — resuming soon';
-                callBtn.disabled = true;
             } else {
                 callBtn.textContent = 'Claim — ' + label;
             }
@@ -1468,7 +1461,7 @@
             syncDockPrimaryAction(data, cards);
             if (!els.callBtn) return;
             const dockMode = els.callBtn.getAttribute('data-dock-mode');
-            if (dockMode === 'buy' || dockMode === 'lobby') return;
+            if (dockMode === 'lobby') return;
             const list = cards && cards.length ? cards : [];
             const anyReady = list.some(function (c) {
                 return cardToGo(c) === 0;
@@ -2084,7 +2077,7 @@
                 syncGuestResume(data);
                 syncGuestIntro(data);
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
-                syncBuyTicketsVisibility(els.buyTickets, data);
+                syncBuyTicketsVisibility(root, data);
                 updateCallUi(stackCards, activeSerial, data);
                 maybeAnnounceBall(data);
                 syncWinnersModal(data);
@@ -2174,7 +2167,6 @@
             const resultEl = els.claimResult;
             const playData = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
             if (!activeGameId || !name) return;
-            if (els.callBtn && els.callBtn.getAttribute('data-dock-mode') === 'buy') return;
             if (playData && bingoGuestPreClaimPlay(playData)) {
                 if (resultEl) {
                     resultEl.textContent = 'Wait for the game to start before claiming';
@@ -2286,33 +2278,6 @@
                 backToLobby();
                 return;
             }
-            if (mode === 'buy') {
-                if (!activeGameId || btn.disabled) return;
-                const tryOpenBuy = function () {
-                    const data = playDataForDock();
-                    const rem = guestTicketRemaining(data);
-                    if (!data || !data.canGrabMore || rem <= 0) {
-                        const resultEl = els.claimResult;
-                        if (resultEl) {
-                            resultEl.textContent =
-                                data && data.playInProgress
-                                    ? 'Extra tickets are only available before the game starts'
-                                    : 'No more tickets available for this game';
-                        }
-                        return;
-                    }
-                    const opened = openBuyTicketsModal(activeGameId, rem);
-                    if (opened && opened.ok === false && opened.error && els.claimResult) {
-                        els.claimResult.textContent = opened.error;
-                    }
-                };
-                if (!playDataForDock()) {
-                    refreshPlay().then(tryOpenBuy);
-                    return;
-                }
-                tryOpenBuy();
-                return;
-            }
             sendClaim(playingFor);
         }
 
@@ -2324,6 +2289,13 @@
         }
 
         (root.addEventListener ? root : document).addEventListener('click', function (e) {
+            const buyBtn =
+                e.target && e.target.closest ? e.target.closest('[data-bingo-buy-tickets]') : null;
+            if (buyBtn && (root.contains(buyBtn) || buyBtn.closest('[data-bingo-root]'))) {
+                e.preventDefault();
+                openBuyFromPlayUi();
+                return;
+            }
             const btn = e.target && e.target.closest ? e.target.closest('[data-bingo-call]') : null;
             if (!dockClickInScope(btn)) return;
             handleDockCallButtonClick(btn);

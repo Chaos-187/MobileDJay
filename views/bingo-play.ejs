@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=41" rel="stylesheet">
+    <link href="/css/bingo.css?v=42" rel="stylesheet">
     <link href="/css/bingo-themes.css?v=4" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
@@ -75,10 +75,10 @@
                 <p id="guestBingoClaimResult" class="guest-bingo-claim-result guest-bingo-call-dock__status small" data-bingo-claim-result role="status"></p>
                 <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn guest-bingo-call-dock__btn" data-bingo-call>Claim</button>
                 <div class="guest-bingo-called-line" aria-label="Recent calls">
-                    <div class="guest-bingo-called-line__track" data-bingo-recent-balls>
+                    <span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>
+                    <div class="guest-bingo-called-line__track" data-bingo-recent-balls dir="ltr">
                         <span class="guest-bingo-recent-empty">—</span>
                     </div>
-                    <span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>
                 </div>
             </div>
         </div>
@@ -89,7 +89,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=1"></script>
-    <script src="/js/guest-bingo-play.js?v=39"></script>
+    <script src="/js/guest-bingo-play.js?v=40"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

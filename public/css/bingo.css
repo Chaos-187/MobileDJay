@@ -1103,7 +1103,10 @@ body.gh-spa .guest-bingo-play-dock {
 .guest-bingo-called-line__track {
     display: flex;
     flex: 1 1 auto;
+    flex-direction: row;
     align-items: center;
+    justify-content: flex-start;
+    direction: ltr;
     gap: 0.28rem;
     min-width: 0;
     overflow-x: auto;

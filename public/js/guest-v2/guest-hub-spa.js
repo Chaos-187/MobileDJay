@@ -257,9 +257,9 @@
                     '<p class="gh-bingo-claim-result guest-bingo-call-dock__status" data-bingo-claim-result role="status"></p>' +
                     '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call>Claim</button>' +
                     '<div class="guest-bingo-called-line" aria-label="Recent calls">' +
-                        '<div class="guest-bingo-called-line__track" data-bingo-recent-balls>' +
-                            '<span class="guest-bingo-recent-empty">—</span></div>' +
                         '<span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>' +
+                        '<div class="guest-bingo-called-line__track" data-bingo-recent-balls dir="ltr">' +
+                            '<span class="guest-bingo-recent-empty">—</span></div>' +
                     '</div></div>' +
             '</div></div>';
     }

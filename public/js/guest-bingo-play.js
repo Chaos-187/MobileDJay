@@ -116,6 +116,7 @@
     function renderRecentBalls(trackEl, calledBalls, opts) {
         if (!trackEl) return;
         const list = calledBalls || [];
+        /* Call order in API: oldest → newest; show last N left-to-right (latest on the right). */
         const recent = list.slice(-10);
         if (!recent.length) {
             trackEl.innerHTML = '<span class="guest-bingo-recent-empty">—</span>';
@@ -135,6 +136,9 @@
                 );
             })
             .join('');
+        requestAnimationFrame(function () {
+            trackEl.scrollLeft = trackEl.scrollWidth;
+        });
         if (opts && opts.progressEl && opts.calledCount != null && opts.ballCount) {
             opts.progressEl.hidden = false;
             opts.progressEl.textContent = opts.calledCount + ' / ' + opts.ballCount;

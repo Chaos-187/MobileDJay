@@ -775,10 +775,14 @@ function guestBingoCardProgress(card, slug, gameId) {
     return progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
 }
 
-/** Once numbers are being called — no extra virtual cards (intro / pre-start still OK). */
+/** Caller started or game is live — no extra virtual cards. */
 function bingoGuestPlayInProgress(slug, gameId) {
     const state = bingoSession.getBingoState(slug, gameId);
-    return !!(state.calledBalls && state.calledBalls.length > 0);
+    if (state.active) return true;
+    if (state.calledBalls && state.calledBalls.length > 0) return true;
+    const game = gameId ? bingoGameDb.getById(gameId) : null;
+    if (game && game.status === 'live') return true;
+    return false;
 }
 
 function guestCanGrabMoreVirtualCards(slug, gameId, assignedCount, cardLimit) {
@@ -3087,6 +3091,8 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         introSeconds: state.introSeconds ?? 0,
         introRemainingMs: state.introRemainingMs ?? 0,
         introRemainingSec: state.introRemainingSec ?? 0,
+        resumeRemainingMs: state.resumeRemainingMs ?? 0,
+        resumeRemainingSec: state.resumeRemainingSec ?? 0,
         voiceCall: !!state.voiceCall,
         prizeWinners: state.prizeWinners || { line: null, 'two-lines': null, house: null },
         prizes: state.prizes || {},

@@ -113,18 +113,51 @@
         return 'guest-bingo-tg-spine--far';
     }
 
+    function resolveLastCalledBall(data) {
+        if (!data) return null;
+        if (data.lastBall != null) return data.lastBall;
+        const list = data.calledBalls || [];
+        return list.length ? list[list.length - 1] : null;
+    }
+
+    function bingoGuestGameRunning(data) {
+        if (!data) return false;
+        const gameStatus = data.game && data.game.status ? String(data.game.status) : '';
+        const phase = data.phase ? String(data.phase) : '';
+        return (
+            gameStatus === 'live' ||
+            gameStatus === 'ended' ||
+            !!data.active ||
+            !!data.playInProgress ||
+            phase === 'intro' ||
+            phase === 'resume' ||
+            phase === 'calling' ||
+            phase === 'claim_break' ||
+            !!(data.pendingGameEnd || data.pendingAdvanceAfterClaim) ||
+            (data.calledCount != null && data.calledCount > 0)
+        );
+    }
+
+    function syncBuyTicketsVisibility(buyEl, data) {
+        if (!buyEl || !data) return;
+        const gameRunning = bingoGuestGameRunning(data);
+        const have = data.allCards ? data.allCards.length : 0;
+        const rem = ticketsRemaining(data.cardLimit, have);
+        buyEl.hidden = gameRunning || !data.canGrabMore || rem <= 0;
+    }
+
     function renderRecentBalls(trackEl, calledBalls, opts) {
         if (!trackEl) return;
         const list = calledBalls || [];
-        /* Call order in API: oldest → newest; show last N left-to-right (latest on the right). */
-        const recent = list.slice(-10);
+        /* API order oldest → newest; show last N with latest pinned on the left. */
+        const recent = list.slice(-10).reverse();
         if (!recent.length) {
             trackEl.innerHTML = '<span class="guest-bingo-recent-empty">—</span>';
             return;
         }
         trackEl.innerHTML = recent
             .map(function (n, i) {
-                const isLatest = i === recent.length - 1;
+                const isLatest = i === 0;
                 return (
                     '<span class="guest-bingo-callball' +
                     (isLatest ? ' guest-bingo-callball--latest' : '') +
@@ -137,7 +170,7 @@
             })
             .join('');
         requestAnimationFrame(function () {
-            trackEl.scrollLeft = trackEl.scrollWidth;
+            trackEl.scrollLeft = 0;
         });
         if (opts && opts.progressEl && opts.calledCount != null && opts.ballCount) {
             opts.progressEl.hidden = false;
@@ -786,20 +819,34 @@
         }
 
         function paintGuestResume(data) {
-            if (!els.resume || !resumeEndsAtLocal) return;
-            const remainingMs = Math.max(0, resumeEndsAtLocal - Date.now());
-            const sec = Math.max(1, Math.ceil(remainingMs / 1000));
-            if (els.resumeSec) els.resumeSec.textContent = String(sec);
+            if (!els.resume) return;
+            const lb = resolveLastCalledBall(data);
             if (els.resumeBall) {
-                els.resumeBall.textContent = data && data.lastBall != null ? String(data.lastBall) : '—';
+                els.resumeBall.textContent = lb != null ? String(lb) : '—';
+            }
+            let remainingMs = 0;
+            if (resumeEndsAtLocal) {
+                remainingMs = Math.max(0, resumeEndsAtLocal - Date.now());
+            } else if (data && data.resumeRemainingMs != null) {
+                remainingMs = Math.max(0, data.resumeRemainingMs);
+            } else if (data && data.resumeRemainingSec != null) {
+                remainingMs = Math.max(0, data.resumeRemainingSec * 1000);
+            }
+            if (els.resumeSec) {
+                const sec = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0;
+                els.resumeSec.textContent = String(sec);
             }
         }
 
         function syncGuestResume(data) {
             const showResume = !!(data && data.active && data.phase === 'resume');
             if (showResume) {
-                if (data.resumeRemainingMs != null) {
+                if (data.resumeRemainingMs != null && data.resumeRemainingMs >= 0) {
                     resumeEndsAtLocal = Date.now() + data.resumeRemainingMs;
+                } else if (data.resumeRemainingSec != null && data.resumeRemainingSec >= 0) {
+                    resumeEndsAtLocal = Date.now() + data.resumeRemainingSec * 1000;
+                } else if (!resumeEndsAtLocal) {
+                    resumeEndsAtLocal = Date.now() + 5000;
                 }
                 if (els.resume) els.resume.removeAttribute('hidden');
                 paintGuestResume(data);
@@ -1429,18 +1476,7 @@
                 }
                 lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
-                if (els.buyTickets) {
-                    const gameStatus = data.game && data.game.status ? String(data.game.status) : '';
-                    const gameRunning =
-                        gameStatus === 'live' ||
-                        gameStatus === 'ended' ||
-                        !!data.active ||
-                        !!data.playInProgress ||
-                        (data.calledCount != null && data.calledCount > 0);
-                    const have = data.allCards ? data.allCards.length : 0;
-                    const rem = ticketsRemaining(data.cardLimit, have);
-                    els.buyTickets.hidden = gameRunning || !data.canGrabMore || rem <= 0;
-                }
+                syncBuyTicketsVisibility(els.buyTickets, data);
                 updateCallUi(stackCards, activeSerial, data);
                 syncGuestIntro(data);
                 syncGuestResume(data);
@@ -1460,11 +1496,12 @@
                     }
                     if (data.phase === 'intro') t = 'Starting soon…';
                     else if (data.phase === 'resume') {
+                        const lb = resolveLastCalledBall(data);
                         t =
                             'Resuming · ' +
                             (data.resumeRemainingSec || 0) +
                             's' +
-                            (data.lastBall != null ? ' · last ' + data.lastBall : '');
+                            (lb != null ? ' · last ' + lb : '');
                     }
                     els.meta.textContent = t;
                 }

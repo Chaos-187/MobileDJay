@@ -7,6 +7,13 @@
 
     const isCallerPage = document.body.classList.contains('mdj-bingo-caller-page');
 
+    function resolveLastBall(state) {
+        if (!state) return null;
+        if (state.lastBall != null) return state.lastBall;
+        const list = state.calledBalls || [];
+        return list.length ? list[list.length - 1] : null;
+    }
+
     const els = {
         status: document.getElementById('bingoRunStatus'),
         hubLastBall: document.getElementById('bingoHubLastBall'),
@@ -853,7 +860,8 @@
                 const reason = state.pausedReason || 'claim';
                 if (resuming) {
                     const sec = state.resumeRemainingSec != null ? state.resumeRemainingSec : '…';
-                    const last = state.lastBall != null ? state.lastBall : '—';
+                    const lastNum = resolveLastBall(state);
+                    const last = lastNum != null ? lastNum : '—';
                     els.pausedHint.innerHTML =
                         '<i class="fas fa-play-circle"></i> Resuming in <strong>' +
                         sec +
@@ -993,7 +1001,8 @@
             els.status.textContent = 'Intro · ' + (state.introRemainingSec || 0) + 's';
             els.status.className = 'badge bg-info text-dark mdj-bingo-status-pill';
         } else if (state.phase === 'resume') {
-            const lb = state.lastBall != null ? ' · last ' + state.lastBall : '';
+            const lastNum = resolveLastBall(state);
+            const lb = lastNum != null ? ' · last ' + lastNum : '';
             els.status.textContent = 'Resuming · ' + (state.resumeRemainingSec || 0) + 's' + lb;
             els.status.className = 'badge bg-warning text-dark mdj-bingo-status-pill';
         } else if (state.phase === 'claim_break') {

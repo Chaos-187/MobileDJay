@@ -1123,6 +1123,10 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     font-weight: 700;
 }
 
+.gh-bingo-buy-tickets[hidden] {
+    display: none !important;
+}
+
 .gh-bingo-back-lobby:hover,
 .guest-bingo-toolbar-btn:hover {
     color: var(--gh-accent, var(--event-accent-color, #ff3366));

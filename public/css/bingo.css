@@ -546,6 +546,10 @@ body.mdj-guest-bingo-page {
     color: #fde68a !important;
 }
 
+.guest-bingo-buy-tickets[hidden] {
+    display: none !important;
+}
+
 .guest-bingo-buy-modal {
     position: fixed;
     inset: 0;
@@ -2407,6 +2411,15 @@ body.bingo-screen-active {
     opacity: 0.35;
     z-index: 1;
     pointer-events: none;
+}
+
+.bingo-fs-snow {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
 }
 
 .bingo-fs-layout {

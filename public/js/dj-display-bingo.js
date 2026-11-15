@@ -36,6 +36,13 @@
 
     const RING_LEN = 326.7;
     const cellByNumber = new Map();
+
+    function resolveLastBall(state) {
+        if (!state) return null;
+        if (state.lastBall != null) return state.lastBall;
+        const list = state.calledBalls || [];
+        return list.length ? list[list.length - 1] : null;
+    }
     let gridBuiltFor = 0;
     let lastRevision = -1;
     let lastBallSeen = null;
@@ -520,28 +527,38 @@
     }
 
     function updateResumeUI() {
-        if (!lastState || lastState.phase !== 'resume' || !resumeEndsAtLocal) {
+        if (!lastState || lastState.phase !== 'resume') {
             resumeStage?.setAttribute('hidden', '');
             layer?.classList.remove('is-resume');
             return;
         }
         resumeStage?.removeAttribute('hidden');
         layer?.classList.add('is-resume');
-        const remainingMs = Math.max(0, resumeEndsAtLocal - Date.now());
-        const sec = Math.max(1, Math.ceil(remainingMs / 1000));
+        let remainingMs = 0;
+        if (resumeEndsAtLocal) {
+            remainingMs = Math.max(0, resumeEndsAtLocal - Date.now());
+        } else if (lastState.resumeRemainingMs != null) {
+            remainingMs = Math.max(0, lastState.resumeRemainingMs);
+        } else if (lastState.resumeRemainingSec != null) {
+            remainingMs = Math.max(0, lastState.resumeRemainingSec * 1000);
+        }
+        const sec = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0;
         if (resumeCountdown) resumeCountdown.textContent = String(sec);
-        const lb = lastState.lastBall != null ? String(lastState.lastBall) : '—';
+        const lbNum = resolveLastBall(lastState);
+        const lb = lbNum != null ? String(lbNum) : '—';
         if (resumeLastBall) resumeLastBall.textContent = lb;
-        if (lastBallEl && lastState.lastBall != null) {
-            lastBallEl.textContent = lastState.lastBall;
+        if (lastBallEl && lbNum != null) {
+            lastBallEl.textContent = lbNum;
             lastBallEl.classList.add('ball-pop');
         }
     }
 
     function syncResumeFromState(state) {
         if (state.phase === 'resume') {
-            if (state.resumeRemainingMs != null) {
+            if (state.resumeRemainingMs != null && state.resumeRemainingMs >= 0) {
                 resumeEndsAtLocal = Date.now() + state.resumeRemainingMs;
+            } else if (state.resumeRemainingSec != null && state.resumeRemainingSec >= 0) {
+                resumeEndsAtLocal = Date.now() + state.resumeRemainingSec * 1000;
             }
         } else {
             resumeEndsAtLocal = null;
@@ -660,15 +677,16 @@
                 metaEl.textContent = 'Starting in ' + (state.introRemainingSec || 0) + 's';
             }
         } else if (resuming) {
-            if (lastBallEl && state.lastBall != null) {
-                lastBallEl.textContent = state.lastBall;
+            const resumeLb = resolveLastBall(state);
+            if (lastBallEl && resumeLb != null) {
+                lastBallEl.textContent = resumeLb;
             }
             if (metaEl) {
                 metaEl.textContent =
                     'Resuming in ' +
                     (state.resumeRemainingSec || 0) +
                     's' +
-                    (state.lastBall != null ? ' · last call ' + state.lastBall : '');
+                    (resumeLb != null ? ' · last call ' + resumeLb : '');
             }
         } else if (state.lastBall != null && state.lastBall !== lastBallSeen) {
             lastBallSeen = state.lastBall;
@@ -780,6 +798,7 @@
             pollTimer = setInterval(pollState, 700);
             tickTimer = setInterval(function () {
                 if (lastState?.active && lastState.phase === 'intro') updateIntroUI();
+                if (lastState?.active && lastState.phase === 'resume') updateResumeUI();
             }, 200);
             pollState();
         }

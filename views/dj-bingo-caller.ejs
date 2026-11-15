@@ -11,7 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=32" rel="stylesheet">
+    <link href="/css/bingo.css?v=33" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -162,6 +162,15 @@
         <div id="bingoCalledStrip" class="mdj-bingo-called-strip" hidden aria-hidden="true"></div>
     </main>
 
+    <div class="mdj-bingo-winners-modal" id="bingoWinnersModal" hidden role="dialog" aria-modal="true" aria-labelledby="bingoWinnersModalTitle">
+        <div class="mdj-bingo-winners-modal__dialog">
+            <h2 class="mdj-bingo-winners-modal__title" id="bingoWinnersModalTitle">Game over</h2>
+            <p class="mdj-bingo-winners-modal__lede">Winners this game</p>
+            <ul class="mdj-bingo-winners-modal__list" id="bingoWinnersModalList"></ul>
+            <button type="button" class="btn mdj-caller-cta" id="bingoWinnersModalDismiss">Done</button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         window.mdjGetPromptTargetSlug = function () { return <%- JSON.stringify(event.slug) %>; };
@@ -169,6 +178,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=24"></script>
+    <script src="/js/dj-bingo.js?v=25"></script>
 </body>
 </html>

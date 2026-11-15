@@ -4027,3 +4027,184 @@ body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-tab-panels {
     flex-direction: column;
     gap: 0.85rem;
 }
+
+.mdj-bingo-winners-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+.mdj-bingo-winners-modal[hidden] {
+    display: none !important;
+}
+
+.mdj-bingo-winners-modal__dialog {
+    width: min(100%, 22rem);
+    padding: 1.35rem 1.25rem;
+    border-radius: 18px;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    background: linear-gradient(165deg, rgba(30, 24, 12, 0.98), rgba(12, 10, 8, 0.98));
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+    text-align: center;
+}
+
+.mdj-bingo-winners-modal__title {
+    margin: 0 0 0.35rem;
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #fde68a;
+}
+
+.mdj-bingo-winners-modal__lede {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    opacity: 0.75;
+}
+
+.mdj-bingo-winners-modal__list {
+    list-style: none;
+    margin: 0 0 1.1rem;
+    padding: 0;
+    text-align: left;
+}
+
+.mdj-bingo-winners-modal__list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.88rem;
+}
+
+.mdj-bingo-winners-modal__list li span:first-child {
+    opacity: 0.65;
+    font-weight: 600;
+}
+
+.mdj-bingo-winners-modal__list li span:last-child {
+    font-weight: 800;
+    color: #fff;
+    text-align: right;
+}
+
+.bingo-winners-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+.bingo-winners-overlay[hidden] {
+    display: none !important;
+}
+
+.bingo-winners-card {
+    width: min(100%, 640px);
+    padding: clamp(1.5rem, 4vw, 2.5rem);
+    border-radius: 24px;
+    border: 2px solid rgba(251, 191, 36, 0.45);
+    background: linear-gradient(160deg, rgba(28, 22, 10, 0.95), rgba(8, 8, 12, 0.98));
+    text-align: center;
+    box-shadow: 0 0 80px rgba(251, 191, 36, 0.2);
+}
+
+.bingo-winners-title {
+    margin: 0 0 0.5rem;
+    font-size: clamp(2rem, 6vw, 3.25rem);
+    font-weight: 900;
+    color: #fde68a;
+    letter-spacing: 0.02em;
+}
+
+.bingo-winners-lede {
+    margin: 0 0 1.5rem;
+    font-size: clamp(1rem, 2.5vw, 1.35rem);
+    opacity: 0.8;
+}
+
+.bingo-winners-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.65rem;
+    text-align: left;
+}
+
+.bingo-winners-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: clamp(1rem, 2.8vw, 1.35rem);
+}
+
+.bingo-winners-list li span:first-child {
+    font-weight: 600;
+    opacity: 0.7;
+}
+
+.bingo-winners-list li span:last-child {
+    font-weight: 900;
+    color: #fff;
+}
+
+.guest-bingo-winners-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.guest-bingo-winners-modal[hidden] {
+    display: none !important;
+}
+
+.guest-bingo-winners-modal__dialog {
+    width: min(100%, 24rem);
+    padding: 1.25rem;
+    border-radius: 16px 16px 12px 12px;
+    background: var(--gh-surface, #1a1f28);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.guest-bingo-winners-modal__title {
+    margin: 0 0 0.35rem;
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #fde68a;
+}
+
+.guest-bingo-winners-modal__list {
+    list-style: none;
+    margin: 0.75rem 0 1rem;
+    padding: 0;
+}
+
+.guest-bingo-winners-modal__list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    font-size: 0.88rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}

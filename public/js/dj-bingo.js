@@ -38,6 +38,9 @@
         gamesList: document.getElementById('bingoGamesList'),
         playersList: document.getElementById('bingoPlayersList'),
         callerPlayerCount: document.getElementById('bingoCallerPlayerCount'),
+        winnersModal: document.getElementById('bingoWinnersModal'),
+        winnersModalList: document.getElementById('bingoWinnersModalList'),
+        winnersModalDismiss: document.getElementById('bingoWinnersModalDismiss'),
         assignName: document.getElementById('bingoAssignName'),
         assignResult: document.getElementById('bingoAssignResult')
     };
@@ -726,18 +729,77 @@
         if (els.pauseBtn) {
             els.pauseBtn.hidden = !(active && !paused && !inIntro);
         }
+        const claimBreak = state.phase === 'claim_break' || state.pausedReason === 'claim_window';
         if (els.resumeBtn) {
-            els.resumeBtn.hidden = !(active && paused);
+            els.resumeBtn.hidden = !(active && paused && !claimBreak);
         }
         if (els.pausedHint) {
             els.pausedHint.hidden = !(active && paused);
             if (active && paused && els.pausedHint) {
                 const reason = state.pausedReason || 'claim';
-                els.pausedHint.innerHTML =
-                    reason === 'manual'
-                        ? '<i class="fas fa-pause-circle"></i> Game paused'
-                        : '<i class="fas fa-pause-circle"></i> Claim check';
+                if (claimBreak) {
+                    const sec = state.claimBreakRemainingSec != null ? state.claimBreakRemainingSec : '…';
+                    els.pausedHint.innerHTML =
+                        '<i class="fas fa-hourglass-half"></i> Claims open · ' + sec + 's';
+                } else {
+                    els.pausedHint.innerHTML =
+                        reason === 'manual'
+                            ? '<i class="fas fa-pause-circle"></i> Game paused'
+                            : '<i class="fas fa-pause-circle"></i> Claim check';
+                }
             }
+        }
+    }
+
+    function winnersModalHtml(state) {
+        const pw = (state && state.prizeWinners) || {};
+        const prizes = (state && state.prizes) || {};
+        const rows = [
+            { id: 'line', fallback: '1 Line' },
+            { id: 'two-lines', fallback: '2 Lines' },
+            { id: 'house', fallback: 'Full house' }
+        ];
+        return rows
+            .map(function (r) {
+                const tierLabel =
+                    (r.id === 'line' && prizes.line) ||
+                    (r.id === 'two-lines' && prizes['two-lines']) ||
+                    (r.id === 'house' && prizes.house) ||
+                    r.fallback;
+                const name = pw[r.id] && String(pw[r.id]).trim() ? String(pw[r.id]).trim() : '—';
+                return (
+                    '<li><span>' +
+                    escapeHtml(String(tierLabel)) +
+                    '</span><span>' +
+                    escapeHtml(name) +
+                    '</span></li>'
+                );
+            })
+            .join('');
+    }
+
+    let winnersModalOpen = false;
+
+    function syncWinnersModal(state) {
+        if (!isCallerPage || !els.winnersModal) return;
+        const show = !!(state && state.showWinnersPopup);
+        if (show && !winnersModalOpen) {
+            if (els.winnersModalList) els.winnersModalList.innerHTML = winnersModalHtml(state);
+            els.winnersModal.hidden = false;
+            winnersModalOpen = true;
+        } else if (!show && winnersModalOpen) {
+            els.winnersModal.hidden = true;
+            winnersModalOpen = false;
+        }
+    }
+
+    async function dismissWinnersModal() {
+        if (!isCallerPage || !els.winnersModal) return;
+        const data = await apiPost('/games/bingo/dismiss-winners', {});
+        if (data && data.success) {
+            els.winnersModal.hidden = true;
+            winnersModalOpen = false;
+            if (data.state) renderStatus(data.state);
         }
     }
 
@@ -783,21 +845,35 @@
     function renderStatus(state) {
         if (!els.status) return;
         if (!state.active) {
-            els.status.textContent = 'Not running';
-            els.status.className = 'badge bg-secondary mdj-bingo-status-pill';
+            els.status.textContent = state.showWinnersPopup ? 'Game over' : 'Not running';
+            els.status.className = state.showWinnersPopup
+                ? 'badge bg-primary mdj-bingo-status-pill'
+                : 'badge bg-secondary mdj-bingo-status-pill';
             updateActionButtons(state);
             if (els.voiceCall && state.voiceCall != null) els.voiceCall.checked = !!state.voiceCall;
-            renderCalledBalls({ lastBall: null });
-            syncAdminGrid({ ballCount: Number(els.ballCount?.value) || 90, calledBalls: [], lastBall: null });
+            renderCalledBalls(state.lastBall != null ? state : { lastBall: null });
+            syncAdminGrid(
+                state.calledBalls && state.calledBalls.length
+                    ? state
+                    : { ballCount: Number(els.ballCount?.value) || 90, calledBalls: [], lastBall: null }
+            );
             renderPrizeWinners(state);
+            syncWinnersModal(state);
             return;
         }
         if (state.phase === 'intro') {
             els.status.textContent = 'Intro · ' + (state.introRemainingSec || 0) + 's';
             els.status.className = 'badge bg-info text-dark mdj-bingo-status-pill';
+        } else if (state.phase === 'claim_break') {
+            const sec = state.claimBreakRemainingSec != null ? state.claimBreakRemainingSec : '';
+            els.status.textContent = sec ? 'Claims open · ' + sec + 's' : 'Claims open';
+            els.status.className = 'badge bg-warning text-dark mdj-bingo-status-pill is-paused';
         } else if (state.paused) {
             els.status.textContent = 'Paused · claim check';
             els.status.className = 'badge bg-warning text-dark mdj-bingo-status-pill is-paused';
+        } else if (state.showWinnersPopup) {
+            els.status.textContent = 'Game over';
+            els.status.className = 'badge bg-primary mdj-bingo-status-pill';
         } else if (state.autoCall) {
             els.status.textContent = 'Live · auto-call';
             els.status.className = 'badge bg-success mdj-bingo-status-pill';
@@ -818,6 +894,7 @@
         if (state.playingFor) syncPlayingForUI(state.playingFor);
         if (state.prizes) syncPrizeFields(state.prizes);
         renderPrizeWinners(state);
+        syncWinnersModal(state);
     }
 
     async function fetchState() {
@@ -1472,6 +1549,7 @@
         startPoll();
         loadGames();
         requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
+        els.winnersModalDismiss?.addEventListener('click', dismissWinnersModal);
     } else {
         document.getElementById('games-tab')?.addEventListener('shown.bs.tab', () => {
             fetchState();

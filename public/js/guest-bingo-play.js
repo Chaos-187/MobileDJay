@@ -268,6 +268,8 @@
         let introTickTimer = null;
 
         let buyModalEls = null;
+        let winnersModalEls = null;
+        let winnersModalShown = false;
 
         function ticketsRemaining(cardLimit, currentCount) {
             const limit = Math.max(1, Number(cardLimit) || 1);
@@ -394,6 +396,100 @@
             const modal = ensureBuyTicketsModal();
             modal.open(gameId, remaining);
             return { ok: true };
+        }
+
+        function ensureWinnersModal() {
+            if (winnersModalEls) return winnersModalEls;
+            const host =
+                typeof document !== 'undefined' && document.body
+                    ? document.body
+                    : root;
+            const wrap = document.createElement('div');
+            wrap.className = 'guest-bingo-winners-modal';
+            wrap.setAttribute('data-bingo-winners-backdrop', '');
+            wrap.hidden = true;
+            wrap.innerHTML =
+                '<div class="guest-bingo-winners-modal__dialog" role="dialog" aria-modal="true">' +
+                '<h2 class="guest-bingo-winners-modal__title">Game over</h2>' +
+                '<p class="text-muted small mb-2">Winners this game</p>' +
+                '<ul class="guest-bingo-winners-modal__list" data-bingo-winners-list></ul>' +
+                '<button type="button" class="gh-btn gh-btn--accent w-100" data-bingo-winners-close>OK</button>' +
+                '</div>';
+            host.appendChild(wrap);
+            winnersModalEls = {
+                backdrop: wrap,
+                list: wrap.querySelector('[data-bingo-winners-list]'),
+                close: wrap.querySelector('[data-bingo-winners-close]')
+            };
+            winnersModalEls.close.addEventListener('click', function () {
+                dismissWinnersModal();
+            });
+            wrap.addEventListener('click', function (e) {
+                if (e.target === wrap) dismissWinnersModal();
+            });
+            return winnersModalEls;
+        }
+
+        function winnersListHtml(data) {
+            const pw = (data && data.prizeWinners) || {};
+            const prizes = (data && data.prizes) || {};
+            const rows = [
+                { id: 'line', fallback: '1 Line' },
+                { id: 'two-lines', fallback: '2 Lines' },
+                { id: 'house', fallback: 'Full house' }
+            ];
+            return rows
+                .map(function (r) {
+                    const tierLabel =
+                        (r.id === 'line' && prizes.line) ||
+                        (r.id === 'two-lines' && prizes['two-lines']) ||
+                        (r.id === 'house' && prizes.house) ||
+                        r.fallback;
+                    const name = pw[r.id] && String(pw[r.id]).trim() ? String(pw[r.id]).trim() : '—';
+                    return (
+                        '<li><span>' +
+                        escapeHtml(String(tierLabel)) +
+                        '</span><span>' +
+                        escapeHtml(name) +
+                        '</span></li>'
+                    );
+                })
+                .join('');
+        }
+
+        function syncWinnersModal(data) {
+            if (!data || !data.showWinnersPopup) {
+                if (winnersModalEls && winnersModalShown) {
+                    winnersModalEls.backdrop.hidden = true;
+                    winnersModalShown = false;
+                }
+                return;
+            }
+            if (winnersModalShown) return;
+            const modal = ensureWinnersModal();
+            modal.list.innerHTML = winnersListHtml(data);
+            modal.backdrop.hidden = false;
+            winnersModalShown = true;
+        }
+
+        async function dismissWinnersModal() {
+            if (!activeGameId) return;
+            try {
+                await fetch(
+                    '/api/event/' +
+                        encodeURIComponent(slug) +
+                        '/bingo/games/' +
+                        activeGameId +
+                        '/dismiss-winners',
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }
+                );
+            } catch (e) {
+                /* ignore */
+            }
+            if (winnersModalEls) {
+                winnersModalEls.backdrop.hidden = true;
+                winnersModalShown = false;
+            }
         }
 
         if (els.buyTickets) {
@@ -583,7 +679,10 @@
             if (!els.callBtn) return;
             const pf = data.playingFor || playingFor || 'line';
             const tierVerified = selfVerifiedTiers.has(pf);
-            const baseDisabled = !data.active || claimInFlight || tierVerified;
+            const claimsOpen =
+                data.active &&
+                (!data.paused || data.pausedReason === 'claim_window' || data.phase === 'claim_break');
+            const baseDisabled = !claimsOpen || claimInFlight || tierVerified;
             els.callBtn.disabled = baseDisabled;
             qq('[data-bingo-claim]').forEach(function (btn) {
                 const ct = btn.getAttribute('data-claim');
@@ -1089,9 +1188,14 @@
                 updateCallUi(stackCards, activeSerial, data);
                 syncGuestIntro(data);
                 maybeAnnounceBall(data);
+                syncWinnersModal(data);
                 if (els.meta) {
                     let t = data.active ? (data.paused ? 'Paused' : 'Live') : 'Waiting to start';
-                    if (data.paused) {
+                    if (data.showWinnersPopup) {
+                        t = 'Game over';
+                    } else if (data.phase === 'claim_break') {
+                        t = 'Claims open · ' + (data.claimBreakRemainingSec || '') + 's';
+                    } else if (data.paused) {
                         t =
                             data.pausedReason === 'manual'
                                 ? 'Paused — game on hold'

@@ -20,6 +20,8 @@
     const claimTitle = document.getElementById('bingoClaimFlashTitle');
     const claimSub = document.getElementById('bingoClaimFlashSub');
     const claimCard = document.getElementById('bingoClaimFlashCard');
+    const winnersOverlay = document.getElementById('bingoWinnersOverlay');
+    const winnersList = document.getElementById('bingoWinnersList');
     const ballMachineTumble = document.getElementById('bingoBallMachineTumble');
     const ballMachineRamp = document.getElementById('bingoBallMachineRamp');
     const waitingMessage = document.getElementById('waitingMessage');
@@ -324,6 +326,43 @@
         }
     }
 
+    function winnersListHtml(state) {
+        const pw = (state && state.prizeWinners) || {};
+        const prizes = (state && state.prizes) || {};
+        const rows = [
+            { id: 'line', fallback: '1 Line' },
+            { id: 'two-lines', fallback: '2 Lines' },
+            { id: 'house', fallback: 'Full house' }
+        ];
+        return rows
+            .map(function (r) {
+                const tierLabel =
+                    (r.id === 'line' && prizes.line) ||
+                    (r.id === 'two-lines' && prizes['two-lines']) ||
+                    (r.id === 'house' && prizes.house) ||
+                    r.fallback;
+                const name = pw[r.id] && String(pw[r.id]).trim() ? String(pw[r.id]).trim() : '—';
+                return (
+                    '<li><span>' +
+                    tierLabel +
+                    '</span><span>' +
+                    name +
+                    '</span></li>'
+                );
+            })
+            .join('');
+    }
+
+    function syncWinnersOverlay(state) {
+        if (!winnersOverlay) return;
+        if (state && state.showWinnersPopup) {
+            if (winnersList) winnersList.innerHTML = winnersListHtml(state);
+            winnersOverlay.removeAttribute('hidden');
+        } else {
+            winnersOverlay.setAttribute('hidden', '');
+        }
+    }
+
     function showClaim(flash) {
         if (!flash || !claimOverlay) return;
         clearTimeout(claimHideTimer);
@@ -534,9 +573,14 @@
             pausedBadge?.removeAttribute('hidden');
             if (pausedBadge) {
                 const manual = state.pausedReason === 'manual';
+                const claimBreak = state.phase === 'claim_break';
                 pausedBadge.innerHTML =
                     '<i class="fas fa-pause-circle me-1" aria-hidden="true"></i>' +
-                    (manual ? 'Game paused' : 'Claim check');
+                    (claimBreak
+                        ? 'Claims open · ' + (state.claimBreakRemainingSec || '') + 's'
+                        : manual
+                          ? 'Game paused'
+                          : 'Claim check');
             }
             layer?.classList.add('is-paused');
         } else {
@@ -609,6 +653,8 @@
                 .join('');
         }
 
+        syncWinnersOverlay(state);
+
         if (state.revision !== lastRevision) {
             lastRevision = state.revision;
         }
@@ -642,6 +688,9 @@
             if (introEndsAtLocal && Date.now() >= introEndsAtLocal) {
                 pollState();
             }
+        }
+        if (lastState?.active && lastState.phase === 'claim_break') {
+            pollState();
         }
     }, 200);
     pollState();

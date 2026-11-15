@@ -769,11 +769,11 @@ function guestCanGrabMoreVirtualCards(slug, gameId, assignedCount, cardLimit) {
 function bingoCompletePrizeWin(slug, gameId, wonTier) {
     const pf = normalizePlayingFor(wonTier);
     if (pf === 'house') {
-        bingoSession.clearAutoTimer(slug, gameId);
-        bingoSession.stopBingo(slug, gameId);
-        const game = gameId ? bingoGameDb.getById(gameId) : null;
-        if (game) bingoGameDb.setStatus(game.id, 'ended');
-        return { gameEnded: true };
+        bingoSession.armPendingGameEnd(slug, gameId, () => {
+            const game = gameId ? bingoGameDb.getById(gameId) : null;
+            if (game) bingoGameDb.setStatus(game.id, 'ended');
+        });
+        return { gameEnded: false, pendingGameEnd: true };
     }
     bingoSession.advancePlayingForAfterWin(slug, gameId);
     bingoSession.resumeCalling(slug, gameId, makeBingoCaller(slug, gameId));
@@ -2334,6 +2334,29 @@ app.post('/api/display/:eventSlug/games/bingo/skip-intro', djWebAuth.requireDjAp
     res.json(result);
 });
 
+app.post('/api/display/:eventSlug/games/bingo/dismiss-winners', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
+    const ctx = resolveBingoGameContext(req);
+    if (!ctx) return res.status(404).json({ error: 'Event not found' });
+    const { slug, gameId } = ctx;
+    let gid = gameId;
+    if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
+    bingoSession.dismissWinnersPopup(slug, gid);
+    res.json({ success: true, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
+});
+
+app.post('/api/event/:eventSlug/bingo/games/:gameId/dismiss-winners', getEventFromSlugJson, (req, res) => {
+    if (!req.event.enable_bingo) {
+        return res.status(403).json({ error: 'Bingo is not enabled for this event' });
+    }
+    const gameId = parseInt(req.params.gameId, 10);
+    const game = bingoGameDb.getById(gameId);
+    if (!game || game.eventId !== req.event.id) {
+        return res.status(404).json({ error: 'Game not found' });
+    }
+  bingoSession.dismissWinnersPopup(req.event.slug, gameId);
+  res.json({ success: true, state: bingoSession.publicBingoState(req.event.slug, gameId) });
+});
+
 app.post('/api/display/:eventSlug/games/bingo/resume', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
     const ctx = resolveBingoGameContext(req);
     if (!ctx) return res.status(404).json({ error: 'Event not found' });
@@ -2994,6 +3017,10 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         introRemainingSec: state.introRemainingSec ?? 0,
         voiceCall: !!state.voiceCall,
         prizeWinners: state.prizeWinners || { line: null, 'two-lines': null, house: null },
+        prizes: state.prizes || {},
+        claimBreakRemainingSec: state.claimBreakRemainingSec ?? 0,
+        pendingGameEnd: !!state.pendingGameEnd,
+        showWinnersPopup: !!state.showWinnersPopup,
         marks: card.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
         progress
     });
@@ -3167,9 +3194,13 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
         flash,
         playingFor: nextState.playingFor,
         playingForLabel: nextState.playingForLabel,
-        message: outcome.gameEnded
-            ? `Full house! ${customerName} — game over.`
-            : `Winner! Showing on screen — now playing for ${nextLabel}.`
+        showWinnersPopup: !!nextState.showWinnersPopup,
+        prizeWinners: nextState.prizeWinners,
+        message: outcome.pendingGameEnd
+            ? `Full house! ${customerName} — checking other claims…`
+            : outcome.gameEnded
+              ? `Full house! ${customerName} — game over.`
+              : `Winner! Showing on screen — now playing for ${nextLabel}.`
     });
 });
 

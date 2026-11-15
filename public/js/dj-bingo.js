@@ -76,6 +76,8 @@
         interval: document.getElementById('bingoWizardInterval'),
         autoCall: document.getElementById('bingoWizardAutoCall'),
         voiceCall: document.getElementById('bingoWizardVoiceCall'),
+        callerStyle: document.getElementById('bingoWizardCallerStyle'),
+        callerStyleWrap: document.getElementById('bingoWizardCallerStyleWrap'),
         prizeFour: document.getElementById('bingoWizardPrizeFour'),
         prizeLine: document.getElementById('bingoWizardPrizeLine'),
         prizeTwo: document.getElementById('bingoWizardPrizeTwo'),
@@ -101,6 +103,8 @@
         interval: document.getElementById('bingoEditInterval'),
         autoCall: document.getElementById('bingoEditAutoCall'),
         voiceCall: document.getElementById('bingoEditVoiceCall'),
+        callerStyle: document.getElementById('bingoEditCallerStyle'),
+        callerStyleWrap: document.getElementById('bingoEditCallerStyleWrap'),
         prizeFour: document.getElementById('bingoEditPrizeFour'),
         prizeLine: document.getElementById('bingoEditPrizeLine'),
         prizeTwo: document.getElementById('bingoEditPrizeTwo'),
@@ -147,6 +151,17 @@
         }
         const fourWrap = document.getElementById('bingoWizardPrizeFourWrap');
         if (fourWrap) fourWrap.hidden = !isUs;
+        if (wizardEls.callerStyleWrap) {
+            wizardEls.callerStyleWrap.hidden = isUs;
+            if (wizardEls.callerStyle && isUs) wizardEls.callerStyle.value = 'number';
+        }
+    }
+
+    function callerAnnounceStyleLabel(style) {
+        const s = String(style || 'number').toLowerCase();
+        if (s === 'phrase') return 'UK phrases only';
+        if (s === 'both') return 'Number and UK phrase';
+        return 'Numbers only';
     }
 
     function syncEditCardFormatUi() {
@@ -160,6 +175,10 @@
         }
         const fourWrap = document.getElementById('bingoEditPrizeFourWrap');
         if (fourWrap) fourWrap.hidden = !isUs;
+        if (editEls.callerStyleWrap) {
+            editEls.callerStyleWrap.hidden = isUs;
+            if (editEls.callerStyle && isUs) editEls.callerStyle.value = 'number';
+        }
     }
 
     function syncCallerPlayingForSegments(cardFormat) {
@@ -1632,6 +1651,7 @@
         if (wizardEls.interval) wizardEls.interval.value = els.callInterval?.value || '5';
         if (wizardEls.autoCall) wizardEls.autoCall.checked = !!els.autoCall?.checked;
         if (wizardEls.voiceCall) wizardEls.voiceCall.checked = !!els.voiceCall?.checked;
+        if (wizardEls.callerStyle) wizardEls.callerStyle.value = 'both';
         document.querySelectorAll('input[name="bingoWizardCardFormat"]').forEach((inp) => {
             inp.checked = inp.value === (activeCardFormat || 'uk-90');
         });
@@ -1684,6 +1704,7 @@
             callIntervalSeconds: Number(wizardEls.interval?.value) || 5,
             autoCall: !!wizardEls.autoCall?.checked,
             voiceCall: !!wizardEls.voiceCall?.checked,
+            callerAnnounceStyle: wizardEls.callerStyle?.value || 'number',
             prizeFourCorners: (wizardEls.prizeFour?.value || '').trim(),
             prizeLine: (wizardEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (wizardEls.prizeTwo?.value || '').trim(),
@@ -1708,7 +1729,11 @@
             `<dt>Cards to generate</dt><dd>${escapeHtml(String(p.cardCount))}</dd>` +
             `<dt>Balls</dt><dd>${escapeHtml(String(p.ballCount))}</dd>` +
             `<dt>Caller</dt><dd>Intro ${escapeHtml(String(p.introSeconds))}s · every ${escapeHtml(String(p.callIntervalSeconds))}s` +
-            `${p.autoCall ? ' · auto' : ''}${p.voiceCall ? ' · voice' : ''}</dd>` +
+            `${p.autoCall ? ' · auto' : ''}${p.voiceCall ? ' · voice' : ''}` +
+            (p.cardFormat === 'us-75'
+                ? ''
+                : ` · ${escapeHtml(callerAnnounceStyleLabel(p.callerAnnounceStyle))}`) +
+            `</dd>` +
             `<dt>Claim window</dt><dd>${escapeHtml(String(p.claimBreakSeconds))}s</dd>` +
             `<dt>Theme</dt><dd>${escapeHtml(bingoThemeLabel(p.bingoTheme))}</dd>`;
     }
@@ -1737,6 +1762,9 @@
         if (editEls.interval) editEls.interval.value = String(Math.round((g.callIntervalMs || 5000) / 1000));
         if (editEls.autoCall) editEls.autoCall.checked = !!g.autoCall;
         if (editEls.voiceCall) editEls.voiceCall.checked = !!g.voiceCall;
+        if (editEls.callerStyle) {
+            editEls.callerStyle.value = g.callerAnnounceStyle || 'number';
+        }
         if (editEls.prizeLine) editEls.prizeLine.value = g.prizes?.line || '';
         if (editEls.prizeTwo) editEls.prizeTwo.value = g.prizes?.['two-lines'] || '';
         if (editEls.prizeHouse) editEls.prizeHouse.value = g.prizes?.house || '';
@@ -1780,6 +1808,7 @@
             callIntervalSeconds: Number(editEls.interval?.value) || 5,
             autoCall: !!editEls.autoCall?.checked,
             voiceCall: !!editEls.voiceCall?.checked,
+            callerAnnounceStyle: editEls.callerStyle?.value || 'number',
             prizeFourCorners: (editEls.prizeFour?.value || '').trim(),
             prizeLine: (editEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (editEls.prizeTwo?.value || '').trim(),

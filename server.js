@@ -59,6 +59,8 @@ const {
     normalizePlayingFor,
     normalizeCardFormat,
     normalizeBallCountForFormat,
+    normalizeCallerAnnounceStyle,
+    callerAnnounceStyleLabel,
     inferCardFormat,
     normalizeBingoTheme,
     listBingoThemes,
@@ -2301,6 +2303,8 @@ app.get('/api/display/:eventSlug/games/bingo/state', (req, res) => {
             payload.gameTitle = game.title;
             payload.gameStatus = game.status;
             payload.bingoTheme = normalizeBingoTheme(game.bingoTheme);
+            payload.cardFormat = normalizeCardFormat(game.cardFormat);
+            payload.callerAnnounceStyle = normalizeCallerAnnounceStyle(game.callerAnnounceStyle);
         }
     }
     if (!payload.bingoTheme) payload.bingoTheme = bingoThemeForContext(gameId);
@@ -2855,6 +2859,7 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
         bingoTheme: normalizeBingoTheme(req.body.bingoTheme),
         autoCall: !!req.body.autoCall,
         voiceCall: !!req.body.voiceCall,
+        callerAnnounceStyle: normalizeCallerAnnounceStyle(req.body.callerAnnounceStyle),
         prizes
     });
     if (cardCount > 0) {
@@ -2951,6 +2956,9 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
     if (req.body.bingoTheme != null) patch.bingoTheme = normalizeBingoTheme(req.body.bingoTheme);
     if (req.body.autoCall != null) patch.autoCall = !!req.body.autoCall;
     if (req.body.voiceCall != null) patch.voiceCall = !!req.body.voiceCall;
+    if (req.body.callerAnnounceStyle != null) {
+        patch.callerAnnounceStyle = normalizeCallerAnnounceStyle(req.body.callerAnnounceStyle);
+    }
     if (
         req.body.prizeFourCorners != null ||
         req.body.prizeLine != null ||
@@ -3255,10 +3263,12 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
             title: game.title,
             status: guestGameStatus,
             cardFormat: normalizeCardFormat(game.cardFormat),
-            bingoTheme: normalizeBingoTheme(game.bingoTheme)
+            bingoTheme: normalizeBingoTheme(game.bingoTheme),
+            callerAnnounceStyle: normalizeCallerAnnounceStyle(game.callerAnnounceStyle)
         },
         cardFormat: cardFmt,
         bingoTheme: normalizeBingoTheme(game.bingoTheme),
+        callerAnnounceStyle: normalizeCallerAnnounceStyle(game.callerAnnounceStyle),
         cardLimit,
         guestCards,
         allCards,

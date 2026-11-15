@@ -438,7 +438,12 @@
         }, hideMs);
     }
 
-    function readDisplayCallerStyle() {
+    function displayCallerStyle(state) {
+        if (state && state.callerAnnounceStyle != null && String(state.callerAnnounceStyle).trim()) {
+            if (window.MdjBingoUkCalls) return window.MdjBingoUkCalls.normalizeCallerStyle(state.callerAnnounceStyle);
+            const s = String(state.callerAnnounceStyle).toLowerCase();
+            return s === 'phrase' || s === 'both' ? s : 'number';
+        }
         try {
             const v = localStorage.getItem('mdj_bingo_caller_style');
             if (v && window.MdjBingoUkCalls) return window.MdjBingoUkCalls.normalizeCallerStyle(v);
@@ -457,7 +462,7 @@
             /* ignore */
         }
         const fmt = state && (state.cardFormat || (state.game && state.game.cardFormat));
-        const style = readDisplayCallerStyle();
+        const style = displayCallerStyle(state);
         const text =
             window.MdjBingoUkCalls && window.MdjBingoUkCalls.announcementText
                 ? window.MdjBingoUkCalls.announcementText(num, style, fmt)

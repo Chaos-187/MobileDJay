@@ -104,6 +104,27 @@
         return 'Number ' + num;
     }
 
+    function normalizeCallerStyleValue(raw) {
+        if (global.MdjBingoUkCalls && global.MdjBingoUkCalls.normalizeCallerStyle) {
+            return global.MdjBingoUkCalls.normalizeCallerStyle(raw);
+        }
+        const s = String(raw || 'number').toLowerCase();
+        return s === 'phrase' || s === 'both' ? s : 'number';
+    }
+
+    function effectiveCallerStyle(data, localStyle) {
+        const fromGame =
+            data && data.callerAnnounceStyle != null
+                ? data.callerAnnounceStyle
+                : data && data.game && data.game.callerAnnounceStyle != null
+                  ? data.game.callerAnnounceStyle
+                  : null;
+        if (fromGame != null && String(fromGame).trim()) {
+            return normalizeCallerStyleValue(fromGame);
+        }
+        return normalizeCallerStyleValue(localStyle);
+    }
+
     function emptyManualMarks(rows, cols) {
         const r = Number(rows) || 3;
         const c = Number(cols) || 9;
@@ -737,8 +758,8 @@
                 '<div class="guest-bingo-opt guest-bingo-opt--stacked" data-bingo-caller-style-wrap>' +
                 '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-bullhorn"></i></span>' +
                 '<span class="guest-bingo-opt__copy guest-bingo-opt__copy--full">' +
-                '<span class="guest-bingo-opt__title">Caller says</span>' +
-                '<span class="guest-bingo-opt__hint">UK 90-ball nicknames on this phone</span>' +
+                '<span class="guest-bingo-opt__title">Caller says (override)</span>' +
+                '<span class="guest-bingo-opt__hint" data-bingo-caller-style-hint>Usually set in the DJ game wizard</span>' +
                 '<select class="guest-bingo-caller-style" data-bingo-caller-style aria-label="Caller announcement style">' +
                 '<option value="number">Numbers only</option>' +
                 '<option value="phrase">Phrases only</option>' +
@@ -835,9 +856,15 @@
                 wrap.removeAttribute('hidden');
             }
             if (hint) {
+                const djStyle =
+                    lastStackPayload && lastStackPayload.data
+                        ? effectiveCallerStyle(lastStackPayload.data, callerStyle)
+                        : callerStyle;
                 hint.textContent = us75
                     ? 'UK nicknames apply to 90-ball games — numbers only on this card'
-                    : 'Numbers, UK phrases, or both when caller sound is on';
+                    : 'Game uses ' +
+                      djStyle +
+                      ' from DJ setup; change here only to override on this phone';
             }
             if (sel) {
                 sel.disabled = us75;
@@ -1263,7 +1290,8 @@
         function speakBallForPlay(num, playData) {
             const fmt =
                 playData && (playData.cardFormat || (playData.game && playData.game.cardFormat));
-            const text = callerAnnouncementText(num, callerStyle, fmt);
+            const style = effectiveCallerStyle(playData, callerStyle);
+            const text = callerAnnouncementText(num, style, fmt);
             speakAnnouncementText(text);
         }
 

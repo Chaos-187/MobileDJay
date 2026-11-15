@@ -1509,6 +1509,15 @@
                             <input class="form-check-input" type="checkbox" id="bingoWizardVoiceCall">
                             <label class="form-check-label" for="bingoWizardVoiceCall">Voice on venue display</label>
                         </div>
+                        <div class="mb-3" id="bingoWizardCallerStyleWrap">
+                            <label class="mdj-bingo-field-label" for="bingoWizardCallerStyle">Announce balls as</label>
+                            <p class="small text-muted mb-1">UK 90-ball nicknames for venue display voice and guest caller sound.</p>
+                            <select class="form-select form-select-lg mdj-bingo-input" id="bingoWizardCallerStyle">
+                                <option value="number">Numbers only — “Number 42”</option>
+                                <option value="phrase">UK phrases only — “Winnie-the-Pooh”</option>
+                                <option value="both" selected>Number and phrase — “42. Winnie-the-Pooh”</option>
+                            </select>
+                        </div>
                         <p class="mdj-bingo-field-label mb-2">Prize names (optional)</p>
                         <div class="row g-2">
                             <div class="col-12 col-md-6 col-lg-3" id="bingoWizardPrizeFourWrap" hidden>
@@ -1615,6 +1624,15 @@
                         <input class="form-check-input" type="checkbox" id="bingoEditVoiceCall">
                         <label class="form-check-label" for="bingoEditVoiceCall">Voice on venue display</label>
                     </div>
+                    <div class="mb-3" id="bingoEditCallerStyleWrap">
+                        <label class="mdj-bingo-field-label" for="bingoEditCallerStyle">Announce balls as</label>
+                        <p class="small text-muted mb-1">UK 90-ball nicknames for venue display and guest phones.</p>
+                        <select class="form-select mdj-bingo-input" id="bingoEditCallerStyle">
+                            <option value="number">Numbers only</option>
+                            <option value="phrase">UK phrases only</option>
+                            <option value="both">Number and phrase</option>
+                        </select>
+                    </div>
                     <p class="mdj-bingo-field-label mb-2">Prize names (optional)</p>
                     <div class="row g-2 mb-0">
                         <div class="col-md-3" id="bingoEditPrizeFourWrap" hidden><input type="text" class="form-control mdj-bingo-input" id="bingoEditPrizeFour" maxlength="80" placeholder="Four corners" autocomplete="off"></div>
@@ -1666,7 +1684,7 @@
     <script src="/js/dj-dashboard.js?v=4"></script>
     <script src="/js/dj-games-picker.js?v=3"></script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/dj-bingo.js?v=38"></script>
+    <script src="/js/dj-bingo.js?v=39"></script>
     <script src="/js/dj-racing.js?v=3"></script>
     <script src="/js/dj-hilo.js?v=2"></script>
 

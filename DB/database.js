@@ -387,6 +387,11 @@ try {
     /* exists */
 }
 try {
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN caller_announce_style TEXT DEFAULT 'number'`);
+} catch (e) {
+    /* exists */
+}
+try {
     const claimsDef = db
         .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'bingo_player_claims'`)
         .get();
@@ -1890,6 +1895,9 @@ const bingoGameDb = {
                     : 30,
             autoCall: !!row.auto_call,
             voiceCall: !!row.voice_call,
+            callerAnnounceStyle: row.caller_announce_style
+                ? String(row.caller_announce_style).trim() || 'number'
+                : 'number',
             claimBreakSeconds:
                 row.claim_break_seconds != null && Number.isFinite(Number(row.claim_break_seconds))
                     ? Math.max(1, Math.min(120, Number(row.claim_break_seconds)))
@@ -1950,10 +1958,15 @@ const bingoGameDb = {
             bingoTheme,
             autoCall,
             voiceCall,
+            callerAnnounceStyle,
             prizes
         } = {}
     ) {
-        const { normalizeCardFormat, normalizeBallCountForFormat } = require('../lib/bingo');
+        const {
+            normalizeCardFormat,
+            normalizeBallCountForFormat,
+            normalizeCallerAnnounceStyle
+        } = require('../lib/bingo');
         const t = String(title || 'Bingo game').trim().slice(0, 120) || 'Bingo game';
         const batch = String(batchId || `G${Date.now().toString(36)}`).slice(0, 32);
         const fmt = normalizeCardFormat(cardFormat);
@@ -1972,6 +1985,7 @@ const bingoGameDb = {
         const theme = String(bingoTheme || 'default').trim().slice(0, 32) || 'default';
         const auto = autoCall ? 1 : 0;
         const voice = voiceCall ? 1 : 0;
+        const announceStyle = normalizeCallerAnnounceStyle(callerAnnounceStyle);
         const prizesJson = JSON.stringify(
             parseBingoGamePrizesJson(
                 prizes && typeof prizes === 'object' ? JSON.stringify(prizes) : prizes || ''
@@ -1981,11 +1995,28 @@ const bingoGameDb = {
             .prepare(
                 `INSERT INTO bingo_games (
                     event_id, title, batch_id, status, ball_count, card_format, max_virtual_cards, advertised_start_at,
-                    call_interval_ms, intro_seconds, claim_break_seconds, bingo_theme, auto_call, voice_call, prizes_json
+                    call_interval_ms, intro_seconds, claim_break_seconds, bingo_theme, auto_call, voice_call,
+                    caller_announce_style, prizes_json
                  )
-                 VALUES (?, ?, ?, 'preparing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                 VALUES (?, ?, ?, 'preparing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
-            .run(eventId, t, batch, bc, fmt, mvc, startAt, intervalMs, intro, claimBreak, theme, auto, voice, prizesJson);
+            .run(
+                eventId,
+                t,
+                batch,
+                bc,
+                fmt,
+                mvc,
+                startAt,
+                intervalMs,
+                intro,
+                claimBreak,
+                theme,
+                auto,
+                voice,
+                announceStyle,
+                prizesJson
+            );
         return this.getById(result.lastInsertRowid);
     },
 
@@ -2088,6 +2119,12 @@ const bingoGameDb = {
                 patch.voiceCall ? 1 : 0,
                 gameId
             );
+        }
+        if (patch.callerAnnounceStyle != null) {
+            const { normalizeCallerAnnounceStyle: ncas } = require('../lib/bingo');
+            db.prepare(
+                `UPDATE bingo_games SET caller_announce_style = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+            ).run(ncas(patch.callerAnnounceStyle), gameId);
         }
         if (patch.prizes != null) {
             const normalized = parseBingoGamePrizesJson(

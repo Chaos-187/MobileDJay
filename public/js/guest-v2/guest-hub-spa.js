@@ -231,6 +231,10 @@
                         '<i class="fas fa-gear" aria-hidden="true"></i></button>' +
                     '<p class="gh-bingo-meta guest-bingo-meta" data-bingo-meta></p></div>' +
                 '<button type="button" class="gh-btn gh-btn--outline gh-bingo-buy-tickets mb-2" data-bingo-buy-tickets hidden>Buy tickets</button>' +
+                '<div class="guest-bingo-resume" data-bingo-resume hidden aria-live="polite">' +
+                    '<p class="guest-bingo-resume__eyebrow"><i class="fas fa-play-circle" aria-hidden="true"></i> Resuming</p>' +
+                    '<p class="guest-bingo-resume__ball">Last call · <strong data-bingo-resume-ball>—</strong></p>' +
+                    '<p class="guest-bingo-resume__sec"><span data-bingo-resume-sec>5</span> seconds</p></div>' +
                 '<div class="guest-bingo-intro" data-bingo-intro hidden aria-live="polite">' +
                     '<div class="guest-bingo-intro__card">' +
                         '<p class="guest-bingo-intro__eyebrow"><i class="fas fa-table-cells" aria-hidden="true"></i> Bingo starting soon</p>' +
@@ -247,6 +251,8 @@
                 '<div class="guest-bingo-cards-stack guest-bingo-tickets" data-bingo-cards-stack></div>' +
                 '<span data-bingo-last-ball hidden aria-hidden="true">—</span>' +
                 '<p class="gh-bingo-prize visually-hidden" data-bingo-playing-for></p>' +
+            '</div>' +
+            '<div class="guest-bingo-play-dock" data-bingo-play-dock hidden>' +
                 '<div class="guest-bingo-action-bar guest-bingo-call-dock" data-bingo-call-dock>' +
                     '<p class="gh-bingo-claim-result guest-bingo-call-dock__status" data-bingo-claim-result role="status"></p>' +
                     '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call>Claim</button>' +
@@ -255,8 +261,7 @@
                             '<span class="guest-bingo-recent-empty">—</span></div>' +
                         '<span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>' +
                     '</div></div>' +
-            '</div>' +
-        '</div>';
+            '</div></div>';
     }
 
     function chatPanelHtml() {

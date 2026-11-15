@@ -1038,12 +1038,8 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     padding-bottom: 0.25rem;
 }
 
-.gh-bingo-panel[data-bingo-play]:not([hidden]) {
-    padding-bottom: 0.35rem;
-}
-
-.gh-bingo .guest-bingo-action-bar,
-.gh-bingo .guest-bingo-call-dock {
+.gh-bingo .guest-bingo-play-dock .guest-bingo-action-bar,
+.gh-bingo .guest-bingo-play-dock .guest-bingo-call-dock {
     background: color-mix(in srgb, var(--gh-bg, #0a0a12) 88%, var(--gh-surface));
     border-color: var(--gh-border);
 }

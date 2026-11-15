@@ -16,6 +16,9 @@
     const introCountdown = document.getElementById('bingoIntroCountdown');
     const introPlayingFor = document.getElementById('bingoIntroPlayingFor');
     const introRing = document.getElementById('bingoIntroRing');
+    const resumeStage = document.getElementById('bingoResumeStage');
+    const resumeCountdown = document.getElementById('bingoResumeCountdown');
+    const resumeLastBall = document.getElementById('bingoResumeLastBall');
     const claimOverlay = document.getElementById('bingoClaimFlashOverlay');
     const claimTitle = document.getElementById('bingoClaimFlashTitle');
     const claimSub = document.getElementById('bingoClaimFlashSub');
@@ -43,6 +46,7 @@
     let lastPlayingFor = null;
     let introEndsAtLocal = null;
     let introTotalSec = 30;
+    let resumeEndsAtLocal = null;
     let lastState = null;
     let gridResizeObserver = null;
     let gridColBreakpointMql = null;
@@ -139,7 +143,7 @@
     }
 
     function startDrawing(state) {
-        if (!state || !state.active || state.phase === 'intro' || state.paused) return;
+        if (!state || !state.active || state.phase === 'intro' || state.phase === 'resume' || state.paused) return;
         const pool = remainingBalls(state.calledBalls, state.ballCount);
         if (pool.length === 0) return;
         if (isDrawing) return;
@@ -167,7 +171,7 @@
 
     function scheduleBetweenCallsDraw(state) {
         clearTimeout(dwellTimer);
-        if (!state.active || state.paused || state.phase === 'intro') return;
+        if (!state.active || state.paused || state.phase === 'intro' || state.phase === 'resume') return;
         if (remainingBalls(state.calledBalls, state.ballCount).length === 0) return;
         const base = state.autoCall ? Math.max(600, (state.callIntervalMs || 5000) * 0.4) : 1800;
         dwellTimer = setTimeout(function () {
@@ -515,6 +519,36 @@
         updateIntroUI();
     }
 
+    function updateResumeUI() {
+        if (!lastState || lastState.phase !== 'resume' || !resumeEndsAtLocal) {
+            resumeStage?.setAttribute('hidden', '');
+            layer?.classList.remove('is-resume');
+            return;
+        }
+        resumeStage?.removeAttribute('hidden');
+        layer?.classList.add('is-resume');
+        const remainingMs = Math.max(0, resumeEndsAtLocal - Date.now());
+        const sec = Math.max(1, Math.ceil(remainingMs / 1000));
+        if (resumeCountdown) resumeCountdown.textContent = String(sec);
+        const lb = lastState.lastBall != null ? String(lastState.lastBall) : '—';
+        if (resumeLastBall) resumeLastBall.textContent = lb;
+        if (lastBallEl && lastState.lastBall != null) {
+            lastBallEl.textContent = lastState.lastBall;
+            lastBallEl.classList.add('ball-pop');
+        }
+    }
+
+    function syncResumeFromState(state) {
+        if (state.phase === 'resume') {
+            if (state.resumeRemainingMs != null) {
+                resumeEndsAtLocal = Date.now() + state.resumeRemainingMs;
+            }
+        } else {
+            resumeEndsAtLocal = null;
+        }
+        updateResumeUI();
+    }
+
     function syncDisplayDjControls(state) {
         if (!djControls || !displayAutoCall) return;
         if (!state.active) {
@@ -577,11 +611,13 @@
         }
         setFullscreenActive(true);
         syncIntroFromState(state);
+        syncResumeFromState(state);
 
         const ballCount = state.ballCount || 90;
         if (ballCount !== gridBuiltFor) buildGrid(ballCount);
 
         const claimBreak = state.phase === 'claim_break';
+        const resuming = state.phase === 'resume';
         if (state.paused || claimBreak) {
             stopDrawing();
             clearTimeout(dwellTimer);
@@ -623,6 +659,17 @@
             if (metaEl) {
                 metaEl.textContent = 'Starting in ' + (state.introRemainingSec || 0) + 's';
             }
+        } else if (resuming) {
+            if (lastBallEl && state.lastBall != null) {
+                lastBallEl.textContent = state.lastBall;
+            }
+            if (metaEl) {
+                metaEl.textContent =
+                    'Resuming in ' +
+                    (state.resumeRemainingSec || 0) +
+                    's' +
+                    (state.lastBall != null ? ' · last call ' + state.lastBall : '');
+            }
         } else if (state.lastBall != null && state.lastBall !== lastBallSeen) {
             lastBallSeen = state.lastBall;
             revealBallWithMachine(state, state.lastBall);
@@ -644,7 +691,7 @@
             scheduleBetweenCallsDraw(state);
         }
 
-        if (metaEl && state.phase !== 'intro') {
+        if (metaEl && state.phase !== 'intro' && state.phase !== 'resume') {
             const n = (state.calledBalls || []).length;
             let text = n + ' of ' + ballCount + ' balls called';
             if (state.paused) text += ' · paused';
@@ -703,6 +750,12 @@
         if (lastState?.active && lastState.phase === 'intro') {
             updateIntroUI();
             if (introEndsAtLocal && Date.now() >= introEndsAtLocal) {
+                pollState();
+            }
+        }
+        if (lastState?.active && lastState.phase === 'resume') {
+            updateResumeUI();
+            if (resumeEndsAtLocal && Date.now() >= resumeEndsAtLocal) {
                 pollState();
             }
         }

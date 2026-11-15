@@ -825,9 +825,10 @@
         syncCallerRunChrome(state);
         if (byId('bingoStopBtn')) byId('bingoStopBtn').disabled = !hasSlug || !active;
         const inIntro = state.phase === 'intro';
+        const resuming = state.phase === 'resume';
         const claimBreak = state.phase === 'claim_break';
         if (byId('bingoCallBtn'))
-            byId('bingoCallBtn').disabled = !hasSlug || !active || paused || inIntro || claimBreak;
+            byId('bingoCallBtn').disabled = !hasSlug || !active || paused || inIntro || resuming || claimBreak;
         if (els.skipIntroBtn) els.skipIntroBtn.hidden = !(active && inIntro);
         if (byId('bingoResetCallsBtn')) byId('bingoResetCallsBtn').disabled = !hasSlug || !active;
         if (byId('bingoApplyConfigBtn')) byId('bingoApplyConfigBtn').disabled = !hasSlug;
@@ -845,11 +846,21 @@
         }
         if (els.pausedHint) {
             const claimPause = paused && state.pausedReason === 'claim';
-            const showHint = active && (claimPause || paused || claimBreak);
+            const resuming = state.phase === 'resume';
+            const showHint = active && (claimPause || paused || claimBreak || resuming);
             els.pausedHint.hidden = !showHint;
             if (showHint && els.pausedHint) {
                 const reason = state.pausedReason || 'claim';
-                if (claimBreak && (!paused || state.claimWindowOpen || state.pendingGameEnd || state.pendingAdvanceAfterClaim)) {
+                if (resuming) {
+                    const sec = state.resumeRemainingSec != null ? state.resumeRemainingSec : '…';
+                    const last = state.lastBall != null ? state.lastBall : '—';
+                    els.pausedHint.innerHTML =
+                        '<i class="fas fa-play-circle"></i> Resuming in <strong>' +
+                        sec +
+                        's</strong> · last call <strong>' +
+                        last +
+                        '</strong>';
+                } else if (claimBreak && (!paused || state.claimWindowOpen || state.pendingGameEnd || state.pendingAdvanceAfterClaim)) {
                     const sec = state.claimBreakRemainingSec != null ? state.claimBreakRemainingSec : '…';
                     const extra =
                         state.pendingGameEnd || state.pendingAdvanceAfterClaim ? ' — more claims on this prize OK' : '';
@@ -981,6 +992,10 @@
         if (state.phase === 'intro') {
             els.status.textContent = 'Intro · ' + (state.introRemainingSec || 0) + 's';
             els.status.className = 'badge bg-info text-dark mdj-bingo-status-pill';
+        } else if (state.phase === 'resume') {
+            const lb = state.lastBall != null ? ' · last ' + state.lastBall : '';
+            els.status.textContent = 'Resuming · ' + (state.resumeRemainingSec || 0) + 's' + lb;
+            els.status.className = 'badge bg-warning text-dark mdj-bingo-status-pill';
         } else if (state.phase === 'claim_break') {
             const sec = state.claimBreakRemainingSec != null ? state.claimBreakRemainingSec : '';
             els.status.textContent = sec ? 'Claims open · ' + sec + 's' : 'Claims open';

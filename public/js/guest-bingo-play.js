@@ -209,6 +209,7 @@
         const els = {
             join: q('[data-bingo-join]'),
             play: q('[data-bingo-play]'),
+            playDock: q('[data-bingo-play-dock]'),
             gamesList: q('[data-bingo-games-list]'),
             gameTitle: q('[data-bingo-game-title]'),
             meta: q('[data-bingo-meta]'),
@@ -230,7 +231,10 @@
             intro: q('[data-bingo-intro]'),
             introPrize: q('[data-bingo-intro-prize]'),
             introSec: q('[data-bingo-intro-sec]'),
-            introRing: q('[data-bingo-intro-ring]')
+            introRing: q('[data-bingo-intro-ring]'),
+            resume: q('[data-bingo-resume]'),
+            resumeBall: q('[data-bingo-resume-ball]'),
+            resumeSec: q('[data-bingo-resume-sec]')
         };
 
         const LOBBY_KEY = 'mdj_bingo_lobby_' + slug;
@@ -268,6 +272,7 @@
         let introEndsAtLocal = null;
         let introTotalSec = 30;
         let introTickTimer = null;
+        let resumeEndsAtLocal = null;
 
         let buyModalEls = null;
         let settingsModalEls = null;
@@ -706,7 +711,7 @@
 
         function maybeAnnounceBall(data) {
             if (!callerSoundOn || !data) return;
-            if (!data.active || data.phase === 'intro') return;
+            if (!data.active || data.phase === 'intro' || data.phase === 'resume') return;
             if (data.paused && data.pausedReason === 'claim') return;
             if (data.lastBall == null) return;
             if (data.lastBall === lastSpokenBall) return;
@@ -724,18 +729,20 @@
         function ensureIntroTick() {
             if (introTickTimer) return;
             introTickTimer = setInterval(function () {
-                if (!introEndsAtLocal) {
+                if (!introEndsAtLocal && !resumeEndsAtLocal) {
                     stopIntroTick();
                     return;
                 }
                 if (lastStackPayload && lastStackPayload.data) {
-                    paintGuestIntro(lastStackPayload.data);
+                    if (introEndsAtLocal) paintGuestIntro(lastStackPayload.data);
+                    if (resumeEndsAtLocal) paintGuestResume(lastStackPayload.data);
                 }
             }, 350);
         }
 
         function setPlayIntroMode(on) {
             if (els.play) els.play.classList.toggle('guest-bingo--intro', !!on);
+            if (els.playDock) els.playDock.classList.toggle('guest-bingo--intro', !!on);
             if (els.intro) {
                 if (on) els.intro.removeAttribute('hidden');
                 else els.intro.setAttribute('hidden', '');
@@ -771,6 +778,31 @@
                 introEndsAtLocal = null;
                 stopIntroTick();
                 setPlayIntroMode(false);
+            }
+        }
+
+        function paintGuestResume(data) {
+            if (!els.resume || !resumeEndsAtLocal) return;
+            const remainingMs = Math.max(0, resumeEndsAtLocal - Date.now());
+            const sec = Math.max(1, Math.ceil(remainingMs / 1000));
+            if (els.resumeSec) els.resumeSec.textContent = String(sec);
+            if (els.resumeBall) {
+                els.resumeBall.textContent = data && data.lastBall != null ? String(data.lastBall) : '—';
+            }
+        }
+
+        function syncGuestResume(data) {
+            const showResume = !!(data && data.active && data.phase === 'resume');
+            if (showResume) {
+                if (data.resumeRemainingMs != null) {
+                    resumeEndsAtLocal = Date.now() + data.resumeRemainingMs;
+                }
+                if (els.resume) els.resume.removeAttribute('hidden');
+                paintGuestResume(data);
+                ensureIntroTick();
+            } else {
+                resumeEndsAtLocal = null;
+                if (els.resume) els.resume.setAttribute('hidden', '');
             }
         }
 
@@ -1083,11 +1115,13 @@
         function showJoin() {
             if (els.join) els.join.hidden = false;
             if (els.play) els.play.hidden = true;
+            if (els.playDock) els.playDock.hidden = true;
         }
 
         function showPlay() {
             if (els.join) els.join.hidden = true;
             if (els.play) els.play.hidden = false;
+            if (els.playDock) els.playDock.hidden = false;
             setLobbyPref(false);
         }
 
@@ -1392,17 +1426,20 @@
                 lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
                 if (els.buyTickets) {
+                    const gameStatus = data.game && data.game.status ? String(data.game.status) : '';
                     const gameRunning =
-                        !!data.active &&
-                        (data.phase === 'intro' ||
-                            data.phase === 'claim_break' ||
-                            (data.calledCount != null && data.calledCount > 0));
+                        gameStatus === 'live' ||
+                        gameStatus === 'ended' ||
+                        !!data.active ||
+                        !!data.playInProgress ||
+                        (data.calledCount != null && data.calledCount > 0);
                     const have = data.allCards ? data.allCards.length : 0;
                     const rem = ticketsRemaining(data.cardLimit, have);
                     els.buyTickets.hidden = gameRunning || !data.canGrabMore || rem <= 0;
                 }
                 updateCallUi(stackCards, activeSerial, data);
                 syncGuestIntro(data);
+                syncGuestResume(data);
                 maybeAnnounceBall(data);
                 syncWinnersModal(data);
                 if (els.meta) {
@@ -1418,6 +1455,13 @@
                                 : 'Paused — claim check';
                     }
                     if (data.phase === 'intro') t = 'Starting soon…';
+                    else if (data.phase === 'resume') {
+                        t =
+                            'Resuming · ' +
+                            (data.resumeRemainingSec || 0) +
+                            's' +
+                            (data.lastBall != null ? ' · last ' + data.lastBall : '');
+                    }
                     els.meta.textContent = t;
                 }
                 if (els.callBtn) {

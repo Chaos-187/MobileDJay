@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=39" rel="stylesheet">
-    <link href="/css/bingo-themes.css?v=3" rel="stylesheet">
+    <link href="/css/bingo.css?v=41" rel="stylesheet">
+    <link href="/css/bingo-themes.css?v=4" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
 </head>
@@ -38,6 +38,11 @@
             <button type="button" class="btn btn-outline-light guest-bingo-buy-tickets mb-2 w-100" data-bingo-buy-tickets hidden>
                 Buy tickets
             </button>
+            <div class="guest-bingo-resume" data-bingo-resume hidden aria-live="polite">
+                <p class="guest-bingo-resume__eyebrow"><i class="fas fa-play-circle" aria-hidden="true"></i> Resuming</p>
+                <p class="guest-bingo-resume__ball">Last call · <strong data-bingo-resume-ball>—</strong></p>
+                <p class="guest-bingo-resume__sec"><span data-bingo-resume-sec>5</span> seconds</p>
+            </div>
             <div class="guest-bingo-intro" data-bingo-intro hidden aria-live="polite">
                 <div class="guest-bingo-intro__card">
                     <p class="guest-bingo-intro__eyebrow"><i class="fas fa-table-cells" aria-hidden="true"></i> Bingo starting soon</p>
@@ -56,6 +61,16 @@
             <div class="guest-bingo-cards-stack guest-bingo-tickets" data-bingo-cards-stack></div>
             <span id="guestBingoLastBall" data-bingo-last-ball hidden aria-hidden="true">—</span>
             <p class="guest-bingo-playing-for" id="guestBingoPlayingFor" data-bingo-playing-for></p>
+            <details class="guest-bingo-more-claims small mt-2">
+                <summary>Other claims</summary>
+                <div class="guest-bingo-claim-row mt-2">
+                    <button type="button" class="btn btn-outline-warning btn-sm guest-bingo-claim" data-bingo-claim data-claim="line">1 Line</button>
+                    <button type="button" class="btn btn-outline-warning btn-sm guest-bingo-claim" data-bingo-claim data-claim="two-lines">2 Lines</button>
+                    <button type="button" class="btn btn-outline-warning btn-sm guest-bingo-claim" data-bingo-claim data-claim="house">Full house</button>
+                </div>
+            </details>
+        </div>
+        <div class="guest-bingo-play-dock" data-bingo-play-dock hidden>
             <div class="guest-bingo-action-bar guest-bingo-call-dock" data-bingo-call-dock>
                 <p id="guestBingoClaimResult" class="guest-bingo-claim-result guest-bingo-call-dock__status small" data-bingo-claim-result role="status"></p>
                 <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn guest-bingo-call-dock__btn" data-bingo-call>Claim</button>
@@ -66,14 +81,6 @@
                     <span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>
                 </div>
             </div>
-            <details class="guest-bingo-more-claims small mt-2">
-                <summary>Other claims</summary>
-                <div class="guest-bingo-claim-row mt-2">
-                    <button type="button" class="btn btn-outline-warning btn-sm guest-bingo-claim" data-bingo-claim data-claim="line">1 Line</button>
-                    <button type="button" class="btn btn-outline-warning btn-sm guest-bingo-claim" data-bingo-claim data-claim="two-lines">2 Lines</button>
-                    <button type="button" class="btn btn-outline-warning btn-sm guest-bingo-claim" data-bingo-claim data-claim="house">Full house</button>
-                </div>
-            </details>
         </div>
     </main>
     <script src="/js/guest-session.js"></script>
@@ -82,7 +89,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=1"></script>
-    <script src="/js/guest-bingo-play.js?v=36"></script>
+    <script src="/js/guest-bingo-play.js?v=39"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

@@ -2222,6 +2222,7 @@ app.get('/api/display/:eventSlug/games/bingo/state', (req, res) => {
     const { slug, gameId } = ctx;
     const caller = makeBingoCaller(slug, gameId);
     bingoSession.ensureIntroAdvanced(slug, gameId, caller);
+    bingoSession.ensureResumeAdvanced(slug, gameId, caller);
     const payload = bingoPublicState(slug, gameId);
     if (ctx.event) {
         const game = gameId ? bingoGameDb.getById(gameId) : null;
@@ -2330,6 +2331,7 @@ app.post('/api/display/:eventSlug/games/bingo/call', djWebAuth.requireDjApiAuth,
     if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
     const caller = makeBingoCaller(slug, gid);
     bingoSession.ensureIntroAdvanced(slug, gid, caller);
+    bingoSession.ensureResumeAdvanced(slug, gid, caller);
     const result = bingoSession.callBall(slug, gid);
     if (result.error) {
         return res.status(400).json(result);
@@ -3037,6 +3039,9 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     }
     const cardLimit = bingoMaxVirtualCardsForGame(req.event, game);
     const guestCards = guestBingoCardsSummary(access.cards, slug, gameId);
+    const caller = makeBingoCaller(slug, gameId);
+    bingoSession.ensureIntroAdvanced(slug, gameId, caller);
+    bingoSession.ensureResumeAdvanced(slug, gameId, caller);
     const state = bingoPublicState(slug, gameId);
     const called = new Set(state.calledBalls || []);
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
@@ -3061,6 +3066,7 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         cardLimit,
         guestCards,
         allCards,
+        playInProgress: bingoGuestPlayInProgress(slug, gameId),
         canGrabMore: guestCanGrabMoreVirtualCards(
             slug,
             gameId,

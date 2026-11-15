@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link href="/css/spinner-show.css?v=3" rel="stylesheet">
     <link href="/css/bingo.css?v=38" rel="stylesheet">
-    <link href="/css/bingo-themes.css?v=3" rel="stylesheet">
+    <link href="/css/bingo-themes.css?v=4" rel="stylesheet">
     <link href="/css/racing.css?v=7" rel="stylesheet">
     <link href="/css/hilo.css?v=2" rel="stylesheet">
     <style>
@@ -1334,6 +1334,17 @@
             </div>
         </div>
 
+        <div class="bingo-resume-stage" id="bingoResumeStage" hidden aria-live="polite">
+            <div class="bingo-resume-card">
+                <p class="bingo-resume-eyebrow"><i class="fas fa-play-circle me-2" aria-hidden="true"></i>Resuming</p>
+                <p class="bingo-resume-last-call">Last call · <span id="bingoResumeLastBall" class="bingo-resume-last-ball">—</span></p>
+                <div class="bingo-resume-countdown-wrap">
+                    <div class="bingo-resume-countdown" id="bingoResumeCountdown">5</div>
+                    <span class="bingo-resume-countdown-label">seconds</span>
+                </div>
+            </div>
+        </div>
+
         <div class="bingo-fs-layout" id="bingoFsGame">
             <header class="bingo-fs-header">
                 <div class="bingo-fs-brand">
@@ -1553,7 +1564,7 @@
     <script src="/js/dj-display.js?v=7"></script>
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/bingo-theme.js?v=1"></script>
-    <script src="/js/dj-display-bingo.js?v=19"></script>
+    <script src="/js/dj-display-bingo.js?v=20"></script>
     <script src="/js/dj-display-racing.js?v=8"></script>
     <script src="/js/dj-display-hilo.js?v=2"></script>
 </body>

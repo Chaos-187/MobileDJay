@@ -25,7 +25,6 @@
         batchesList: document.getElementById('bingoBatchesList'),
         targetHint: document.getElementById('bingoTargetHint'),
         adminGrid: document.getElementById('bingoAdminGrid'),
-        miniGrid: document.getElementById('bingoCallerMiniGrid'),
         calledCountMini: document.getElementById('bingoCalledCountMini'),
         pausedHint: document.getElementById('bingoPausedHint'),
         pauseBtn: document.getElementById('bingoPauseBtn'),
@@ -94,8 +93,6 @@
     };
     let adminCells = new Map();
     let adminGridSize = 0;
-    let miniCells = new Map();
-    let miniGridSize = 0;
     let selectedPlayingFor = 'line';
     let adminGridResizeObserver = null;
 
@@ -115,8 +112,10 @@
         const gap = 3;
         const cellW = (w - gap * (cols - 1)) / cols;
         const cellH = (h - gap * (rows - 1)) / rows;
-        const px = Math.max(7, Math.min(15, Math.min(cellW, cellH) * 0.42));
+        const px = Math.max(8, Math.min(22, Math.min(cellW, cellH) * 0.48));
         grid.style.setProperty('--mdj-bingo-admin-cell-fs', px + 'px');
+        grid.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+        grid.style.gridTemplateRows = 'repeat(' + rows + ', minmax(0, 1fr))';
     }
 
     function adminGridScrollEl() {
@@ -687,22 +686,6 @@
         fitAdminGridCellFont();
     }
 
-    function buildMiniGrid(ballCount) {
-        if (!els.miniGrid) return;
-        els.miniGrid.innerHTML = '';
-        miniCells.clear();
-        miniGridSize = ballCount;
-        for (let n = 1; n <= ballCount; n++) {
-            const cell = document.createElement('div');
-            cell.className = 'mdj-bingo-admin-cell';
-            cell.textContent = n;
-            cell.dataset.num = String(n);
-            cell.setAttribute('aria-label', 'Ball ' + n);
-            els.miniGrid.appendChild(cell);
-            miniCells.set(n, cell);
-        }
-    }
-
     function syncGridCells(cells, called, lastBall) {
         cells.forEach((cell, n) => {
             cell.classList.toggle('is-called', called.has(n));
@@ -716,10 +699,7 @@
         const calledCount = (state.calledBalls || []).length;
         if (ballCount !== adminGridSize) buildAdminGrid(ballCount);
         syncGridCells(adminCells, called, state.lastBall);
-        if (els.miniGrid) {
-            if (ballCount !== miniGridSize) buildMiniGrid(ballCount);
-            syncGridCells(miniCells, called, state.lastBall);
-        }
+        if (isCallerPage) fitAdminGridCellFont();
         if (els.calledCountMini) {
             els.calledCountMini.textContent = calledCount + ' / ' + ballCount;
         }

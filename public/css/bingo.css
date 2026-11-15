@@ -3611,6 +3611,7 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
 .mdj-caller-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-rows: minmax(0, 1fr);
     gap: clamp(0.5rem, 1.2vw, 0.85rem);
     flex: 1 1 auto;
     min-height: 0;
@@ -3665,6 +3666,7 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
 .mdj-caller-panel--claims,
 .mdj-caller-panel--board {
     min-height: 0;
+    height: 100%;
     max-height: calc(100dvh - 7.5rem);
     overflow-y: auto;
     overflow-x: hidden;
@@ -3714,35 +3716,10 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
     font-size: 0.95rem;
 }
 
-.mdj-caller-mini-board-wrap {
-    margin: 0.5rem 0 0.75rem;
-}
-
 .mdj-caller-called-count {
     font-weight: 800;
     color: rgba(255, 180, 100, 0.95);
     letter-spacing: 0.02em;
-}
-
-.mdj-caller-mini-grid {
-    gap: 2px;
-    max-width: 100%;
-}
-
-.mdj-caller-mini-grid .mdj-bingo-admin-cell {
-    font-size: clamp(0.42rem, 1.6vw, 0.52rem);
-    font-weight: 800;
-    border-radius: 3px;
-    padding: 0;
-}
-
-.mdj-caller-mini-grid .mdj-bingo-admin-cell.is-called {
-    background: rgba(40, 167, 69, 0.4);
-}
-
-.mdj-caller-mini-grid .mdj-bingo-admin-cell.is-last {
-    transform: scale(1.05);
-    z-index: 1;
 }
 
 .mdj-caller-winners-wrap {
@@ -3997,7 +3974,7 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
 
 body.mdj-bingo-caller-page .mdj-bingo-grid-scroll--caller {
     flex: 1 1 auto;
-    min-height: 0;
+    min-height: min(52vh, 520px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -4007,13 +3984,17 @@ body.mdj-bingo-caller-page .mdj-caller-admin-grid {
     flex: 1 1 auto;
     min-height: 0;
     width: 100%;
-    align-content: start;
+    height: 100%;
+    align-content: stretch;
 }
 
-@media (min-height: 700px) {
-    body.mdj-bingo-caller-page .mdj-caller-admin-grid {
-        height: 100%;
-    }
+body.mdj-bingo-caller-page .mdj-caller-admin-grid .mdj-bingo-admin-cell {
+    aspect-ratio: auto;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    font-size: var(--mdj-bingo-admin-cell-fs, clamp(0.65rem, 1.4vmin, 1rem));
+    border-radius: 5px;
 }
 
 /* Games tab: allow scroll — prepare panels must not clip buttons */

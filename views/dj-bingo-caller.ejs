@@ -11,7 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=30" rel="stylesheet">
+    <link href="/css/bingo.css?v=32" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -46,16 +46,9 @@
                     <div id="bingoLastBall" class="mdj-bingo-hero-ball mdj-caller-hero-ball">—</div>
                     <span id="bingoPausedHint" class="mdj-bingo-paused-chip mdj-caller-paused" hidden><i class="fas fa-pause-circle"></i> Paused</span>
                 </div>
-                <div class="mdj-caller-mini-board-wrap">
-                    <p class="mdj-bingo-field-label mb-1">
-                        Called <span id="bingoCalledCountMini" class="mdj-caller-called-count">0 / 90</span>
-                    </p>
-                    <div
-                        id="bingoCallerMiniGrid"
-                        class="mdj-bingo-admin-grid mdj-caller-mini-grid"
-                        aria-label="Numbers called"
-                    ></div>
-                </div>
+                <p class="mdj-bingo-field-label mb-0 text-center">
+                    Called <span id="bingoCalledCountMini" class="mdj-caller-called-count">0 / 90</span>
+                </p>
 
                 <p class="mdj-bingo-field-label mb-1">Playing for</p>
                 <div class="mdj-bingo-playing-for btn-group w-100 mdj-caller-segments" role="group" aria-label="Playing for">
@@ -176,6 +169,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=23"></script>
+    <script src="/js/dj-bingo.js?v=24"></script>
 </body>
 </html>

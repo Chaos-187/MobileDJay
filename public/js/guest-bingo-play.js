@@ -878,6 +878,15 @@
                             escapeHtml(cta) +
                             '</span>' +
                             '</button>' +
+                            (hasCards && g.canGrabMore && !g.playInProgress
+                                ? '<button type="button" class="gh-btn gh-btn--outline gh-bingo-lobby-buy w-100 mb-2" data-bingo-lobby-buy="' +
+                                  g.id +
+                                  '" data-card-limit="' +
+                                  Number(g.cardLimit) +
+                                  '" data-guest-card-count="' +
+                                  Number(g.guestCardCount || 0) +
+                                  '">Buy tickets</button>'
+                                : '') +
                             '<div class="gh-bingo-paper-row">' +
                             '<input type="text" class="gh-input gh-bingo-serial-input" data-paper-for="' +
                             g.id +
@@ -909,6 +918,17 @@
                             );
                             openBuyTicketsModal(gid, rem);
                         }
+                    });
+                });
+                els.gamesList.querySelectorAll('[data-bingo-lobby-buy]').forEach(function (btn) {
+                    btn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        const gid = parseInt(btn.getAttribute('data-bingo-lobby-buy'), 10);
+                        const rem = ticketsRemaining(
+                            btn.getAttribute('data-card-limit'),
+                            btn.getAttribute('data-guest-card-count')
+                        );
+                        openBuyTicketsModal(gid, rem);
                     });
                 });
                 els.gamesList.querySelectorAll('[data-paper-link]').forEach(function (btn) {
@@ -1061,13 +1081,10 @@
                 lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
                 if (els.buyTickets) {
-                    const inProgress =
-                        !!data.active ||
-                        data.phase === 'intro' ||
-                        (data.calledCount != null && data.calledCount > 0);
+                    const ballsCalling = data.calledCount != null && data.calledCount > 0;
                     const have = data.allCards ? data.allCards.length : 0;
                     const rem = ticketsRemaining(data.cardLimit, have);
-                    els.buyTickets.hidden = !data.canGrabMore || inProgress || rem <= 0;
+                    els.buyTickets.hidden = !data.canGrabMore || ballsCalling || rem <= 0;
                 }
                 updateCallUi(stackCards, activeSerial, data);
                 syncGuestIntro(data);

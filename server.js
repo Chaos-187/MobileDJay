@@ -754,10 +754,10 @@ function guestBingoCardProgress(card, slug, gameId) {
     return progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
 }
 
-/** Caller running or any balls drawn — no extra virtual cards mid-game. */
+/** Once numbers are being called — no extra virtual cards (intro / pre-start still OK). */
 function bingoGuestPlayInProgress(slug, gameId) {
     const state = bingoSession.getBingoState(slug, gameId);
-    return !!(state.active || (state.calledBalls && state.calledBalls.length > 0));
+    return !!(state.calledBalls && state.calledBalls.length > 0);
 }
 
 function guestCanGrabMoreVirtualCards(slug, gameId, assignedCount, cardLimit) {

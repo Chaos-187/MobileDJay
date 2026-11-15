@@ -943,6 +943,18 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     margin-top: 0.15rem;
 }
 
+.gh-bingo-intro-lobby {
+    margin: -0.35rem 0 0.65rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    text-align: center;
+    color: #ffe082;
+    background: rgba(255, 193, 7, 0.12);
+    border: 1px solid rgba(255, 193, 7, 0.35);
+}
+
 .gh-bingo-game-pick__cta {
     display: block;
     margin-top: 0.45rem;

@@ -534,10 +534,23 @@ body.mdj-guest-bingo-page {
 [data-bingo-play].guest-bingo--intro .guest-bingo-cards-stack,
 [data-bingo-play].guest-bingo--intro .guest-bingo-playing-for,
 [data-bingo-play].guest-bingo--intro .guest-bingo-more-claims,
-.guest-bingo-play-dock.guest-bingo--intro .guest-bingo-call-dock {
+.guest-bingo-play-dock.guest-bingo--intro .guest-bingo-call-dock,
+[data-bingo-play].guest-bingo--resume .guest-bingo-prize-row,
+[data-bingo-play].guest-bingo--resume .guest-bingo-cards-stack,
+[data-bingo-play].guest-bingo--resume .guest-bingo-buy-tickets,
+.guest-bingo-play-dock.guest-bingo--resume .guest-bingo-call-dock {
     opacity: 0.22;
     pointer-events: none;
     filter: blur(1px);
+}
+
+[data-bingo-play].guest-bingo--resume .guest-bingo-resume,
+.gh-bingo-panel.guest-bingo--resume .guest-bingo-resume {
+    position: relative;
+    z-index: 2;
+    opacity: 1 !important;
+    filter: none !important;
+    pointer-events: auto;
 }
 
 .guest-bingo-buy-tickets {

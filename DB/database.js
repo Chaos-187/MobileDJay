@@ -2070,6 +2070,20 @@ const bingoClaimDb = {
         return !!row;
     },
 
+    /** Same tier already verified for this physical/virtual card (multi-card guests). */
+    cardHasValidClaim(gameId, serial, claimType) {
+        const sn = String(serial || '').trim();
+        if (!gameId || !sn || !claimType) return false;
+        const row = db
+            .prepare(
+                `SELECT 1 AS ok FROM bingo_player_claims
+                 WHERE game_id = ? AND serial = ? AND claim_type = ? AND valid_on_card = 1
+                 LIMIT 1`
+            )
+            .get(gameId, sn, claimType);
+        return !!row;
+    },
+
     /** Distinct guest names with a verified (valid on card) claim for this prize tier. */
     listVerifiedWinnerNames(gameId, claimType) {
         if (!gameId || !claimType) return [];

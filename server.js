@@ -2932,11 +2932,19 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
             if (!assigned.length || !deviceOk) return base;
             const guestCards = guestBingoCardsSummary(assigned, slug, g.id);
             const bestToGo = guestCards.length ? guestCards[0].toGo : null;
+            const caller = makeBingoCaller(slug, g.id);
+            bingoSession.ensureIntroAdvanced(slug, g.id, caller);
+            bingoSession.ensureResumeAdvanced(slug, g.id, caller);
+            const pub = bingoPublicState(slug, g.id);
             const playInProgress = bingoGuestPlayInProgress(slug, g.id);
             return {
                 ...base,
                 guestCardCount: assigned.length,
                 playInProgress,
+                bingoActive: !!pub.active,
+                bingoPhase: pub.phase || null,
+                introRemainingSec: pub.introRemainingSec ?? 0,
+                resumeRemainingSec: pub.resumeRemainingSec ?? 0,
                 canGrabMore: guestCanGrabMoreVirtualCards(slug, g.id, assigned.length, cardLimit),
                 guestCards,
                 guestBestToGo: bestToGo,
@@ -3142,11 +3150,12 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/link-card', getEventFromSlug
 
 const bingoGuestClaimBuckets = new Map();
 
-function bingoClaimRateLimited(gameId, deviceId) {
-    const key = `${gameId}::${deviceId}`;
+function bingoClaimRateLimited(gameId, deviceId, serial) {
+    const serialKey = String(serial || '').trim().toLowerCase();
+    const key = `${gameId}::${deviceId}::${serialKey || '_'}`;
     const now = Date.now();
     const prev = bingoGuestClaimBuckets.get(key) || 0;
-    if (now - prev < 2000) return true;
+    if (now - prev < 1500) return true;
     bingoGuestClaimBuckets.set(key, now);
     if (bingoGuestClaimBuckets.size > 5000) {
         bingoGuestClaimBuckets.clear();
@@ -3170,9 +3179,6 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
         return res.status(400).json({ error: 'Invalid claim type' });
     }
     if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
-    if (bingoClaimRateLimited(gameId, deviceId)) {
-        return res.status(429).json({ error: 'Please wait a moment before claiming again' });
-    }
     const access = bingoDb.resolveGuestCardAccess(
         gameId,
         customerName,
@@ -3191,6 +3197,9 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
     );
     if (!card) {
         return bingoAssignErrorResponse(res, 'not_assigned');
+    }
+    if (bingoClaimRateLimited(gameId, deviceId, card.serial)) {
+        return res.status(429).json({ error: 'Please wait a moment before claiming again' });
     }
     const state = bingoSession.getBingoState(slug, gameId);
     const requested = normalizePlayingFor(claimType);
@@ -3240,7 +3249,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
         });
     }
 
-    if (bingoClaimDb.guestHasValidClaim(gameId, customerName, playingFor)) {
+    if (bingoClaimDb.cardHasValidClaim(gameId, card.serial, playingFor)) {
         recordGuestClaim(false);
         return res.json({
             success: true,
@@ -3249,7 +3258,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
             serial: card.serial,
             claimType: playingFor,
             playingFor,
-            message: 'You already verified this prize — wait for the next round.'
+            message: 'This card already has a verified claim for this prize.'
         });
     }
 

@@ -303,7 +303,11 @@
         let playingFor = 'line';
         let cardMode = '';
         let cardOrderSerials = [];
-        const selfVerifiedTiers = new Set();
+        const selfVerifiedClaimKeys = new Set();
+
+        function verifiedClaimKey(tier, serial) {
+            return String(tier || '') + '::' + String(serial || '');
+        }
         let claimInFlight = false;
         let lastSpokenBall = null;
         let introEndsAtLocal = null;
@@ -762,25 +766,25 @@
             }
         }
 
-        function stopIntroTick() {
+        function stopCountdownTick() {
             if (introTickTimer) {
                 clearInterval(introTickTimer);
                 introTickTimer = null;
             }
         }
 
-        function ensureIntroTick() {
+        function ensureCountdownTick() {
             if (introTickTimer) return;
             introTickTimer = setInterval(function () {
                 if (!introEndsAtLocal && !resumeEndsAtLocal) {
-                    stopIntroTick();
+                    stopCountdownTick();
                     return;
                 }
                 if (lastStackPayload && lastStackPayload.data) {
                     if (introEndsAtLocal) paintGuestIntro(lastStackPayload.data);
                     if (resumeEndsAtLocal) paintGuestResume(lastStackPayload.data);
                 }
-            }, 350);
+            }, 250);
         }
 
         function setPlayIntroMode(on) {
@@ -792,13 +796,55 @@
             }
         }
 
+        function setPlayResumeMode(on) {
+            if (els.play) els.play.classList.toggle('guest-bingo--resume', !!on);
+            if (els.playDock) els.playDock.classList.toggle('guest-bingo--resume', !!on);
+            if (els.resume) {
+                if (on) els.resume.removeAttribute('hidden');
+                else els.resume.setAttribute('hidden', '');
+            }
+        }
+
+        function guestResumeRemainingMs(data) {
+            if (!data) return 0;
+            if (resumeEndsAtLocal) {
+                return Math.max(0, resumeEndsAtLocal - Date.now());
+            }
+            if (data.resumeRemainingMs != null) {
+                return Math.max(0, data.resumeRemainingMs);
+            }
+            if (data.resumeRemainingSec != null) {
+                return Math.max(0, data.resumeRemainingSec * 1000);
+            }
+            return 0;
+        }
+
+        function guestIntroRemainingMs(data) {
+            if (!data) return 0;
+            if (introEndsAtLocal) {
+                return Math.max(0, introEndsAtLocal - Date.now());
+            }
+            if (data.introRemainingMs != null) {
+                return Math.max(0, data.introRemainingMs);
+            }
+            if (data.introRemainingSec != null) {
+                return Math.max(0, data.introRemainingSec * 1000);
+            }
+            return 0;
+        }
+
         function paintGuestIntro(data) {
-            if (!els.intro || !introEndsAtLocal) return;
-            const remainingMs = Math.max(0, introEndsAtLocal - Date.now());
-            const sec = Math.ceil(remainingMs / 1000);
+            if (!els.intro) return;
+            const remainingMs = guestIntroRemainingMs(data);
+            const sec = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0;
             if (els.introSec) els.introSec.textContent = String(sec);
-            if (els.introRing && introTotalSec > 0) {
-                const progress = remainingMs / (introTotalSec * 1000);
+            if (els.introRing) {
+                if (!els.introRing.getAttribute('data-ring-init')) {
+                    els.introRing.style.strokeDasharray = String(GUEST_INTRO_RING_LEN);
+                    els.introRing.setAttribute('data-ring-init', '1');
+                }
+                const totalMs = Math.max(1, (introTotalSec || 30) * 1000);
+                const progress = remainingMs > 0 ? remainingMs / totalMs : 0;
                 els.introRing.style.strokeDashoffset = String(GUEST_INTRO_RING_LEN * (1 - progress));
             }
             if (els.introPrize) {
@@ -810,17 +856,21 @@
         function syncGuestIntro(data) {
             const showIntro = !!(data && data.active && data.phase === 'intro');
             if (showIntro) {
-                if (data.introSeconds) introTotalSec = data.introSeconds;
-                if (data.introRemainingMs != null) {
+                if (data.introSeconds > 0) introTotalSec = data.introSeconds;
+                if (data.introRemainingMs != null && data.introRemainingMs >= 0) {
                     introEndsAtLocal = Date.now() + data.introRemainingMs;
+                } else if (data.introRemainingSec != null && data.introRemainingSec >= 0) {
+                    introEndsAtLocal = Date.now() + data.introRemainingSec * 1000;
+                } else if (!introEndsAtLocal && introTotalSec > 0) {
+                    introEndsAtLocal = Date.now() + introTotalSec * 1000;
                 }
                 setPlayIntroMode(true);
                 paintGuestIntro(data);
-                ensureIntroTick();
+                ensureCountdownTick();
             } else {
                 introEndsAtLocal = null;
-                stopIntroTick();
                 setPlayIntroMode(false);
+                if (!resumeEndsAtLocal) stopCountdownTick();
             }
         }
 
@@ -830,14 +880,7 @@
             if (els.resumeBall) {
                 els.resumeBall.textContent = lb != null ? String(lb) : '—';
             }
-            let remainingMs = 0;
-            if (resumeEndsAtLocal) {
-                remainingMs = Math.max(0, resumeEndsAtLocal - Date.now());
-            } else if (data && data.resumeRemainingMs != null) {
-                remainingMs = Math.max(0, data.resumeRemainingMs);
-            } else if (data && data.resumeRemainingSec != null) {
-                remainingMs = Math.max(0, data.resumeRemainingSec * 1000);
-            }
+            const remainingMs = guestResumeRemainingMs(data);
             if (els.resumeSec) {
                 const sec = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0;
                 els.resumeSec.textContent = String(sec);
@@ -854,18 +897,25 @@
                 } else if (!resumeEndsAtLocal) {
                     resumeEndsAtLocal = Date.now() + 5000;
                 }
-                if (els.resume) els.resume.removeAttribute('hidden');
+                setPlayResumeMode(true);
                 paintGuestResume(data);
-                ensureIntroTick();
+                ensureCountdownTick();
             } else {
                 resumeEndsAtLocal = null;
-                if (els.resume) els.resume.setAttribute('hidden', '');
+                setPlayResumeMode(false);
+                if (!introEndsAtLocal) stopCountdownTick();
             }
         }
 
         function claimCardSerial(cards) {
             const list = cards && cards.length ? cards : [];
             if (!list.length) return activeSerial;
+            if (activeSerial) {
+                const activeCard = list.find(function (c) {
+                    return c.serial === activeSerial;
+                });
+                if (activeCard && cardToGo(activeCard) === 0) return activeCard.serial;
+            }
             const ready = list.find(function (c) {
                 return cardToGo(c) === 0;
             });
@@ -879,7 +929,10 @@
         function syncCallButtonDisabled(data) {
             if (!els.callBtn) return;
             const pf = data.playingFor || playingFor || 'line';
-            const tierVerified = selfVerifiedTiers.has(pf);
+            const claimSerial = claimCardSerial(
+                lastStackPayload && lastStackPayload.cards ? lastStackPayload.cards : []
+            );
+            const tierVerified = selfVerifiedClaimKeys.has(verifiedClaimKey(pf, claimSerial));
             const claimsOpen =
                 data.active &&
                 (!data.paused ||
@@ -1184,12 +1237,14 @@
 
         function backToLobby() {
             stopPoll();
-            stopIntroTick();
+            stopCountdownTick();
             introEndsAtLocal = null;
+            resumeEndsAtLocal = null;
             setPlayIntroMode(false);
+            setPlayResumeMode(false);
             setLobbyPref(true);
             if (els.claimResult) els.claimResult.textContent = '';
-            selfVerifiedTiers.clear();
+            selfVerifiedClaimKeys.clear();
             cardOrderSerials = [];
             showJoin();
             loadGames();
@@ -1224,12 +1279,22 @@
                     .map(function (g) {
                         const hasCards = (g.guestCardCount || 0) > 0;
                         const slots = hasCards
-                            ? g.playInProgress
-                                ? 'Game in progress'
-                                : g.canGrabMore
-                                  ? 'More tickets available'
-                                  : 'Maximum tickets for this game'
+                            ? g.bingoPhase === 'resume'
+                                ? 'Resuming · ' + (g.resumeRemainingSec || '…') + 's'
+                                : g.bingoPhase === 'intro'
+                                  ? 'Starting in ' + (g.introRemainingSec || '…') + 's'
+                                  : g.playInProgress
+                                  ? 'Game in progress'
+                                  : g.canGrabMore
+                                    ? 'More tickets available'
+                                    : 'Maximum tickets for this game'
                             : 'Virtual tickets on your phone';
+                        const introLobby =
+                            (g.bingoPhase === 'intro' || g.bingoPhase === 'resume') && hasCards
+                                ? '<p class="gh-bingo-intro-lobby" aria-live="polite">' +
+                                  (g.bingoPhase === 'resume' ? 'Resuming now' : 'Countdown live') +
+                                  ' · tap <strong>Continue</strong> for the timer</p>'
+                                : '';
                         const startLine = g.advertisedStartAt
                             ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
                             : '';
@@ -1243,11 +1308,15 @@
                                   '</span>'
                                 : '';
                         const cta = hasCards
-                            ? g.playInProgress
-                                ? 'Continue playing'
-                                : g.canGrabMore
-                                  ? 'Continue · more tickets'
-                                  : 'Continue playing'
+                            ? g.bingoPhase === 'resume'
+                                ? 'Continue · resuming'
+                                : g.bingoPhase === 'intro'
+                                  ? 'Continue · starting soon'
+                                  : g.playInProgress
+                                  ? 'Continue playing'
+                                  : g.canGrabMore
+                                    ? 'Continue · more tickets'
+                                    : 'Continue playing'
                             : 'Buy tickets';
                         return (
                             '<div class="gh-bingo-game-block" data-bingo-game-block="' +
@@ -1278,6 +1347,7 @@
                             escapeHtml(cta) +
                             '</span>' +
                             '</button>' +
+                            introLobby +
                             (hasCards && g.canGrabMore && !g.playInProgress
                                 ? '<button type="button" class="gh-btn gh-btn--outline gh-bingo-lobby-buy w-100 mb-2" data-bingo-lobby-buy="' +
                                   g.id +
@@ -1338,6 +1408,24 @@
                         linkPaper(gid, input ? input.value : '');
                     });
                 });
+                if (!readLobbyPref() && els.play && els.play.hidden) {
+                    const livePrep = data.games.find(function (g) {
+                        return (
+                            (g.guestCardCount || 0) > 0 &&
+                            (g.bingoPhase === 'intro' || g.bingoPhase === 'resume')
+                        );
+                    });
+                    if (livePrep) {
+                        activeGameId = livePrep.id;
+                        activeSerial = null;
+                        try {
+                            sessionStorage.setItem('mdj_bingo_game_' + slug, String(livePrep.id));
+                        } catch (err) {
+                            /* ignore */
+                        }
+                        startPlay();
+                    }
+                }
             } catch (e) {
                 els.gamesList.innerHTML = '<p class="gh-bingo-danger">Could not load games.</p>';
             }
@@ -1484,8 +1572,8 @@
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
                 syncBuyTicketsVisibility(els.buyTickets, data);
                 updateCallUi(stackCards, activeSerial, data);
-                syncGuestIntro(data);
                 syncGuestResume(data);
+                syncGuestIntro(data);
                 maybeAnnounceBall(data);
                 syncWinnersModal(data);
                 if (els.meta) {
@@ -1500,12 +1588,22 @@
                                 ? 'Paused — game on hold'
                                 : 'Paused — claim check';
                     }
-                    if (data.phase === 'intro') t = 'Starting soon…';
+                    if (data.phase === 'intro') {
+                        const introSec =
+                            data.introRemainingSec != null
+                                ? data.introRemainingSec
+                                : Math.max(1, Math.ceil(guestIntroRemainingMs(data) / 1000));
+                        t = 'Starting in ' + introSec + 's';
+                    }
                     else if (data.phase === 'resume') {
                         const lb = resolveLastCalledBall(data);
+                        const resumeSec =
+                            data.resumeRemainingSec != null
+                                ? data.resumeRemainingSec
+                                : Math.max(1, Math.ceil(guestResumeRemainingMs(data) / 1000));
                         t =
                             'Resuming · ' +
-                            (data.resumeRemainingSec || 0) +
+                            resumeSec +
                             's' +
                             (lb != null ? ' · last ' + lb : '');
                     }
@@ -1534,7 +1632,7 @@
         function stopPoll() {
             clearInterval(pollTimer);
             pollTimer = null;
-            stopIntroTick();
+            stopCountdownTick();
         }
 
         async function sendClaim(claimType) {
@@ -1542,10 +1640,10 @@
             const resultEl = els.claimResult;
             if (!activeGameId || !name) return;
             const tier = claimType || playingFor;
-            if (selfVerifiedTiers.has(tier) || claimInFlight) return;
             const cardsForClaim =
                 lastStackPayload && lastStackPayload.cards ? lastStackPayload.cards : [];
             const serialForClaim = claimCardSerial(cardsForClaim) || activeSerial;
+            if (selfVerifiedClaimKeys.has(verifiedClaimKey(tier, serialForClaim)) || claimInFlight) return;
             claimInFlight = true;
             syncCallButtonDisabled(
                 lastStackPayload && lastStackPayload.data ? lastStackPayload.data : { active: true, playingFor: tier }
@@ -1579,11 +1677,11 @@
                             : 'gh-bingo-claim-result ') + (data.valid ? 'is-ok' : 'is-warn');
                 }
                 if (data.verified) {
-                    selfVerifiedTiers.add(tier);
+                    selfVerifiedClaimKeys.add(verifiedClaimKey(tier, serialForClaim));
                     if (data.playingFor) playingFor = data.playingFor;
                     refreshPlay();
                 } else if (data.alreadyVerified) {
-                    selfVerifiedTiers.add(tier);
+                    selfVerifiedClaimKeys.add(verifiedClaimKey(tier, serialForClaim));
                 }
             } catch (e) {
                 if (resultEl) resultEl.textContent = 'Could not send claim';

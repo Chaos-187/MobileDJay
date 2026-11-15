@@ -4631,7 +4631,7 @@ body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-tab-panels {
 .guest-bingo-winners-modal {
     position: fixed;
     inset: 0;
-    z-index: 10000;
+    z-index: 120000;
     display: flex;
     align-items: center;
     justify-content: center;

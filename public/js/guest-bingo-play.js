@@ -153,6 +153,10 @@
         return ticketsRemaining(data.cardLimit, have);
     }
 
+    function guestGameStatusEnded(data) {
+        return !!(data && data.game && String(data.game.status || '') === 'ended');
+    }
+
     function syncBuyTicketsVisibility(buyEl, data) {
         if (!buyEl || !data) return;
         const preClaim = bingoGuestPreClaimPlay(data);
@@ -350,6 +354,20 @@
         let settingsModalEls = null;
         let winnersModalEls = null;
         let winnersModalShown = false;
+        let winnersDismissedLocally = false;
+
+        function guestShouldShowGameOver(data) {
+            if (!data || winnersDismissedLocally) return false;
+            if (data.showWinnersPopup) return true;
+            if (guestGameStatusEnded(data)) return true;
+            return false;
+        }
+
+        function hideWinnersModal() {
+            if (winnersModalEls) setPanelHidden(winnersModalEls.backdrop, true);
+            winnersModalShown = false;
+            document.documentElement.classList.remove('guest-bingo-winners-open');
+        }
 
         function applyPlayTheme(data) {
             const theme =
@@ -608,7 +626,10 @@
 
         function ensureWinnersModal() {
             if (winnersModalEls) return winnersModalEls;
-            const host = typeof document !== 'undefined' && document.body ? document.body : root;
+            const host =
+                (typeof document !== 'undefined' && document.getElementById('ghApp')) ||
+                (typeof document !== 'undefined' && document.body) ||
+                root;
             const wrap = document.createElement('div');
             wrap.className = 'guest-bingo-winners-modal';
             wrap.setAttribute('data-bingo-winners-backdrop', '');
@@ -669,23 +690,30 @@
         }
 
         function syncWinnersModal(data) {
-            if (!data || !data.showWinnersPopup) {
-                if (winnersModalEls && winnersModalShown) {
-                    winnersModalEls.backdrop.hidden = true;
-                    winnersModalShown = false;
-                    document.documentElement.classList.remove('guest-bingo-winners-open');
-                }
+            if (winnersModalShown && !winnersDismissedLocally) {
+                const modal = ensureWinnersModal();
+                if (data) modal.list.innerHTML = winnersListHtml(data);
+                setPanelHidden(modal.backdrop, false);
+                document.documentElement.classList.add('guest-bingo-winners-open');
+                return;
+            }
+            if (!guestShouldShowGameOver(data)) {
+                if (winnersDismissedLocally) hideWinnersModal();
                 return;
             }
             const modal = ensureWinnersModal();
             modal.list.innerHTML = winnersListHtml(data);
-            modal.backdrop.hidden = false;
+            setPanelHidden(modal.backdrop, false);
             document.documentElement.classList.add('guest-bingo-winners-open');
-            if (!winnersModalShown) winnersModalShown = true;
+            winnersModalShown = true;
         }
 
         async function dismissWinnersModal() {
-            if (!activeGameId) return;
+            winnersDismissedLocally = true;
+            if (!activeGameId) {
+                hideWinnersModal();
+                return;
+            }
             try {
                 await fetch(
                     '/api/event/' +
@@ -698,11 +726,7 @@
             } catch (e) {
                 /* ignore */
             }
-            if (winnersModalEls) {
-                winnersModalEls.backdrop.hidden = true;
-                winnersModalShown = false;
-            }
-            document.documentElement.classList.remove('guest-bingo-winners-open');
+            hideWinnersModal();
         }
 
         if (els.buyTickets) {
@@ -1368,6 +1392,8 @@
             if (els.claimResult) els.claimResult.textContent = '';
             selfVerifiedClaimKeys.clear();
             cardOrderSerials = [];
+            winnersDismissedLocally = false;
+            hideWinnersModal();
             showJoin();
             loadGames();
         }
@@ -1719,6 +1745,7 @@
         }
 
         function startPlay() {
+            winnersDismissedLocally = false;
             showPlay();
             refreshPlay();
             startPoll();
@@ -1819,6 +1846,13 @@
                 if (data.verified) {
                     selfVerifiedClaimKeys.add(verifiedClaimKey(tier, serialForClaim));
                     if (data.playingFor) playingFor = data.playingFor;
+                    if (data.showWinnersPopup || data.gameEnded) {
+                        const merged = Object.assign({}, playData || {}, data, {
+                            showWinnersPopup: !!data.showWinnersPopup,
+                            prizeWinners: data.prizeWinners || (playData && playData.prizeWinners)
+                        });
+                        syncWinnersModal(merged);
+                    }
                     refreshPlay();
                 } else if (data.alreadyVerified) {
                     selfVerifiedClaimKeys.add(verifiedClaimKey(tier, serialForClaim));

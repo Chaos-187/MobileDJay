@@ -409,20 +409,41 @@
 }
 
 .bingo-theme-easter .mdj-caller-ball-spotlight {
-    border-color: rgba(167, 139, 250, 0.45);
+    border-color: rgba(167, 139, 250, 0.5);
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.55), rgba(237, 233, 254, 0.45));
+    box-shadow: 0 8px 28px rgba(91, 33, 182, 0.1);
+    overflow: visible;
+}
+
+.bingo-theme-easter .mdj-caller-ball-spotlight::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    transform: translate(-50%, -50%);
+    width: min(70vw, 210px);
+    height: min(78vw, 248px);
+    border-radius: 50% 50% 48% 48% / 58% 58% 42% 42%;
     background:
-        radial-gradient(circle at 50% 30%, rgba(254, 249, 195, 0.45), transparent 48%),
-        radial-gradient(circle at 50% 90%, rgba(110, 231, 183, 0.2), transparent 55%),
-        linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(237, 233, 254, 0.88));
-    box-shadow: 0 0 28px rgba(167, 139, 250, 0.22);
+        var(--east-dabber-egg) center / 78% 88% no-repeat,
+        linear-gradient(165deg, #fffbeb, #fde68a);
+    border: 2px solid rgba(196, 181, 253, 0.65);
+    box-shadow:
+        inset 0 8px 24px rgba(255, 255, 255, 0.65),
+        0 12px 32px rgba(167, 139, 250, 0.22);
+    z-index: 0;
+    pointer-events: none;
 }
 
 .bingo-theme-easter .mdj-bingo-hero-ball,
 .bingo-theme-easter .mdj-caller-hero-ball {
-    color: #7c3aed;
+    position: relative;
+    z-index: 1;
+    color: #5b21b6;
     text-shadow:
-        0 0 24px rgba(167, 139, 250, 0.65),
-        0 0 8px rgba(52, 211, 153, 0.35);
+        0 0 12px rgba(255, 255, 255, 0.9),
+        0 0 22px rgba(167, 139, 250, 0.5),
+        0 2px 0 #fef9c3;
 }
 
 .bingo-theme-easter .guest-bingo-ticket {
@@ -642,6 +663,10 @@
 
 /* ── 90s neon ─────────────────────────────────────────── */
 
+.bingo-theme-neon-90s {
+    --neon-dabber-mirror: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 36'%3E%3Cdefs%3E%3CradialGradient id='ng' cx='32%25' cy='28%25' r='68%25'%3E%3Cstop offset='0%25' stop-color='%23fff' stop-opacity='.5'/%3E%3Cstop offset='55%25' stop-color='%2394a3b8'/%3E%3Cstop offset='100%25' stop-color='%23171230'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='18' r='13.5' fill='url(%23ng)'/%3E%3Cg fill='%23cbd5e1' opacity='.85'%3E%3Crect x='6' y='7' width='3.2' height='2.8'/%3E%3Crect x='9.5' y='7' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='13' y='7' width='3.2' height='2.8'/%3E%3Crect x='16.5' y='7' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='20' y='7' width='3.2' height='2.8'/%3E%3Crect x='23.5' y='7' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='6' y='10.2' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='9.5' y='10.2' width='3.2' height='2.8'/%3E%3Crect x='13' y='10.2' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='16.5' y='10.2' width='3.2' height='2.8'/%3E%3Crect x='20' y='10.2' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='23.5' y='10.2' width='3.2' height='2.8'/%3E%3Crect x='6' y='13.4' width='3.2' height='2.8'/%3E%3Crect x='9.5' y='13.4' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='13' y='13.4' width='3.2' height='2.8'/%3E%3Crect x='16.5' y='13.4' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='20' y='13.4' width='3.2' height='2.8'/%3E%3Crect x='23.5' y='13.4' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='6' y='16.6' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='9.5' y='16.6' width='3.2' height='2.8'/%3E%3Crect x='13' y='16.6' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='16.5' y='16.6' width='3.2' height='2.8'/%3E%3Crect x='20' y='16.6' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='23.5' y='16.6' width='3.2' height='2.8'/%3E%3Crect x='6' y='19.8' width='3.2' height='2.8'/%3E%3Crect x='9.5' y='19.8' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='13' y='19.8' width='3.2' height='2.8'/%3E%3Crect x='16.5' y='19.8' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='20' y='19.8' width='3.2' height='2.8'/%3E%3Crect x='23.5' y='19.8' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='6' y='23' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='9.5' y='23' width='3.2' height='2.8'/%3E%3Crect x='13' y='23' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='16.5' y='23' width='3.2' height='2.8'/%3E%3Crect x='20' y='23' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='23.5' y='23' width='3.2' height='2.8'/%3E%3C/g%3E%3Cellipse cx='11' cy='11' rx='4' ry='2.2' fill='%23fff' opacity='.32'/%3E%3C/svg%3E");
+}
+
 .bingo-theme-neon-90s.mdj-bingo-caller-page,
 .bingo-theme-neon-90s .mdj-caller-layout {
     background-color: #0a0014;
@@ -659,14 +684,40 @@
 
 .bingo-theme-neon-90s .mdj-caller-ball-spotlight {
     border-color: rgba(236, 72, 153, 0.55);
-    background: radial-gradient(circle at 50% 35%, rgba(34, 211, 238, 0.12), rgba(8, 0, 24, 0.98));
+    background: radial-gradient(circle at 50% 50%, rgba(10, 0, 24, 0.35), rgba(8, 0, 24, 0.92));
     box-shadow:
-        inset 0 0 40px rgba(236, 72, 153, 0.15),
-        0 0 24px rgba(34, 211, 238, 0.12);
+        inset 0 0 40px rgba(236, 72, 153, 0.12),
+        0 0 24px rgba(34, 211, 238, 0.15);
+    overflow: visible;
+}
+
+.bingo-theme-neon-90s .mdj-caller-ball-spotlight::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translate(-50%, -50%);
+    width: min(72vw, 220px);
+    height: min(72vw, 220px);
+    border-radius: 50%;
+    background:
+        var(--neon-dabber-mirror) center / cover no-repeat,
+        radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35), transparent 42%),
+        radial-gradient(circle at 50% 55%, #475569 0%, #1e1638 55%, #0a0014 100%);
+    border: 2px solid rgba(34, 211, 238, 0.45);
+    box-shadow:
+        0 0 28px rgba(236, 72, 153, 0.45),
+        0 0 48px rgba(34, 211, 238, 0.25),
+        inset 0 0 24px rgba(255, 255, 255, 0.08);
+    z-index: 0;
+    pointer-events: none;
+    animation: bingoNeonMirrorSpin 14s linear infinite;
 }
 
 .bingo-theme-neon-90s .mdj-bingo-hero-ball,
 .bingo-theme-neon-90s .mdj-caller-hero-ball {
+    position: relative;
+    z-index: 1;
     color: #22d3ee;
     text-shadow:
         0 0 20px rgba(34, 211, 238, 0.9),
@@ -701,16 +752,70 @@
     background: rgba(15, 10, 35, 0.85);
     color: #e0f2fe;
     border-color: rgba(236, 72, 153, 0.18);
+    position: relative;
 }
 
 .bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td.is-blank {
     background: rgba(0, 0, 0, 0.4);
 }
 
-.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
+/* 90s neon dabber — mini mirror ball */
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td.is-marked {
+    background: rgba(10, 0, 28, 0.75);
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td.is-marked::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(76%, 2rem);
+    height: min(76%, 2rem);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: var(--neon-dabber-mirror) center / cover no-repeat;
+    opacity: 0.98;
+    pointer-events: none;
+    z-index: 0;
+    filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.55));
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    padding: 0 0.1em;
+    border-radius: 0;
+    background: transparent;
+    color: #e0f2fe;
+    font-weight: 900;
+    text-shadow:
+        0 0 8px rgba(34, 211, 238, 0.95),
+        0 0 4px rgba(236, 72, 153, 0.75),
+        0 1px 0 #0a0014;
+    box-shadow: none;
+}
+
 .bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
-    background: linear-gradient(145deg, #ec4899, #a855f7);
-    box-shadow: 0 0 12px rgba(236, 72, 153, 0.65);
+    border-radius: 50%;
+    inset: 8%;
+    background: transparent;
+    background-image: var(--neon-dabber-mirror);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.98;
+    filter: drop-shadow(0 0 6px rgba(236, 72, 153, 0.55));
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket--us75 .guest-bingo-table td.is-marked .guest-bingo-num {
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
 }
 
 .bingo-theme-neon-90s .guest-bingo-ticket--us75 .guest-bingo-table--us75 th {
@@ -1666,6 +1771,207 @@ body.bingo-screen-active.bingo-theme-classic {
     text-shadow: 0 0 20px rgba(167, 139, 250, 0.45);
 }
 
+/* Easter venue — decorated egg “now calling” hero + top chrome */
+.bingo-display-layer.bingo-theme-easter {
+    --east-display-egg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 140'%3E%3Cellipse cx='60' cy='78' rx='46' ry='54' fill='%23fef9c3'/%3E%3Cellipse cx='60' cy='80' rx='41' ry='49' fill='%23fde68a'/%3E%3Cpath d='M18 58 Q60 22 102 58' fill='none' stroke='%23c4b5fd' stroke-width='3'/%3E%3Cellipse cx='60' cy='42' rx='28' ry='11' fill='%23e9d5ff' opacity='.9'/%3E%3Ccircle cx='38' cy='82' r='5' fill='%23f472b6'/%3E%3Ccircle cx='82' cy='86' r='4.5' fill='%2334d399'/%3E%3Ccircle cx='60' cy='104' r='5' fill='%2393c5fd'/%3E%3Ccircle cx='48' cy='70' r='3.5' fill='%23a78bfa' opacity='.85'/%3E%3Ccircle cx='74' cy='72' r='3' fill='%23f9a8d4'/%3E%3Cpath d='M28 95h64' stroke='%23f9a8d4' stroke-width='2.2' opacity='.7'/%3E%3Cpath d='M28 108h64' stroke='%2386efac' stroke-width='2.2' opacity='.7'/%3E%3Cpath d='M28 121h64' stroke='%23c4b5fd' stroke-width='2' opacity='.65'/%3E%3C/svg%3E");
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-layout {
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(237, 233, 254, 0.35) 40%,
+        transparent 100%
+    );
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-header {
+    border-bottom: 1px solid rgba(167, 139, 250, 0.35);
+    padding-bottom: 0.5rem;
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-meta {
+    color: rgba(91, 33, 182, 0.78);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-playing-for {
+    color: #4c1d95;
+    text-shadow: 0 2px 12px rgba(167, 139, 250, 0.35);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-playing-for .bingo-fs-playing-for-accent {
+    color: #059669;
+    text-shadow: 0 0 20px rgba(52, 211, 153, 0.45);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-dj-controls label {
+    color: rgba(91, 33, 182, 0.85);
+    border-color: rgba(167, 139, 250, 0.45);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-paused-badge {
+    background: rgba(254, 249, 195, 0.9);
+    border-color: rgba(245, 158, 11, 0.55);
+    color: #92400e;
+    animation: none;
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-hero {
+    background: linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(237, 233, 254, 0.88));
+    border: 2px solid rgba(167, 139, 250, 0.45);
+    box-shadow:
+        0 8px 32px rgba(91, 33, 182, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-recent-label {
+    color: rgba(91, 33, 182, 0.72);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-ball-stage {
+    padding-top: 0;
+    width: min(44vw, 320px);
+    min-height: min(52vw, 370px);
+    margin-bottom: 0.75rem;
+    justify-content: center;
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-ball-machine {
+    opacity: 0 !important;
+    visibility: hidden;
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-ball-stage::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    left: 50%;
+    bottom: 4%;
+    transform: translateX(-50%);
+    width: min(52vw, 280px);
+    height: min(5vw, 28px);
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(91, 33, 182, 0.12), transparent 70%);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-ball-ring {
+    top: 52%;
+    bottom: auto;
+    left: 50%;
+    width: min(34vw, 256px);
+    height: min(40vw, 300px);
+    transform: translate(-50%, -50%);
+    animation: none;
+    border-radius: 50% 50% 48% 48% / 58% 58% 42% 42%;
+    border: min(0.35vw, 3px) solid rgba(196, 181, 253, 0.75);
+    background:
+        var(--east-display-egg) center / 88% 92% no-repeat,
+        repeating-linear-gradient(
+            -18deg,
+            transparent,
+            transparent 11px,
+            rgba(167, 139, 250, 0.08) 11px,
+            rgba(167, 139, 250, 0.08) 13px
+        ),
+        radial-gradient(ellipse at 32% 18%, rgba(255, 255, 255, 0.65) 0%, transparent 28%),
+        radial-gradient(ellipse at 70% 88%, rgba(139, 92, 246, 0.15) 0%, transparent 45%),
+        linear-gradient(165deg, #fffbeb 0%, #fef9c3 35%, #fde68a 100%);
+    box-shadow:
+        inset -12px -18px 36px rgba(139, 92, 246, 0.12),
+        inset 10px 12px 24px rgba(255, 255, 255, 0.55),
+        0 18px 48px rgba(91, 33, 182, 0.18),
+        0 0 40px rgba(167, 139, 250, 0.35);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-ball-glow {
+    top: 52%;
+    bottom: auto;
+    left: 50%;
+    width: min(26vw, 200px);
+    height: min(30vw, 220px);
+    transform: translate(-50%, -50%);
+    border-radius: 50% 50% 48% 48% / 58% 58% 42% 42%;
+    background: radial-gradient(ellipse at 50% 55%, rgba(167, 243, 208, 0.45), transparent 68%);
+    animation: bingoEastEggGlow 2.8s ease-in-out infinite;
+}
+
+@keyframes bingoEastEggGlow {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: translate(-50%, -50%) scale(0.94);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.04);
+    }
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-display-last-ball {
+    position: absolute;
+    top: 54%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 8;
+    font-size: clamp(3.25rem, 11vw, 5rem);
+    color: #5b21b6;
+    text-shadow:
+        0 0 12px rgba(255, 255, 255, 0.95),
+        0 0 28px rgba(167, 139, 250, 0.55),
+        0 2px 0 #fef9c3;
+}
+
+.bingo-display-layer.bingo-theme-easter.is-drawing .bingo-fs-ball-ring {
+    animation: bingoEastEggWobble 0.55s ease-in-out infinite;
+}
+
+@keyframes bingoEastEggWobble {
+    0%,
+    100% {
+        transform: translate(-50%, -50%) rotate(-1.5deg);
+    }
+    50% {
+        transform: translate(-50%, -50%) rotate(1.5deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bingo-display-layer.bingo-theme-easter .bingo-fs-ball-glow {
+        animation: none;
+    }
+    .bingo-display-layer.bingo-theme-easter.is-drawing .bingo-fs-ball-ring {
+        animation: none;
+    }
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-recent {
+    gap: 0.35rem;
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-recent-ball {
+    border-color: rgba(167, 139, 250, 0.45);
+    background: rgba(255, 255, 255, 0.85);
+    color: #5b21b6;
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-recent-ball.is-latest {
+    background: linear-gradient(145deg, #a78bfa, #34d399);
+    color: #fff;
+    border-color: #fef9c3;
+    box-shadow: 0 0 14px rgba(167, 139, 250, 0.45);
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-dots {
+    opacity: 0.45;
+    background-image: radial-gradient(rgba(167, 139, 250, 0.35) 1.5px, transparent 1.5px);
+    background-size: 20px 20px;
+}
+
+.bingo-display-layer.bingo-theme-easter .bingo-fs-rays {
+    background: conic-gradient(from 20deg, transparent, rgba(254, 249, 195, 0.35), transparent 28%);
+}
+
 /* Classic hall */
 .bingo-display-layer.bingo-theme-classic .bingo-fs-ambient {
     background:
@@ -1739,9 +2045,133 @@ body.bingo-screen-active.bingo-theme-classic {
     color: rgba(244, 114, 182, 0.9);
 }
 
+@keyframes bingoNeonMirrorSpin {
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+@keyframes bingoNeonMirrorPulse {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: translate(-50%, -50%) scale(0.94);
+    }
+    50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.06);
+    }
+}
+
+/* 90s neon venue — disco mirror ball “now calling” hero */
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-hero {
+    background: linear-gradient(165deg, rgba(18, 0, 40, 0.92), rgba(10, 0, 20, 0.88));
+    border: 2px solid rgba(236, 72, 153, 0.45);
+    box-shadow:
+        0 8px 36px rgba(0, 0, 0, 0.5),
+        0 0 32px rgba(34, 211, 238, 0.12),
+        inset 0 1px 0 rgba(236, 72, 153, 0.15);
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-stage {
+    padding-top: 0;
+    width: min(44vw, 320px);
+    min-height: min(48vw, 340px);
+    margin-bottom: 0.75rem;
+    justify-content: center;
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-ball-machine {
+    opacity: 0 !important;
+    visibility: hidden;
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-stage::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 18%;
+    transform: translateX(-50%);
+    width: min(3vw, 18px);
+    height: min(8vw, 52px);
+    background: linear-gradient(180deg, #64748b, #334155);
+    border-radius: 2px;
+    z-index: 7;
+    box-shadow: 0 0 8px rgba(34, 211, 238, 0.35);
+}
+
 .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-ring {
-    border-color: rgba(236, 72, 153, 0.55);
-    box-shadow: 0 0 24px rgba(34, 211, 238, 0.2);
+    top: 54%;
+    bottom: auto;
+    left: 50%;
+    width: min(32vw, 248px);
+    height: min(32vw, 248px);
+    transform: translate(-50%, -50%);
+    animation: bingoNeonMirrorSpin 16s linear infinite;
+    border-radius: 50%;
+    border: min(0.35vw, 3px) solid rgba(34, 211, 238, 0.55);
+    background:
+        var(--neon-dabber-mirror) center / cover no-repeat,
+        radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.4) 0%, transparent 28%),
+        radial-gradient(circle at 50% 58%, #64748b 0%, #1e1638 48%, #0a0014 100%);
+    box-shadow:
+        inset -10px -14px 32px rgba(0, 0, 0, 0.55),
+        inset 8px 10px 22px rgba(255, 255, 255, 0.12),
+        0 0 48px rgba(236, 72, 153, 0.45),
+        0 0 64px rgba(34, 211, 238, 0.35);
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-glow {
+    top: 54%;
+    bottom: auto;
+    left: 50%;
+    width: min(38vw, 290px);
+    height: min(38vw, 290px);
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(236, 72, 153, 0.35), rgba(34, 211, 238, 0.15) 45%, transparent 68%);
+    animation: bingoNeonMirrorPulse 2.4s ease-in-out infinite;
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-display-last-ball {
+    position: absolute;
+    top: 54%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 8;
+    font-size: clamp(3.25rem, 11vw, 5rem);
+    color: #22d3ee;
+    text-shadow:
+        0 0 20px rgba(34, 211, 238, 1),
+        0 0 40px rgba(236, 72, 153, 0.75),
+        0 2px 0 #0a0014;
+}
+
+.bingo-display-layer.bingo-theme-neon-90s.is-drawing .bingo-fs-ball-ring {
+    animation: bingoNeonMirrorSpin 4s linear infinite;
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-recent-ball {
+    border-color: rgba(236, 72, 153, 0.45);
+    background: rgba(10, 0, 28, 0.85);
+    color: #e0f2fe;
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-recent-ball.is-latest {
+    background: linear-gradient(145deg, #22d3ee, #ec4899);
+    color: #0a0014;
+    border-color: #f9a8d4;
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bingo-theme-neon-90s .mdj-caller-ball-spotlight::before,
+    .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-ring {
+        animation: none;
+    }
+    .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-glow {
+        animation: none;
+    }
 }
 
 .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-cell.is-called {

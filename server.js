@@ -780,6 +780,13 @@ function mergeBingoPrizeWinnersFromDb(gameId, prizeWinners) {
 function bingoPublicState(slug, gameId) {
     const state = bingoSession.publicBingoState(slug, gameId);
     state.prizeWinners = mergeBingoPrizeWinnersFromDb(gameId, state.prizeWinners);
+    const game = gameId ? bingoGameDb.getById(gameId) : null;
+    if (game) {
+        state.callerAnnounceStyle = normalizeCallerAnnounceStyle(game.callerAnnounceStyle);
+        state.callerVoiceMode = normalizeCallerVoiceMode(game.callerVoiceMode);
+        state.bingoTheme = normalizeBingoTheme(game.bingoTheme);
+        if (!state.cardFormat) state.cardFormat = normalizeCardFormat(game.cardFormat);
+    }
     return state;
 }
 

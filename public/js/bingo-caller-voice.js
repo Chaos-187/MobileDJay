@@ -7,6 +7,9 @@
     var FEMALE_NUMBERS_BASE = '/audio/Female-Numbers/';
     var audioByUrl = Object.create(null);
     var currentFemaleAudio = null;
+    var lastAnnouncedBall = null;
+    var lastAnnouncedAt = 0;
+    var ANNOUNCE_DEBOUNCE_MS = 1400;
 
     function normalizeVoiceMode(raw) {
         var s = String(raw == null ? 'tts' : raw)
@@ -61,12 +64,30 @@
         if (global.MdjBingoTts && global.MdjBingoTts.cancel) global.MdjBingoTts.cancel();
     }
 
+    function speakNumberFallback(num) {
+        if (global.MdjBingoTts && global.MdjBingoTts.speakParts) {
+            global.MdjBingoTts.speakParts([String(num)]);
+        } else if (global.MdjBingoTts && global.MdjBingoTts.speak) {
+            global.MdjBingoTts.speak(String(num));
+        }
+    }
+
     /**
      * @param {number|string} num
      * @param {{ style?: string, cardFormat?: string, voiceMode?: string, theme?: string }} opts
      */
     function announceBall(num, opts) {
         opts = opts || {};
+        var n = parseInt(num, 10);
+        if (!Number.isFinite(n)) return;
+
+        var now = Date.now();
+        if (n === lastAnnouncedBall && now - lastAnnouncedAt < ANNOUNCE_DEBOUNCE_MS) {
+            return;
+        }
+        lastAnnouncedBall = n;
+        lastAnnouncedAt = now;
+
         var style = opts.style || 'number';
         var cardFormat = opts.cardFormat;
         var voiceMode = normalizeVoiceMode(opts.voiceMode);
@@ -94,6 +115,13 @@
                 return;
             }
 
+            cancelAll();
+
+            if (st === 'number') {
+                if (!playFemaleNumber(num)) speakNumberFallback(num);
+                return;
+            }
+
             if (st === 'both') {
                 var parts =
                     global.MdjBingoUkCalls && global.MdjBingoUkCalls.announcementParts
@@ -101,17 +129,15 @@
                         : [];
                 if (parts.length > 1 && global.MdjBingoTts && global.MdjBingoTts.speakTextThen) {
                     global.MdjBingoTts.speakTextThen(parts[0], function () {
-                        if (!playFemaleNumber(num) && global.MdjBingoTts.speakBall) {
-                            global.MdjBingoTts.speakBall(num, style, cardFormat);
-                        }
+                        if (!playFemaleNumber(num)) speakNumberFallback(num);
                     });
                     return;
                 }
+                if (!playFemaleNumber(num)) speakNumberFallback(num);
+                return;
             }
 
-            if (!playFemaleNumber(num) && global.MdjBingoTts && global.MdjBingoTts.speakBall) {
-                global.MdjBingoTts.speakBall(num, style, cardFormat);
-            }
+            if (!playFemaleNumber(num)) speakNumberFallback(num);
         }
 
         if (global.MdjBingoTheme && typeof global.MdjBingoTheme.announceCalledBall === 'function') {
@@ -123,8 +149,8 @@
 
     /** Preload a few clips after user interaction. */
     function warmup() {
-        [1, 42, 90].forEach(function (n) {
-            var url = femaleNumberUrl(n);
+        [1, 42, 90].forEach(function (bn) {
+            var url = femaleNumberUrl(bn);
             if (!url) return;
             if (!audioByUrl[url]) {
                 audioByUrl[url] = new Audio(url);

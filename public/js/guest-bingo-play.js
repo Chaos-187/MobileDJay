@@ -698,17 +698,29 @@
             if (ghMain) window.MdjBingoTheme.apply(ghMain, theme);
         }
 
+        const SETTINGS_MODAL_VERSION = '2';
+
         function ensurePlaySettingsModal() {
+            if (settingsModalEls) {
+                const stale =
+                    settingsModalEls.backdrop.dataset.modalVersion !== SETTINGS_MODAL_VERSION ||
+                    !settingsModalEls.backdrop.querySelector('[data-bingo-caller-style]');
+                if (stale) {
+                    settingsModalEls.backdrop.remove();
+                    settingsModalEls = null;
+                }
+            }
             if (settingsModalEls) return settingsModalEls;
             const host = guestModalHost();
             const wrap = document.createElement('div');
             wrap.className = 'guest-bingo-settings-modal';
             wrap.setAttribute('data-bingo-settings-backdrop', '');
+            wrap.dataset.modalVersion = SETTINGS_MODAL_VERSION;
             wrap.hidden = true;
             wrap.innerHTML =
                 '<div class="guest-bingo-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="guestBingoSettingsTitle">' +
                 '<h2 class="guest-bingo-settings-modal__title" id="guestBingoSettingsTitle">Play settings</h2>' +
-                '<p class="guest-bingo-settings-modal__lede" data-bingo-settings-lede hidden>Choose how numbers are marked and announced on this phone. You can change these anytime from the gear icon.</p>' +
+                '<p class="guest-bingo-settings-modal__lede" data-bingo-settings-lede hidden>Choose auto-marking, caller sound, and whether you hear numbers or UK bingo phrases. You can change these anytime from the gear icon.</p>' +
                 '<div class="guest-bingo-play-options guest-bingo-play-options--modal" role="group" aria-label="Play options">' +
                 '<label class="guest-bingo-opt">' +
                 '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-highlighter"></i></span>' +
@@ -811,6 +823,7 @@
             const host = scope || root;
             const wrap = host.querySelector('[data-bingo-caller-style-wrap]');
             const sel = host.querySelector('[data-bingo-caller-style]');
+            const hint = wrap ? wrap.querySelector('.guest-bingo-opt__hint') : null;
             const fmt =
                 lastStackPayload && lastStackPayload.data
                     ? lastStackPayload.data.cardFormat ||
@@ -818,12 +831,17 @@
                     : 'uk-90';
             const us75 = String(fmt || '').toLowerCase() === 'us-75';
             if (wrap) {
-                wrap.hidden = us75;
-                if (us75) wrap.setAttribute('hidden', '');
-                else wrap.removeAttribute('hidden');
+                wrap.hidden = false;
+                wrap.removeAttribute('hidden');
             }
-            if (sel && !sel.dataset.wired) {
-                sel.value = callerStyle;
+            if (hint) {
+                hint.textContent = us75
+                    ? 'UK nicknames apply to 90-ball games — numbers only on this card'
+                    : 'Numbers, UK phrases, or both when caller sound is on';
+            }
+            if (sel) {
+                sel.disabled = us75;
+                if (!sel.dataset.wired) sel.value = callerStyle;
             }
         }
 

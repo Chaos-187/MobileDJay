@@ -1133,6 +1133,13 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     border-color: var(--gh-border);
 }
 
+.gh-bingo .guest-bingo-caller-style,
+.guest-bingo-settings-modal .guest-bingo-caller-style {
+    color: var(--gh-text, rgba(255, 255, 255, 0.92));
+    background: color-mix(in srgb, var(--gh-surface, #14141f) 85%, #000);
+    border-color: color-mix(in srgb, var(--gh-accent, #1a5c66) 45%, var(--gh-border, #333));
+}
+
 .gh-bingo .guest-bingo-toolbar-btn {
     border-color: var(--gh-border);
     background: color-mix(in srgb, var(--gh-surface) 92%, transparent);

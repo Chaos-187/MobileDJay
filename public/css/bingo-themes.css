@@ -13,6 +13,7 @@
     --xmas-gold-light: #fde68a;
     --xmas-holly: #15803d;
     --xmas-snow: rgba(255, 255, 255, 0.14);
+    --xmas-dabber-tree: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 36'%3E%3Cpolygon points='16,2 30,14 23,14 28,22 21,22 26,30 6,30 11,22 4,22 9,14 2,14' fill='%2316a34a'/%3E%3Crect x='13' y='30' width='6' height='5' rx='1' fill='%2392400e'/%3E%3Ccircle cx='16' cy='3' r='2.2' fill='%23fbbf24'/%3E%3C/svg%3E");
 }
 
 .bingo-theme-christmas.mdj-bingo-caller-page,
@@ -111,11 +112,60 @@
 .bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td {
     background: #fffbeb;
     color: #14532d;
+    position: relative;
 }
 
-.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
+/* Christmas dabber — little tree (auto- and manual dab) */
+.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td.is-marked {
+    background: #fffbeb;
+}
+
+.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td.is-marked::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(76%, 2rem);
+    height: min(90%, 2.2rem);
+    transform: translate(-50%, -52%);
+    background: var(--xmas-dabber-tree) center / contain no-repeat;
+    opacity: 0.96;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    min-height: 0;
+    padding: 0 0.1em;
+    border-radius: 0;
+    background: transparent;
+    color: #14532d;
+    font-weight: 900;
+    text-shadow: 0 0 3px rgba(255, 251, 235, 0.95), 0 1px 0 #fffbeb;
+    box-shadow: none;
+}
+
 .bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
-    background: linear-gradient(145deg, #dc2626, #991b1b);
+    border-radius: 0;
+    inset: 6%;
+    background: transparent;
+    background-image: var(--xmas-dabber-tree);
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.96;
+}
+
+.bingo-theme-christmas .guest-bingo-ticket--us75 .guest-bingo-table td.is-marked .guest-bingo-num {
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
 }
 
 .bingo-theme-christmas .guest-bingo-tg-spine {

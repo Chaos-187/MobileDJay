@@ -805,7 +805,14 @@ body.mdj-guest-bingo-page {
     color: inherit !important;
 }
 
-[data-bingo-buy-tickets] {
+.guest-bingo-play-toolbar [data-bingo-buy-tickets],
+.guest-bingo-play-toolbar__main [data-bingo-buy-tickets] {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+[data-bingo-buy-tickets][hidden] {
     display: none !important;
 }
 

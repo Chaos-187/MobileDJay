@@ -1107,9 +1107,25 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     margin-bottom: 0.5rem;
 }
 
+.gh-bingo .guest-bingo-play-toolbar__main {
+    display: flex;
+    gap: 0.35rem;
+    align-items: stretch;
+}
+
+.gh-bingo .guest-bingo-toolbar-btn--buy {
+    flex: 1 1 auto;
+    min-width: 5rem;
+    font-weight: 800;
+}
+
+.gh-bingo .guest-bingo-play-status,
 .gh-bingo .guest-bingo-play-toolbar .guest-bingo-meta,
 .gh-bingo .guest-bingo-play-toolbar .gh-bingo-meta {
     color: var(--gh-muted);
+    text-align: center;
+    width: 100%;
+    margin-top: 0.35rem;
 }
 
 .gh-bingo .guest-bingo-play-options {

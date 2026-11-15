@@ -62,22 +62,25 @@ body.mdj-guest-bingo-page {
 
 .guest-bingo-play-head,
 .guest-bingo-play-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     margin-bottom: 0.65rem;
+}
+
+.guest-bingo-play-toolbar__main {
+    display: flex;
+    align-items: stretch;
+    gap: 0.4rem;
     flex-wrap: nowrap;
 }
 
+.guest-bingo-play-status,
 .guest-bingo-play-toolbar .guest-bingo-meta {
-    margin: 0;
-    margin-left: auto;
-    flex: 0 1 auto;
-    text-align: right;
-    font-size: 0.75rem;
+    margin: 0.4rem 0 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.8rem;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.55);
-    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.72);
+    line-height: 1.3;
 }
 
 .guest-bingo-toolbar-btn {

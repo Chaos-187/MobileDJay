@@ -273,16 +273,41 @@
         return banner;
     }
 
-    function ensureGuestPlayBuyRow(play) {
+    function removeLegacyGuestBuyRows(play) {
+        if (!play) return;
+        play.querySelectorAll('[data-bingo-play-buy-row]').forEach(function (row) {
+            row.remove();
+        });
+    }
+
+    function ensureGuestToolbarBuy(play) {
         if (!play) return null;
-        let row = play.querySelector('[data-bingo-play-buy-row]');
-        if (!row) {
-            row = document.createElement('div');
-            row.className = 'guest-bingo-play-buy-row';
-            row.setAttribute('data-bingo-play-buy-row', '');
-            play.insertBefore(row, play.firstChild);
+        removeLegacyGuestBuyRows(play);
+        const toolbar = play.querySelector('.guest-bingo-play-toolbar');
+        if (!toolbar) return null;
+        let main = toolbar.querySelector('.guest-bingo-play-toolbar__main');
+        if (!main) {
+            main = document.createElement('div');
+            main.className = 'guest-bingo-play-toolbar__main';
+            const back = toolbar.querySelector('[data-bingo-back-lobby]');
+            const settings = toolbar.querySelector('[data-bingo-settings-open]');
+            const existingBuy = toolbar.querySelector('[data-bingo-buy-tickets]');
+            if (back) main.appendChild(back);
+            if (existingBuy) main.appendChild(existingBuy);
+            if (settings) main.appendChild(settings);
+            toolbar.insertBefore(main, toolbar.firstChild);
         }
-        let btn = row.querySelector('[data-bingo-buy-tickets]');
+        let status = toolbar.querySelector('[data-bingo-meta]');
+        if (!status) {
+            status = document.createElement('p');
+            status.className = 'guest-bingo-play-status gh-bingo-meta guest-bingo-meta';
+            status.setAttribute('data-bingo-meta', '');
+            status.textContent = 'Waiting to start';
+            toolbar.appendChild(status);
+        } else {
+            status.classList.add('guest-bingo-play-status');
+        }
+        let btn = toolbar.querySelector('[data-bingo-buy-tickets]');
         if (!btn) {
             btn = document.createElement('button');
             btn.type = 'button';
@@ -290,30 +315,25 @@
             btn.textContent = 'Buy tickets';
             const isHub = !!(play.closest && play.closest('.gh-bingo'));
             btn.className = isHub
-                ? 'guest-bingo-play-buy-row__btn gh-btn gh-btn--accent'
-                : 'guest-bingo-play-buy-row__btn btn btn-warning btn-lg w-100';
-            row.appendChild(btn);
+                ? 'guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy gh-btn gh-btn--accent'
+                : 'guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy btn btn-warning';
+            const settings = main.querySelector('[data-bingo-settings-open]');
+            const back = main.querySelector('[data-bingo-back-lobby]');
+            if (settings) main.insertBefore(btn, settings);
+            else if (back) main.insertBefore(btn, back.nextSibling);
+            else main.appendChild(btn);
         }
-        row.hidden = false;
-        row.removeAttribute('hidden');
         return btn;
     }
 
     function syncBuyTicketsVisibility(root, data) {
         const bingoRoot = resolveGuestBingoRoot(root);
         const play = resolveGuestBingoPlayRoot(root);
-        if (bingoRoot) ensureGuestBuyBanner(bingoRoot);
-        if (play) ensureGuestPlayBuyRow(play);
-        const playOpen = !!(play && !play.hidden);
+        if (play) ensureGuestToolbarBuy(play);
         const banner = bingoRoot ? bingoRoot.querySelector('[data-bingo-buy-banner]') : null;
         if (banner) {
-            if (playOpen) {
-                banner.hidden = false;
-                banner.removeAttribute('hidden');
-            } else {
-                banner.hidden = true;
-                banner.setAttribute('hidden', '');
-            }
+            banner.hidden = true;
+            banner.setAttribute('hidden', '');
         }
         const rem = data ? guestTicketRemaining(data) : 1;
         const canBuy = !!(data && data.canGrabMore && rem > 0 && !data.playInProgress);
@@ -2452,7 +2472,7 @@
     global.MdjGuestBingoPlay = {
         create: createGuestBingoPlay,
         escapeHtml,
-        ensureGuestPlayBuyRow,
+        ensureGuestToolbarBuy,
         ensureGuestBuyBanner,
         syncBuyTicketsVisibility
     };

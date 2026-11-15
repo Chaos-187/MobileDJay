@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=57" rel="stylesheet">
+    <link href="/css/bingo.css?v=60" rel="stylesheet">
     <link href="/css/bingo-themes.css?v=7" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
@@ -26,14 +26,17 @@
 
         <div id="guestBingoPlay" class="guest-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>
             <div class="guest-bingo-play-toolbar">
-                <button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn" data-bingo-back-lobby>
-                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
-                    <span>Back to lobby</span>
-                </button>
-                <button type="button" class="guest-bingo-settings-btn guest-bingo-toolbar-btn guest-bingo-toolbar-btn--icon" data-bingo-settings-open aria-label="Play settings">
-                    <i class="fas fa-gear" aria-hidden="true"></i>
-                </button>
-                <p class="guest-bingo-meta" id="guestBingoMeta" data-bingo-meta></p>
+                <div class="guest-bingo-play-toolbar__main">
+                    <button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn" data-bingo-back-lobby>
+                        <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                        <span>Back to lobby</span>
+                    </button>
+                    <button type="button" class="guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy btn btn-warning" data-bingo-buy-tickets>Buy tickets</button>
+                    <button type="button" class="guest-bingo-settings-btn guest-bingo-toolbar-btn guest-bingo-toolbar-btn--icon" data-bingo-settings-open aria-label="Play settings">
+                        <i class="fas fa-gear" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="guest-bingo-play-status guest-bingo-meta" id="guestBingoMeta" data-bingo-meta>Waiting to start</p>
             </div>
             <div class="guest-bingo-countdown-bar" data-bingo-countdown hidden aria-live="polite">
                 <span class="guest-bingo-countdown-bar__kind" data-bingo-countdown-kind">Starting</span>
@@ -91,7 +94,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/guest-bingo-play.js?v=65"></script>
+    <script src="/js/guest-bingo-play.js?v=66"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

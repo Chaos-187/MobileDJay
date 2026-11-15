@@ -3057,19 +3057,23 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
     res.json({ enabled: true, cardLimit: bingoMaxVirtualCardsForEvent(req.event), games });
 });
 
-app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson, (req, res) => {
-    try {
+/**
+ * Assign virtual tickets — shared by join (first tickets) and add-tickets (buy more).
+ * @param {{ requireNoCards?: boolean, requireExistingCards?: boolean }} rules
+ */
+function bingoGuestAssignVirtualTickets(req, res, gameId, rules = {}) {
     if (!req.event.enable_bingo) {
-        return res.status(403).json({ error: 'Bingo is not enabled for this event' });
+        res.status(403).json({ error: 'Bingo is not enabled for this event' });
+        return false;
     }
-    const gameId = parseInt(req.params.gameId, 10);
     const game = bingoGameDb.getById(gameId);
     if (!game || game.eventId !== req.event.id) {
-        return res.status(404).json({ error: 'Game not found' });
+        res.status(404).json({ error: 'Game not found' });
+        return false;
     }
     const customerName = normalizeGuestNameForApi(req.body.customerName);
     const deviceId = normalizeGuestDeviceId(req.body.deviceId);
-    if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
+    if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return false;
     const slug = req.event.slug;
     const caller = makeBingoCaller(slug, gameId);
     bingoSession.ensureIntroAdvanced(slug, gameId, caller);
@@ -3077,18 +3081,38 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
     const state = bingoPublicState(slug, gameId);
     const guestStatus = bingoGuestEffectiveGameStatus(game, state);
     if (guestStatus !== 'join_open' && guestStatus !== 'live') {
-        return res.status(400).json({ error: 'This game is not open for joining' });
+        res.status(400).json({ error: 'This game is not open for joining' });
+        return false;
     }
     const existingCount = bingoDb.countAssignedCardsForPlayer(gameId, customerName);
+    if (rules.requireNoCards && existingCount > 0) {
+        res.status(409).json({
+            error: 'You already have tickets for this game — use Buy tickets to add more'
+        });
+        return false;
+    }
+    if (rules.requireExistingCards) {
+        const access = bingoDb.resolveGuestCardAccess(gameId, customerName, deviceId, null);
+        if (access.error) {
+            bingoAssignErrorResponse(res, access.error);
+            return false;
+        }
+        if (!access.cards || !access.cards.length) {
+            res.status(400).json({ error: 'Join this game first to get your first ticket' });
+            return false;
+        }
+    }
     if (existingCount > 0 && bingoGuestPlayInProgress(slug, gameId)) {
-        return res.status(400).json({
+        res.status(400).json({
             error: 'Game in progress — buy more tickets when this game ends'
         });
+        return false;
     }
     const maxCards = bingoMaxVirtualCardsForGame(req.event, game);
     const remaining = Math.max(0, maxCards - existingCount);
     if (remaining <= 0) {
-        return bingoAssignErrorResponse(res, 'card_limit_reached');
+        bingoAssignErrorResponse(res, 'card_limit_reached');
+        return false;
     }
     const wantQty = Math.max(1, Math.min(remaining, Number(req.body.quantity) || 1));
     const assignOpts = {
@@ -3104,7 +3128,8 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
         const assignResult = bingoDb.assignNextAvailable(gameId, customerName, deviceId, assignOpts);
         if (assignResult?.error) {
             if (cards.length) break;
-            return bingoAssignErrorResponse(res, assignResult.error);
+            bingoAssignErrorResponse(res, assignResult.error);
+            return false;
         }
         cards.push(assignResult.card);
         lastResult = assignResult;
@@ -3122,8 +3147,26 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
         partial: cards.length < wantQty,
         playUrl: `/event/${req.event.slug}/bingo?game=${game.id}`
     });
+    return true;
+}
+
+app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson, (req, res) => {
+    try {
+        const gameId = parseInt(req.params.gameId, 10);
+        bingoGuestAssignVirtualTickets(req, res, gameId, { requireNoCards: false });
     } catch (err) {
         console.error('bingo guest join error:', err);
+        res.status(500).json({ error: BINGO_GUEST_GENERIC_ERROR });
+    }
+});
+
+/** Buy more virtual tickets while already in a game (play screen or lobby). */
+app.post('/api/event/:eventSlug/bingo/games/:gameId/add-tickets', getEventFromSlugJson, (req, res) => {
+    try {
+        const gameId = parseInt(req.params.gameId, 10);
+        bingoGuestAssignVirtualTickets(req, res, gameId, { requireExistingCards: true });
+    } catch (err) {
+        console.error('bingo guest add-tickets error:', err);
         res.status(500).json({ error: BINGO_GUEST_GENERIC_ERROR });
     }
 });

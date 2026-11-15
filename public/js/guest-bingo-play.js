@@ -308,6 +308,19 @@
         });
     }
 
+    var playBuyTicketsClickHandler = null;
+
+    function wireBuyTicketClick(btn) {
+        if (!btn || btn.getAttribute('data-buy-wired') === '1') return;
+        btn.setAttribute('data-buy-wired', '1');
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (btn.disabled) return;
+            if (playBuyTicketsClickHandler) playBuyTicketsClickHandler();
+        });
+    }
+
     function ensureGuestToolbarBuy(play) {
         if (!play) return null;
         removeLegacyGuestBuyRows(play);
@@ -351,6 +364,7 @@
             else if (back) main.insertBefore(btn, back.nextSibling);
             else main.appendChild(btn);
         }
+        wireBuyTicketClick(btn);
         return btn;
     }
 
@@ -400,6 +414,7 @@
                 buyEl.classList.toggle('guest-bingo-top-buy--disabled', !canBuy);
             }
             buyEl.textContent = label;
+            wireBuyTicketClick(buyEl);
         });
     }
 
@@ -786,12 +801,14 @@
                 confirm: wrap.querySelector('[data-bingo-buy-confirm]')
             };
             let pendingGameId = null;
+            let pendingBuyMore = false;
 
             function closeBuyModal() {
                 wrap.hidden = true;
                 wrap.setAttribute('hidden', '');
                 document.documentElement.classList.remove('guest-bingo-buy-open');
                 pendingGameId = null;
+                pendingBuyMore = false;
                 if (buyModalEls.err) {
                     buyModalEls.err.hidden = true;
                     buyModalEls.err.textContent = '';
@@ -839,7 +856,7 @@
                 const qty = parseInt(buyModalEls.qty.value, 10) || 1;
                 buyModalEls.confirm.disabled = true;
                 if (buyModalEls.err) buyModalEls.err.hidden = true;
-                const result = await joinVirtual(pendingGameId, qty);
+                const result = await purchaseVirtualTickets(pendingGameId, qty, pendingBuyMore);
                 buyModalEls.confirm.disabled = false;
                 if (!result.ok) {
                     if (buyModalEls.err) {
@@ -851,8 +868,9 @@
                 closeBuyModal();
             });
 
-            buyModalEls.open = function (gameId, remaining) {
+            buyModalEls.open = function (gameId, remaining, options) {
                 pendingGameId = gameId;
+                pendingBuyMore = !!(options && options.buyMore);
                 const max = Math.max(1, remaining);
                 syncQtyBounds(max);
                 buyModalEls.qty.value = String(Math.min(max, max > 2 ? 2 : 1));
@@ -864,11 +882,11 @@
             return buyModalEls;
         }
 
-        function openBuyTicketsModal(gameId, remaining) {
+        function openBuyTicketsModal(gameId, remaining, options) {
             if (!opts.customerName()) return { ok: false, error: 'Enter your name on the hub first' };
             if (remaining <= 0) return { ok: false, error: 'No more tickets available for this game' };
             const modal = ensureBuyTicketsModal();
-            modal.open(gameId, remaining);
+            modal.open(gameId, remaining, options || {});
             return { ok: true };
         }
 
@@ -977,20 +995,33 @@
             hideWinnersModal();
         }
 
+        function guestHasTicketsForGame(data, gameId) {
+            if (!data || !gameId) return false;
+            const gid = data.game && data.game.id != null ? data.game.id : activeGameId;
+            if (gid !== gameId) return false;
+            return guestPlayCardCount(null, data, lastStackPayload) > 0;
+        }
+
         function openBuyFromPlayUi() {
             if (!activeGameId) return;
             const tryOpen = function () {
                 const data = playDataForDock();
-                const rem = guestTicketRemaining(data);
-                if (!guestCanBuyTickets(data)) {
+                const rem = data ? guestTicketRemaining(data) : 0;
+                if (data && guestCallerHasStarted(data)) {
                     if (els.claimResult) {
-                        els.claimResult.textContent = data && guestCallerHasStarted(data)
-                            ? 'Extra tickets are only available before the game starts'
-                            : 'No more tickets available for this game';
+                        els.claimResult.textContent =
+                            'Extra tickets are only available before the game starts';
                     }
                     return;
                 }
-                const opened = openBuyTicketsModal(activeGameId, rem);
+                if (rem <= 0) {
+                    if (els.claimResult) {
+                        els.claimResult.textContent = 'No more tickets available for this game';
+                    }
+                    return;
+                }
+                const buyMore = guestHasTicketsForGame(data, activeGameId);
+                const opened = openBuyTicketsModal(activeGameId, rem, { buyMore: buyMore });
                 if (opened && opened.ok === false && opened.error && els.claimResult) {
                     els.claimResult.textContent = opened.error;
                 }
@@ -1001,6 +1032,8 @@
             }
             tryOpen();
         }
+
+        playBuyTicketsClickHandler = openBuyFromPlayUi;
 
         if (els.backLobby) {
             els.backLobby.addEventListener('click', function () {
@@ -1910,7 +1943,7 @@
                             btn.getAttribute('data-card-limit'),
                             btn.getAttribute('data-guest-card-count')
                         );
-                        openBuyTicketsModal(gid, rem);
+                        openBuyTicketsModal(gid, rem, { buyMore: false });
                     }
                 });
             });
@@ -1922,7 +1955,7 @@
                         btn.getAttribute('data-card-limit'),
                         btn.getAttribute('data-guest-card-count')
                     );
-                    openBuyTicketsModal(gid, rem);
+                    openBuyTicketsModal(gid, rem, { buyMore: true });
                 });
             });
         }
@@ -2071,7 +2104,7 @@
             }
         }
 
-        async function joinVirtual(gameId, quantity) {
+        async function purchaseVirtualTickets(gameId, quantity, buyMore) {
             const name = opts.customerName();
             if (!name) return { ok: false, error: 'name' };
             const dev = opts.deviceId();
@@ -2079,10 +2112,16 @@
                 return { ok: false, error: 'This device could not be identified — refresh the hub and try again' };
             }
             const qty = Math.max(1, Number(quantity) || 1);
+            const pathSegment = buyMore ? 'add-tickets' : 'join';
             let res;
             try {
                 res = await fetch(
-                    '/api/event/' + encodeURIComponent(slug) + '/bingo/games/' + gameId + '/join',
+                    '/api/event/' +
+                        encodeURIComponent(slug) +
+                        '/bingo/games/' +
+                        gameId +
+                        '/' +
+                        pathSegment,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -2129,6 +2168,11 @@
                 startPlay();
             }
             return { ok: true };
+        }
+
+        async function joinVirtual(gameId, quantity) {
+            const havePlay = guestHasTicketsForGame(playDataForDock(), gameId);
+            return purchaseVirtualTickets(gameId, quantity, havePlay);
         }
 
         async function linkPaper(gameId, serial) {

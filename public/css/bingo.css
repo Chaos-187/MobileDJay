@@ -720,6 +720,14 @@ body.mdj-guest-bingo-page {
     pointer-events: auto;
 }
 
+/* After DJ starts, claim must stay tappable even while intro countdown runs */
+.guest-bingo-play-dock.guest-bingo--dock-claim .guest-bingo-call-dock,
+.guest-bingo-play-dock.guest-bingo--dock-claim .guest-bingo-action-bar {
+    opacity: 1 !important;
+    filter: none !important;
+    pointer-events: auto !important;
+}
+
 .guest-bingo-play-dock.guest-bingo--dock-buy [data-bingo-call][data-dock-mode='buy'],
 .guest-bingo-play-dock.guest-bingo--dock-buy .guest-bingo-dock-btn--buy:not(:disabled),
 .guest-bingo-play-dock [data-bingo-call].guest-bingo-dock-btn--buy:not(:disabled) {

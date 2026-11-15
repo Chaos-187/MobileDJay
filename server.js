@@ -795,14 +795,17 @@ function inferCardFormatFromCards(cards) {
     return grid ? inferCardFormat(grid) : 'uk-90';
 }
 
-/** Balls are being called (or claim break) — guests cannot buy more virtual cards. */
+/** DJ has started the caller — guests cannot buy more virtual cards. */
 function bingoGuestPlayInProgress(slug, gameId) {
     const pub = bingoSession.publicBingoState(slug, gameId);
-    if (!pub) return false;
-    if (pub.calledBalls && pub.calledBalls.length > 0) return true;
-    if (pub.phase === 'claim_break') return true;
-    if (pub.phase === 'intro' || pub.phase === 'resume') return false;
-    return !!(pub.active && pub.phase === 'calling');
+    return !!(pub && pub.active);
+}
+
+/** Authoritative dock mode for guest play UI (buy vs claim vs lobby). */
+function bingoGuestDockAction(state, game) {
+    if (bingoGuestEffectiveShowWinnersPopup(state, game)) return 'lobby';
+    if (!state || !state.active) return 'buy';
+    return 'claim';
 }
 
 function bingoGuestIdleBeforeCall(state) {
@@ -3173,6 +3176,7 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     });
     const guestGameStatus = bingoGuestEffectiveGameStatus(game, state);
     const guestShowWinnersPopup = bingoGuestEffectiveShowWinnersPopup(state, game);
+    const dockAction = bingoGuestDockAction(state, game);
     res.json({
         game: {
             id: game.id,
@@ -3187,6 +3191,8 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         guestCards,
         allCards,
         playInProgress: bingoGuestPlayInProgress(slug, gameId),
+        dockAction,
+        callerRunning: !!state.active,
         canGrabMore: guestCanGrabMoreVirtualCards(
             slug,
             gameId,

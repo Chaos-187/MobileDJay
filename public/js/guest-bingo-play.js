@@ -163,20 +163,21 @@
         );
     }
 
-    /** DJ has begun calling numbers — switch dock from buy to claim. */
-    function guestCallerHasStarted(data) {
-        if (!data) return false;
-        if (guestBingoCalledCount(data) > 0) return true;
-        if (data.playInProgress) return true;
-        const phase = String(data.phase || '');
-        if (phase === 'claim_break') return true;
-        if (phase === 'intro' || phase === 'resume') return false;
-        return !!(data.active && phase === 'calling');
+    /**
+     * Buy until the DJ starts the caller (`active`); then claim for the rest of the round.
+     * Prefer `dockAction` from the play API when present.
+     */
+    function guestDockAction(data) {
+        if (!data) return 'buy';
+        const fromApi = data.dockAction != null ? String(data.dockAction) : '';
+        if (fromApi === 'buy' || fromApi === 'claim' || fromApi === 'lobby') return fromApi;
+        if (guestShouldShowGameOverForGuest(data)) return 'lobby';
+        return data.active ? 'claim' : 'buy';
     }
 
     function bingoGuestPreClaimPlay(data) {
         if (!data || data.showWinnersPopup) return false;
-        return !guestCallerHasStarted(data);
+        return guestDockAction(data) === 'buy';
     }
 
     function guestPlayCardCount(cards, data, stackPayload) {
@@ -432,6 +433,7 @@
 
         function guestShouldShowGameOver(data) {
             if (!data || winnersDismissedLocally) return false;
+            if (guestDockAction(data) === 'lobby') return true;
             return guestShouldShowGameOverForGuest(data);
         }
 
@@ -920,6 +922,13 @@
                     if (introEndsAtLocal) paintGuestIntro(lastStackPayload.data);
                     if (resumeEndsAtLocal) paintGuestResume(lastStackPayload.data);
                     paintGuestCountdownBar(lastStackPayload.data);
+                    if (lastStackPayload.data) {
+                        updateCallUi(
+                            lastStackPayload.cards || [],
+                            activeSerial,
+                            lastStackPayload.data
+                        );
+                    }
                     if (introEndsAtLocal && guestIntroRemainingMs(lastStackPayload.data) <= 0) {
                         refreshPlay();
                     }
@@ -1145,36 +1154,31 @@
                       ? lastStackPayload.cards
                       : [];
             const cardCount = guestPlayCardCount(list, data, lastStackPayload);
-            const callerStarted = guestCallerHasStarted(data);
+            const dockAction = guestDockAction(data);
             const rem = guestTicketRemaining(data);
             const canBuy = !!(data && data.canGrabMore && rem > 0);
             const phase = data && data.phase ? String(data.phase) : '';
 
             callBtn.classList.remove('guest-bingo-dock-btn--buy', 'guest-bingo-dock-btn--lobby');
 
-            if (guestShouldShowGameOver(data)) {
-                els.callBtn.setAttribute('data-dock-mode', 'lobby');
-                els.callBtn.textContent = 'Back to lobby';
-                els.callBtn.disabled = false;
-                els.callBtn.classList.add('guest-bingo-dock-btn--lobby');
-                els.callBtn.classList.remove('guest-bingo-call--ready');
-                if (els.playDock) {
-                    els.playDock.classList.add('guest-bingo--dock-buy');
-                }
+            if (dockAction === 'lobby') {
+                callBtn.setAttribute('data-dock-mode', 'lobby');
+                callBtn.textContent = 'Back to lobby';
+                callBtn.disabled = false;
+                callBtn.classList.add('guest-bingo-dock-btn--lobby');
+                callBtn.classList.remove('guest-bingo-call--ready');
+                if (els.playDock) els.playDock.classList.add('guest-bingo--dock-buy');
                 return;
             }
 
-            if (els.playDock) {
-                els.playDock.classList.toggle(
-                    'guest-bingo--dock-buy',
-                    !callerStarted && (!!canBuy || cardCount === 0)
-                );
-            }
-
-            if (!callerStarted) {
+            if (dockAction === 'buy') {
+                if (els.playDock) {
+                    els.playDock.classList.add('guest-bingo--dock-buy');
+                    els.playDock.classList.remove('guest-bingo--dock-claim');
+                }
+                callBtn.setAttribute('data-dock-mode', 'buy');
+                callBtn.classList.remove('guest-bingo-call--ready', 'guest-bingo-dock-btn--lobby');
                 if (canBuy) {
-                    callBtn.setAttribute('data-dock-mode', 'buy');
-                    callBtn.classList.remove('guest-bingo-call--ready');
                     callBtn.textContent =
                         cardCount === 0
                             ? rem > 1
@@ -1185,40 +1189,35 @@
                               : 'Buy tickets';
                     callBtn.disabled = false;
                     callBtn.classList.add('guest-bingo-dock-btn--buy');
-                    return;
-                }
-                callBtn.setAttribute('data-dock-mode', 'claim');
-                callBtn.classList.remove('guest-bingo-dock-btn--buy');
-                if (cardCount === 0) {
-                    callBtn.textContent =
-                        phase === 'intro'
-                            ? 'Starting soon'
-                            : phase === 'resume'
-                              ? 'Resuming soon'
-                              : 'Get tickets first';
-                    callBtn.disabled = true;
                 } else {
-                    if (phase === 'intro') {
-                        const sec =
-                            data.introRemainingSec != null
-                                ? data.introRemainingSec
-                                : Math.max(0, Math.ceil(guestIntroRemainingMs(data) / 1000));
-                        callBtn.textContent = 'Claim — starts in ' + sec + 's';
-                    } else if (phase === 'resume') {
-                        callBtn.textContent = 'Claim — resuming soon';
-                    } else {
-                        callBtn.textContent = 'Claim — waiting for caller';
-                    }
+                    callBtn.textContent = cardCount === 0 ? 'Get tickets first' : 'Buy tickets';
                     callBtn.disabled = true;
+                    callBtn.classList.remove('guest-bingo-dock-btn--buy');
                 }
-                callBtn.classList.remove('guest-bingo-call--ready');
                 return;
             }
 
+            if (els.playDock) {
+                els.playDock.classList.remove('guest-bingo--dock-buy');
+                els.playDock.classList.add('guest-bingo--dock-claim');
+            }
             callBtn.setAttribute('data-dock-mode', 'claim');
-            callBtn.classList.remove('guest-bingo-dock-btn--buy');
+            callBtn.classList.remove('guest-bingo-dock-btn--buy', 'guest-bingo-dock-btn--lobby');
             const label = (data && data.playingForLabel) || 'prize';
-            callBtn.textContent = 'Claim — ' + label;
+            if (phase === 'intro') {
+                const sec =
+                    data.introRemainingSec != null
+                        ? data.introRemainingSec
+                        : Math.max(0, Math.ceil(guestIntroRemainingMs(data) / 1000));
+                callBtn.textContent = 'Claim — starts in ' + sec + 's';
+                callBtn.disabled = true;
+            } else if (phase === 'resume') {
+                callBtn.textContent = 'Claim — resuming soon';
+                callBtn.disabled = true;
+            } else {
+                callBtn.textContent = 'Claim — ' + label;
+            }
+            callBtn.classList.remove('guest-bingo-call--ready');
         }
 
         function syncCallButtonDisabled(data) {
@@ -2153,8 +2152,9 @@
         }
 
         function updatePollCadence(data) {
-            const wantMs =
-                data && (data.phase === 'intro' || data.phase === 'resume') ? 600 : 2200;
+            let wantMs = 2800;
+            if (data && data.active) wantMs = 650;
+            else if (data && (data.phase === 'intro' || data.phase === 'resume')) wantMs = 650;
             if (!pollTimer) return;
             if (wantMs === pollDelayMs) return;
             pollDelayMs = wantMs;
@@ -2316,9 +2316,16 @@
             sendClaim(playingFor);
         }
 
-        root.addEventListener('click', function (e) {
+        function dockClickInScope(btn) {
+            if (!btn) return false;
+            if (root.contains(btn)) return true;
+            const playDock = q('[data-bingo-play-dock]');
+            return !!(playDock && playDock.contains(btn));
+        }
+
+        (root.addEventListener ? root : document).addEventListener('click', function (e) {
             const btn = e.target && e.target.closest ? e.target.closest('[data-bingo-call]') : null;
-            if (!btn || !root.contains(btn)) return;
+            if (!dockClickInScope(btn)) return;
             handleDockCallButtonClick(btn);
         });
 

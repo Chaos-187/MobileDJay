@@ -454,23 +454,48 @@
         return 'number';
     }
 
+    function displayCallerVoiceMode(state) {
+        if (state && state.callerVoiceMode != null && String(state.callerVoiceMode).trim()) {
+            if (window.MdjBingoCallerVoice && window.MdjBingoCallerVoice.normalizeVoiceMode) {
+                return window.MdjBingoCallerVoice.normalizeVoiceMode(state.callerVoiceMode);
+            }
+            const s = String(state.callerVoiceMode).toLowerCase();
+            return s === 'female' ? 'female' : 'tts';
+        }
+        return 'tts';
+    }
+
     function speakBallNumber(num, state) {
+        const fmt = state && (state.cardFormat || (state.game && state.game.cardFormat));
+        const style = displayCallerStyle(state);
+        const voiceMode = displayCallerVoiceMode(state);
+        const theme = state.bingoTheme || 'default';
+        if (window.MdjBingoCallerVoice && typeof window.MdjBingoCallerVoice.announceBall === 'function') {
+            window.MdjBingoCallerVoice.announceBall(num, {
+                style,
+                cardFormat: fmt,
+                voiceMode,
+                theme
+            });
+            return;
+        }
+        if (window.MdjBingoTts && typeof window.MdjBingoTts.speakBall === 'function') {
+            window.MdjBingoTts.speakBall(num, style, fmt);
+            return;
+        }
         if (typeof window === 'undefined' || !window.speechSynthesis) return;
         try {
             window.speechSynthesis.cancel();
         } catch (e) {
             /* ignore */
         }
-        const fmt = state && (state.cardFormat || (state.game && state.game.cardFormat));
-        const style = displayCallerStyle(state);
         const text =
             window.MdjBingoUkCalls && window.MdjBingoUkCalls.announcementText
                 ? window.MdjBingoUkCalls.announcementText(num, style, fmt)
                 : 'Number ' + num;
         const u = new SpeechSynthesisUtterance(text);
         u.lang = 'en-GB';
-        u.rate = 0.92;
-        u.pitch = 1;
+        u.rate = 0.88;
         try {
             window.speechSynthesis.speak(u);
         } catch (e) {
@@ -496,15 +521,7 @@
             return;
         }
         lastSpokenBall = state.lastBall;
-        const theme = state.bingoTheme || 'default';
-        const speakFn = function (n) {
-            speakBallNumber(n, state);
-        };
-        if (window.MdjBingoTheme && typeof window.MdjBingoTheme.announceCalledBall === 'function') {
-            window.MdjBingoTheme.announceCalledBall(theme, state.lastBall, speakFn);
-        } else {
-            speakFn(state.lastBall);
-        }
+        speakBallNumber(state.lastBall, state);
     }
 
     function hideUnderlays() {
@@ -647,7 +664,9 @@
             lastSpokenBall = null;
             prevVoiceCall = false;
             try {
-                window.speechSynthesis?.cancel();
+                if (window.MdjBingoCallerVoice && window.MdjBingoCallerVoice.cancel) window.MdjBingoCallerVoice.cancel();
+                else if (window.MdjBingoTts && window.MdjBingoTts.cancel) window.MdjBingoTts.cancel();
+                else window.speechSynthesis?.cancel();
             } catch (e) {
                 /* ignore */
             }
@@ -815,7 +834,9 @@
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
             try {
-                window.speechSynthesis?.cancel();
+                if (window.MdjBingoCallerVoice && window.MdjBingoCallerVoice.cancel) window.MdjBingoCallerVoice.cancel();
+                else if (window.MdjBingoTts && window.MdjBingoTts.cancel) window.MdjBingoTts.cancel();
+                else window.speechSynthesis?.cancel();
             } catch (e) {
                 /* ignore */
             }

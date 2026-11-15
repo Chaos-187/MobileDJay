@@ -137,9 +137,30 @@
         return 'Number ' + n;
     }
 
+    /**
+     * Segments for TTS (phrase-then-number reads as two beats).
+     * @returns {string[]}
+     */
+    function announcementParts(num, style, cardFormat) {
+        const n = parseInt(num, 10);
+        if (!Number.isFinite(n)) return [];
+        const fmt = String(cardFormat || 'uk-90').toLowerCase();
+        const uk = fmt !== 'us-75';
+        const st = uk ? normalizeCallerStyle(style) : 'number';
+        const nick = uk ? phraseForNumber(n) : '';
+        if (st === 'phrase') {
+            return [nick || 'Number ' + n];
+        }
+        if (st === 'both') {
+            return nick ? [nick, String(n)] : ['Number ' + n];
+        }
+        return ['Number ' + n];
+    }
+
     global.MdjBingoUkCalls = {
         phraseForNumber,
         announcementText,
+        announcementParts,
         normalizeCallerStyle,
         STYLES
     };

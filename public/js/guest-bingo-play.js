@@ -112,6 +112,23 @@
         return s === 'phrase' || s === 'both' ? s : 'number';
     }
 
+    function effectiveCallerVoiceMode(data) {
+        const fromGame =
+            data && data.callerVoiceMode != null
+                ? data.callerVoiceMode
+                : data && data.game && data.game.callerVoiceMode != null
+                  ? data.game.callerVoiceMode
+                  : null;
+        if (fromGame != null && String(fromGame).trim()) {
+            if (global.MdjBingoCallerVoice && global.MdjBingoCallerVoice.normalizeVoiceMode) {
+                return global.MdjBingoCallerVoice.normalizeVoiceMode(fromGame);
+            }
+            const s = String(fromGame).toLowerCase();
+            return s === 'female' ? 'female' : 'tts';
+        }
+        return 'tts';
+    }
+
     function effectiveCallerStyle(data, localStyle) {
         const fromGame =
             data && data.callerAnnounceStyle != null
@@ -1269,7 +1286,28 @@
             }).filter(Boolean);
         }
 
-        function speakAnnouncementText(text) {
+        function speakBallForPlay(num, playData) {
+            const fmt =
+                playData && (playData.cardFormat || (playData.game && playData.game.cardFormat));
+            const style = effectiveCallerStyle(playData, callerStyle);
+            const voiceMode = effectiveCallerVoiceMode(playData);
+            const theme =
+                (playData && (playData.bingoTheme || (playData.game && playData.game.bingoTheme))) ||
+                'default';
+            if (global.MdjBingoCallerVoice && typeof global.MdjBingoCallerVoice.announceBall === 'function') {
+                global.MdjBingoCallerVoice.announceBall(num, {
+                    style,
+                    cardFormat: fmt,
+                    voiceMode,
+                    theme
+                });
+                return;
+            }
+            if (global.MdjBingoTts && typeof global.MdjBingoTts.speakBall === 'function') {
+                global.MdjBingoTts.speakBall(num, style, fmt);
+                return;
+            }
+            const text = callerAnnouncementText(num, style, fmt);
             if (typeof window === 'undefined' || !window.speechSynthesis || !text) return;
             try {
                 window.speechSynthesis.cancel();
@@ -1278,21 +1316,12 @@
             }
             const u = new SpeechSynthesisUtterance(String(text));
             u.lang = 'en-GB';
-            u.rate = 0.92;
-            u.pitch = 1;
+            u.rate = 0.88;
             try {
                 window.speechSynthesis.speak(u);
             } catch (e) {
                 /* ignore */
             }
-        }
-
-        function speakBallForPlay(num, playData) {
-            const fmt =
-                playData && (playData.cardFormat || (playData.game && playData.game.cardFormat));
-            const style = effectiveCallerStyle(playData, callerStyle);
-            const text = callerAnnouncementText(num, style, fmt);
-            speakAnnouncementText(text);
         }
 
         function maybeAnnounceBall(data) {
@@ -1302,16 +1331,7 @@
             if (data.lastBall == null) return;
             if (data.lastBall === lastSpokenBall) return;
             lastSpokenBall = data.lastBall;
-            const theme =
-                (data && (data.bingoTheme || (data.game && data.game.bingoTheme))) || 'default';
-            const speakFn = function (n) {
-                speakBallForPlay(n, data);
-            };
-            if (window.MdjBingoTheme && typeof window.MdjBingoTheme.announceCalledBall === 'function') {
-                window.MdjBingoTheme.announceCalledBall(theme, data.lastBall, speakFn);
-            } else {
-                speakFn(data.lastBall);
-            }
+            speakBallForPlay(data.lastBall, data);
         }
 
         function stopCountdownTick() {

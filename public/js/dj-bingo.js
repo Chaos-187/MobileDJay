@@ -78,6 +78,7 @@
         voiceCall: document.getElementById('bingoWizardVoiceCall'),
         callerStyle: document.getElementById('bingoWizardCallerStyle'),
         callerStyleWrap: document.getElementById('bingoWizardCallerStyleWrap'),
+        callerVoice: document.getElementById('bingoWizardCallerVoice'),
         prizeFour: document.getElementById('bingoWizardPrizeFour'),
         prizeLine: document.getElementById('bingoWizardPrizeLine'),
         prizeTwo: document.getElementById('bingoWizardPrizeTwo'),
@@ -105,6 +106,7 @@
         voiceCall: document.getElementById('bingoEditVoiceCall'),
         callerStyle: document.getElementById('bingoEditCallerStyle'),
         callerStyleWrap: document.getElementById('bingoEditCallerStyleWrap'),
+        callerVoice: document.getElementById('bingoEditCallerVoice'),
         prizeFour: document.getElementById('bingoEditPrizeFour'),
         prizeLine: document.getElementById('bingoEditPrizeLine'),
         prizeTwo: document.getElementById('bingoEditPrizeTwo'),
@@ -162,6 +164,11 @@
         if (s === 'phrase') return 'UK phrases only';
         if (s === 'both') return 'Phrase then number';
         return 'Numbers only';
+    }
+
+    function callerVoiceModeLabel(mode) {
+        const m = String(mode || 'tts').toLowerCase();
+        return m === 'female' ? 'Female recorded numbers' : 'Browser voice (TTS)';
     }
 
     function syncEditCardFormatUi() {
@@ -1652,6 +1659,7 @@
         if (wizardEls.autoCall) wizardEls.autoCall.checked = !!els.autoCall?.checked;
         if (wizardEls.voiceCall) wizardEls.voiceCall.checked = !!els.voiceCall?.checked;
         if (wizardEls.callerStyle) wizardEls.callerStyle.value = 'both';
+        if (wizardEls.callerVoice) wizardEls.callerVoice.value = 'female';
         document.querySelectorAll('input[name="bingoWizardCardFormat"]').forEach((inp) => {
             inp.checked = inp.value === (activeCardFormat || 'uk-90');
         });
@@ -1705,6 +1713,7 @@
             autoCall: !!wizardEls.autoCall?.checked,
             voiceCall: !!wizardEls.voiceCall?.checked,
             callerAnnounceStyle: wizardEls.callerStyle?.value || 'number',
+            callerVoiceMode: wizardEls.callerVoice?.value || 'tts',
             prizeFourCorners: (wizardEls.prizeFour?.value || '').trim(),
             prizeLine: (wizardEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (wizardEls.prizeTwo?.value || '').trim(),
@@ -1733,7 +1742,7 @@
             (p.cardFormat === 'us-75'
                 ? ''
                 : ` · ${escapeHtml(callerAnnounceStyleLabel(p.callerAnnounceStyle))}`) +
-            `</dd>` +
+            ` · ${escapeHtml(callerVoiceModeLabel(p.callerVoiceMode))}</dd>` +
             `<dt>Claim window</dt><dd>${escapeHtml(String(p.claimBreakSeconds))}s</dd>` +
             `<dt>Theme</dt><dd>${escapeHtml(bingoThemeLabel(p.bingoTheme))}</dd>`;
     }
@@ -1764,6 +1773,9 @@
         if (editEls.voiceCall) editEls.voiceCall.checked = !!g.voiceCall;
         if (editEls.callerStyle) {
             editEls.callerStyle.value = g.callerAnnounceStyle || 'number';
+        }
+        if (editEls.callerVoice) {
+            editEls.callerVoice.value = g.callerVoiceMode || 'tts';
         }
         if (editEls.prizeLine) editEls.prizeLine.value = g.prizes?.line || '';
         if (editEls.prizeTwo) editEls.prizeTwo.value = g.prizes?.['two-lines'] || '';
@@ -1809,6 +1821,7 @@
             autoCall: !!editEls.autoCall?.checked,
             voiceCall: !!editEls.voiceCall?.checked,
             callerAnnounceStyle: editEls.callerStyle?.value || 'number',
+            callerVoiceMode: editEls.callerVoice?.value || 'tts',
             prizeFourCorners: (editEls.prizeFour?.value || '').trim(),
             prizeLine: (editEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (editEls.prizeTwo?.value || '').trim(),

@@ -1518,6 +1518,14 @@
                                 <option value="both" selected>Phrase then number — “Winnie-the-Pooh. 42”</option>
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="mdj-bingo-field-label" for="bingoWizardCallerVoice">Caller voice</label>
+                            <p class="small text-muted mb-1">Studio-recorded balls 1–90. UK phrases still use browser voice when announce style needs them.</p>
+                            <select class="form-select form-select-lg mdj-bingo-input" id="bingoWizardCallerVoice">
+                                <option value="tts">Browser voice (TTS)</option>
+                                <option value="female" selected>Female recorded numbers</option>
+                            </select>
+                        </div>
                         <p class="mdj-bingo-field-label mb-2">Prize names (optional)</p>
                         <div class="row g-2">
                             <div class="col-12 col-md-6 col-lg-3" id="bingoWizardPrizeFourWrap" hidden>
@@ -1633,6 +1641,13 @@
                             <option value="both">Phrase then number</option>
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="mdj-bingo-field-label" for="bingoEditCallerVoice">Caller voice</label>
+                        <select class="form-select mdj-bingo-input" id="bingoEditCallerVoice">
+                            <option value="tts">Browser voice (TTS)</option>
+                            <option value="female">Female recorded numbers</option>
+                        </select>
+                    </div>
                     <p class="mdj-bingo-field-label mb-2">Prize names (optional)</p>
                     <div class="row g-2 mb-0">
                         <div class="col-md-3" id="bingoEditPrizeFourWrap" hidden><input type="text" class="form-control mdj-bingo-input" id="bingoEditPrizeFour" maxlength="80" placeholder="Four corners" autocomplete="off"></div>
@@ -1684,7 +1699,7 @@
     <script src="/js/dj-dashboard.js?v=4"></script>
     <script src="/js/dj-games-picker.js?v=3"></script>
     <script src="/js/bingo-theme.js?v=7"></script>
-    <script src="/js/dj-bingo.js?v=40"></script>
+    <script src="/js/dj-bingo.js?v=41"></script>
     <script src="/js/dj-racing.js?v=3"></script>
     <script src="/js/dj-hilo.js?v=2"></script>
 

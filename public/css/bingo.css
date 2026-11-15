@@ -19,19 +19,20 @@ body.mdj-guest-bingo-page {
     font-size: 0.9rem;
 }
 
-.guest-bingo-play-topbar {
-    margin: 0 0 0.65rem;
+.guest-bingo-play-buy-row {
+    display: block;
+    margin: 0 0 0.55rem;
     position: sticky;
     top: 0;
-    z-index: 12;
-    padding-top: 0.15rem;
+    z-index: 15;
 }
 
-.guest-bingo-play-topbar[hidden] {
+.guest-bingo-play-buy-row[hidden] {
     display: none !important;
 }
 
-.guest-bingo-top-buy {
+.guest-bingo-play-buy-row__btn {
+    display: block;
     width: 100%;
     min-height: 2.85rem;
     font-size: 1rem;
@@ -40,8 +41,8 @@ body.mdj-guest-bingo-page {
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
 
-.guest-bingo-top-buy:disabled,
-.guest-bingo-top-buy.guest-bingo-top-buy--disabled {
+.guest-bingo-play-buy-row__btn:disabled,
+.guest-bingo-play-buy-row__btn.guest-bingo-toolbar-btn--buy-disabled {
     opacity: 0.55;
     cursor: not-allowed;
     box-shadow: none;

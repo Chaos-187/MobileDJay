@@ -230,36 +230,36 @@
         return typeof document !== 'undefined' ? document.querySelector('[data-bingo-play]') : null;
     }
 
-    function ensureGuestToolbarBuyButton(play) {
+    function ensureGuestPlayBuyRow(play) {
         if (!play) return null;
-        let btn = play.querySelector('[data-bingo-buy-tickets]');
-        if (btn) return btn;
-        const toolbar = play.querySelector('.guest-bingo-play-toolbar');
-        if (!toolbar) return null;
-        btn = document.createElement('button');
-        btn.type = 'button';
-        btn.setAttribute('data-bingo-buy-tickets', '');
-        btn.textContent = 'Buy tickets';
-        const isHub = !!(play.closest && play.closest('.gh-bingo'));
-        btn.className = isHub
-            ? 'guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy gh-btn gh-btn--accent'
-            : 'guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy btn btn-warning';
-        const settings = toolbar.querySelector('[data-bingo-settings-open]');
-        const back = toolbar.querySelector('[data-bingo-back-lobby]');
-        if (settings) {
-            toolbar.insertBefore(btn, settings);
-        } else if (back && back.nextSibling) {
-            toolbar.insertBefore(btn, back.nextSibling);
-        } else {
-            toolbar.appendChild(btn);
+        let row = play.querySelector('[data-bingo-play-buy-row]');
+        if (!row) {
+            row = document.createElement('div');
+            row.className = 'guest-bingo-play-buy-row';
+            row.setAttribute('data-bingo-play-buy-row', '');
+            play.insertBefore(row, play.firstChild);
         }
+        let btn = row.querySelector('[data-bingo-buy-tickets]');
+        if (!btn) {
+            btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('data-bingo-buy-tickets', '');
+            btn.textContent = 'Buy tickets';
+            const isHub = !!(play.closest && play.closest('.gh-bingo'));
+            btn.className = isHub
+                ? 'guest-bingo-play-buy-row__btn gh-btn gh-btn--accent'
+                : 'guest-bingo-play-buy-row__btn btn btn-warning btn-lg w-100';
+            row.appendChild(btn);
+        }
+        row.hidden = false;
+        row.removeAttribute('hidden');
         return btn;
     }
 
     function syncBuyTicketsVisibility(root, data) {
         const play = resolveGuestBingoPlayRoot(root);
         if (!play) return;
-        ensureGuestToolbarBuyButton(play);
+        ensureGuestPlayBuyRow(play);
         const rem = data ? guestTicketRemaining(data) : 1;
         const canBuy = !!(data && data.canGrabMore && rem > 0 && !data.playInProgress);
         const have =
@@ -2349,6 +2349,19 @@
             });
         }
 
+        function ensurePlayBuyUi(data) {
+            syncBuyTicketsVisibility(
+                root,
+                data != null
+                    ? data
+                    : lastStackPayload && lastStackPayload.data
+                      ? lastStackPayload.data
+                      : null
+            );
+        }
+
+        ensurePlayBuyUi(null);
+
         return {
             loadGames,
             joinVirtual,
@@ -2357,6 +2370,7 @@
             startPoll,
             stopPoll,
             refreshPlay,
+            ensurePlayBuyUi,
             getActiveGameId: function () {
                 return activeGameId;
             },
@@ -2372,6 +2386,8 @@
 
     global.MdjGuestBingoPlay = {
         create: createGuestBingoPlay,
-        escapeHtml
+        escapeHtml,
+        ensureGuestPlayBuyRow,
+        syncBuyTicketsVisibility
     };
 })(typeof window !== 'undefined' ? window : global);

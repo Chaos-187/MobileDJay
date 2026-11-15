@@ -42,11 +42,13 @@
       /* ignore */
     }
 
+    if (play.ensurePlayBuyUi) play.ensurePlayBuyUi();
     return play;
   }
 
   function onTabShown() {
     if (!play) return;
+    if (play.ensurePlayBuyUi) play.ensurePlayBuyUi();
     if (play.prefersLobby && play.prefersLobby()) {
       play.showJoin();
       play.loadGames();

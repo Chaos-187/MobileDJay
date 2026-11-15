@@ -190,8 +190,36 @@
 
     function guestTicketRemaining(data) {
         if (!data) return 0;
-        const have = data.allCards && data.allCards.length ? data.allCards.length : 0;
-        return ticketsRemaining(data.cardLimit, have);
+        const have =
+            data.allCards && data.allCards.length
+                ? data.allCards.length
+                : data.guestCards && data.guestCards.length
+                  ? data.guestCards.length
+                  : 0;
+        const limit =
+            data.cardLimit != null
+                ? data.cardLimit
+                : data.game && data.game.cardLimit != null
+                  ? data.game.cardLimit
+                  : null;
+        return ticketsRemaining(limit, have);
+    }
+
+    /** Pre-caller buy — uses dockAction + canGrabMore; null when play payload not loaded yet. */
+    function guestCanBuyTickets(data) {
+        if (!data) return null;
+        if (guestDockAction(data) !== 'buy') return false;
+        if (data.canGrabMore === false) return false;
+        if (data.canGrabMore === true) return true;
+        return guestTicketRemaining(data) > 0;
+    }
+
+    function guestCallerHasStarted(data) {
+        if (!data) return false;
+        if (data.dockAction === 'claim') return true;
+        if (data.callerRunning != null) return !!data.callerRunning;
+        if (data.playInProgress != null) return !!data.playInProgress;
+        return !!data.active;
     }
 
     function guestGameStatusEnded(data) {
@@ -335,8 +363,9 @@
             banner.hidden = true;
             banner.setAttribute('hidden', '');
         }
-        const rem = data ? guestTicketRemaining(data) : 1;
-        const canBuy = !!(data && data.canGrabMore && rem > 0 && !data.playInProgress);
+        const rem = data ? guestTicketRemaining(data) : 0;
+        const canBuyState = guestCanBuyTickets(data);
+        const canBuy = canBuyState === true;
         const have =
             data && data.allCards && data.allCards.length
                 ? data.allCards.length
@@ -351,9 +380,11 @@
                 : rem > 1
                   ? 'Buy tickets · ' + rem + ' left'
                   : 'Buy tickets'
-            : data && data.playInProgress
+            : data && guestCallerHasStarted(data)
               ? 'Buy tickets — game started'
-              : 'Buy tickets';
+              : rem <= 0 && data
+                ? 'Buy tickets — limit reached'
+                : 'Buy tickets';
         const buyScope = bingoRoot || play || root;
         const qAll =
             buyScope && typeof buyScope.querySelectorAll === 'function'
@@ -363,10 +394,12 @@
             buyEl.hidden = false;
             buyEl.removeAttribute('hidden');
             buyEl.style.display = '';
-            buyEl.disabled = !canBuy;
+            if (canBuyState !== null) {
+                buyEl.disabled = !canBuy;
+                buyEl.classList.toggle('guest-bingo-toolbar-btn--buy-disabled', !canBuy);
+                buyEl.classList.toggle('guest-bingo-top-buy--disabled', !canBuy);
+            }
             buyEl.textContent = label;
-            buyEl.classList.toggle('guest-bingo-toolbar-btn--buy-disabled', !canBuy);
-            buyEl.classList.toggle('guest-bingo-top-buy--disabled', !canBuy);
         });
     }
 
@@ -949,9 +982,9 @@
             const tryOpen = function () {
                 const data = playDataForDock();
                 const rem = guestTicketRemaining(data);
-                if (!data || !data.canGrabMore || rem <= 0 || data.playInProgress) {
+                if (!guestCanBuyTickets(data)) {
                     if (els.claimResult) {
-                        els.claimResult.textContent = data && data.playInProgress
+                        els.claimResult.textContent = data && guestCallerHasStarted(data)
                             ? 'Extra tickets are only available before the game starts'
                             : 'No more tickets available for this game';
                     }
@@ -2041,37 +2074,61 @@
         async function joinVirtual(gameId, quantity) {
             const name = opts.customerName();
             if (!name) return { ok: false, error: 'name' };
+            const dev = opts.deviceId();
+            if (!dev) {
+                return { ok: false, error: 'This device could not be identified — refresh the hub and try again' };
+            }
             const qty = Math.max(1, Number(quantity) || 1);
+            let res;
             try {
-                const res = await fetch(
+                res = await fetch(
                     '/api/event/' + encodeURIComponent(slug) + '/bingo/games/' + gameId + '/join',
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             customerName: name,
-                            deviceId: opts.deviceId(),
+                            deviceId: dev,
                             quantity: qty
                         })
                     }
                 );
-                const data = await res.json();
-                if (!res.ok) {
-                    return { ok: false, error: data.error || 'Could not join' };
-                }
-                activeGameId = gameId;
-                activeSerial = data.serial || null;
-                cardMode = 'virtual';
-                try {
-                    sessionStorage.setItem('mdj_bingo_game_' + slug, String(gameId));
-                } catch (err) {
-                    /* ignore */
-                }
-                startPlay();
-                return { ok: true };
             } catch (e) {
-                return { ok: false, error: 'Could not join game' };
+                return { ok: false, error: 'Network error — check your connection and try again' };
             }
+            let data = {};
+            const bodyText = await res.text();
+            if (bodyText) {
+                try {
+                    data = JSON.parse(bodyText);
+                } catch (parseErr) {
+                    return {
+                        ok: false,
+                        error: res.ok
+                            ? 'Unexpected server response'
+                            : 'Could not get tickets (HTTP ' + res.status + ')'
+                    };
+                }
+            }
+            if (!res.ok) {
+                return { ok: false, error: data.error || 'Could not join' };
+            }
+            activeGameId = gameId;
+            activeSerial = data.serial || null;
+            cardMode = 'virtual';
+            try {
+                sessionStorage.setItem('mdj_bingo_game_' + slug, String(gameId));
+            } catch (err) {
+                /* ignore */
+            }
+            const alreadyOnPlay = els.play && !els.play.hidden;
+            if (alreadyOnPlay) {
+                await refreshPlay();
+                loadGames({ silent: true });
+            } else {
+                startPlay();
+            }
+            return { ok: true };
         }
 
         async function linkPaper(gameId, serial) {

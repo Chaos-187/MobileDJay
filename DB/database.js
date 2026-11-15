@@ -1732,9 +1732,19 @@ const bingoDb = {
             ...this.recentVirtualGridsForGame(gameId, 50)
         ];
         const grid = generateTicketForBatch(cardFormat, ballCount, diversityGrids);
-        const serial = this.buildVirtualSerial(eventSlug, gameId);
-        const card = this.insertVirtualCardAssigned(eventId, gameId, serial, grid, name, device);
-        if (!card) return { error: 'invalid_identity' };
+        let card = null;
+        for (let attempt = 0; attempt < 6; attempt++) {
+            const serial = this.buildVirtualSerial(eventSlug, gameId);
+            try {
+                card = this.insertVirtualCardAssigned(eventId, gameId, serial, grid, name, device);
+            } catch (e) {
+                const code = e && e.code ? String(e.code) : '';
+                if (code.includes('SQLITE_CONSTRAINT')) continue;
+                throw e;
+            }
+            if (card) break;
+        }
+        if (!card) return { error: 'sold_out' };
         const newCount = this.countAssignedCardsForPlayer(gameId, name);
         return {
             card,

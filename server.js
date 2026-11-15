@@ -3058,6 +3058,7 @@ app.get('/api/event/:eventSlug/bingo/games', getEventFromSlugJson, (req, res) =>
 });
 
 app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson, (req, res) => {
+    try {
     if (!req.event.enable_bingo) {
         return res.status(403).json({ error: 'Bingo is not enabled for this event' });
     }
@@ -3066,13 +3067,18 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
     if (!game || game.eventId !== req.event.id) {
         return res.status(404).json({ error: 'Game not found' });
     }
-    if (game.status !== 'join_open' && game.status !== 'live') {
-        return res.status(400).json({ error: 'This game is not open for joining' });
-    }
     const customerName = normalizeGuestNameForApi(req.body.customerName);
     const deviceId = normalizeGuestDeviceId(req.body.deviceId);
     if (rejectBingoGuestIfBlocked(req.event, customerName, deviceId, res)) return;
     const slug = req.event.slug;
+    const caller = makeBingoCaller(slug, gameId);
+    bingoSession.ensureIntroAdvanced(slug, gameId, caller);
+    bingoSession.ensureResumeAdvanced(slug, gameId, caller);
+    const state = bingoPublicState(slug, gameId);
+    const guestStatus = bingoGuestEffectiveGameStatus(game, state);
+    if (guestStatus !== 'join_open' && guestStatus !== 'live') {
+        return res.status(400).json({ error: 'This game is not open for joining' });
+    }
     const existingCount = bingoDb.countAssignedCardsForPlayer(gameId, customerName);
     if (existingCount > 0 && bingoGuestPlayInProgress(slug, gameId)) {
         return res.status(400).json({
@@ -3116,6 +3122,10 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
         partial: cards.length < wantQty,
         playUrl: `/event/${req.event.slug}/bingo?game=${game.id}`
     });
+    } catch (err) {
+        console.error('bingo guest join error:', err);
+        res.status(500).json({ error: BINGO_GUEST_GENERIC_ERROR });
+    }
 });
 
 app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, (req, res) => {

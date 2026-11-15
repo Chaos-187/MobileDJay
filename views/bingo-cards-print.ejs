@@ -30,7 +30,7 @@
                         <svg class="bingo-barcode" role="img" aria-label="Barcode <%= card.serial %>" data-serial="<%= card.serial %>"></svg>
                     </div>
                 </header>
-                <table class="bingo-card-table <%= cardFormat === 'us-75' ? 'bingo-card-table--us75' : '' %>" aria-label="Bingo card <%= card.serial %>">
+                <table class="bingo-card-table<%= cardFormat === 'us-75' ? ' bingo-card-table--us75' : '' %>" aria-label="Bingo card <%= card.serial %>">
                     <thead>
                         <tr>
                             <% if (cardFormat === 'us-75') { %>

@@ -1386,7 +1386,9 @@
                 (us75 ? ' guest-bingo-table--us75' : '') +
                 '"><thead><tr>';
             headers.forEach(function (h) {
-                html += '<th>' + h + '</th>';
+                const colClass =
+                    us75 && h.length === 1 ? ' guest-bingo-col-' + h.toLowerCase() : '';
+                html += '<th class="guest-bingo-col-head' + colClass + '" scope="col">' + h + '</th>';
             });
             html += '</tr></thead><tbody>';
             for (let r = 0; r < rows; r++) {
@@ -1468,8 +1470,10 @@
                     const prog = item.progress || { toGo: item.toGo, label: item.progressLabel };
                     const spineClass = tgSpineClass(toGoN);
                     const spineLabel = tgSpineLabel(toGoN);
+                    const us75 = isUs75Grid(item.grid);
                     return (
                         '<article class="guest-bingo-ticket guest-bingo-card-wrap guest-bingo-card-wrap--stacked ' +
+                        (us75 ? 'guest-bingo-ticket--us75 ' : '') +
                         tier +
                         (isActive ? ' is-active-card' : '') +
                         '" data-bingo-card-wrap data-card-serial="' +

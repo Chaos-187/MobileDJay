@@ -167,9 +167,107 @@ body.mdj-guest-bingo-page {
     letter-spacing: 0.04em;
 }
 
+.guest-bingo-table--us75 {
+    table-layout: fixed;
+    width: 100%;
+    max-width: min(100%, 20.5rem);
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .guest-bingo-table--us75 th {
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: clamp(0.72rem, 3.6vw, 0.92rem);
+    padding: 0.4rem 0.1rem;
+    border-bottom-width: 2px;
+}
+
+.guest-bingo-table--us75 td {
+    aspect-ratio: 1;
+    padding: 0.12rem;
+    vertical-align: middle;
+    position: relative;
+}
+
+.guest-bingo-table--us75 .guest-bingo-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 2.15rem;
+    font-size: clamp(0.72rem, 3.4vw, 1rem);
     font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.guest-bingo-table--us75 .guest-bingo-col-b {
+    color: #c41e1e;
+}
+.guest-bingo-table--us75 .guest-bingo-col-i {
+    color: #d97706;
+}
+.guest-bingo-table--us75 .guest-bingo-col-n {
+    color: #16a34a;
+}
+.guest-bingo-table--us75 .guest-bingo-col-g {
+    color: #2563eb;
+}
+.guest-bingo-table--us75 .guest-bingo-col-o {
+    color: #7c3aed;
+}
+
+.guest-bingo-ticket--us75 {
+    border-radius: 10px;
+}
+
+.guest-bingo-ticket--us75 .guest-bingo-ticket__body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.45rem 0.4rem 0.5rem;
+}
+
+.guest-bingo-ticket--us75 .guest-bingo-ticket__serial {
+    text-align: center;
+    margin-bottom: 0.35rem;
+}
+
+.guest-bingo-ticket--us75 .guest-bingo-table td.is-free {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06));
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.guest-bingo-ticket--us75 .guest-bingo-free {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: clamp(0.5rem, 2.4vw, 0.68rem);
+    font-weight: 900;
     letter-spacing: 0.06em;
+    opacity: 0.92;
+}
+
+.guest-bingo-ticket--us75 .guest-bingo-table td.is-marked .guest-bingo-num {
+    display: inline-flex;
+    width: auto;
+    height: auto;
+    min-width: 1.85em;
+    min-height: 1.85em;
+    max-width: 88%;
+    max-height: 88%;
+    border-radius: 50%;
+    margin: auto;
+}
+
+.guest-bingo-ticket--us75 .guest-bingo-table td .guest-bingo-dab {
+    border-radius: 50%;
+    inset: 10%;
 }
 
 .guest-bingo-table td.is-marked {
@@ -997,6 +1095,11 @@ body.mdj-guest-bingo-page {
 .guest-bingo-ticket .guest-bingo-table {
     margin: 0;
     font-size: clamp(0.58rem, 2.6vw, 0.78rem);
+}
+
+.guest-bingo-ticket--us75 .guest-bingo-table--us75 {
+    margin: 0 auto;
+    font-size: inherit;
 }
 
 .guest-bingo-ticket .guest-bingo-table th {
@@ -3789,6 +3892,29 @@ body.bingo-screen-active {
 
 .bingo-cell-blank {
     background: #fafafa;
+}
+
+.bingo-card-table--us75 {
+    max-width: 2.35in;
+    margin: 0 auto;
+}
+
+.bingo-card-table--us75 th {
+    font-weight: 800;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+}
+
+.bingo-card-table--us75 td {
+    aspect-ratio: 1;
+    padding: 0.08rem;
+    font-size: 0.68rem;
+}
+
+.bingo-card-table--us75 .bingo-cell-free {
+    font-size: 0.48rem;
+    font-weight: 800;
+    background: #eee;
 }
 
 .bingo-print-foot {

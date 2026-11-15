@@ -1168,6 +1168,14 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     border-color: var(--gh-border);
 }
 
+.gh-bingo .guest-bingo-ticket--us75 {
+    background: color-mix(in srgb, var(--gh-surface) 55%, #0a0a12);
+}
+
+.gh-bingo .guest-bingo-ticket--us75 .guest-bingo-table--us75 td {
+    background: color-mix(in srgb, var(--gh-surface) 80%, #0f0f18);
+}
+
 .gh-bingo-prize {
     font-size: 0.88rem;
     color: var(--gh-muted);

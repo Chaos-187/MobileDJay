@@ -90,14 +90,14 @@
     function compactToGoLabel(p) {
         if (!p || p.toGo == null) return '—';
         const n = Number(p.toGo);
-        if (n === 0) return 'Call!';
+        if (n === 0) return 'Claim';
         if (n === 1) return '1 to go';
         return n + ' to go';
     }
 
     function tgSpineLabel(toGo) {
         const n = Number(toGo);
-        if (n === 0) return 'WIN';
+        if (n === 0) return 'CLAIM';
         if (n === 1) return '1TG';
         if (n === 2) return '2TG';
         if (n === 3) return '3TG';

@@ -793,6 +793,11 @@ body.mdj-guest-bingo-page {
     background: linear-gradient(180deg, #e84a55, #b92d38);
 }
 
+.guest-bingo-tg-spine--win .guest-bingo-tg-spine__text {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+}
+
 .guest-bingo-tg-spine--1 {
     animation: guestBingoTgSpine1Pulse 1.1s ease-in-out infinite;
 }

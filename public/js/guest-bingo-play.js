@@ -1286,6 +1286,17 @@
             }).filter(Boolean);
         }
 
+        function primeCallerAudio() {
+            if (global.MdjBingoTts && global.MdjBingoTts.warmup) global.MdjBingoTts.warmup();
+            if (global.MdjBingoCallerVoice && global.MdjBingoCallerVoice.warmup) {
+                global.MdjBingoCallerVoice.warmup();
+            }
+            if (global.MdjBingoCallerVoice && global.MdjBingoCallerVoice.unlock) {
+                return global.MdjBingoCallerVoice.unlock();
+            }
+            return Promise.resolve();
+        }
+
         function speakBallForPlay(num, playData) {
             const fmt =
                 playData && (playData.cardFormat || (playData.game && playData.game.cardFormat));
@@ -1295,20 +1306,21 @@
                 (playData && (playData.bingoTheme || (playData.game && playData.game.bingoTheme))) ||
                 'default';
             if (global.MdjBingoCallerVoice && typeof global.MdjBingoCallerVoice.announceBall === 'function') {
-                global.MdjBingoCallerVoice.announceBall(num, {
+                return global.MdjBingoCallerVoice.announceBall(num, {
                     style,
                     cardFormat: fmt,
                     voiceMode,
                     theme
                 });
-                return;
             }
             if (global.MdjBingoTts && typeof global.MdjBingoTts.speakBall === 'function') {
                 global.MdjBingoTts.speakBall(num, style, fmt);
-                return;
+                return Promise.resolve(true);
             }
             const text = callerAnnouncementText(num, style, fmt);
-            if (typeof window === 'undefined' || !window.speechSynthesis || !text) return;
+            if (typeof window === 'undefined' || !window.speechSynthesis || !text) {
+                return Promise.resolve(false);
+            }
             try {
                 window.speechSynthesis.cancel();
             } catch (e) {
@@ -1319,8 +1331,9 @@
             u.rate = 0.88;
             try {
                 window.speechSynthesis.speak(u);
+                return Promise.resolve(true);
             } catch (e) {
-                /* ignore */
+                return Promise.resolve(false);
             }
         }
 
@@ -1330,9 +1343,26 @@
             if (data.paused && data.pausedReason === 'claim') return;
             if (data.lastBall == null) return;
             if (data.lastBall === lastSpokenBall) return;
-            lastSpokenBall = data.lastBall;
-            speakBallForPlay(data.lastBall, data);
+            const ball = data.lastBall;
+            Promise.resolve(speakBallForPlay(ball, data)).then(function (ok) {
+                if (ok !== false) lastSpokenBall = ball;
+            });
         }
+
+        let callerAudioPrimeBound = false;
+        function bindCallerAudioPrime() {
+            if (callerAudioPrimeBound) return;
+            callerAudioPrimeBound = true;
+            function onGesture() {
+                primeCallerAudio().then(function () {
+                    if (lastStackPayload && lastStackPayload.data) maybeAnnounceBall(lastStackPayload.data);
+                });
+            }
+            const gestureRoot = root.addEventListener ? root : document;
+            gestureRoot.addEventListener('pointerdown', onGesture, { passive: true });
+            gestureRoot.addEventListener('touchstart', onGesture, { passive: true });
+        }
+        bindCallerAudioPrime();
 
         function stopCountdownTick() {
             if (introTickTimer) {

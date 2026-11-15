@@ -10,6 +10,7 @@
     var lastAnnouncedBall = null;
     var lastAnnouncedAt = 0;
     var ANNOUNCE_DEBOUNCE_MS = 1400;
+    var audioPrimed = false;
 
     function normalizeVoiceMode(raw) {
         var s = String(raw == null ? 'tts' : raw)
@@ -39,7 +40,7 @@
 
     function playFemaleNumber(num) {
         var url = femaleNumberUrl(num);
-        if (!url || typeof Audio === 'undefined') return false;
+        if (!url || typeof Audio === 'undefined') return Promise.resolve(false);
         if (global.MdjBingoTts && global.MdjBingoTts.cancel) global.MdjBingoTts.cancel();
         stopFemaleClip();
         try {
@@ -52,10 +53,61 @@
             a.pause();
             a.currentTime = 0;
             var p = a.play();
-            if (p && typeof p.catch === 'function') p.catch(function () {});
-            return true;
+            if (p && typeof p.then === 'function') {
+                return p
+                    .then(function () {
+                        return true;
+                    })
+                    .catch(function () {
+                        return false;
+                    });
+            }
+            return Promise.resolve(true);
         } catch (e) {
-            return false;
+            return Promise.resolve(false);
+        }
+    }
+
+    function markAnnounced(num) {
+        lastAnnouncedBall = num;
+        lastAnnouncedAt = Date.now();
+    }
+
+  /** Wake mobile audio after a user gesture (silent prime). */
+    function unlockAudio() {
+        warmup();
+        if (audioPrimed || typeof Audio === 'undefined') return Promise.resolve();
+        audioPrimed = true;
+        var url = femaleNumberUrl(1);
+        if (!url) return Promise.resolve();
+        try {
+            if (!audioByUrl[url]) {
+                audioByUrl[url] = new Audio(url);
+                audioByUrl[url].preload = 'auto';
+            }
+            var a = audioByUrl[url];
+            var prevVol = a.volume;
+            a.volume = 0.001;
+            a.pause();
+            a.currentTime = 0;
+            var p = a.play();
+            if (!p || typeof p.then !== 'function') {
+                a.volume = prevVol;
+                return Promise.resolve();
+            }
+            return p
+                .then(function () {
+                    a.pause();
+                    a.currentTime = 0;
+                    a.volume = prevVol;
+                })
+                .catch(function () {
+                    a.volume = prevVol;
+                    audioPrimed = false;
+                });
+        } catch (e) {
+            audioPrimed = false;
+            return Promise.resolve();
         }
     }
 
@@ -79,14 +131,12 @@
     function announceBall(num, opts) {
         opts = opts || {};
         var n = parseInt(num, 10);
-        if (!Number.isFinite(n)) return;
+        if (!Number.isFinite(n)) return Promise.resolve(false);
 
         var now = Date.now();
         if (n === lastAnnouncedBall && now - lastAnnouncedAt < ANNOUNCE_DEBOUNCE_MS) {
-            return;
+            return Promise.resolve(true);
         }
-        lastAnnouncedBall = n;
-        lastAnnouncedAt = now;
 
         var style = opts.style || 'number';
         var cardFormat = opts.cardFormat;
@@ -105,21 +155,29 @@
                 if (global.MdjBingoTts && global.MdjBingoTts.speakBall) {
                     global.MdjBingoTts.speakBall(num, style, cardFormat);
                 }
-                return;
+                markAnnounced(n);
+                return Promise.resolve(true);
             }
 
             if (st === 'phrase') {
                 if (global.MdjBingoTts && global.MdjBingoTts.speakBall) {
                     global.MdjBingoTts.speakBall(num, style, cardFormat);
                 }
-                return;
+                markAnnounced(n);
+                return Promise.resolve(true);
             }
 
             cancelAll();
 
             if (st === 'number') {
-                if (!playFemaleNumber(num)) speakNumberFallback(num);
-                return;
+                return playFemaleNumber(num).then(function (ok) {
+                    if (!ok) {
+                        speakNumberFallback(num);
+                        return false;
+                    }
+                    markAnnounced(n);
+                    return true;
+                });
             }
 
             if (st === 'both') {
@@ -128,23 +186,48 @@
                         ? global.MdjBingoUkCalls.announcementParts(num, style, cardFormat)
                         : [];
                 if (parts.length > 1 && global.MdjBingoTts && global.MdjBingoTts.speakTextThen) {
-                    global.MdjBingoTts.speakTextThen(parts[0], function () {
-                        if (!playFemaleNumber(num)) speakNumberFallback(num);
+                    return new Promise(function (resolve) {
+                        global.MdjBingoTts.speakTextThen(parts[0], function () {
+                            playFemaleNumber(num).then(function (ok) {
+                                if (!ok) {
+                                    speakNumberFallback(num);
+                                    resolve(false);
+                                    return;
+                                }
+                                markAnnounced(n);
+                                resolve(true);
+                            });
+                        });
                     });
-                    return;
                 }
-                if (!playFemaleNumber(num)) speakNumberFallback(num);
-                return;
+                return playFemaleNumber(num).then(function (ok) {
+                    if (!ok) {
+                        speakNumberFallback(num);
+                        return false;
+                    }
+                    markAnnounced(n);
+                    return true;
+                });
             }
 
-            if (!playFemaleNumber(num)) speakNumberFallback(num);
+            return playFemaleNumber(num).then(function (ok) {
+                if (!ok) {
+                    speakNumberFallback(num);
+                    return false;
+                }
+                markAnnounced(n);
+                return true;
+            });
         }
 
         if (global.MdjBingoTheme && typeof global.MdjBingoTheme.announceCalledBall === 'function') {
-            global.MdjBingoTheme.announceCalledBall(theme, num, runCall);
-        } else {
-            runCall();
+            return new Promise(function (resolve) {
+                global.MdjBingoTheme.announceCalledBall(theme, num, function () {
+                    Promise.resolve(runCall()).then(resolve);
+                });
+            });
         }
+        return runCall();
     }
 
     /** Preload a few clips after user interaction. */
@@ -165,6 +248,7 @@
         playFemaleNumber: playFemaleNumber,
         cancel: cancelAll,
         warmup: warmup,
+        unlock: unlockAudio,
         femaleNumberUrl: femaleNumberUrl
     };
 })(typeof window !== 'undefined' ? window : global);

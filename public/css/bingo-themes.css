@@ -664,7 +664,8 @@
 /* ── 90s neon ─────────────────────────────────────────── */
 
 .bingo-theme-neon-90s {
-    --neon-dabber-mirror: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 36'%3E%3Cdefs%3E%3CradialGradient id='ng' cx='32%25' cy='28%25' r='68%25'%3E%3Cstop offset='0%25' stop-color='%23fff' stop-opacity='.5'/%3E%3Cstop offset='55%25' stop-color='%2394a3b8'/%3E%3Cstop offset='100%25' stop-color='%23171230'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='18' r='13.5' fill='url(%23ng)'/%3E%3Cg fill='%23cbd5e1' opacity='.85'%3E%3Crect x='6' y='7' width='3.2' height='2.8'/%3E%3Crect x='9.5' y='7' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='13' y='7' width='3.2' height='2.8'/%3E%3Crect x='16.5' y='7' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='20' y='7' width='3.2' height='2.8'/%3E%3Crect x='23.5' y='7' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='6' y='10.2' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='9.5' y='10.2' width='3.2' height='2.8'/%3E%3Crect x='13' y='10.2' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='16.5' y='10.2' width='3.2' height='2.8'/%3E%3Crect x='20' y='10.2' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='23.5' y='10.2' width='3.2' height='2.8'/%3E%3Crect x='6' y='13.4' width='3.2' height='2.8'/%3E%3Crect x='9.5' y='13.4' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='13' y='13.4' width='3.2' height='2.8'/%3E%3Crect x='16.5' y='13.4' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='20' y='13.4' width='3.2' height='2.8'/%3E%3Crect x='23.5' y='13.4' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='6' y='16.6' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='9.5' y='16.6' width='3.2' height='2.8'/%3E%3Crect x='13' y='16.6' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='16.5' y='16.6' width='3.2' height='2.8'/%3E%3Crect x='20' y='16.6' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='23.5' y='16.6' width='3.2' height='2.8'/%3E%3Crect x='6' y='19.8' width='3.2' height='2.8'/%3E%3Crect x='9.5' y='19.8' width='3.2' height='2.8' fill='%2367e8f9'/%3E%3Crect x='13' y='19.8' width='3.2' height='2.8'/%3E%3Crect x='16.5' y='19.8' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='20' y='19.8' width='3.2' height='2.8'/%3E%3Crect x='23.5' y='19.8' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='6' y='23' width='3.2' height='2.8' fill='%23a78bfa'/%3E%3Crect x='9.5' y='23' width='3.2' height='2.8'/%3E%3Crect x='13' y='23' width='3.2' height='2.8' fill='%2322d3ee'/%3E%3Crect x='16.5' y='23' width='3.2' height='2.8'/%3E%3Crect x='20' y='23' width='3.2' height='2.8' fill='%23f472b6'/%3E%3Crect x='23.5' y='23' width='3.2' height='2.8'/%3E%3C/g%3E%3Cellipse cx='11' cy='11' rx='4' ry='2.2' fill='%23fff' opacity='.32'/%3E%3C/svg%3E");
+    --neon-mirror-ball: url("/images/bingo-neon-mirror-ball.svg");
+    --neon-dabber-mirror: var(--neon-mirror-ball);
 }
 
 .bingo-theme-neon-90s.mdj-bingo-caller-page,
@@ -700,18 +701,34 @@
     width: min(72vw, 220px);
     height: min(72vw, 220px);
     border-radius: 50%;
+    overflow: hidden;
     background:
-        var(--neon-dabber-mirror) center / cover no-repeat,
-        radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35), transparent 42%),
-        radial-gradient(circle at 50% 55%, #475569 0%, #1e1638 55%, #0a0014 100%);
-    border: 2px solid rgba(34, 211, 238, 0.45);
+        radial-gradient(circle at 50% 58%, #334155 0%, #1a1428 52%, #0a0014 100%);
+    border: 2px solid rgba(203, 213, 225, 0.35);
     box-shadow:
         0 0 28px rgba(236, 72, 153, 0.45),
         0 0 48px rgba(34, 211, 238, 0.25),
-        inset 0 0 24px rgba(255, 255, 255, 0.08);
+        inset -12px -18px 28px rgba(0, 0, 0, 0.55),
+        inset 0 0 20px rgba(255, 255, 255, 0.06);
     z-index: 0;
     pointer-events: none;
-    animation: bingoNeonMirrorSpin 14s linear infinite;
+}
+
+.bingo-theme-neon-90s .mdj-caller-ball-spotlight::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translate(-50%, -50%);
+    width: min(72vw, 220px);
+    height: min(72vw, 220px);
+    border-radius: 50%;
+    background: var(--neon-mirror-ball) center / cover no-repeat;
+    animation: bingoNeonMirrorFacetSpin 14s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+    mask-image: radial-gradient(circle, #000 70%, transparent 72%);
+    -webkit-mask-image: radial-gradient(circle, #000 70%, transparent 72%);
 }
 
 .bingo-theme-neon-90s .mdj-bingo-hero-ball,
@@ -2051,6 +2068,12 @@ body.bingo-screen-active.bingo-theme-classic {
     }
 }
 
+@keyframes bingoNeonMirrorFacetSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 @keyframes bingoNeonMirrorPulse {
     0%,
     100% {
@@ -2086,39 +2109,75 @@ body.bingo-screen-active.bingo-theme-classic {
     visibility: hidden;
 }
 
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-stage::before {
+    content: '';
+    position: absolute;
+    z-index: 7;
+    left: 50%;
+    top: calc(54% - min(17.5vw, 132px));
+    transform: translateX(-50%);
+    width: min(5.5vw, 42px);
+    height: min(6vw, 46px);
+    border: min(0.35vw, 3px) solid #94a3b8;
+    border-bottom: none;
+    border-radius: 50% 50% 0 0;
+    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35);
+}
+
 .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-stage::after {
     content: '';
     position: absolute;
     left: 50%;
-    top: 18%;
+    top: calc(54% - min(21vw, 158px));
     transform: translateX(-50%);
-    width: min(3vw, 18px);
-    height: min(8vw, 52px);
-    background: linear-gradient(180deg, #64748b, #334155);
+    width: min(2.8vw, 16px);
+    height: min(7vw, 44px);
+    background: linear-gradient(180deg, #94a3b8, #475569);
     border-radius: 2px;
-    z-index: 7;
-    box-shadow: 0 0 8px rgba(34, 211, 238, 0.35);
+    z-index: 6;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.35);
 }
 
 .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-ring {
     top: 54%;
     bottom: auto;
     left: 50%;
-    width: min(32vw, 248px);
-    height: min(32vw, 248px);
+    width: min(34vw, 258px);
+    height: min(34vw, 258px);
     transform: translate(-50%, -50%);
-    animation: bingoNeonMirrorSpin 16s linear infinite;
+    animation: none;
     border-radius: 50%;
-    border: min(0.35vw, 3px) solid rgba(34, 211, 238, 0.55);
+    overflow: hidden;
+    border: min(0.35vw, 3px) solid rgba(203, 213, 225, 0.38);
     background:
-        var(--neon-dabber-mirror) center / cover no-repeat,
-        radial-gradient(circle at 30% 22%, rgba(255, 255, 255, 0.4) 0%, transparent 28%),
-        radial-gradient(circle at 50% 58%, #64748b 0%, #1e1638 48%, #0a0014 100%);
+        radial-gradient(circle at 50% 58%, #475569 0%, #1e1638 48%, #0a0014 100%);
     box-shadow:
-        inset -10px -14px 32px rgba(0, 0, 0, 0.55),
-        inset 8px 10px 22px rgba(255, 255, 255, 0.12),
-        0 0 48px rgba(236, 72, 153, 0.45),
-        0 0 64px rgba(34, 211, 238, 0.35);
+        inset -14px -20px 36px rgba(0, 0, 0, 0.58),
+        inset 10px 12px 24px rgba(255, 255, 255, 0.1),
+        0 0 48px rgba(236, 72, 153, 0.4),
+        0 0 72px rgba(34, 211, 238, 0.32);
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-ring::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--neon-mirror-ball) center / cover no-repeat;
+    animation: bingoNeonMirrorFacetSpin 18s linear infinite;
+    transform-origin: 50% 50%;
+}
+
+.bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-ring::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.55) 0%, transparent 24%),
+        radial-gradient(circle at 72% 78%, rgba(0, 0, 0, 0.45) 0%, transparent 42%);
+    z-index: 1;
 }
 
 .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-glow {
@@ -2141,14 +2200,27 @@ body.bingo-screen-active.bingo-theme-classic {
     z-index: 8;
     font-size: clamp(3.25rem, 11vw, 5rem);
     color: #22d3ee;
+    min-width: 2.1em;
+    text-align: center;
+    padding: 0.08em 0.22em;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(10, 0, 20, 0.92) 0%, rgba(10, 0, 20, 0.72) 55%, transparent 70%);
     text-shadow:
         0 0 20px rgba(34, 211, 238, 1),
         0 0 40px rgba(236, 72, 153, 0.75),
         0 2px 0 #0a0014;
 }
 
+.bingo-display-layer.bingo-theme-neon-90s.is-drawing .bingo-fs-ball-ring::before {
+    animation: bingoNeonMirrorFacetSpin 5s linear infinite;
+}
+
 .bingo-display-layer.bingo-theme-neon-90s.is-drawing .bingo-fs-ball-ring {
-    animation: bingoNeonMirrorSpin 4s linear infinite;
+    border-color: rgba(34, 211, 238, 0.75);
+    box-shadow:
+        inset -14px -20px 36px rgba(0, 0, 0, 0.58),
+        0 0 56px rgba(236, 72, 153, 0.55),
+        0 0 80px rgba(34, 211, 238, 0.45);
 }
 
 .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-recent-ball {
@@ -2165,8 +2237,8 @@ body.bingo-screen-active.bingo-theme-classic {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .bingo-theme-neon-90s .mdj-caller-ball-spotlight::before,
-    .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-ring {
+    .bingo-theme-neon-90s .mdj-caller-ball-spotlight::after,
+    .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-ring::before {
         animation: none;
     }
     .bingo-display-layer.bingo-theme-neon-90s .bingo-fs-ball-glow {

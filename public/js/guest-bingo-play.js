@@ -763,7 +763,7 @@
                 '<select class="guest-bingo-caller-style" data-bingo-caller-style aria-label="Caller announcement style">' +
                 '<option value="number">Numbers only</option>' +
                 '<option value="phrase">Phrases only</option>' +
-                '<option value="both">Number and phrase</option>' +
+                '<option value="both">Phrase then number</option>' +
                 '</select></span></div></div>' +
                 '<button type="button" class="guest-bingo-settings-modal__done gh-btn gh-btn--accent" data-bingo-settings-close>Done</button>' +
                 '</div>';

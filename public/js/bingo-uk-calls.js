@@ -101,7 +101,7 @@
     const STYLES = [
         { id: 'number', label: 'Numbers only', example: 'Number 42' },
         { id: 'phrase', label: 'UK phrases', example: 'Winnie-the-Pooh' },
-        { id: 'both', label: 'Number and phrase', example: '42. Winnie-the-Pooh' }
+        { id: 'both', label: 'Phrase and number', example: 'Winnie-the-Pooh. 42' }
     ];
 
     function phraseForNumber(num) {
@@ -132,7 +132,7 @@
             return nick || 'Number ' + n;
         }
         if (st === 'both') {
-            return nick ? n + '. ' + nick : 'Number ' + n;
+            return nick ? nick + '. ' + n : 'Number ' + n;
         }
         return 'Number ' + n;
     }

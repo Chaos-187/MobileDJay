@@ -160,7 +160,7 @@
     function callerAnnounceStyleLabel(style) {
         const s = String(style || 'number').toLowerCase();
         if (s === 'phrase') return 'UK phrases only';
-        if (s === 'both') return 'Number and UK phrase';
+        if (s === 'both') return 'Phrase then number';
         return 'Numbers only';
     }
 

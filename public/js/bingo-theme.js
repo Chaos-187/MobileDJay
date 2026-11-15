@@ -4,7 +4,7 @@
 (function (global) {
     'use strict';
 
-    var THEME_IDS = ['default', 'christmas', 'halloween', 'classic', 'neon-90s', 'wedding'];
+    var THEME_IDS = ['default', 'christmas', 'halloween', 'easter', 'classic', 'neon-90s', 'wedding'];
 
     /** Labels, descriptions, and picker swatches — keep in sync with lib/bingo.js BINGO_THEMES */
     var THEME_LIST = [
@@ -25,6 +25,12 @@
             label: 'Halloween',
             description: 'Orange, purple, and midnight black',
             swatch: ['#0a0510', '#f97316']
+        },
+        {
+            id: 'easter',
+            label: 'Easter',
+            description: 'Spring pastels with decorated egg dabbers',
+            swatch: ['#ede9fe', '#86efac']
         },
         {
             id: 'classic',
@@ -65,6 +71,7 @@
             .replace(/\s+/g, '-');
         if (THEME_IDS.indexOf(id) >= 0) return id;
         if (id === 'xmas') return 'christmas';
+        if (id === 'easter-spring' || id === 'spring') return 'easter';
         if (id === 'neon' || id === '90s' || id === '90s-neon') return 'neon-90s';
         if (id === 'wedding-theme' || id === 'bridal') return 'wedding';
         return 'default';

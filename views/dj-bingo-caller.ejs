@@ -11,7 +11,8 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=36" rel="stylesheet">
+    <link href="/css/bingo.css?v=38" rel="stylesheet">
+    <link href="/css/bingo-themes.css?v=2" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -87,6 +88,17 @@
                         <div class="col-6 col-md-4">
                             <label class="mdj-bingo-field-label" for="bingoClaimBreakSeconds">Claim window (s)</label>
                             <input type="number" class="form-control mdj-bingo-input" id="bingoClaimBreakSeconds" min="1" max="120" value="10" title="After a verified claim, how long others can call the same prize">
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <label class="mdj-bingo-field-label" for="bingoThemeSelect">Theme</label>
+                            <select id="bingoThemeSelect" class="form-select mdj-bingo-input" title="Caller, guest cards, and venue display">
+                                <option value="default">Default</option>
+                                <option value="christmas">Christmas</option>
+                                <option value="halloween">Halloween</option>
+                                <option value="classic">Classic hall</option>
+                                <option value="neon-90s">90s neon</option>
+                                <option value="wedding">Wedding</option>
+                            </select>
                         </div>
                     </div>
                     <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
@@ -201,6 +213,7 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=30"></script>
+    <script src="/js/bingo-theme.js?v=1"></script>
+    <script src="/js/dj-bingo.js?v=32"></script>
 </body>
 </html>

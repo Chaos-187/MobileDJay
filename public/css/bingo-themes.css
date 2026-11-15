@@ -1,0 +1,418 @@
+/**
+ * Bingo skins — class: bingo-theme-<id> on body, .gh-bingo, or #bingoDisplayLayer
+ */
+
+/* ── Christmas ───────────────────────────────────────── */
+
+.bingo-theme-christmas.mdj-bingo-caller-page,
+.bingo-theme-christmas .mdj-caller-layout {
+    background-image:
+        radial-gradient(ellipse at 10% 0%, rgba(220, 38, 38, 0.12), transparent 55%),
+        radial-gradient(ellipse at 90% 100%, rgba(22, 163, 74, 0.12), transparent 50%);
+}
+
+.bingo-theme-christmas .mdj-caller-header {
+    border-bottom-color: rgba(251, 191, 36, 0.25);
+    background: rgba(20, 8, 8, 0.55);
+}
+
+.bingo-theme-christmas .mdj-caller-ball-spotlight {
+    border-color: rgba(251, 191, 36, 0.35);
+    background: radial-gradient(circle at 50% 30%, rgba(220, 38, 38, 0.15), rgba(10, 20, 12, 0.9));
+}
+
+.bingo-theme-christmas .mdj-bingo-hero-ball,
+.bingo-theme-christmas .mdj-caller-hero-ball {
+    color: #fde68a;
+    text-shadow:
+        0 0 24px rgba(251, 191, 36, 0.55),
+        0 2px 0 #b45309;
+}
+
+.bingo-theme-christmas .mdj-caller-panel {
+    border-color: rgba(22, 163, 74, 0.22);
+}
+
+.bingo-theme-christmas .guest-bingo-ticket {
+    border-color: rgba(220, 38, 38, 0.45);
+    background: linear-gradient(165deg, #fefce8, #ecfdf5);
+    box-shadow: 0 4px 14px rgba(22, 101, 52, 0.2);
+}
+
+.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table th {
+    background: rgba(254, 226, 226, 0.85);
+    color: #7f1d1d;
+}
+
+.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td {
+    background: #fffbeb;
+    color: #14532d;
+}
+
+.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
+.bingo-theme-christmas .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
+    background: linear-gradient(145deg, #dc2626, #991b1b);
+}
+
+.bingo-theme-christmas .guest-bingo-tg-spine {
+    background: linear-gradient(180deg, #16a34a, #15803d);
+}
+
+.bingo-theme-christmas .guest-bingo-tg-spine--win,
+.bingo-theme-christmas .guest-bingo-tg-spine--1 {
+    background: linear-gradient(180deg, #ca8a04, #a16207);
+}
+
+.bingo-theme-christmas .guest-bingo-call-btn.guest-bingo-call--ready,
+.bingo-theme-christmas .guest-bingo-call-dock__btn.guest-bingo-call--ready {
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.45), 0 8px 28px rgba(220, 38, 38, 0.35);
+}
+
+.bingo-theme-christmas .bingo-display-last-ball {
+    color: #fde68a;
+    text-shadow: 0 0 40px rgba(220, 38, 38, 0.5);
+}
+
+/* ── Halloween ───────────────────────────────────────── */
+
+.bingo-theme-halloween.mdj-bingo-caller-page,
+.bingo-theme-halloween .mdj-caller-layout {
+    background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(249, 115, 22, 0.14), transparent 50%),
+        radial-gradient(ellipse at 80% 90%, rgba(147, 51, 234, 0.12), transparent 55%);
+}
+
+.bingo-theme-halloween .mdj-caller-header {
+    border-bottom-color: rgba(249, 115, 22, 0.3);
+    background: rgba(12, 6, 20, 0.72);
+}
+
+.bingo-theme-halloween .mdj-caller-ball-spotlight {
+    border-color: rgba(249, 115, 22, 0.4);
+    background: radial-gradient(circle at 50% 40%, rgba(147, 51, 234, 0.2), rgba(8, 4, 12, 0.95));
+}
+
+.bingo-theme-halloween .mdj-bingo-hero-ball,
+.bingo-theme-halloween .mdj-caller-hero-ball {
+    color: #fb923c;
+    text-shadow:
+        0 0 28px rgba(249, 115, 22, 0.65),
+        0 0 8px rgba(147, 51, 234, 0.5);
+}
+
+.bingo-theme-halloween .guest-bingo-ticket {
+    border-color: rgba(249, 115, 22, 0.5);
+    background: linear-gradient(160deg, #2e1065, #1c1917);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+.bingo-theme-halloween .guest-bingo-ticket__serial {
+    color: rgba(253, 186, 116, 0.85);
+}
+
+.bingo-theme-halloween .guest-bingo-ticket .guest-bingo-table th {
+    background: rgba(88, 28, 135, 0.55);
+    color: #fed7aa;
+    border-color: rgba(249, 115, 22, 0.2);
+}
+
+.bingo-theme-halloween .guest-bingo-ticket .guest-bingo-table td {
+    background: rgba(30, 20, 40, 0.9);
+    color: #fde68a;
+    border-color: rgba(249, 115, 22, 0.15);
+}
+
+.bingo-theme-halloween .guest-bingo-ticket .guest-bingo-table td.is-blank {
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.bingo-theme-halloween .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
+.bingo-theme-halloween .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
+    background: linear-gradient(145deg, #f97316, #c2410c);
+    box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+}
+
+.bingo-theme-halloween .guest-bingo-tg-spine {
+    background: linear-gradient(180deg, #7c3aed, #5b21b6);
+}
+
+.bingo-theme-halloween .guest-bingo-tg-spine--win,
+.bingo-theme-halloween .guest-bingo-tg-spine--1 {
+    background: linear-gradient(180deg, #ea580c, #9a3412);
+}
+
+.bingo-theme-halloween .bingo-display-last-ball {
+    color: #fb923c;
+    text-shadow: 0 0 48px rgba(147, 51, 234, 0.55);
+}
+
+/* ── Classic hall ───────────────────────────────────── */
+
+.bingo-theme-classic.mdj-bingo-caller-page,
+.bingo-theme-classic .mdj-caller-layout {
+    background-image: radial-gradient(ellipse at 50% 0%, rgba(185, 28, 28, 0.08), transparent 60%);
+}
+
+.bingo-theme-classic .mdj-caller-ball-spotlight {
+    border-color: rgba(185, 28, 28, 0.35);
+    background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.06), rgba(24, 16, 8, 0.92));
+}
+
+.bingo-theme-classic .mdj-bingo-hero-ball,
+.bingo-theme-classic .mdj-caller-hero-ball {
+    color: #fef08a;
+    text-shadow: 0 0 18px rgba(185, 28, 28, 0.4);
+}
+
+.bingo-theme-classic .guest-bingo-ticket {
+    border-color: #b91c1c;
+    background: #fffef7;
+    box-shadow:
+        0 2px 0 #fecaca inset,
+        0 6px 16px rgba(0, 0, 0, 0.18);
+}
+
+.bingo-theme-classic .guest-bingo-ticket .guest-bingo-table th {
+    background: #fee2e2;
+    color: #7f1d1d;
+}
+
+.bingo-theme-classic .guest-bingo-ticket .guest-bingo-table td {
+    background: #ffffff;
+    color: #1c1917;
+}
+
+.bingo-theme-classic .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
+.bingo-theme-classic .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
+    background: linear-gradient(145deg, #ef4444, #b91c1c);
+}
+
+.bingo-theme-classic .guest-bingo-tg-spine {
+    background: linear-gradient(180deg, #b91c1c, #7f1d1d);
+}
+
+.bingo-theme-classic .guest-bingo-tg-spine--2 {
+    background: linear-gradient(180deg, #1d4ed8, #1e40af);
+}
+
+.bingo-theme-classic .guest-bingo-tg-spine--3 {
+    background: linear-gradient(180deg, #15803d, #166534);
+}
+
+.bingo-theme-classic .bingo-display-last-ball {
+    color: #fef08a;
+}
+
+/* ── 90s neon ─────────────────────────────────────────── */
+
+.bingo-theme-neon-90s.mdj-bingo-caller-page,
+.bingo-theme-neon-90s .mdj-caller-layout {
+    background-color: #0a0014;
+    background-image:
+        radial-gradient(ellipse at 15% 20%, rgba(255, 0, 255, 0.18), transparent 45%),
+        radial-gradient(ellipse at 85% 80%, rgba(0, 255, 255, 0.14), transparent 50%),
+        linear-gradient(180deg, rgba(88, 28, 135, 0.25), transparent 40%);
+}
+
+.bingo-theme-neon-90s .mdj-caller-header {
+    border-bottom-color: rgba(236, 72, 153, 0.45);
+    background: rgba(10, 0, 20, 0.75);
+    box-shadow: 0 1px 0 rgba(34, 211, 238, 0.2);
+}
+
+.bingo-theme-neon-90s .mdj-caller-ball-spotlight {
+    border-color: rgba(236, 72, 153, 0.55);
+    background: radial-gradient(circle at 50% 35%, rgba(34, 211, 238, 0.12), rgba(8, 0, 24, 0.98));
+    box-shadow:
+        inset 0 0 40px rgba(236, 72, 153, 0.15),
+        0 0 24px rgba(34, 211, 238, 0.12);
+}
+
+.bingo-theme-neon-90s .mdj-bingo-hero-ball,
+.bingo-theme-neon-90s .mdj-caller-hero-ball {
+    color: #22d3ee;
+    text-shadow:
+        0 0 20px rgba(34, 211, 238, 0.9),
+        0 0 40px rgba(236, 72, 153, 0.55),
+        0 0 4px #fff;
+}
+
+.bingo-theme-neon-90s .mdj-caller-panel {
+    border-color: rgba(236, 72, 153, 0.28);
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.06);
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket {
+    border-color: rgba(236, 72, 153, 0.65);
+    background: linear-gradient(165deg, #1a0a2e, #0f172a);
+    box-shadow:
+        0 0 0 1px rgba(34, 211, 238, 0.25),
+        0 6px 20px rgba(236, 72, 153, 0.25);
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket__serial {
+    color: rgba(244, 114, 182, 0.9);
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table th {
+    background: rgba(236, 72, 153, 0.22);
+    color: #67e8f9;
+    border-color: rgba(34, 211, 238, 0.25);
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td {
+    background: rgba(15, 10, 35, 0.85);
+    color: #e0f2fe;
+    border-color: rgba(236, 72, 153, 0.18);
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td.is-blank {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
+.bingo-theme-neon-90s .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
+    background: linear-gradient(145deg, #ec4899, #a855f7);
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.65);
+}
+
+.bingo-theme-neon-90s .guest-bingo-tg-spine {
+    background: linear-gradient(180deg, #06b6d4, #0891b2);
+}
+
+.bingo-theme-neon-90s .guest-bingo-tg-spine--win,
+.bingo-theme-neon-90s .guest-bingo-tg-spine--1 {
+    background: linear-gradient(180deg, #f472b6, #db2777);
+    box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.15);
+}
+
+.bingo-theme-neon-90s .guest-bingo-call-btn.guest-bingo-call--ready,
+.bingo-theme-neon-90s .guest-bingo-call-dock__btn.guest-bingo-call--ready {
+    box-shadow:
+        0 0 0 2px rgba(34, 211, 238, 0.6),
+        0 0 24px rgba(236, 72, 153, 0.5);
+}
+
+.bingo-theme-neon-90s .bingo-display-last-ball {
+    color: #22d3ee;
+    text-shadow:
+        0 0 32px rgba(34, 211, 238, 0.85),
+        0 0 16px rgba(236, 72, 153, 0.5);
+}
+
+/* ── Wedding ────────────────────────────────────────── */
+
+.bingo-theme-wedding.mdj-bingo-caller-page,
+.bingo-theme-wedding .mdj-caller-layout {
+    background-color: #faf8f5;
+    background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(251, 207, 232, 0.35), transparent 55%),
+        radial-gradient(ellipse at 80% 90%, rgba(209, 213, 219, 0.25), transparent 50%);
+}
+
+.bingo-theme-wedding.mdj-bingo-caller-page {
+    color: #3f3f46;
+}
+
+.bingo-theme-wedding .mdj-caller-header {
+    border-bottom-color: rgba(180, 83, 9, 0.2);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px);
+}
+
+.bingo-theme-wedding .mdj-caller-back,
+.bingo-theme-wedding .mdj-caller-event {
+    color: #57534e;
+}
+
+.bingo-theme-wedding .mdj-caller-ball-spotlight {
+    border-color: rgba(251, 191, 36, 0.4);
+    background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.95), rgba(254, 242, 242, 0.85));
+    box-shadow: 0 8px 32px rgba(180, 83, 9, 0.1);
+}
+
+.bingo-theme-wedding .mdj-bingo-hero-ball,
+.bingo-theme-wedding .mdj-caller-hero-ball {
+    color: #b45309;
+    text-shadow: 0 2px 0 #fff, 0 0 20px rgba(251, 191, 36, 0.35);
+}
+
+.bingo-theme-wedding .mdj-caller-panel {
+    border-color: rgba(214, 211, 209, 0.8);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.bingo-theme-wedding .guest-bingo-ticket {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: linear-gradient(165deg, #fffef9, #fdf2f8);
+    box-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 6px 18px rgba(120, 113, 108, 0.12);
+}
+
+.bingo-theme-wedding .guest-bingo-ticket__serial {
+    color: rgba(120, 113, 108, 0.85);
+}
+
+.bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table th {
+    background: rgba(254, 226, 226, 0.65);
+    color: #78716c;
+    border-color: rgba(251, 191, 36, 0.2);
+}
+
+.bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td {
+    background: #ffffff;
+    color: #44403c;
+    border-color: rgba(231, 229, 228, 0.9);
+}
+
+.bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td.is-blank {
+    background: rgba(250, 250, 249, 0.9);
+}
+
+.bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
+.bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
+    background: linear-gradient(145deg, #fbbf24, #d97706);
+    color: #fffef8;
+    box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);
+}
+
+.bingo-theme-wedding .guest-bingo-tg-spine {
+    background: linear-gradient(180deg, #a8a29e, #78716c);
+}
+
+.bingo-theme-wedding .guest-bingo-tg-spine--win,
+.bingo-theme-wedding .guest-bingo-tg-spine--1 {
+    background: linear-gradient(180deg, #fbbf24, #b45309);
+}
+
+.bingo-theme-wedding .guest-bingo-tg-spine--2 {
+    background: linear-gradient(180deg, #fda4af, #fb7185);
+}
+
+.bingo-theme-wedding .guest-bingo-tg-spine--3 {
+    background: linear-gradient(180deg, #86efac, #4ade80);
+}
+
+.bingo-theme-wedding .guest-bingo-call-btn.guest-bingo-call--ready,
+.bingo-theme-wedding .guest-bingo-call-dock__btn.guest-bingo-call--ready {
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.5), 0 8px 24px rgba(180, 83, 9, 0.2);
+}
+
+.bingo-theme-wedding .bingo-display-last-ball {
+    color: #b45309;
+    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8), 0 0 24px rgba(251, 191, 36, 0.4);
+}
+
+/* Guest play on wedding — lift out of default dark page chrome */
+body.bingo-theme-wedding.mdj-guest-bingo-page {
+    background: #faf8f5;
+    color: #44403c;
+}
+
+.bingo-theme-wedding .guest-bingo-meta,
+.bingo-theme-wedding .guest-bingo-back-lobby {
+    color: #78716c;
+    border-color: rgba(214, 211, 209, 0.9);
+    background: rgba(255, 255, 255, 0.65);
+}

@@ -61,6 +61,7 @@ const {
 } = require('./lib/bingo');
 const bingoSession = require('./lib/bingo-session');
 const { clampBingoMaxVirtualPerGuest } = require('./lib/bingo-limits');
+const { normalizeBingoTheme, listBingoThemes } = require('./lib/bingo-themes');
 const virtualRaceSession = require('./lib/virtual-race-session');
 const hiloSession = require('./lib/hilo-session');
 const portalRouter = require('./portal/router');
@@ -795,7 +796,7 @@ function bingoCompletePrizeWin(slug, gameId, wonTier) {
         return { gameEnded: false, pendingGameEnd: true };
     }
     bingoSession.markPendingAdvanceAfterClaim(slug, gameId);
-    return { gameEnded: false };
+    return { gameEnded: false, pendingAdvance: true };
 }
 
 function pickGuestBingoPlayCard(cards, slug, gameId, serial) {
@@ -2173,6 +2174,7 @@ function callerOptionsFromGame(game) {
         autoCall: game.autoCall,
         voiceCall: game.voiceCall,
         claimBreakMs: Math.max(1000, (Number(game.claimBreakSeconds) || 10) * 1000),
+        bingoTheme: normalizeBingoTheme(game.bingoTheme),
         prizes: game.prizes
     };
 }
@@ -2201,7 +2203,16 @@ function persistGameCallerFromBody(gameId, body) {
     if (body.claimBreakSeconds != null) {
         patch.claimBreakSeconds = Math.max(1, Math.min(120, Number(body.claimBreakSeconds) || 10));
     }
+    if (body.bingoTheme != null) {
+        patch.bingoTheme = normalizeBingoTheme(body.bingoTheme);
+    }
     if (Object.keys(patch).length) bingoGameDb.update(gameId, patch);
+}
+
+function bingoThemeForContext(gameId) {
+    if (!gameId) return 'default';
+    const game = bingoGameDb.getById(gameId);
+    return game ? normalizeBingoTheme(game.bingoTheme) : 'default';
 }
 
 app.get('/api/display/:eventSlug/games/bingo/state', (req, res) => {
@@ -2216,8 +2227,10 @@ app.get('/api/display/:eventSlug/games/bingo/state', (req, res) => {
         if (game) {
             payload.gameTitle = game.title;
             payload.gameStatus = game.status;
+            payload.bingoTheme = normalizeBingoTheme(game.bingoTheme);
         }
     }
+    if (!payload.bingoTheme) payload.bingoTheme = bingoThemeForContext(gameId);
     const forDisplay = req.query.consume === '1' || req.query.role === 'display';
     if (forDisplay) {
         const flash = bingoSession.consumeClaimFlash(slug, gameId);
@@ -2270,6 +2283,12 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
                 ? Math.max(1000, Number(req.body.claimBreakSeconds) * 1000)
                 : fromGame.claimBreakSeconds != null
                   ? Math.max(1000, Number(fromGame.claimBreakSeconds) * 1000)
+                  : undefined,
+        bingoTheme:
+            req.body.bingoTheme != null
+                ? normalizeBingoTheme(req.body.bingoTheme)
+                : fromGame.bingoTheme
+                  ? normalizeBingoTheme(fromGame.bingoTheme)
                   : undefined
     };
     if (!req.body.prizes && !req.body.prizeLine && fromGame.prizes) {
@@ -2731,6 +2750,7 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
         callIntervalMs: Math.max(2000, (Number(req.body.callIntervalSeconds) || 5) * 1000),
         introSeconds: req.body.introSeconds != null ? Number(req.body.introSeconds) : 30,
         claimBreakSeconds: req.body.claimBreakSeconds != null ? Number(req.body.claimBreakSeconds) : 10,
+        bingoTheme: normalizeBingoTheme(req.body.bingoTheme),
         autoCall: !!req.body.autoCall,
         voiceCall: !!req.body.voiceCall,
         prizes
@@ -2810,6 +2830,7 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
     if (req.body.claimBreakSeconds != null) {
         patch.claimBreakSeconds = Math.max(1, Math.min(120, Number(req.body.claimBreakSeconds) || 10));
     }
+    if (req.body.bingoTheme != null) patch.bingoTheme = normalizeBingoTheme(req.body.bingoTheme);
     if (req.body.autoCall != null) patch.autoCall = !!req.body.autoCall;
     if (req.body.voiceCall != null) patch.voiceCall = !!req.body.voiceCall;
     if (
@@ -3034,7 +3055,8 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         };
     });
     res.json({
-        game: { id: game.id, title: game.title, status: game.status },
+        game: { id: game.id, title: game.title, status: game.status, bingoTheme: normalizeBingoTheme(game.bingoTheme) },
+        bingoTheme: normalizeBingoTheme(game.bingoTheme),
         cardLimit,
         guestCards,
         allCards,
@@ -3062,7 +3084,10 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         prizeWinners: state.prizeWinners || { line: null, 'two-lines': null, house: null },
         prizes: state.prizes || {},
         claimBreakRemainingSec: state.claimBreakRemainingSec ?? 0,
+        claimBreakMs: state.claimBreakMs ?? 10000,
+        pendingAdvanceAfterClaim: !!state.pendingAdvanceAfterClaim,
         pendingGameEnd: !!state.pendingGameEnd,
+        claimWindowOpen: !!state.claimWindowOpen,
         showWinnersPopup: !!state.showWinnersPopup,
         marks: card.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
         progress
@@ -3244,7 +3269,9 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
             ? `Full house! ${customerName} — checking other claims…`
             : outcome.gameEnded
               ? `Full house! ${customerName} — game over.`
-              : `Winner! Showing on screen — now playing for ${nextLabel}.`
+              : outcome.pendingAdvance
+                ? `Winner! ${customerName} — claim window open for more on this prize.`
+                : `Winner! Showing on screen — now playing for ${nextLabel}.`
     });
 });
 

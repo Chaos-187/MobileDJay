@@ -541,6 +541,10 @@
     function renderState(state) {
         lastState = state;
         if (state.gameId) lastGameId = state.gameId;
+        if (window.MdjBingoTheme) {
+            if (layer) window.MdjBingoTheme.apply(layer, state.bingoTheme);
+            window.MdjBingoTheme.apply(document.body, state.bingoTheme);
+        }
         syncDisplayDjControls(state);
         if (state.voiceCall && !prevVoiceCall) {
             lastSpokenBall = state.lastBall;

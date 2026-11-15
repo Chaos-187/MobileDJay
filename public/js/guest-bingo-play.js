@@ -271,6 +271,16 @@
         let winnersModalEls = null;
         let winnersModalShown = false;
 
+        function applyPlayTheme(data) {
+            const theme =
+                (data && (data.bingoTheme || (data.game && data.game.bingoTheme))) || 'default';
+            if (!window.MdjBingoTheme) return;
+            window.MdjBingoTheme.apply(document.body, theme);
+            if (els.play) window.MdjBingoTheme.apply(els.play, theme);
+            const ghRoot = root.closest && root.closest('.gh-bingo');
+            if (ghRoot) window.MdjBingoTheme.apply(ghRoot, theme);
+        }
+
         function ticketsRemaining(cardLimit, currentCount) {
             const limit = Math.max(1, Number(cardLimit) || 1);
             const have = Math.max(0, Number(currentCount) || 0);
@@ -692,7 +702,9 @@
                 (!data.paused ||
                     data.pausedReason === 'claim_window' ||
                     data.phase === 'claim_break' ||
-                    data.pendingGameEnd);
+                    data.claimWindowOpen ||
+                    data.pendingGameEnd ||
+                    data.pendingAdvanceAfterClaim);
             const baseDisabled = !claimsOpen || claimInFlight || tierVerified;
             els.callBtn.disabled = baseDisabled;
             qq('[data-bingo-claim]').forEach(function (btn) {
@@ -1245,6 +1257,7 @@
                     return;
                 }
                 showPlay();
+                applyPlayTheme(data);
                 playingFor = data.playingFor || 'line';
                 if (els.gameTitle) els.gameTitle.textContent = data.game.title;
                 if (els.lastBall) els.lastBall.textContent = data.lastBall != null ? data.lastBall : '—';

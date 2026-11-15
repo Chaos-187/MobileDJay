@@ -13,6 +13,7 @@
         ballCount: document.getElementById('bingoBallCount'),
         callInterval: document.getElementById('bingoCallInterval'),
         claimBreakSeconds: document.getElementById('bingoClaimBreakSeconds'),
+        themeSelect: document.getElementById('bingoThemeSelect'),
         introSeconds: document.getElementById('bingoIntroSeconds'),
         autoCall: document.getElementById('bingoAutoCall'),
         voiceCall: document.getElementById('bingoVoiceCall'),
@@ -251,6 +252,14 @@
         if (els.claimBreakSeconds) {
             els.claimBreakSeconds.value = String(g.claimBreakSeconds != null ? g.claimBreakSeconds : 10);
         }
+        if (els.themeSelect && g.bingoTheme) {
+            els.themeSelect.value = window.MdjBingoTheme
+                ? window.MdjBingoTheme.normalize(g.bingoTheme)
+                : g.bingoTheme;
+        }
+        if (window.MdjBingoTheme) {
+            window.MdjBingoTheme.apply(document.body, g.bingoTheme);
+        }
         if (els.autoCall) els.autoCall.checked = !!g.autoCall;
         if (els.voiceCall) els.voiceCall.checked = !!g.voiceCall;
         syncPrizeFields(g.prizes);
@@ -263,6 +272,7 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             claimBreakSeconds: Number(els.claimBreakSeconds?.value) || 10,
+            bingoTheme: els.themeSelect?.value || 'default',
             introSeconds: Number(els.introSeconds?.value) || 0,
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
@@ -736,10 +746,13 @@
         const paused = !!state.paused;
         const claimBreak = state.phase === 'claim_break';
         const claimPause = paused && state.pausedReason === 'claim';
-        const houseClaimGrace = !!(claimBreak && state.pendingGameEnd);
+        const multiClaimGrace = !!(
+            claimBreak &&
+            (state.pendingGameEnd || state.pendingAdvanceAfterClaim)
+        );
         const runPanel = document.querySelector('.mdj-caller-panel--run');
         if (runPanel) {
-            runPanel.classList.toggle('is-claim-paused', !!(active && claimPause && !houseClaimGrace));
+            runPanel.classList.toggle('is-claim-paused', !!(active && claimPause && !multiClaimGrace));
             runPanel.classList.toggle('is-claim-break', !!(active && claimBreak));
         }
         const ballSpot = document.querySelector('.mdj-caller-ball-spotlight');
@@ -818,11 +831,10 @@
             els.pausedHint.hidden = !showHint;
             if (showHint && els.pausedHint) {
                 const reason = state.pausedReason || 'claim';
-                if (claimBreak && (!paused || state.pendingGameEnd)) {
+                if (claimBreak && (!paused || state.claimWindowOpen || state.pendingGameEnd || state.pendingAdvanceAfterClaim)) {
                     const sec = state.claimBreakRemainingSec != null ? state.claimBreakRemainingSec : '…';
-                    const extra = state.pendingGameEnd
-                        ? ' — more full house claims OK'
-                        : '';
+                    const extra =
+                        state.pendingGameEnd || state.pendingAdvanceAfterClaim ? ' — more claims on this prize OK' : '';
                     els.pausedHint.innerHTML =
                         '<i class="fas fa-hourglass-half"></i> Claims open · ' + sec + 's' + extra;
                 } else if (claimPause) {
@@ -1058,6 +1070,7 @@
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
             claimBreakSeconds: Number(els.claimBreakSeconds?.value) || 10,
+            bingoTheme: els.themeSelect?.value || 'default',
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
             playingFor: getSelectedPlayingFor(),
@@ -1097,6 +1110,14 @@
     });
 
     document.getElementById('bingoApplyConfigBtn')?.addEventListener('click', () => saveGameCallerSetup());
+
+    if (els.themeSelect) {
+        els.themeSelect.addEventListener('change', function () {
+            if (window.MdjBingoTheme) {
+                window.MdjBingoTheme.apply(document.body, els.themeSelect.value);
+            }
+        });
+    }
 
     async function saveGameCallerSetup() {
         const eid = eventId();

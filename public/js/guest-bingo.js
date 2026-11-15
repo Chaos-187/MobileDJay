@@ -32,5 +32,6 @@
         } else {
             play.loadGames();
         }
+        if (play.maybePromptFirstPlaySettings) play.maybePromptFirstPlaySettings();
     });
 })();

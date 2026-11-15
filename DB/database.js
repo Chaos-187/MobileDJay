@@ -1708,8 +1708,8 @@ const bingoDb = {
         const eventId = Number(options.eventId);
         const eventSlug = options.eventSlug != null ? String(options.eventSlug) : '';
         const cardFormat = normalizeCardFormat(options.cardFormat || 'uk-90');
-        const ballCount =
-            cardFormat === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(options.ballCount) || 90));
+        const { normalizeBallCountForFormat: nbc } = require('../lib/bingo');
+        const ballCount = nbc(cardFormat, options.ballCount);
         if (!Number.isFinite(eventId) || eventId <= 0) return { error: 'invalid_identity' };
 
         const assigned = this.listAssignedCardsForPlayer(gameId, name);
@@ -1953,11 +1953,11 @@ const bingoGameDb = {
             prizes
         } = {}
     ) {
-        const { normalizeCardFormat } = require('../lib/bingo');
+        const { normalizeCardFormat, normalizeBallCountForFormat } = require('../lib/bingo');
         const t = String(title || 'Bingo game').trim().slice(0, 120) || 'Bingo game';
         const batch = String(batchId || `G${Date.now().toString(36)}`).slice(0, 32);
         const fmt = normalizeCardFormat(cardFormat);
-        const bc = fmt === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(ballCount) || 90));
+        const bc = normalizeBallCountForFormat(fmt, ballCount);
         let mvc = null;
         if (maxVirtualCards != null && maxVirtualCards !== '') {
             mvc = clampBingoMaxVirtualPerGuest(Number(maxVirtualCards) || 1);
@@ -2028,9 +2028,9 @@ const bingoGameDb = {
         }
         if (patch.ballCount != null) {
             const cur = this.getById(gameId);
-            const fmt = cur?.cardFormat === 'us-75' ? 'us-75' : 'uk-90';
-            const bc =
-                fmt === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(patch.ballCount) || 90));
+            const { normalizeCardFormat: ncf, normalizeBallCountForFormat: nbc } = require('../lib/bingo');
+            const fmt = ncf(cur?.cardFormat);
+            const bc = nbc(fmt, patch.ballCount);
             db.prepare(`UPDATE bingo_games SET ball_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
                 bc,
                 gameId

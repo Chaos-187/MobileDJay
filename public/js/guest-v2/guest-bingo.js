@@ -48,6 +48,7 @@
 
   function onTabShown() {
     if (!play) return;
+    if (play.maybePromptFirstPlaySettings) play.maybePromptFirstPlaySettings();
     if (play.ensurePlayBuyUi) play.ensurePlayBuyUi();
     if (play.prefersLobby && play.prefersLobby()) {
       play.showJoin();

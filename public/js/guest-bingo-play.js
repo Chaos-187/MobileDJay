@@ -6,6 +6,27 @@
 
     const AUTO_DAB_KEY = 'mdj_bingo_auto_dab';
     const CALLER_SOUND_KEY = 'mdj_bingo_caller_sound';
+    const PREFS_PROMPT_KEY = 'mdj_bingo_prefs_prompted';
+
+    function prefsPromptedForEvent(eventSlug) {
+        const s = String(eventSlug || '').trim();
+        if (!s) return true;
+        try {
+            return localStorage.getItem(PREFS_PROMPT_KEY + ':' + s) === '1';
+        } catch (e) {
+            return true;
+        }
+    }
+
+    function markPrefsPrompted(eventSlug) {
+        const s = String(eventSlug || '').trim();
+        if (!s) return;
+        try {
+            localStorage.setItem(PREFS_PROMPT_KEY + ':' + s, '1');
+        } catch (e) {
+            /* ignore */
+        }
+    }
     const GUEST_INTRO_RING_LEN = 326.7;
 
     function escapeHtml(t) {
@@ -645,12 +666,7 @@
 
         function ensurePlaySettingsModal() {
             if (settingsModalEls) return settingsModalEls;
-            const host =
-                typeof document !== 'undefined' && document.body
-                    ? document.body
-                    : root.querySelector('[data-bingo-root]') ||
-                      root.querySelector('[data-bingo-play]') ||
-                      root;
+            const host = guestModalHost();
             const wrap = document.createElement('div');
             wrap.className = 'guest-bingo-settings-modal';
             wrap.setAttribute('data-bingo-settings-backdrop', '');
@@ -658,6 +674,7 @@
             wrap.innerHTML =
                 '<div class="guest-bingo-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="guestBingoSettingsTitle">' +
                 '<h2 class="guest-bingo-settings-modal__title" id="guestBingoSettingsTitle">Play settings</h2>' +
+                '<p class="guest-bingo-settings-modal__lede" data-bingo-settings-lede hidden>Choose how numbers are marked and announced on this phone. You can change these anytime from the gear icon.</p>' +
                 '<div class="guest-bingo-play-options guest-bingo-play-options--modal" role="group" aria-label="Play options">' +
                 '<label class="guest-bingo-opt">' +
                 '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-highlighter"></i></span>' +
@@ -676,7 +693,9 @@
             host.appendChild(wrap);
             settingsModalEls = {
                 backdrop: wrap,
-                closeBtn: wrap.querySelector('[data-bingo-settings-close]')
+                closeBtn: wrap.querySelector('[data-bingo-settings-close]'),
+                lede: wrap.querySelector('[data-bingo-settings-lede]'),
+                title: wrap.querySelector('#guestBingoSettingsTitle')
             };
             settingsModalEls.closeBtn?.addEventListener('click', closePlaySettingsModal);
             wrap.addEventListener('click', function (ev) {
@@ -685,9 +704,28 @@
             return settingsModalEls;
         }
 
-        function openPlaySettingsModal() {
+        function openPlaySettingsModal(options) {
+            const firstTime = !!(options && options.firstTime);
             const modal = ensurePlaySettingsModal();
+            if (modal.title) {
+                modal.title.textContent = firstTime ? 'Before you play' : 'Play settings';
+            }
+            if (modal.lede) {
+                if (firstTime) {
+                    modal.lede.hidden = false;
+                    modal.lede.removeAttribute('hidden');
+                } else {
+                    modal.lede.hidden = true;
+                    modal.lede.setAttribute('hidden', '');
+                }
+            }
+            if (modal.closeBtn) {
+                modal.closeBtn.textContent = firstTime ? 'Continue' : 'Done';
+            }
+            modal.backdrop.dataset.firstTimePrompt = firstTime ? '1' : '';
+            if (!firstTime) delete modal.backdrop.dataset.firstTimePrompt;
             modal.backdrop.hidden = false;
+            modal.backdrop.removeAttribute('hidden');
             document.documentElement.classList.add('guest-bingo-settings-open');
             const modalAuto = modal.backdrop.querySelector('[data-bingo-auto-dab]');
             const modalSound = modal.backdrop.querySelector('[data-bingo-caller-sound]');
@@ -697,8 +735,28 @@
         }
 
         function closePlaySettingsModal() {
-            if (settingsModalEls) settingsModalEls.backdrop.hidden = true;
+            if (settingsModalEls && settingsModalEls.backdrop) {
+                if (settingsModalEls.backdrop.dataset.firstTimePrompt === '1') {
+                    markPrefsPrompted(slug);
+                    writeAutoDab(autoDab);
+                    writeCallerSound(callerSoundOn);
+                }
+                settingsModalEls.backdrop.hidden = true;
+                settingsModalEls.backdrop.setAttribute('hidden', '');
+                delete settingsModalEls.backdrop.dataset.firstTimePrompt;
+            }
             document.documentElement.classList.remove('guest-bingo-settings-open');
+        }
+
+        function maybePromptFirstPlaySettings() {
+            if (prefsPromptedForEvent(slug)) return;
+            if (document.documentElement.classList.contains('guest-bingo-buy-open')) return;
+            if (document.documentElement.classList.contains('guest-bingo-winners-open')) return;
+            window.setTimeout(function () {
+                if (prefsPromptedForEvent(slug)) return;
+                if (document.documentElement.classList.contains('guest-bingo-buy-open')) return;
+                openPlaySettingsModal({ firstTime: true });
+            }, 280);
         }
 
         function wireSettingsInputs(scope) {
@@ -2566,7 +2624,9 @@
             showJoin,
             showPlay,
             backToLobby,
-            prefersLobby: readLobbyPref
+            prefersLobby: readLobbyPref,
+            maybePromptFirstPlaySettings,
+            openPlaySettings: openPlaySettingsModal
         };
     }
 

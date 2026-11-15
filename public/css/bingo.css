@@ -980,7 +980,7 @@ body.mdj-guest-bingo-page {
 .guest-bingo-settings-modal {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    z-index: 480;
     display: flex;
     align-items: flex-end;
     justify-content: center;
@@ -1007,6 +1007,18 @@ body.mdj-guest-bingo-page {
     font-size: 1.05rem;
     font-weight: 800;
     text-align: center;
+}
+
+.guest-bingo-settings-modal__lede {
+    margin: 0 0 0.85rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.58);
+    text-align: center;
+}
+
+.guest-bingo-settings-modal__lede[hidden] {
+    display: none !important;
 }
 
 .guest-bingo-settings-modal__done {

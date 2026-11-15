@@ -58,6 +58,7 @@ const {
     normalizePrizes,
     normalizePlayingFor,
     normalizeCardFormat,
+    normalizeBallCountForFormat,
     inferCardFormat,
     normalizeBingoTheme,
     listBingoThemes,
@@ -2699,7 +2700,7 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
 function generateBingoCardBatch(event, { count, ballCount, batchId, gameId, cardFormat }) {
     const eventId = event.id;
     const fmt = normalizeCardFormat(cardFormat);
-    const bc = fmt === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(ballCount) || 90));
+    const bc = normalizeBallCountForFormat(fmt, ballCount);
     const batch = String(batchId || `B${Date.now().toString(36).toUpperCase()}`).slice(0, 32);
     const prefix = String(event.slug || 'EVT')
         .replace(/[^a-z0-9]/gi, '')
@@ -2832,10 +2833,19 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
             house: req.body.prizeHouse
         }
     );
+    const requestedBall = Number(req.body.ballCount);
+    const ballCount = normalizeBallCountForFormat(cardFormat, req.body.ballCount);
+    const ballCountNote =
+        normalizeCardFormat(cardFormat) === 'uk-90' &&
+        Number.isFinite(requestedBall) &&
+        requestedBall > 0 &&
+        requestedBall !== 90
+            ? `UK 90-ball uses 90 balls (adjusted from ${requestedBall}).`
+            : null;
     const game = bingoGameDb.create(req.event.id, {
         title: req.body.title,
         batchId: req.body.batchId,
-        ballCount: req.body.ballCount,
+        ballCount,
         cardFormat,
         maxVirtualCards: req.body.maxVirtualCards,
         advertisedStartAt,
@@ -2848,19 +2858,28 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
         prizes
     });
     if (cardCount > 0) {
-        generateBingoCardBatch(req.event, {
-            count: cardCount,
-            ballCount: game.ballCount,
-            cardFormat: game.cardFormat,
-            batchId: game.batchId,
-            gameId: game.id
-        });
+        try {
+            generateBingoCardBatch(req.event, {
+                count: cardCount,
+                ballCount: game.ballCount,
+                cardFormat: game.cardFormat,
+                batchId: game.batchId,
+                gameId: game.id
+            });
+        } catch (err) {
+            console.error('generateBingoCardBatch:', err);
+            bingoGameDb.deleteIfNotLive(game.id);
+            return res.status(400).json({
+                error: err.message || 'Could not generate bingo cards for this game'
+            });
+        }
     }
     if (openJoin) bingoGameDb.setStatus(game.id, 'join_open');
     res.json({
         success: true,
         game: bingoGameDb.getById(game.id),
-        printUrl: `/dj/bingo/${req.event.id}/print?batch=${encodeURIComponent(game.batchId)}`
+        printUrl: `/dj/bingo/${req.event.id}/print?batch=${encodeURIComponent(game.batchId)}`,
+        ...(ballCountNote ? { notice: ballCountNote } : {})
     });
 });
 

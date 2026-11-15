@@ -196,6 +196,25 @@
         return !!(data && data.game && String(data.game.status || '') === 'ended');
     }
 
+    /** Caller has not started — join/intro/waiting, not a finished round. */
+    function guestIsWaitingForCaller(data) {
+        if (!data) return false;
+        if (data.pendingGameEnd) return false;
+        const called = guestBingoCalledCount(data);
+        if (called > 0 || data.active) return false;
+        const phase = String(data.phase || '');
+        if (phase === 'calling' || phase === 'claim_break') return false;
+        return true;
+    }
+
+    function guestShouldShowGameOverForGuest(data) {
+        if (!data) return false;
+        if (guestIsWaitingForCaller(data)) return false;
+        if (data.showWinnersPopup) return true;
+        if (guestGameStatusEnded(data)) return true;
+        return false;
+    }
+
     function syncBuyTicketsVisibility(buyEl, data) {
         if (!buyEl) return;
         const preClaim = bingoGuestPreClaimPlay(data);
@@ -382,6 +401,9 @@
         let pollTimer = null;
         let pollDelayMs = 2200;
         let lobbyPollTimer = null;
+        let lastLobbyStructFp = '';
+        let lastLobbyTimerFp = '';
+        let lobbyGamesFirstLoad = true;
         let autoDab = readAutoDab();
         let callerSoundOn = readCallerSound();
         const manualMarksBySerial = Object.create(null);
@@ -409,9 +431,7 @@
 
         function guestShouldShowGameOver(data) {
             if (!data || winnersDismissedLocally) return false;
-            if (data.showWinnersPopup) return true;
-            if (guestGameStatusEnded(data)) return true;
-            return false;
+            return guestShouldShowGameOverForGuest(data);
         }
 
         function hideWinnersModal() {
@@ -1163,6 +1183,16 @@
                 return;
             }
 
+            if (preClaim && !inCalling && canBuy) {
+                callBtn.setAttribute('data-dock-mode', 'buy');
+                callBtn.classList.remove('guest-bingo-call--ready');
+                callBtn.textContent = rem > 1 ? 'Buy tickets · ' + rem + ' left' : 'Buy tickets';
+                callBtn.disabled = false;
+                callBtn.classList.add('guest-bingo-dock-btn--buy');
+                if (els.playDock) els.playDock.classList.add('guest-bingo--dock-buy');
+                return;
+            }
+
             callBtn.setAttribute('data-dock-mode', 'claim');
             callBtn.classList.remove('guest-bingo-dock-btn--buy');
             const label = (data && data.playingForLabel) || 'prize';
@@ -1555,20 +1585,231 @@
 
         function stopLobbyPoll() {
             if (lobbyPollTimer) {
-                clearInterval(lobbyPollTimer);
+                clearTimeout(lobbyPollTimer);
                 lobbyPollTimer = null;
             }
         }
 
-        function startLobbyPoll() {
-            if (lobbyPollTimer) return;
-            lobbyPollTimer = setInterval(function () {
-                if (els.play && !els.play.hidden) {
-                    stopLobbyPoll();
+        function lobbyGameBadge(g) {
+            let badgeMod = 'is-open';
+            let badgeText = 'Open';
+            if (g.bingoPhase === 'intro') {
+                badgeMod = 'is-prep';
+                badgeText = 'Starting';
+            } else if (g.bingoPhase === 'resume') {
+                badgeMod = 'is-prep';
+                badgeText = 'Resuming';
+            } else if (g.playInProgress || g.status === 'live') {
+                badgeMod = 'is-live';
+                badgeText = 'Live';
+            }
+            return { mod: badgeMod, text: badgeText };
+        }
+
+        function lobbyGameSubtitle(g) {
+            const hasCards = (g.guestCardCount || 0) > 0;
+            const ticketCount = Number(g.guestCardCount || 0);
+            let subtitle = '';
+            if (!hasCards) {
+                subtitle = 'Tap to get tickets on this phone';
+            } else if (g.bingoPhase === 'intro') {
+                subtitle = 'Starting in ' + (g.introRemainingSec || '…') + 's · tap to see countdown';
+            } else if (g.bingoPhase === 'resume') {
+                subtitle = 'Back in ' + (g.resumeRemainingSec || '…') + 's · tap to continue';
+            } else if (g.playInProgress) {
+                subtitle =
+                    ticketCount + ' ticket' + (ticketCount === 1 ? '' : 's') + ' · game in progress';
+            } else if (g.canGrabMore) {
+                subtitle = ticketCount + ' ticket' + (ticketCount === 1 ? '' : 's') + ' · you can buy more';
+            } else {
+                subtitle = ticketCount + ' ticket' + (ticketCount === 1 ? '' : 's');
+            }
+            const startLine = g.advertisedStartAt
+                ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
+                : '';
+            if (startLine && !g.playInProgress && g.bingoPhase !== 'intro' && g.bingoPhase !== 'resume') {
+                subtitle += (subtitle ? ' · ' : '') + 'Starts ' + startLine;
+            }
+            return subtitle;
+        }
+
+        function lobbyStructFingerprint(games) {
+            return JSON.stringify(
+                (games || []).map(function (g) {
+                    return {
+                        id: g.id,
+                        status: g.status,
+                        guestCardCount: g.guestCardCount,
+                        bingoPhase: g.bingoPhase,
+                        playInProgress: g.playInProgress,
+                        canGrabMore: g.canGrabMore,
+                        title: g.title,
+                        guestBestToGo: g.guestBestToGo,
+                        guestBestLabel: g.guestBestLabel,
+                        advertisedStartAt: g.advertisedStartAt
+                    };
+                })
+            );
+        }
+
+        function lobbyTimerFingerprint(games) {
+            return JSON.stringify(
+                (games || []).map(function (g) {
+                    return {
+                        id: g.id,
+                        introRemainingSec: g.introRemainingSec,
+                        resumeRemainingSec: g.resumeRemainingSec
+                    };
+                })
+            );
+        }
+
+        function patchLobbyGameTimers(games) {
+            let missing = false;
+            (games || []).forEach(function (g) {
+                const block = els.gamesList.querySelector('[data-bingo-game-block="' + g.id + '"]');
+                if (!block) {
+                    missing = true;
                     return;
                 }
-                loadGames();
-            }, 1000);
+                const meta = block.querySelector('.gh-bingo-game-pick__meta');
+                if (meta) meta.textContent = lobbyGameSubtitle(g);
+                const badge = lobbyGameBadge(g);
+                const badgeEl = block.querySelector('.gh-bingo-game-pick__badge');
+                if (badgeEl) {
+                    badgeEl.textContent = badge.text;
+                    badgeEl.className = 'gh-bingo-game-pick__badge ' + badge.mod;
+                }
+            });
+            return !missing;
+        }
+
+        function lobbyGameRowHtml(g) {
+            const hasCards = (g.guestCardCount || 0) > 0;
+            const ticketCount = Number(g.guestCardCount || 0);
+            const badge = lobbyGameBadge(g);
+            const subtitle = lobbyGameSubtitle(g);
+            const tier = g.guestBestToGo != null ? toGoTierClass(g.guestBestToGo) : '';
+            const progressChip =
+                hasCards && g.guestBestToGo != null && g.playInProgress
+                    ? '<span class="gh-bingo-game-pick__chip guest-bingo-game-togo ' +
+                      tier +
+                      '">' +
+                      escapeHtml(g.guestBestLabel || g.guestBestToGo + ' to go') +
+                      '</span>'
+                    : '';
+            const cta = hasCards ? 'Continue' : 'Get tickets';
+            const ctaIcon = hasCards ? 'fa-circle-play' : 'fa-ticket';
+            return (
+                '<div class="gh-bingo-game-block" data-bingo-game-block="' +
+                g.id +
+                '">' +
+                '<button type="button" class="gh-bingo-game-pick ' +
+                tier +
+                '" data-game-id="' +
+                g.id +
+                '" data-has-cards="' +
+                (hasCards ? '1' : '0') +
+                '" data-card-limit="' +
+                Number(g.cardLimit) +
+                '" data-guest-card-count="' +
+                ticketCount +
+                '">' +
+                '<span class="gh-bingo-game-pick__head">' +
+                '<span class="gh-bingo-game-pick__title">' +
+                escapeHtml(g.title) +
+                '</span>' +
+                '<span class="gh-bingo-game-pick__badge ' +
+                badge.mod +
+                '">' +
+                escapeHtml(badge.text) +
+                '</span></span>' +
+                '<span class="gh-bingo-game-pick__meta">' +
+                escapeHtml(subtitle) +
+                '</span>' +
+                progressChip +
+                '<span class="gh-bingo-game-pick__foot">' +
+                '<span class="gh-bingo-game-pick__cta"><i class="fas ' +
+                ctaIcon +
+                '" aria-hidden="true"></i>' +
+                escapeHtml(cta) +
+                '</span>' +
+                '<i class="fas fa-chevron-right gh-bingo-game-pick__chev" aria-hidden="true"></i></span>' +
+                '</button>' +
+                (hasCards && g.canGrabMore && !g.playInProgress
+                    ? '<button type="button" class="gh-bingo-lobby-more" data-bingo-lobby-buy="' +
+                      g.id +
+                      '" data-card-limit="' +
+                      Number(g.cardLimit) +
+                      '" data-guest-card-count="' +
+                      ticketCount +
+                      '">Buy more tickets</button>'
+                    : '') +
+                '</div>'
+            );
+        }
+
+        function bindLobbyGameButtons() {
+            if (!els.gamesList) return;
+            els.gamesList.querySelectorAll('.gh-bingo-game-pick').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const gid = parseInt(btn.getAttribute('data-game-id'), 10);
+                    if (btn.getAttribute('data-has-cards') === '1') {
+                        activeGameId = gid;
+                        activeSerial = null;
+                        try {
+                            sessionStorage.setItem('mdj_bingo_game_' + slug, String(gid));
+                        } catch (err) {
+                            /* ignore */
+                        }
+                        startPlay();
+                    } else {
+                        const rem = ticketsRemaining(
+                            btn.getAttribute('data-card-limit'),
+                            btn.getAttribute('data-guest-card-count')
+                        );
+                        openBuyTicketsModal(gid, rem);
+                    }
+                });
+            });
+            els.gamesList.querySelectorAll('[data-bingo-lobby-buy]').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const gid = parseInt(btn.getAttribute('data-bingo-lobby-buy'), 10);
+                    const rem = ticketsRemaining(
+                        btn.getAttribute('data-card-limit'),
+                        btn.getAttribute('data-guest-card-count')
+                    );
+                    openBuyTicketsModal(gid, rem);
+                });
+            });
+        }
+
+        function lobbyPollIntervalMs() {
+            if (!els.gamesList) return 4000;
+            const blocks = els.gamesList.querySelectorAll('[data-bingo-game-block]');
+            for (let i = 0; i < blocks.length; i++) {
+                const badge = blocks[i].querySelector('.gh-bingo-game-pick__badge');
+                if (badge && badge.classList.contains('is-prep')) return 1500;
+            }
+            return 4000;
+        }
+
+        function scheduleLobbyPoll() {
+            stopLobbyPoll();
+            if (els.play && !els.play.hidden) return;
+            const delay = lobbyPollIntervalMs();
+            lobbyPollTimer = setTimeout(function () {
+                lobbyPollTimer = null;
+                if (els.play && !els.play.hidden) return;
+                loadGames({ silent: true }).finally(function () {
+                    scheduleLobbyPoll();
+                });
+            }, delay);
+        }
+
+        function startLobbyPoll() {
+            scheduleLobbyPoll();
         }
 
         function showJoin() {
@@ -1603,12 +1844,18 @@
             winnersDismissedLocally = false;
             hideWinnersModal();
             showJoin();
+            lastLobbyStructFp = '';
+            lastLobbyTimerFp = '';
+            lobbyGamesFirstLoad = true;
             loadGames();
         }
 
-        async function loadGames() {
+        async function loadGames(options) {
+            const silent = !!(options && options.silent);
             if (!els.gamesList) return;
-            els.gamesList.innerHTML = '<p class="gh-bingo-muted">Loading games…</p>';
+            if (!silent && lobbyGamesFirstLoad) {
+                els.gamesList.innerHTML = '<p class="gh-bingo-muted">Loading games…</p>';
+            }
             try {
                 const name = opts.customerName();
                 const dev = opts.deviceId();
@@ -1627,143 +1874,35 @@
                     return;
                 }
                 if (!data.games.length) {
+                    lastLobbyStructFp = '';
+                    lastLobbyTimerFp = '';
                     els.gamesList.innerHTML =
                         '<p class="gh-bingo-muted">No games open yet — the DJ will open join when ready.</p>';
+                    lobbyGamesFirstLoad = false;
                     return;
                 }
-                els.gamesList.innerHTML = data.games
-                    .map(function (g) {
-                        const hasCards = (g.guestCardCount || 0) > 0;
-                        const ticketCount = Number(g.guestCardCount || 0);
-                        let badgeMod = 'is-open';
-                        let badgeText = 'Open';
-                        if (g.bingoPhase === 'intro') {
-                            badgeMod = 'is-prep';
-                            badgeText = 'Starting';
-                        } else if (g.bingoPhase === 'resume') {
-                            badgeMod = 'is-prep';
-                            badgeText = 'Resuming';
-                        } else if (g.playInProgress || g.status === 'live') {
-                            badgeMod = 'is-live';
-                            badgeText = 'Live';
-                        }
-                        let subtitle = '';
-                        if (!hasCards) {
-                            subtitle = 'Tap to get tickets on this phone';
-                        } else if (g.bingoPhase === 'intro') {
-                            subtitle = 'Starting in ' + (g.introRemainingSec || '…') + 's · tap to see countdown';
-                        } else if (g.bingoPhase === 'resume') {
-                            subtitle = 'Back in ' + (g.resumeRemainingSec || '…') + 's · tap to continue';
-                        } else if (g.playInProgress) {
-                            subtitle =
-                                ticketCount +
-                                ' ticket' +
-                                (ticketCount === 1 ? '' : 's') +
-                                ' · game in progress';
-                        } else if (g.canGrabMore) {
-                            subtitle = ticketCount + ' ticket' + (ticketCount === 1 ? '' : 's') + ' · you can buy more';
-                        } else {
-                            subtitle = ticketCount + ' ticket' + (ticketCount === 1 ? '' : 's');
-                        }
-                        const startLine = g.advertisedStartAt
-                            ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
-                            : '';
-                        if (startLine && !g.playInProgress && g.bingoPhase !== 'intro' && g.bingoPhase !== 'resume') {
-                            subtitle += (subtitle ? ' · ' : '') + 'Starts ' + startLine;
-                        }
-                        const tier = g.guestBestToGo != null ? toGoTierClass(g.guestBestToGo) : '';
-                        const progressChip =
-                            hasCards && g.guestBestToGo != null && g.playInProgress
-                                ? '<span class="gh-bingo-game-pick__chip guest-bingo-game-togo ' +
-                                  tier +
-                                  '">' +
-                                  escapeHtml(g.guestBestLabel || g.guestBestToGo + ' to go') +
-                                  '</span>'
-                                : '';
-                        const cta = hasCards ? 'Continue' : 'Get tickets';
-                        const ctaIcon = hasCards ? 'fa-circle-play' : 'fa-ticket';
-                        return (
-                            '<div class="gh-bingo-game-block" data-bingo-game-block="' +
-                            g.id +
-                            '">' +
-                            '<button type="button" class="gh-bingo-game-pick ' +
-                            tier +
-                            '" data-game-id="' +
-                            g.id +
-                            '" data-has-cards="' +
-                            (hasCards ? '1' : '0') +
-                            '" data-card-limit="' +
-                            Number(g.cardLimit) +
-                            '" data-guest-card-count="' +
-                            ticketCount +
-                            '">' +
-                            '<span class="gh-bingo-game-pick__head">' +
-                            '<span class="gh-bingo-game-pick__title">' +
-                            escapeHtml(g.title) +
-                            '</span>' +
-                            '<span class="gh-bingo-game-pick__badge ' +
-                            badgeMod +
-                            '">' +
-                            escapeHtml(badgeText) +
-                            '</span></span>' +
-                            '<span class="gh-bingo-game-pick__meta">' +
-                            escapeHtml(subtitle) +
-                            '</span>' +
-                            progressChip +
-                            '<span class="gh-bingo-game-pick__foot">' +
-                            '<span class="gh-bingo-game-pick__cta"><i class="fas ' +
-                            ctaIcon +
-                            '" aria-hidden="true"></i>' +
-                            escapeHtml(cta) +
-                            '</span>' +
-                            '<i class="fas fa-chevron-right gh-bingo-game-pick__chev" aria-hidden="true"></i></span>' +
-                            '</button>' +
-                            (hasCards && g.canGrabMore && !g.playInProgress
-                                ? '<button type="button" class="gh-bingo-lobby-more" data-bingo-lobby-buy="' +
-                                  g.id +
-                                  '" data-card-limit="' +
-                                  Number(g.cardLimit) +
-                                  '" data-guest-card-count="' +
-                                  ticketCount +
-                                  '">Buy more tickets</button>'
-                                : '') +
-                            '</div>'
-                        );
-                    })
-                    .join('');
 
-                els.gamesList.querySelectorAll('.gh-bingo-game-pick').forEach(function (btn) {
-                    btn.addEventListener('click', function () {
-                        const gid = parseInt(btn.getAttribute('data-game-id'), 10);
-                        if (btn.getAttribute('data-has-cards') === '1') {
-                            activeGameId = gid;
-                            activeSerial = null;
-                            try {
-                                sessionStorage.setItem('mdj_bingo_game_' + slug, String(gid));
-                            } catch (err) {
-                                /* ignore */
-                            }
-                            startPlay();
-                        } else {
-                            const rem = ticketsRemaining(
-                                btn.getAttribute('data-card-limit'),
-                                btn.getAttribute('data-guest-card-count')
-                            );
-                            openBuyTicketsModal(gid, rem);
-                        }
-                    });
-                });
-                els.gamesList.querySelectorAll('[data-bingo-lobby-buy]').forEach(function (btn) {
-                    btn.addEventListener('click', function (e) {
-                        e.stopPropagation();
-                        const gid = parseInt(btn.getAttribute('data-bingo-lobby-buy'), 10);
-                        const rem = ticketsRemaining(
-                            btn.getAttribute('data-card-limit'),
-                            btn.getAttribute('data-guest-card-count')
-                        );
-                        openBuyTicketsModal(gid, rem);
-                    });
-                });
+                const structFp = lobbyStructFingerprint(data.games);
+                const timerFp = lobbyTimerFingerprint(data.games);
+
+                if (
+                    silent &&
+                    structFp === lastLobbyStructFp &&
+                    timerFp !== lastLobbyTimerFp &&
+                    patchLobbyGameTimers(data.games)
+                ) {
+                    lastLobbyTimerFp = timerFp;
+                    return;
+                }
+                if (silent && structFp === lastLobbyStructFp && timerFp === lastLobbyTimerFp) {
+                    return;
+                }
+
+                els.gamesList.innerHTML = data.games.map(lobbyGameRowHtml).join('');
+                bindLobbyGameButtons();
+                lastLobbyStructFp = structFp;
+                lastLobbyTimerFp = timerFp;
+                lobbyGamesFirstLoad = false;
 
                 if (activeGameId) {
                     const mine = data.games.find(function (g) {

@@ -805,6 +805,41 @@ function bingoGuestPlayInProgress(slug, gameId) {
     return false;
 }
 
+function bingoGuestIdleBeforeCall(state) {
+    if (!state || state.active) return false;
+    if ((state.calledBalls || []).length > 0) return false;
+    if (state.pendingGameEnd) return false;
+    return true;
+}
+
+/** DB may still be `ended` after a reset — guests waiting pre-call should not see game over. */
+function bingoGuestEffectiveGameStatus(game, state) {
+    if (!game) return 'join_open';
+    const status = String(game.status || '');
+    if (status !== 'ended') return status;
+    if (!bingoGuestIdleBeforeCall(state)) return 'ended';
+    if (state.showWinnersPopup) return 'ended';
+    const fmt = normalizeCardFormat(state.cardFormat || game.cardFormat);
+    const tiers = prizeTiersForFormat(fmt);
+    const pw = state.prizeWinners || {};
+    if (tiers.some((tier) => pw[tier])) return 'ended';
+    return 'join_open';
+}
+
+function bingoGuestEffectiveShowWinnersPopup(state, game) {
+    if (!state.showWinnersPopup) return false;
+    if (game && String(game.status || '') === 'join_open' && bingoGuestIdleBeforeCall(state)) {
+        return false;
+    }
+    if (bingoGuestIdleBeforeCall(state) && !state.pendingGameEnd) {
+        const fmt = normalizeCardFormat(state.cardFormat || (game && game.cardFormat));
+        const tiers = prizeTiersForFormat(fmt);
+        const pw = state.prizeWinners || {};
+        if (!tiers.some((tier) => pw[tier])) return false;
+    }
+    return true;
+}
+
 function guestCanGrabMoreVirtualCards(slug, gameId, assignedCount, cardLimit) {
     if (bingoGuestPlayInProgress(slug, gameId)) return false;
     return assignedCount < cardLimit;
@@ -3136,11 +3171,13 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
             progress: cardProgress
         };
     });
+    const guestGameStatus = bingoGuestEffectiveGameStatus(game, state);
+    const guestShowWinnersPopup = bingoGuestEffectiveShowWinnersPopup(state, game);
     res.json({
         game: {
             id: game.id,
             title: game.title,
-            status: game.status,
+            status: guestGameStatus,
             cardFormat: normalizeCardFormat(game.cardFormat),
             bingoTheme: normalizeBingoTheme(game.bingoTheme)
         },
@@ -3180,7 +3217,7 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         pendingAdvanceAfterClaim: !!state.pendingAdvanceAfterClaim,
         pendingGameEnd: !!state.pendingGameEnd,
         claimWindowOpen: !!state.claimWindowOpen,
-        showWinnersPopup: !!state.showWinnersPopup,
+        showWinnersPopup: guestShowWinnersPopup,
         marks: card.grid.map((row) => row.map((n) => (n != null ? called.has(n) : null))),
         progress
     });

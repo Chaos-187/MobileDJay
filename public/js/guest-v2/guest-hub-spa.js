@@ -225,12 +225,10 @@
             '<div class="gh-bingo-panel" data-bingo-join>' +
             '<div data-bingo-games-list class="gh-bingo-games"></div></div></div>' +
             '<div class="gh-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>' +
-                '<div class="guest-bingo-play-topbar" data-bingo-play-topbar>' +
-                    '<button type="button" class="guest-bingo-top-buy gh-btn gh-btn--accent" data-bingo-buy-tickets>Buy tickets</button>' +
-                '</div>' +
                 '<div class="guest-bingo-play-toolbar">' +
                     '<button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn gh-bingo-back-lobby" data-bingo-back-lobby>' +
                         '<i class="fas fa-arrow-left" aria-hidden="true"></i><span>Back to lobby</span></button>' +
+                    '<button type="button" class="guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy gh-btn gh-btn--accent" data-bingo-buy-tickets>Buy tickets</button>' +
                     '<button type="button" class="guest-bingo-settings-btn guest-bingo-toolbar-btn guest-bingo-toolbar-btn--icon" data-bingo-settings-open aria-label="Play settings">' +
                         '<i class="fas fa-gear" aria-hidden="true"></i></button>' +
                     '<p class="gh-bingo-meta guest-bingo-meta" data-bingo-meta></p></div>' +

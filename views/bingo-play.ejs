@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=56" rel="stylesheet">
+    <link href="/css/bingo.css?v=57" rel="stylesheet">
     <link href="/css/bingo-themes.css?v=7" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
@@ -25,14 +25,12 @@
         </div>
 
         <div id="guestBingoPlay" class="guest-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>
-            <div class="guest-bingo-play-topbar" data-bingo-play-topbar>
-                <button type="button" class="guest-bingo-top-buy btn btn-warning btn-lg w-100" data-bingo-buy-tickets>Buy tickets</button>
-            </div>
             <div class="guest-bingo-play-toolbar">
                 <button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn" data-bingo-back-lobby>
                     <i class="fas fa-arrow-left" aria-hidden="true"></i>
                     <span>Back to lobby</span>
                 </button>
+                <button type="button" class="guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy btn btn-warning" data-bingo-buy-tickets>Buy tickets</button>
                 <button type="button" class="guest-bingo-settings-btn guest-bingo-toolbar-btn guest-bingo-toolbar-btn--icon" data-bingo-settings-open aria-label="Play settings">
                     <i class="fas fa-gear" aria-hidden="true"></i>
                 </button>
@@ -94,7 +92,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/guest-bingo-play.js?v=62"></script>
+    <script src="/js/guest-bingo-play.js?v=63"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

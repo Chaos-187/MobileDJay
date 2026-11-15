@@ -217,37 +217,49 @@
         return false;
     }
 
-    function ensureGuestPlayBuyTopbar(root) {
-        const qRoot = root && typeof root.querySelector === 'function' ? root : document;
-        const play = qRoot.querySelector('[data-bingo-play]');
-        if (!play) return null;
-        let topBar = play.querySelector('[data-bingo-play-topbar]');
-        if (!topBar) {
-            topBar = document.createElement('div');
-            topBar.className = 'guest-bingo-play-topbar';
-            topBar.setAttribute('data-bingo-play-topbar', '');
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.setAttribute('data-bingo-buy-tickets', '');
-            btn.textContent = 'Buy tickets';
-            if (play.closest && play.closest('.gh-bingo')) {
-                btn.className = 'guest-bingo-top-buy gh-btn gh-btn--accent';
-            } else {
-                btn.className = 'guest-bingo-top-buy btn btn-warning btn-lg w-100';
-            }
-            topBar.appendChild(btn);
-            play.insertBefore(topBar, play.firstChild);
+    function resolveGuestBingoPlayRoot(root) {
+        if (root && typeof root.querySelector === 'function') {
+            const inRoot = root.querySelector('[data-bingo-play]');
+            if (inRoot) return inRoot;
         }
-        topBar.removeAttribute('hidden');
-        topBar.hidden = false;
-        return topBar;
+        const panel = typeof document !== 'undefined' ? document.getElementById('ghPanelBingo') : null;
+        if (panel && panel.querySelector) {
+            const inPanel = panel.querySelector('[data-bingo-play]');
+            if (inPanel) return inPanel;
+        }
+        return typeof document !== 'undefined' ? document.querySelector('[data-bingo-play]') : null;
+    }
+
+    function ensureGuestToolbarBuyButton(play) {
+        if (!play) return null;
+        let btn = play.querySelector('[data-bingo-buy-tickets]');
+        if (btn) return btn;
+        const toolbar = play.querySelector('.guest-bingo-play-toolbar');
+        if (!toolbar) return null;
+        btn = document.createElement('button');
+        btn.type = 'button';
+        btn.setAttribute('data-bingo-buy-tickets', '');
+        btn.textContent = 'Buy tickets';
+        const isHub = !!(play.closest && play.closest('.gh-bingo'));
+        btn.className = isHub
+            ? 'guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy gh-btn gh-btn--accent'
+            : 'guest-bingo-toolbar-btn guest-bingo-toolbar-btn--buy btn btn-warning';
+        const settings = toolbar.querySelector('[data-bingo-settings-open]');
+        const back = toolbar.querySelector('[data-bingo-back-lobby]');
+        if (settings) {
+            toolbar.insertBefore(btn, settings);
+        } else if (back && back.nextSibling) {
+            toolbar.insertBefore(btn, back.nextSibling);
+        } else {
+            toolbar.appendChild(btn);
+        }
+        return btn;
     }
 
     function syncBuyTicketsVisibility(root, data) {
-        const qRoot = root && typeof root.querySelector === 'function' ? root : document;
-        const play = qRoot.querySelector('[data-bingo-play]');
-        if (!play || play.hidden) return;
-        ensureGuestPlayBuyTopbar(qRoot);
+        const play = resolveGuestBingoPlayRoot(root);
+        if (!play) return;
+        ensureGuestToolbarBuyButton(play);
         const rem = data ? guestTicketRemaining(data) : 1;
         const canBuy = !!(data && data.canGrabMore && rem > 0 && !data.playInProgress);
         const have =
@@ -266,14 +278,14 @@
                   : 'Buy tickets'
             : data && data.playInProgress
               ? 'Buy tickets — game started'
-              : have === 0
-                ? 'Get tickets'
-                : 'Buy tickets';
-        qRoot.querySelectorAll('[data-bingo-buy-tickets]').forEach(function (buyEl) {
+              : 'Buy tickets';
+        play.querySelectorAll('[data-bingo-buy-tickets]').forEach(function (buyEl) {
             buyEl.hidden = false;
             buyEl.removeAttribute('hidden');
+            buyEl.style.display = '';
             buyEl.disabled = !canBuy;
             buyEl.textContent = label;
+            buyEl.classList.toggle('guest-bingo-toolbar-btn--buy-disabled', !canBuy);
             buyEl.classList.toggle('guest-bingo-top-buy--disabled', !canBuy);
         });
     }
@@ -462,6 +474,7 @@
         let introEndsAtLocal = null;
         let introTotalSec = 30;
         let introTickTimer = null;
+        let introEndRefreshInFlight = false;
         let resumeEndsAtLocal = null;
 
         let buyModalEls = null;
@@ -971,15 +984,16 @@
                     if (introEndsAtLocal) paintGuestIntro(lastStackPayload.data);
                     if (resumeEndsAtLocal) paintGuestResume(lastStackPayload.data);
                     paintGuestCountdownBar(lastStackPayload.data);
-                    if (lastStackPayload.data) {
-                        updateCallUi(
-                            lastStackPayload.cards || [],
-                            activeSerial,
-                            lastStackPayload.data
-                        );
-                    }
-                    if (introEndsAtLocal && guestIntroRemainingMs(lastStackPayload.data) <= 0) {
-                        refreshPlay();
+                    if (
+                        introEndsAtLocal &&
+                        guestIntroRemainingMs(lastStackPayload.data) <= 0 &&
+                        !introEndRefreshInFlight
+                    ) {
+                        introEndRefreshInFlight = true;
+                        introEndsAtLocal = null;
+                        refreshPlay().finally(function () {
+                            introEndRefreshInFlight = false;
+                        });
                     }
                 }
             }, 250);
@@ -1843,7 +1857,6 @@
             setPanelHidden(els.playDock, false);
             setLobbyPref(false);
             stopLobbyPoll();
-            ensureGuestPlayBuyTopbar(root);
             syncBuyTicketsVisibility(root, lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null);
         }
 

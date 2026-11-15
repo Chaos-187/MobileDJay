@@ -94,6 +94,24 @@ body.mdj-guest-bingo-page {
     padding: 0;
 }
 
+.guest-bingo-toolbar-btn--buy {
+    flex: 1 1 8rem;
+    min-height: 2.5rem;
+    max-width: 100%;
+    border-color: rgba(255, 200, 120, 0.55) !important;
+    background: linear-gradient(145deg, #fde68a, #f59e0b) !important;
+    color: #1a1208 !important;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.guest-bingo-toolbar-btn--buy:disabled,
+.guest-bingo-toolbar-btn--buy.guest-bingo-toolbar-btn--buy-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.35);
+}
+
 .guest-bingo-back-lobby {
     display: inline-flex;
     align-items: center;

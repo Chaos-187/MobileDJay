@@ -4212,46 +4212,176 @@ body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-tab-panels {
 .guest-bingo-winners-modal {
     position: fixed;
     inset: 0;
-    z-index: 1300;
+    z-index: 10000;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
-    padding: 1rem;
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
-    background: rgba(0, 0, 0, 0.55);
+    padding: max(1.25rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right))
+        max(1.25rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
+    background: rgba(6, 10, 18, 0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 .guest-bingo-winners-modal[hidden] {
     display: none !important;
 }
 
+html.guest-bingo-winners-open {
+    overflow: hidden;
+}
+
 .guest-bingo-winners-modal__dialog {
-    width: min(100%, 24rem);
-    padding: 1.25rem;
-    border-radius: 16px 16px 12px 12px;
-    background: var(--gh-surface, #1a1f28);
-    border: 1px solid rgba(251, 191, 36, 0.35);
+    width: min(100%, 22.5rem);
+    max-height: min(88vh, 32rem);
+    overflow: auto;
+    padding: clamp(1.35rem, 4vw, 1.75rem) clamp(1.15rem, 4vw, 1.5rem);
+    border-radius: 20px;
+    text-align: center;
+    border: 2px solid rgba(251, 191, 36, 0.45);
+    background: linear-gradient(165deg, rgba(32, 28, 16, 0.98), rgba(14, 12, 10, 0.99));
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+        0 24px 64px rgba(0, 0, 0, 0.55),
+        0 0 48px rgba(251, 191, 36, 0.12);
+}
+
+.guest-bingo-winners-modal__icon {
+    margin: 0 auto 0.65rem;
+    width: 3.25rem;
+    height: 3.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1.35rem;
+    color: #1a1206;
+    background: linear-gradient(145deg, #fde68a, #f59e0b);
+    box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
 }
 
 .guest-bingo-winners-modal__title {
-    margin: 0 0 0.35rem;
-    font-size: 1.2rem;
-    font-weight: 800;
+    margin: 0 0 0.25rem;
+    font-size: clamp(1.45rem, 5vw, 1.75rem);
+    font-weight: 900;
     color: #fde68a;
+    letter-spacing: 0.02em;
+}
+
+.guest-bingo-winners-modal__lede {
+    margin: 0 0 1.1rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.72);
 }
 
 .guest-bingo-winners-modal__list {
     list-style: none;
-    margin: 0.75rem 0 1rem;
+    margin: 0 0 1.15rem;
     padding: 0;
+    display: grid;
+    gap: 0.55rem;
+    text-align: left;
 }
 
-.guest-bingo-winners-modal__list li {
-    display: flex;
-    justify-content: space-between;
-    padding: 0.4rem 0;
-    font-size: 0.88rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.guest-bingo-winners-modal__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    align-items: start;
+    gap: 0.65rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.guest-bingo-winners-modal__row.is-won {
+    background: rgba(251, 191, 36, 0.1);
+    border-color: rgba(251, 191, 36, 0.28);
+}
+
+.guest-bingo-winners-modal__row.is-empty .guest-bingo-winners-modal__name {
+    opacity: 0.45;
+    font-weight: 600;
+}
+
+.guest-bingo-winners-modal__tier {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.62);
+}
+
+.guest-bingo-winners-modal__row.is-won .guest-bingo-winners-modal__tier {
+    color: rgba(253, 230, 138, 0.9);
+}
+
+.guest-bingo-winners-modal__name {
+    font-size: clamp(0.95rem, 3.5vw, 1.05rem);
+    font-weight: 800;
+    line-height: 1.35;
+    color: #fff;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.guest-bingo-winners-modal__row.is-won .guest-bingo-winners-modal__name {
+    color: #fffbeb;
+}
+
+.guest-bingo-winners-modal__ok {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+    font-weight: 800;
+    border-radius: 12px;
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal {
+    background: rgba(12, 18, 28, 0.72);
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__dialog {
+    background: linear-gradient(165deg, #fffef8, #f8f4ea);
+    border-color: rgba(217, 119, 6, 0.35);
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.04) inset,
+        0 24px 48px rgba(0, 0, 0, 0.18);
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__title {
+    color: #b45309;
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__lede {
+    color: rgba(30, 41, 59, 0.72);
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__row {
+    background: rgba(15, 23, 42, 0.04);
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__row.is-won {
+    background: rgba(251, 191, 36, 0.22);
+    border-color: rgba(217, 119, 6, 0.25);
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__tier {
+    color: rgba(51, 65, 85, 0.75);
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__row.is-won .guest-bingo-winners-modal__tier {
+    color: #92400e;
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__name {
+    color: #0f172a;
+}
+
+body:not(.dark-mode) .guest-bingo-winners-modal__row.is-won .guest-bingo-winners-modal__name {
+    color: #1c1917;
 }
 
 .mdj-caller-prizes-row {

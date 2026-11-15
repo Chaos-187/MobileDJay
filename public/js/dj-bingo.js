@@ -731,10 +731,11 @@
         const paused = !!state.paused;
         const claimBreak = state.phase === 'claim_break';
         const claimPause = paused && state.pausedReason === 'claim';
+        const houseClaimGrace = !!(claimBreak && state.pendingGameEnd);
         const runPanel = document.querySelector('.mdj-caller-panel--run');
         if (runPanel) {
-            runPanel.classList.toggle('is-claim-paused', !!(active && claimPause));
-            runPanel.classList.toggle('is-claim-break', !!(active && claimBreak && !claimPause));
+            runPanel.classList.toggle('is-claim-paused', !!(active && claimPause && !houseClaimGrace));
+            runPanel.classList.toggle('is-claim-break', !!(active && claimBreak));
         }
         const ballSpot = document.querySelector('.mdj-caller-ball-spotlight');
         if (ballSpot) {
@@ -812,10 +813,13 @@
             els.pausedHint.hidden = !showHint;
             if (showHint && els.pausedHint) {
                 const reason = state.pausedReason || 'claim';
-                if (claimBreak && !paused) {
+                if (claimBreak && (!paused || state.pendingGameEnd)) {
                     const sec = state.claimBreakRemainingSec != null ? state.claimBreakRemainingSec : '…';
+                    const extra = state.pendingGameEnd
+                        ? ' — more full house claims OK'
+                        : '';
                     els.pausedHint.innerHTML =
-                        '<i class="fas fa-hourglass-half"></i> Claims open · ' + sec + 's';
+                        '<i class="fas fa-hourglass-half"></i> Claims open · ' + sec + 's' + extra;
                 } else if (claimPause) {
                     els.pausedHint.innerHTML =
                         '<i class="fas fa-hand-paper"></i> <strong>Claim check</strong> — press Resume (Start button)';

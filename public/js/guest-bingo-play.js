@@ -400,20 +400,18 @@
 
         function ensureWinnersModal() {
             if (winnersModalEls) return winnersModalEls;
-            const host =
-                typeof document !== 'undefined' && document.body
-                    ? document.body
-                    : root;
+            const host = typeof document !== 'undefined' && document.body ? document.body : root;
             const wrap = document.createElement('div');
             wrap.className = 'guest-bingo-winners-modal';
             wrap.setAttribute('data-bingo-winners-backdrop', '');
             wrap.hidden = true;
             wrap.innerHTML =
-                '<div class="guest-bingo-winners-modal__dialog" role="dialog" aria-modal="true">' +
-                '<h2 class="guest-bingo-winners-modal__title">Game over</h2>' +
-                '<p class="text-muted small mb-2">Winners this game</p>' +
+                '<div class="guest-bingo-winners-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="guestBingoWinnersTitle">' +
+                '<p class="guest-bingo-winners-modal__icon" aria-hidden="true"><i class="fas fa-trophy"></i></p>' +
+                '<h2 class="guest-bingo-winners-modal__title" id="guestBingoWinnersTitle">Game over</h2>' +
+                '<p class="guest-bingo-winners-modal__lede">Winners this game</p>' +
                 '<ul class="guest-bingo-winners-modal__list" data-bingo-winners-list></ul>' +
-                '<button type="button" class="gh-btn gh-btn--accent w-100" data-bingo-winners-close>OK</button>' +
+                '<button type="button" class="guest-bingo-winners-modal__ok gh-btn gh-btn--accent" data-bingo-winners-close>OK</button>' +
                 '</div>';
             host.appendChild(wrap);
             winnersModalEls = {
@@ -445,12 +443,17 @@
                         (r.id === 'two-lines' && prizes['two-lines']) ||
                         (r.id === 'house' && prizes.house) ||
                         r.fallback;
-                    const name = pw[r.id] && String(pw[r.id]).trim() ? String(pw[r.id]).trim() : '—';
+                    const name = pw[r.id] && String(pw[r.id]).trim() ? String(pw[r.id]).trim() : '';
+                    const hasWinner = !!name;
                     return (
-                        '<li><span>' +
+                        '<li class="guest-bingo-winners-modal__row' +
+                        (hasWinner ? ' is-won' : ' is-empty') +
+                        '">' +
+                        '<span class="guest-bingo-winners-modal__tier">' +
                         escapeHtml(String(tierLabel)) +
-                        '</span><span>' +
-                        escapeHtml(name) +
+                        '</span>' +
+                        '<span class="guest-bingo-winners-modal__name">' +
+                        escapeHtml(hasWinner ? name : 'No winner') +
                         '</span></li>'
                     );
                 })
@@ -462,14 +465,15 @@
                 if (winnersModalEls && winnersModalShown) {
                     winnersModalEls.backdrop.hidden = true;
                     winnersModalShown = false;
+                    document.documentElement.classList.remove('guest-bingo-winners-open');
                 }
                 return;
             }
-            if (winnersModalShown) return;
             const modal = ensureWinnersModal();
             modal.list.innerHTML = winnersListHtml(data);
             modal.backdrop.hidden = false;
-            winnersModalShown = true;
+            document.documentElement.classList.add('guest-bingo-winners-open');
+            if (!winnersModalShown) winnersModalShown = true;
         }
 
         async function dismissWinnersModal() {
@@ -490,6 +494,7 @@
                 winnersModalEls.backdrop.hidden = true;
                 winnersModalShown = false;
             }
+            document.documentElement.classList.remove('guest-bingo-winners-open');
         }
 
         if (els.buyTickets) {
@@ -682,7 +687,10 @@
             const tierVerified = selfVerifiedTiers.has(pf);
             const claimsOpen =
                 data.active &&
-                (!data.paused || data.pausedReason === 'claim_window' || data.phase === 'claim_break');
+                (!data.paused ||
+                    data.pausedReason === 'claim_window' ||
+                    data.phase === 'claim_break' ||
+                    data.pendingGameEnd);
             const baseDisabled = !claimsOpen || claimInFlight || tierVerified;
             els.callBtn.disabled = baseDisabled;
             qq('[data-bingo-claim]').forEach(function (btn) {

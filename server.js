@@ -57,11 +57,12 @@ const {
     progressTowardClaim,
     prizeLabelForPlayingFor,
     normalizePrizes,
-    normalizePlayingFor
+    normalizePlayingFor,
+    normalizeBingoTheme,
+    listBingoThemes
 } = require('./lib/bingo');
 const bingoSession = require('./lib/bingo-session');
 const { clampBingoMaxVirtualPerGuest } = require('./lib/bingo-limits');
-const { normalizeBingoTheme, listBingoThemes } = require('./lib/bingo-themes');
 const virtualRaceSession = require('./lib/virtual-race-session');
 const hiloSession = require('./lib/hilo-session');
 const portalRouter = require('./portal/router');

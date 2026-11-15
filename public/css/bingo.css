@@ -328,13 +328,12 @@ body.mdj-guest-bingo-page {
 .guest-bingo-prize-winner {
     font-size: 0.58rem;
     font-weight: 700;
-    line-height: 1.15;
+    line-height: 1.2;
     text-align: center;
     color: rgba(255, 230, 160, 0.95);
-    max-width: 4.5rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    max-width: 5.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .guest-bingo-prize-winner--empty {
@@ -3610,13 +3609,24 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
 
 .mdj-caller-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.95fr) minmax(0, 1.35fr);
     grid-template-rows: minmax(0, 1fr);
     gap: clamp(0.5rem, 1.2vw, 0.85rem);
     flex: 1 1 auto;
     min-height: 0;
     width: 100%;
     align-items: stretch;
+}
+
+@media (min-width: 1101px) {
+    body.mdj-bingo-caller-page .mdj-caller-panel--board {
+        max-height: calc(100dvh - 7.25rem);
+    }
+
+    body.mdj-bingo-caller-page .mdj-bingo-grid-scroll--caller {
+        min-height: 0;
+        flex: 1 1 auto;
+    }
 }
 
 @media (max-width: 1100px) {
@@ -3809,9 +3819,9 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
     color: rgba(255, 255, 255, 0.9);
     text-align: center;
     max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .mdj-caller-winner-chip.is-won .mdj-caller-winner-chip__name {
@@ -4242,4 +4252,75 @@ body:not(.mdj-dashboard-games-focus) .mdj-games-tab .mdj-bingo-tab-panels {
     padding: 0.4rem 0;
     font-size: 0.88rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mdj-caller-prizes-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.mdj-caller-prize-summary {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    opacity: 0.75;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.mdj-caller-prizes-btn {
+    flex-shrink: 0;
+    min-height: 2.25rem;
+}
+
+.mdj-bingo-prizes-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1180;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+.mdj-bingo-prizes-modal[hidden] {
+    display: none !important;
+}
+
+.mdj-bingo-prizes-modal__dialog {
+    width: min(100%, 24rem);
+    padding: 1.35rem 1.25rem;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 180, 80, 0.35);
+    background: linear-gradient(165deg, rgba(22, 20, 16, 0.98), rgba(10, 10, 12, 0.98));
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.mdj-bingo-prizes-modal__title {
+    margin: 0 0 0.35rem;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #fde68a;
+}
+
+.mdj-bingo-prizes-modal__lede {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    opacity: 0.75;
+}
+
+.mdj-bingo-prizes-modal__actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.mdj-bingo-prizes-modal__actions .mdj-caller-cta {
+    min-height: 2.75rem;
+    font-size: 0.95rem;
+    width: auto;
+    padding: 0 1.1rem;
 }

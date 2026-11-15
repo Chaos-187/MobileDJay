@@ -11,7 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=34" rel="stylesheet">
+    <link href="/css/bingo.css?v=36" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -60,15 +60,12 @@
                     <p class="mdj-bingo-field-label mb-1">Winners</p>
                     <div id="bingoPrizeWinners" class="mdj-caller-winners" aria-live="polite"></div>
                 </div>
-                <div class="mdj-caller-prize-stack mdj-bingo-prize-fields">
-                    <label class="mdj-bingo-field-label" for="bingoPrizeLine">1 line prize</label>
-                    <input type="text" class="form-control mdj-bingo-input mb-2" id="bingoPrizeLine" maxlength="80" placeholder="e.g. £10 bar tab" autocomplete="off">
-                    <label class="mdj-bingo-field-label" for="bingoPrizeTwoLines">2 lines prize</label>
-                    <input type="text" class="form-control mdj-bingo-input mb-2" id="bingoPrizeTwoLines" maxlength="80" placeholder="e.g. bottle of wine" autocomplete="off">
-                    <label class="mdj-bingo-field-label" for="bingoPrizeHouse">Full house prize</label>
-                    <input type="text" class="form-control mdj-bingo-input mb-0" id="bingoPrizeHouse" maxlength="80" placeholder="e.g. £50 jackpot" autocomplete="off">
+                <div class="mdj-caller-prizes-row mb-2">
+                    <p id="bingoPrizeSummary" class="mdj-caller-prize-summary mb-0" aria-live="polite"></p>
+                    <button type="button" class="btn btn-sm btn-outline-warning mdj-caller-prizes-btn" id="bingoPrizesModalOpen">
+                        <i class="fas fa-gift me-1" aria-hidden="true"></i>Prizes
+                    </button>
                 </div>
-                <p class="small text-muted mb-2">Shown on the display and guest phones. Leave blank for default labels.</p>
 
                 <div class="mdj-caller-settings mdj-bingo-surface p-2 mb-3">
                     <p class="mdj-bingo-field-label mb-2">Caller for this game</p>
@@ -162,6 +159,26 @@
         <div id="bingoCalledStrip" class="mdj-bingo-called-strip" hidden aria-hidden="true"></div>
     </main>
 
+    <div class="mdj-bingo-prizes-modal" id="bingoPrizesModal" hidden role="dialog" aria-modal="true" aria-labelledby="bingoPrizesModalTitle">
+        <div class="mdj-bingo-prizes-modal__dialog">
+            <h2 class="mdj-bingo-prizes-modal__title" id="bingoPrizesModalTitle">Prize labels</h2>
+            <p class="mdj-bingo-prizes-modal__lede">Shown on the display, caller, and guest phones.</p>
+            <div class="mdj-bingo-prize-fields">
+                <label class="mdj-bingo-field-label" for="bingoPrizeLine">1 line prize</label>
+                <input type="text" class="form-control mdj-bingo-input mb-2" id="bingoPrizeLine" maxlength="80" placeholder="e.g. £10 bar tab" autocomplete="off">
+                <label class="mdj-bingo-field-label" for="bingoPrizeTwoLines">2 lines prize</label>
+                <input type="text" class="form-control mdj-bingo-input mb-2" id="bingoPrizeTwoLines" maxlength="80" placeholder="e.g. bottle of wine" autocomplete="off">
+                <label class="mdj-bingo-field-label" for="bingoPrizeHouse">Full house prize</label>
+                <input type="text" class="form-control mdj-bingo-input mb-0" id="bingoPrizeHouse" maxlength="80" placeholder="e.g. £50 jackpot" autocomplete="off">
+            </div>
+            <p class="small text-muted mt-2 mb-3">Leave blank for default labels (1 Line, 2 Lines, House).</p>
+            <div class="mdj-bingo-prizes-modal__actions">
+                <button type="button" class="btn btn-outline-secondary" id="bingoPrizesModalClose">Close</button>
+                <button type="button" class="btn mdj-caller-cta" id="bingoPrizesModalSave">Save to game</button>
+            </div>
+        </div>
+    </div>
+
     <div class="mdj-bingo-winners-modal" id="bingoWinnersModal" hidden role="dialog" aria-modal="true" aria-labelledby="bingoWinnersModalTitle">
         <div class="mdj-bingo-winners-modal__dialog">
             <h2 class="mdj-bingo-winners-modal__title" id="bingoWinnersModalTitle">Game over</h2>
@@ -178,6 +195,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=27"></script>
+    <script src="/js/dj-bingo.js?v=28"></script>
 </body>
 </html>

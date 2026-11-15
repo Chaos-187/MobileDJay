@@ -626,6 +626,23 @@
         if (els.prizeLine && prizes.line != null) els.prizeLine.value = prizes.line || '';
         if (els.prizeTwoLines && prizes['two-lines'] != null) els.prizeTwoLines.value = prizes['two-lines'] || '';
         if (els.prizeHouse && prizes.house != null) els.prizeHouse.value = prizes.house || '';
+        renderPrizeSummary(prizes);
+    }
+
+    function renderPrizeSummary(prizes) {
+        const el = document.getElementById('bingoPrizeSummary');
+        if (!el) return;
+        const p = prizes || {
+            line: els.prizeLine?.value,
+            'two-lines': els.prizeTwoLines?.value,
+            house: els.prizeHouse?.value
+        };
+        const bits = [
+            p.line ? 'Line · ' + p.line : '',
+            p['two-lines'] ? '2 · ' + p['two-lines'] : '',
+            p.house ? 'House · ' + p.house : ''
+        ].filter(Boolean);
+        el.textContent = bits.length ? bits.join(' · ') : 'Default prize labels';
     }
 
     function getVerifyClaimType() {
@@ -844,11 +861,11 @@
     function syncWinnersModal(state) {
         if (!isCallerPage || !els.winnersModal) return;
         const show = !!(state && state.showWinnersPopup);
-        if (show && !winnersModalOpen) {
+        if (show) {
             if (els.winnersModalList) els.winnersModalList.innerHTML = winnersModalHtml(state);
             els.winnersModal.hidden = false;
             winnersModalOpen = true;
-        } else if (!show && winnersModalOpen) {
+        } else if (winnersModalOpen) {
             els.winnersModal.hidden = true;
             winnersModalOpen = false;
         }
@@ -1127,8 +1144,14 @@
         prizeSaveTimer = setTimeout(() => setPlayingFor(getSelectedPlayingFor()), 450);
     }
     [els.prizeLine, els.prizeTwoLines, els.prizeHouse].forEach((input) => {
-        input?.addEventListener('input', schedulePrizeSave);
-        input?.addEventListener('change', schedulePrizeSave);
+        input?.addEventListener('input', function () {
+            renderPrizeSummary();
+            schedulePrizeSave();
+        });
+        input?.addEventListener('change', function () {
+            renderPrizeSummary();
+            schedulePrizeSave();
+        });
     });
 
     document.getElementById('bingoFlashLineBtn')?.addEventListener('click', () => flashClaim('line'));
@@ -1619,12 +1642,38 @@
         pollTimer = null;
     }
 
+    function openPrizesModal() {
+        const modal = document.getElementById('bingoPrizesModal');
+        if (modal) modal.hidden = false;
+    }
+
+    function closePrizesModal() {
+        const modal = document.getElementById('bingoPrizesModal');
+        if (modal) modal.hidden = true;
+    }
+
     if (isCallerPage) {
         bindAdminGridFit();
         startPoll();
         loadGames();
+        renderPrizeSummary();
         requestAnimationFrame(() => requestAnimationFrame(fitAdminGridCellFont));
         els.winnersModalDismiss?.addEventListener('click', dismissWinnersModal);
+        document.getElementById('bingoPrizesModalOpen')?.addEventListener('click', openPrizesModal);
+        document.getElementById('bingoPrizesModalClose')?.addEventListener('click', closePrizesModal);
+        document.getElementById('bingoPrizesModal')?.addEventListener('click', function (e) {
+            if (e.target === e.currentTarget) closePrizesModal();
+        });
+        document.getElementById('bingoPrizesModalSave')?.addEventListener('click', async function () {
+            const data = await apiPut('/games/bingo/config', {
+                playingFor: getSelectedPlayingFor(),
+                ...getPrizePayload()
+            });
+            if (data?.success) {
+                renderStatus(data.state);
+                closePrizesModal();
+            } else if (data?.error) alert(data.error);
+        });
     } else {
         document.getElementById('games-tab')?.addEventListener('shown.bs.tab', () => {
             fetchState();

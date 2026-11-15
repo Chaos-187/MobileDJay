@@ -748,8 +748,27 @@ function normalizeBingoAdvertisedStart(raw) {
     return d.toISOString();
 }
 
-function guestBingoCardProgress(card, slug, gameId) {
+function mergeBingoPrizeWinnersFromDb(gameId, prizeWinners) {
+    const base = { line: null, 'two-lines': null, house: null, ...(prizeWinners || {}) };
+    if (!gameId) return base;
+    for (const tier of ['line', 'two-lines', 'house']) {
+        let cur = base[tier];
+        for (const name of bingoClaimDb.listVerifiedWinnerNames(gameId, tier)) {
+            cur = bingoSession.appendPrizeWinner(cur, name);
+        }
+        base[tier] = cur;
+    }
+    return base;
+}
+
+function bingoPublicState(slug, gameId) {
     const state = bingoSession.publicBingoState(slug, gameId);
+    state.prizeWinners = mergeBingoPrizeWinnersFromDb(gameId, state.prizeWinners);
+    return state;
+}
+
+function guestBingoCardProgress(card, slug, gameId) {
+    const state = bingoPublicState(slug, gameId);
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
     return progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
 }
@@ -2188,7 +2207,7 @@ app.get('/api/display/:eventSlug/games/bingo/state', (req, res) => {
     const { slug, gameId } = ctx;
     const caller = makeBingoCaller(slug, gameId);
     bingoSession.ensureIntroAdvanced(slug, gameId, caller);
-    const payload = bingoSession.publicBingoState(slug, gameId);
+    const payload = bingoPublicState(slug, gameId);
     if (ctx.event) {
         const game = gameId ? bingoGameDb.getById(gameId) : null;
         if (game) {
@@ -2258,7 +2277,7 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
     if (req.body.autoCall && !bingoSession.isInIntro(started)) {
         bingoSession.scheduleAutoCall(slug, gid, makeBingoCaller(slug, gid));
     }
-    res.json({ success: true, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
+    res.json({ success: true, state: bingoPublicState(slug, gid), gameId: gid });
 });
 
 app.post('/api/display/:eventSlug/games/bingo/stop', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
@@ -2271,7 +2290,7 @@ app.post('/api/display/:eventSlug/games/bingo/stop', djWebAuth.requireDjApiAuth,
     bingoSession.stopBingo(slug, gid);
     const game = gid ? bingoGameDb.getById(gid) : null;
     if (game) bingoGameDb.setStatus(game.id, 'ended');
-    res.json({ success: true, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
+    res.json({ success: true, state: bingoPublicState(slug, gid), gameId: gid });
 });
 
 app.post('/api/display/:eventSlug/games/bingo/call', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
@@ -2296,7 +2315,7 @@ app.post('/api/display/:eventSlug/games/bingo/reset-calls', djWebAuth.requireDjA
     let gid = gameId;
     if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
     bingoSession.resetCalls(slug, gid);
-    res.json({ success: true, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
+    res.json({ success: true, state: bingoPublicState(slug, gid), gameId: gid });
 });
 
 app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
@@ -2323,7 +2342,7 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
         bingoSession.scheduleAutoCall(slug, gid, makeBingoCaller(slug, gid));
     }
     if (gid) persistGameCallerFromBody(gid, req.body);
-    res.json({ success: true, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
+    res.json({ success: true, state: bingoPublicState(slug, gid), gameId: gid });
 });
 
 app.post('/api/display/:eventSlug/games/bingo/skip-intro', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
@@ -2346,7 +2365,7 @@ app.post('/api/display/:eventSlug/games/bingo/dismiss-winners', djWebAuth.requir
     let gid = gameId;
     if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
     bingoSession.dismissWinnersPopup(slug, gid);
-    res.json({ success: true, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
+    res.json({ success: true, state: bingoPublicState(slug, gid), gameId: gid });
 });
 
 app.post('/api/event/:eventSlug/bingo/games/:gameId/dismiss-winners', getEventFromSlugJson, (req, res) => {
@@ -2359,7 +2378,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/dismiss-winners', getEventFr
         return res.status(404).json({ error: 'Game not found' });
     }
   bingoSession.dismissWinnersPopup(req.event.slug, gameId);
-  res.json({ success: true, state: bingoSession.publicBingoState(req.event.slug, gameId) });
+  res.json({ success: true, state: bingoPublicState(req.event.slug, gameId) });
 });
 
 app.post('/api/display/:eventSlug/games/bingo/resume', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccessBySlugApi('eventSlug'), (req, res) => {
@@ -2406,7 +2425,7 @@ app.post('/api/display/:eventSlug/games/bingo/claim-flash', djWebAuth.requireDjA
         customerName: winnerName,
         pause: false
     });
-    res.json({ success: true, flash, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
+    res.json({ success: true, flash, state: bingoPublicState(slug, gid), gameId: gid });
 });
 
 // ==================== Display games — Virtual racing (horses / dogs) ====================
@@ -2559,7 +2578,7 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
         claimLabel: claimLabel(claimType),
         winnerName: valid ? winnerName : null,
         flash,
-        state: bingoSession.publicBingoState(slug, gid),
+        state: bingoPublicState(slug, gid),
         gameId: gid
     });
 });
@@ -2741,7 +2760,7 @@ app.post('/api/events/:id/bingo/games/:gameId/restart', djWebAuth.requireDjApiAu
   res.json({
         success: true,
         game: bingoGameDb.getById(gameId),
-        state: bingoSession.publicBingoState(slug, gameId),
+        state: bingoPublicState(slug, gameId),
         message: openJoin
             ? 'Game restarted — guests can join again; start the caller when ready.'
             : 'Game restarted — open join when you are ready to run it again.'
@@ -2979,7 +2998,7 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     }
     const cardLimit = bingoMaxVirtualCardsForGame(req.event, game);
     const guestCards = guestBingoCardsSummary(access.cards, slug, gameId);
-    const state = bingoSession.publicBingoState(slug, gameId);
+    const state = bingoPublicState(slug, gameId);
     const called = new Set(state.calledBalls || []);
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
     const progress = progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
@@ -3189,7 +3208,7 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
         pause: true
     });
     const outcome = bingoCompletePrizeWin(slug, gameId, playingFor);
-    const nextState = bingoSession.publicBingoState(slug, gameId);
+    const nextState = bingoPublicState(slug, gameId);
 
     const nextLabel = nextState.playingForLabel || 'the next prize';
     res.json({

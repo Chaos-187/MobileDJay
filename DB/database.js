@@ -2036,6 +2036,21 @@ const bingoClaimDb = {
             )
             .get(gameId, name, claimType);
         return !!row;
+    },
+
+    /** Distinct guest names with a verified (valid on card) claim for this prize tier. */
+    listVerifiedWinnerNames(gameId, claimType) {
+        if (!gameId || !claimType) return [];
+        const rows = db
+            .prepare(
+                `SELECT DISTINCT customer_name AS customerName FROM bingo_player_claims
+                 WHERE game_id = ? AND claim_type = ? AND valid_on_card = 1
+                 ORDER BY id ASC`
+            )
+            .all(gameId, String(claimType));
+        return rows
+            .map((r) => (r.customerName ? normalizeGuestName(r.customerName) : ''))
+            .filter(Boolean);
     }
 };
 

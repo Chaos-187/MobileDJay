@@ -217,6 +217,21 @@
         return false;
     }
 
+    function resolveGuestBingoRoot(root) {
+        const qRoot = root && typeof root.querySelector === 'function' ? root : null;
+        if (qRoot) {
+            const inRoot = qRoot.querySelector('[data-bingo-root]') || qRoot.querySelector('.gh-bingo');
+            if (inRoot) return inRoot;
+        }
+        const panel = typeof document !== 'undefined' ? document.getElementById('ghPanelBingo') : null;
+        if (panel) {
+            return panel.querySelector('[data-bingo-root]') || panel.querySelector('.gh-bingo');
+        }
+        return typeof document !== 'undefined'
+            ? document.querySelector('[data-bingo-root]') || document.querySelector('.gh-bingo')
+            : null;
+    }
+
     function resolveGuestBingoPlayRoot(root) {
         if (root && typeof root.querySelector === 'function') {
             const inRoot = root.querySelector('[data-bingo-play]');
@@ -228,6 +243,34 @@
             if (inPanel) return inPanel;
         }
         return typeof document !== 'undefined' ? document.querySelector('[data-bingo-play]') : null;
+    }
+
+    function ensureGuestBuyBanner(bingoRoot) {
+        if (!bingoRoot) bingoRoot = resolveGuestBingoRoot(null);
+        if (!bingoRoot) {
+            const playOnly = resolveGuestBingoPlayRoot(null);
+            bingoRoot = playOnly && playOnly.parentElement ? playOnly.parentElement : null;
+        }
+        if (!bingoRoot) return null;
+        let banner = bingoRoot.querySelector('[data-bingo-buy-banner]');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.className = 'guest-bingo-buy-banner';
+            banner.setAttribute('data-bingo-buy-banner', '');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('data-bingo-buy-tickets', '');
+            btn.textContent = 'Buy tickets';
+            const isHub = !!(bingoRoot.closest && bingoRoot.closest('#ghPanelBingo'));
+            btn.className = isHub
+                ? 'guest-bingo-play-buy-row__btn gh-btn gh-btn--accent'
+                : 'guest-bingo-play-buy-row__btn btn btn-warning btn-lg w-100';
+            banner.appendChild(btn);
+            const play = bingoRoot.querySelector('[data-bingo-play]');
+            if (play) bingoRoot.insertBefore(banner, play);
+            else bingoRoot.appendChild(banner);
+        }
+        return banner;
     }
 
     function ensureGuestPlayBuyRow(play) {
@@ -257,9 +300,21 @@
     }
 
     function syncBuyTicketsVisibility(root, data) {
+        const bingoRoot = resolveGuestBingoRoot(root);
         const play = resolveGuestBingoPlayRoot(root);
-        if (!play) return;
-        ensureGuestPlayBuyRow(play);
+        if (bingoRoot) ensureGuestBuyBanner(bingoRoot);
+        if (play) ensureGuestPlayBuyRow(play);
+        const playOpen = !!(play && !play.hidden);
+        const banner = bingoRoot ? bingoRoot.querySelector('[data-bingo-buy-banner]') : null;
+        if (banner) {
+            if (playOpen) {
+                banner.hidden = false;
+                banner.removeAttribute('hidden');
+            } else {
+                banner.hidden = true;
+                banner.setAttribute('hidden', '');
+            }
+        }
         const rem = data ? guestTicketRemaining(data) : 1;
         const canBuy = !!(data && data.canGrabMore && rem > 0 && !data.playInProgress);
         const have =
@@ -279,7 +334,12 @@
             : data && data.playInProgress
               ? 'Buy tickets — game started'
               : 'Buy tickets';
-        play.querySelectorAll('[data-bingo-buy-tickets]').forEach(function (buyEl) {
+        const buyScope = bingoRoot || play || root;
+        const qAll =
+            buyScope && typeof buyScope.querySelectorAll === 'function'
+                ? buyScope.querySelectorAll.bind(buyScope)
+                : document.querySelectorAll.bind(document);
+        qAll('[data-bingo-buy-tickets]').forEach(function (buyEl) {
             buyEl.hidden = false;
             buyEl.removeAttribute('hidden');
             buyEl.style.display = '';
@@ -1847,6 +1907,8 @@
             setPanelHidden(els.play, true);
             setPanelHidden(els.playDock, true);
             setPanelHidden(els.countdownBar, true);
+            const banner = root.querySelector('[data-bingo-buy-banner]');
+            setPanelHidden(banner, true);
             startLobbyPoll();
         }
 
@@ -1857,6 +1919,8 @@
             setPanelHidden(els.playDock, false);
             setLobbyPref(false);
             stopLobbyPoll();
+            const bingoRoot = resolveGuestBingoRoot(root);
+            if (bingoRoot) ensureGuestBuyBanner(bingoRoot);
             syncBuyTicketsVisibility(root, lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null);
         }
 
@@ -2371,6 +2435,7 @@
             stopPoll,
             refreshPlay,
             ensurePlayBuyUi,
+            openBuyTickets: openBuyFromPlayUi,
             getActiveGameId: function () {
                 return activeGameId;
             },
@@ -2388,6 +2453,7 @@
         create: createGuestBingoPlay,
         escapeHtml,
         ensureGuestPlayBuyRow,
+        ensureGuestBuyBanner,
         syncBuyTicketsVisibility
     };
 })(typeof window !== 'undefined' ? window : global);

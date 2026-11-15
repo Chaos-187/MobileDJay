@@ -127,6 +127,7 @@
 
         cacheElements();
         bindShellEvents(f);
+        patchBingoBuyBanner();
     }
 
     function buildNavItems(f) {
@@ -224,10 +225,10 @@
             '<p class="gh-bingo-lede">Pick a game and get virtual tickets on this phone.</p>' +
             '<div class="gh-bingo-panel" data-bingo-join>' +
             '<div data-bingo-games-list class="gh-bingo-games"></div></div></div>' +
+            '<div class="guest-bingo-buy-banner" data-bingo-buy-banner hidden>' +
+                '<button type="button" class="guest-bingo-play-buy-row__btn gh-btn gh-btn--accent" data-bingo-buy-tickets>Buy tickets</button>' +
+            '</div>' +
             '<div class="gh-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>' +
-                '<div class="guest-bingo-play-buy-row" data-bingo-play-buy-row>' +
-                    '<button type="button" class="guest-bingo-play-buy-row__btn gh-btn gh-btn--accent" data-bingo-buy-tickets>Buy tickets</button>' +
-                '</div>' +
                 '<div class="guest-bingo-play-toolbar">' +
                     '<button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn gh-bingo-back-lobby" data-bingo-back-lobby>' +
                         '<i class="fas fa-arrow-left" aria-hidden="true"></i><span>Back to lobby</span></button>' +
@@ -610,11 +611,39 @@
         if (tab === 'chat' && cfg.features && cfg.features.messages) {
             loadChatTimeline(true);
         }
-        if (tab === 'bingo' && global.MdjGuestHubBingo) {
-            global.MdjGuestHubBingo.onTabShown();
+        if (tab === 'bingo') {
+            patchBingoBuyBanner();
+            if (global.MdjGuestHubBingo) {
+                global.MdjGuestHubBingo.onTabShown();
+            }
         } else if (global.MdjGuestHubBingo) {
             global.MdjGuestHubBingo.onTabHidden();
         }
+    }
+
+    function patchBingoBuyBanner() {
+        var panel = document.getElementById('ghPanelBingo');
+        if (!panel) return;
+        var bingoRoot = panel.querySelector('[data-bingo-root]') || panel.querySelector('.gh-bingo');
+        if (!bingoRoot) return;
+        if (global.MdjGuestBingoPlay && global.MdjGuestBingoPlay.ensureGuestBuyBanner) {
+            global.MdjGuestBingoPlay.ensureGuestBuyBanner(bingoRoot);
+            return;
+        }
+        if (bingoRoot.querySelector('[data-bingo-buy-banner]')) return;
+        var banner = document.createElement('div');
+        banner.className = 'guest-bingo-buy-banner';
+        banner.setAttribute('data-bingo-buy-banner', '');
+        banner.hidden = true;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'guest-bingo-play-buy-row__btn gh-btn gh-btn--accent';
+        btn.setAttribute('data-bingo-buy-tickets', '');
+        btn.textContent = 'Buy tickets';
+        banner.appendChild(btn);
+        var play = bingoRoot.querySelector('[data-bingo-play]');
+        if (play) bingoRoot.insertBefore(banner, play);
+        else bingoRoot.appendChild(banner);
     }
 
     /* ── Now playing ── */

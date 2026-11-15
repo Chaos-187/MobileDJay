@@ -19,6 +19,18 @@ body.mdj-guest-bingo-page {
     font-size: 0.9rem;
 }
 
+.guest-bingo-buy-banner {
+    display: block;
+    margin: 0 0 0.6rem;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.guest-bingo-buy-banner[hidden] {
+    display: none !important;
+}
+
 .guest-bingo-play-buy-row {
     display: block;
     margin: 0 0 0.55rem;

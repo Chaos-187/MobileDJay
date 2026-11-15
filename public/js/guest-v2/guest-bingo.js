@@ -75,10 +75,15 @@
     }
   }
 
+  function openBuyTickets() {
+    if (play && play.openBuyTickets) play.openBuyTickets();
+  }
+
   global.MdjGuestHubBingo = {
     init: initBingoTab,
     onTabShown: onTabShown,
     onTabHidden: onTabHidden,
-    rememberGame: rememberGame
+    rememberGame: rememberGame,
+    openBuyTickets: openBuyTickets
   };
 })(window);

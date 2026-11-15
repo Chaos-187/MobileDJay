@@ -25,9 +25,6 @@
         </div>
 
         <div id="guestBingoPlay" class="guest-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>
-            <div class="guest-bingo-play-buy-row" data-bingo-play-buy-row>
-                <button type="button" class="guest-bingo-play-buy-row__btn btn btn-warning btn-lg w-100" data-bingo-buy-tickets>Buy tickets</button>
-            </div>
             <div class="guest-bingo-play-toolbar">
                 <button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn" data-bingo-back-lobby>
                     <i class="fas fa-arrow-left" aria-hidden="true"></i>
@@ -94,7 +91,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/guest-bingo-play.js?v=63"></script>
+    <script src="/js/guest-bingo-play.js?v=65"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

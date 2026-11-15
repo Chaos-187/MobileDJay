@@ -1071,6 +1071,19 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     margin: 0 0 0.65rem;
 }
 
+.gh-bingo .guest-bingo-buy-banner {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin-bottom: 0.55rem;
+    padding-top: 0.1rem;
+    background: linear-gradient(
+        180deg,
+        color-mix(in srgb, var(--gh-bg, #0a0a0f) 98%, transparent) 75%,
+        transparent
+    );
+}
+
 .gh-bingo .guest-bingo-play-buy-row {
     position: sticky;
     top: 0;

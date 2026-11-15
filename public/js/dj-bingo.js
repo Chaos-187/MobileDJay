@@ -76,11 +76,13 @@
         interval: document.getElementById('bingoWizardInterval'),
         autoCall: document.getElementById('bingoWizardAutoCall'),
         voiceCall: document.getElementById('bingoWizardVoiceCall'),
+        prizeFour: document.getElementById('bingoWizardPrizeFour'),
         prizeLine: document.getElementById('bingoWizardPrizeLine'),
         prizeTwo: document.getElementById('bingoWizardPrizeTwo'),
         prizeHouse: document.getElementById('bingoWizardPrizeHouse'),
         claimBreak: document.getElementById('bingoWizardClaimBreak'),
         theme: document.getElementById('bingoWizardTheme'),
+        themePicker: document.getElementById('bingoWizardThemePicker'),
         review: document.getElementById('bingoWizardReview'),
         error: document.getElementById('bingoWizardError'),
         backBtn: document.getElementById('bingoWizardBackBtn'),
@@ -99,31 +101,159 @@
         interval: document.getElementById('bingoEditInterval'),
         autoCall: document.getElementById('bingoEditAutoCall'),
         voiceCall: document.getElementById('bingoEditVoiceCall'),
+        prizeFour: document.getElementById('bingoEditPrizeFour'),
         prizeLine: document.getElementById('bingoEditPrizeLine'),
         prizeTwo: document.getElementById('bingoEditPrizeTwo'),
         prizeHouse: document.getElementById('bingoEditPrizeHouse'),
         claimBreak: document.getElementById('bingoEditClaimBreak'),
         theme: document.getElementById('bingoEditTheme'),
+        themePicker: document.getElementById('bingoEditThemePicker'),
         error: document.getElementById('bingoEditGameError'),
         saveBtn: document.getElementById('bingoEditGameSaveBtn')
     };
     let adminCells = new Map();
     let adminGridSize = 0;
     let selectedPlayingFor = 'line';
+    let activeCardFormat = 'uk-90';
+
+    function cardFormatLabel(fmt) {
+        return fmt === 'us-75' ? 'US 75-ball' : 'UK 90-ball';
+    }
+
+    function getWizardCardFormat() {
+        const checked = document.querySelector('input[name="bingoWizardCardFormat"]:checked');
+        return checked?.value === 'us-75' ? 'us-75' : 'uk-90';
+    }
+
+    function getEditCardFormat() {
+        const checked = document.querySelector('input[name="bingoEditCardFormat"]:checked');
+        return checked?.value === 'us-75' ? 'us-75' : 'uk-90';
+    }
+
+    function syncWizardCardFormatUi() {
+        const fmt = getWizardCardFormat();
+        const isUs = fmt === 'us-75';
+        if (wizardEls.ballCount) {
+            if (isUs) wizardEls.ballCount.value = '75';
+            wizardEls.ballCount.readOnly = isUs;
+            wizardEls.ballCount.min = isUs ? '75' : '9';
+            wizardEls.ballCount.max = isUs ? '75' : '90';
+        }
+        const hint = document.getElementById('bingoWizardCardFormatHint');
+        if (hint) {
+            hint.textContent = isUs
+                ? '5×5 BINGO card · four corners · line · two lines · house · balls 1–75'
+                : '3×9 ticket · line · two lines · full house · balls 1–90';
+        }
+        const fourWrap = document.getElementById('bingoWizardPrizeFourWrap');
+        if (fourWrap) fourWrap.hidden = !isUs;
+    }
+
+    function syncEditCardFormatUi() {
+        const fmt = getEditCardFormat();
+        const isUs = fmt === 'us-75';
+        if (editEls.ballCount && !editEls.ballCount.disabled) {
+            if (isUs) editEls.ballCount.value = '75';
+            editEls.ballCount.readOnly = isUs;
+            editEls.ballCount.min = isUs ? '75' : '9';
+            editEls.ballCount.max = isUs ? '75' : '90';
+        }
+        const fourWrap = document.getElementById('bingoEditPrizeFourWrap');
+        if (fourWrap) fourWrap.hidden = !isUs;
+    }
+
+    function syncCallerPlayingForSegments(cardFormat) {
+        activeCardFormat = cardFormat === 'us-75' ? 'us-75' : 'uk-90';
+        const isUs = activeCardFormat === 'us-75';
+        const fourPlay = document.querySelector('.mdj-bingo-playing-for [data-playing-for="four-corners"]');
+        if (fourPlay) {
+            fourPlay.hidden = !isUs;
+            if (isUs && selectedPlayingFor === 'four-corners') {
+                fourPlay.classList.add('active');
+            }
+        }
+        document.querySelectorAll('.mdj-bingo-verify-type [data-verify-claim="four-corners"]').forEach((btn) => {
+            btn.hidden = !isUs;
+        });
+        const tiers = isUs ? ['four-corners', 'line', 'two-lines', 'house'] : ['line', 'two-lines', 'house'];
+        if (!tiers.includes(selectedPlayingFor)) syncPlayingForUI(tiers[0]);
+    }
     let adminGridResizeObserver = null;
 
-    const BINGO_THEME_LABELS = {
-        default: 'Default',
-        christmas: 'Christmas',
-        halloween: 'Halloween',
-        classic: 'Classic hall',
-        'neon-90s': '90s neon',
-        wedding: 'Wedding'
-    };
-
     function bingoThemeLabel(id) {
+        if (window.MdjBingoTheme && typeof window.MdjBingoTheme.themeLabel === 'function') {
+            return window.MdjBingoTheme.themeLabel(id);
+        }
         const t = window.MdjBingoTheme ? window.MdjBingoTheme.normalize(id) : id || 'default';
-        return BINGO_THEME_LABELS[t] || t;
+        return t;
+    }
+
+    function syncThemePicker(pickerEl, selectEl, themeId) {
+        if (!pickerEl || !selectEl) return;
+        const norm =
+            window.MdjBingoTheme && typeof window.MdjBingoTheme.normalize === 'function'
+                ? window.MdjBingoTheme.normalize(themeId != null ? themeId : selectEl.value)
+                : themeId || selectEl.value || 'default';
+        selectEl.value = norm;
+        pickerEl.querySelectorAll('[data-bingo-theme-id]').forEach(function (btn) {
+            const on = btn.getAttribute('data-bingo-theme-id') === norm;
+            btn.classList.toggle('is-active', on);
+            btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+    }
+
+    function buildThemePicker(pickerEl, selectEl) {
+        if (!pickerEl || !selectEl || !window.MdjBingoTheme?.listThemes) return;
+        const themes = window.MdjBingoTheme.listThemes();
+        pickerEl.innerHTML = themes
+            .map(function (t) {
+                const c0 = t.swatch && t.swatch[0] ? t.swatch[0] : '#333';
+                const c1 = t.swatch && t.swatch[1] ? t.swatch[1] : '#666';
+                return (
+                    '<button type="button" class="mdj-bingo-theme-card" data-bingo-theme-id="' +
+                    escapeHtml(t.id) +
+                    '" role="radio" aria-checked="false">' +
+                    '<span class="mdj-bingo-theme-card__swatch" style="background:linear-gradient(135deg,' +
+                    c0 +
+                    ',' +
+                    c1 +
+                    ')"></span>' +
+                    '<span class="mdj-bingo-theme-card__text">' +
+                    '<span class="mdj-bingo-theme-card__label">' +
+                    escapeHtml(t.label) +
+                    '</span>' +
+                    '<span class="mdj-bingo-theme-card__desc">' +
+                    escapeHtml(t.description) +
+                    '</span></span></button>'
+                );
+            })
+            .join('');
+        if (!pickerEl.getAttribute('data-bingo-theme-wired')) {
+            pickerEl.setAttribute('data-bingo-theme-wired', '1');
+            pickerEl.addEventListener('click', function (e) {
+                const btn = e.target.closest('[data-bingo-theme-id]');
+                if (!btn) return;
+                syncThemePicker(pickerEl, selectEl, btn.getAttribute('data-bingo-theme-id'));
+            });
+            selectEl.addEventListener('change', function () {
+                syncThemePicker(pickerEl, selectEl, selectEl.value);
+            });
+        }
+        syncThemePicker(pickerEl, selectEl, selectEl.value);
+    }
+
+    function initBingoThemeControls() {
+        if (!window.MdjBingoTheme) return;
+        const selects = [
+            els.themeSelect,
+            wizardEls.theme,
+            editEls.theme
+        ].filter(Boolean);
+        selects.forEach(function (sel) {
+            window.MdjBingoTheme.populateThemeSelect(sel, sel.value);
+        });
+        buildThemePicker(wizardEls.themePicker, wizardEls.theme);
+        buildThemePicker(editEls.themePicker, editEls.theme);
     }
 
     /** Size number text so all cells fit the board area without an inner scrollbar. */
@@ -269,7 +399,12 @@
             syncCallerSetupHint();
             return;
         }
-        if (els.ballCount) els.ballCount.value = String(g.ballCount || 90);
+        if (els.ballCount) {
+            els.ballCount.value = String(g.ballCount || (g.cardFormat === 'us-75' ? 75 : 90));
+            els.ballCount.min = g.cardFormat === 'us-75' ? '75' : '9';
+            els.ballCount.max = g.cardFormat === 'us-75' ? '75' : '90';
+        }
+        syncCallerPlayingForSegments(g.cardFormat);
         if (els.callInterval) {
             els.callInterval.value = String(Math.round((g.callIntervalMs || 5000) / 1000));
         }
@@ -308,6 +443,7 @@
     function gameListMeta(g) {
         const bits = [
             statusLabel(g.status),
+            cardFormatLabel(g.cardFormat),
             `${g.unassignedCards} print free`,
             `${g.assignments} players`
         ];
@@ -655,6 +791,7 @@
 
     function getPrizePayload() {
         return {
+            prizeFourCorners: (document.getElementById('bingoPrizeFourCorners')?.value || '').trim(),
             prizeLine: (els.prizeLine?.value || '').trim(),
             prizeTwoLines: (els.prizeTwoLines?.value || '').trim(),
             prizeHouse: (els.prizeHouse?.value || '').trim()
@@ -663,6 +800,8 @@
 
     function syncPrizeFields(prizes) {
         if (!prizes) return;
+        const fourEl = document.getElementById('bingoPrizeFourCorners');
+        if (fourEl && prizes['four-corners'] != null) fourEl.value = prizes['four-corners'] || '';
         if (els.prizeLine && prizes.line != null) els.prizeLine.value = prizes.line || '';
         if (els.prizeTwoLines && prizes['two-lines'] != null) els.prizeTwoLines.value = prizes['two-lines'] || '';
         if (els.prizeHouse && prizes.house != null) els.prizeHouse.value = prizes.house || '';
@@ -678,6 +817,7 @@
             house: els.prizeHouse?.value
         };
         const bits = [
+            p['four-corners'] ? '4 corners · ' + p['four-corners'] : '',
             p.line ? 'Line · ' + p.line : '',
             p['two-lines'] ? '2 · ' + p['two-lines'] : '',
             p.house ? 'House · ' + p.house : ''
@@ -949,14 +1089,23 @@
         if (!els.prizeWinners) return;
         const pw = state && state.prizeWinners ? state.prizeWinners : {};
         const prizes = state && state.prizes ? state.prizes : {};
-        const rows = [
-            { id: 'line', fallback: '1 Line' },
-            { id: 'two-lines', fallback: '2 Lines' },
-            { id: 'house', fallback: 'House' }
-        ];
-        els.prizeWinners.innerHTML = rows
-            .map(function (r) {
+        const tierIds =
+            state && Array.isArray(state.prizeTiers) && state.prizeTiers.length
+                ? state.prizeTiers
+                : state && state.cardFormat === 'us-75'
+                  ? ['four-corners', 'line', 'two-lines', 'house']
+                  : ['line', 'two-lines', 'house'];
+        const fallbackLabels = {
+            'four-corners': '4 Corners',
+            line: '1 Line',
+            'two-lines': '2 Lines',
+            house: 'House'
+        };
+        els.prizeWinners.innerHTML = tierIds
+            .map(function (id) {
+                const r = { id: id, fallback: fallbackLabels[id] || id };
                 const tierLabel =
+                    prizes[id] ||
                     (r.id === 'line' && prizes.line) ||
                     (r.id === 'two-lines' && prizes['two-lines']) ||
                     (r.id === 'house' && prizes.house) ||
@@ -1035,6 +1184,7 @@
         }
         renderCalledBalls(state);
         syncAdminGrid(state);
+        if (state.cardFormat) syncCallerPlayingForSegments(state.cardFormat);
         if (state.playingFor) syncPlayingForUI(state.playingFor);
         if (state.prizes) syncPrizeFields(state.prizes);
         renderPrizeWinners(state);
@@ -1229,6 +1379,13 @@
         btn.addEventListener('click', () => setPlayingFor(btn.getAttribute('data-playing-for')));
     });
 
+    document.querySelectorAll('input[name="bingoWizardCardFormat"]').forEach((inp) => {
+        inp.addEventListener('change', syncWizardCardFormatUi);
+    });
+    document.querySelectorAll('input[name="bingoEditCardFormat"]').forEach((inp) => {
+        inp.addEventListener('change', syncEditCardFormatUi);
+    });
+
     let prizeSaveTimer = null;
     function schedulePrizeSave() {
         if (!isCallerPage) return;
@@ -1295,13 +1452,15 @@
         }
         const count = Number(els.cardCount?.value) || 10;
         const batchId = (els.cardBatch?.value || '').trim() || undefined;
-        const ballCount = Number(els.ballCount?.value) || 90;
+        const g = activeGameFromCache();
+        const fmt = g?.cardFormat === 'us-75' ? 'us-75' : 'uk-90';
+        const ballCount = fmt === 'us-75' ? 75 : Number(els.ballCount?.value) || 90;
         const gameId = getActiveGameId();
         try {
             const res = await mdjFetch(`/api/events/${eid}/bingo/cards/generate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(withGameId({ count, batchId, ballCount }))
+                body: JSON.stringify(withGameId({ count, batchId, ballCount, cardFormat: fmt }))
             });
             const data = await res.json();
             if (!res.ok) {
@@ -1473,6 +1632,11 @@
         if (wizardEls.interval) wizardEls.interval.value = els.callInterval?.value || '5';
         if (wizardEls.autoCall) wizardEls.autoCall.checked = !!els.autoCall?.checked;
         if (wizardEls.voiceCall) wizardEls.voiceCall.checked = !!els.voiceCall?.checked;
+        document.querySelectorAll('input[name="bingoWizardCardFormat"]').forEach((inp) => {
+            inp.checked = inp.value === (activeCardFormat || 'uk-90');
+        });
+        syncWizardCardFormatUi();
+        if (wizardEls.prizeFour) wizardEls.prizeFour.value = '';
         if (wizardEls.prizeLine) wizardEls.prizeLine.value = els.prizeLine?.value || '';
         if (wizardEls.prizeTwo) wizardEls.prizeTwo.value = els.prizeTwoLines?.value || '';
         if (wizardEls.prizeHouse) wizardEls.prizeHouse.value = els.prizeHouse?.value || '';
@@ -1480,9 +1644,11 @@
             wizardEls.claimBreak.value = els.claimBreakSeconds?.value || '10';
         }
         if (wizardEls.theme) {
-            wizardEls.theme.value = window.MdjBingoTheme
+            const defTheme = window.MdjBingoTheme
                 ? window.MdjBingoTheme.normalize(els.themeSelect?.value || 'default')
                 : els.themeSelect?.value || 'default';
+            wizardEls.theme.value = defTheme;
+            syncThemePicker(wizardEls.themePicker, wizardEls.theme, defTheme);
         }
         setWizardStep(1);
     }
@@ -1504,20 +1670,21 @@
         const title = (wizardEls.title?.value || '').trim() || defaultWizardTitle();
         const cardCount = Number(wizardEls.cardCount?.value) || 0;
         const openJoin = !!wizardEls.openJoin?.checked;
-        const ballCount = Number(wizardEls.ballCount?.value) || 90;
         const maxVirtualCards = Number(wizardEls.maxVirtual?.value) || eventBingoDefaults.maxVirtualCards || 1;
         const startRaw = wizardEls.start?.value || '';
         return {
             title,
             cardCount,
             openJoin,
-            ballCount,
+            cardFormat: getWizardCardFormat(),
+            ballCount: getWizardCardFormat() === 'us-75' ? 75 : Number(wizardEls.ballCount?.value) || 90,
             maxVirtualCards,
             advertisedStartAt: startRaw || null,
             introSeconds: Number(wizardEls.intro?.value) || 0,
             callIntervalSeconds: Number(wizardEls.interval?.value) || 5,
             autoCall: !!wizardEls.autoCall?.checked,
             voiceCall: !!wizardEls.voiceCall?.checked,
+            prizeFourCorners: (wizardEls.prizeFour?.value || '').trim(),
             prizeLine: (wizardEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (wizardEls.prizeTwo?.value || '').trim(),
             prizeHouse: (wizardEls.prizeHouse?.value || '').trim(),
@@ -1537,6 +1704,7 @@
             `<dt>Advertised start</dt><dd>${escapeHtml(startLabel)}</dd>` +
             `<dt>Max virtual per guest</dt><dd>${escapeHtml(String(p.maxVirtualCards))}</dd>` +
             `<dt>Join on hub</dt><dd>${p.openJoin ? 'Yes — open straight away' : 'No — prepare first'}</dd>` +
+            `<dt>Card game</dt><dd>${escapeHtml(cardFormatLabel(p.cardFormat))}</dd>` +
             `<dt>Cards to generate</dt><dd>${escapeHtml(String(p.cardCount))}</dd>` +
             `<dt>Balls</dt><dd>${escapeHtml(String(p.ballCount))}</dd>` +
             `<dt>Caller</dt><dd>Intro ${escapeHtml(String(p.introSeconds))}s · every ${escapeHtml(String(p.callIntervalSeconds))}s` +
@@ -1554,10 +1722,17 @@
         if (editEls.maxVirtual) {
             editEls.maxVirtual.value = String(g.maxVirtualCards != null ? g.maxVirtualCards : eventBingoDefaults.maxVirtualCards || 1);
         }
+        const fmt = g.cardFormat === 'us-75' ? 'us-75' : 'uk-90';
+        document.querySelectorAll('input[name="bingoEditCardFormat"]').forEach((inp) => {
+            inp.checked = inp.value === fmt;
+            inp.disabled = g.status === 'live';
+        });
+        syncEditCardFormatUi();
         if (editEls.ballCount) {
-            editEls.ballCount.value = String(g.ballCount || 90);
+            editEls.ballCount.value = String(g.ballCount || (fmt === 'us-75' ? 75 : 90));
             editEls.ballCount.disabled = g.status === 'live';
         }
+        if (editEls.prizeFour) editEls.prizeFour.value = g.prizes?.['four-corners'] || '';
         if (editEls.intro) editEls.intro.value = String(g.introSeconds != null ? g.introSeconds : 30);
         if (editEls.interval) editEls.interval.value = String(Math.round((g.callIntervalMs || 5000) / 1000));
         if (editEls.autoCall) editEls.autoCall.checked = !!g.autoCall;
@@ -1569,9 +1744,11 @@
             editEls.claimBreak.value = String(g.claimBreakSeconds != null ? g.claimBreakSeconds : 10);
         }
         if (editEls.theme) {
-            editEls.theme.value = window.MdjBingoTheme
+            const th = window.MdjBingoTheme
                 ? window.MdjBingoTheme.normalize(g.bingoTheme || 'default')
                 : g.bingoTheme || 'default';
+            editEls.theme.value = th;
+            syncThemePicker(editEls.themePicker, editEls.theme, th);
         }
         if (editEls.error) {
             editEls.error.hidden = true;
@@ -1596,11 +1773,14 @@
             title: (editEls.title?.value || '').trim(),
             maxVirtualCards: Number(editEls.maxVirtual?.value) || 1,
             advertisedStartAt: editEls.start?.value || null,
-            ballCount: Number(editEls.ballCount?.value) || 90,
+            cardFormat: getEditCardFormat(),
+            ballCount:
+                getEditCardFormat() === 'us-75' ? 75 : Number(editEls.ballCount?.value) || 90,
             introSeconds: Number(editEls.intro?.value) || 0,
             callIntervalSeconds: Number(editEls.interval?.value) || 5,
             autoCall: !!editEls.autoCall?.checked,
             voiceCall: !!editEls.voiceCall?.checked,
+            prizeFourCorners: (editEls.prizeFour?.value || '').trim(),
             prizeLine: (editEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (editEls.prizeTwo?.value || '').trim(),
             prizeHouse: (editEls.prizeHouse?.value || '').trim(),
@@ -1807,6 +1987,7 @@
         updateTargetHint();
     });
 
+    initBingoThemeControls();
     if (els.adminGrid) buildAdminGrid(Number(els.ballCount?.value) || 90);
     updateTargetHint();
     fetchState();

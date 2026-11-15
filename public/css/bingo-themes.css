@@ -421,106 +421,140 @@
 
 /* ── Wedding ────────────────────────────────────────── */
 
+.bingo-theme-wedding {
+    --wed-ivory: #faf7f2;
+    --wed-linen: #f1ebe3;
+    --wed-blush: #f8ecee;
+    --wed-rose: #e8b4b8;
+    --wed-gold: #c9a227;
+    --wed-gold-deep: #9a7b1a;
+    --wed-gold-light: #e8d5a3;
+    --wed-sage: #9caf88;
+    --wed-sage-deep: #5f6f52;
+    --wed-ink: #3d3832;
+    --wed-muted: #6f675c;
+    --wed-line: rgba(201, 162, 39, 0.35);
+}
+
 .bingo-theme-wedding.mdj-bingo-caller-page,
 .bingo-theme-wedding .mdj-caller-layout {
-    background-color: #faf8f5;
+    background-color: var(--wed-ivory);
     background-image:
-        radial-gradient(ellipse at 20% 10%, rgba(251, 207, 232, 0.35), transparent 55%),
-        radial-gradient(ellipse at 80% 90%, rgba(209, 213, 219, 0.25), transparent 50%);
+        radial-gradient(circle at 1px 1px, rgba(201, 162, 39, 0.07) 1px, transparent 0),
+        radial-gradient(ellipse at 12% 8%, rgba(232, 180, 184, 0.28), transparent 48%),
+        radial-gradient(ellipse at 88% 92%, rgba(156, 175, 136, 0.18), transparent 52%),
+        linear-gradient(175deg, var(--wed-ivory), var(--wed-linen));
+    background-size: 22px 22px, auto, auto, auto;
 }
 
 .bingo-theme-wedding.mdj-bingo-caller-page {
-    color: #3f3f46;
+    color: var(--wed-ink);
 }
 
 .bingo-theme-wedding .mdj-caller-header {
-    border-bottom-color: rgba(180, 83, 9, 0.2);
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--wed-line);
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 4px 24px rgba(61, 56, 50, 0.06);
 }
 
 .bingo-theme-wedding .mdj-caller-back,
 .bingo-theme-wedding .mdj-caller-event {
-    color: #57534e;
+    color: var(--wed-ink);
 }
 
 .bingo-theme-wedding .mdj-caller-ball-spotlight {
-    border-color: rgba(251, 191, 36, 0.4);
-    background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.95), rgba(254, 242, 242, 0.85));
-    box-shadow: 0 8px 32px rgba(180, 83, 9, 0.1);
+    border: 2px solid var(--wed-line);
+    background:
+        radial-gradient(circle at 50% 22%, rgba(255, 255, 255, 0.98), rgba(248, 236, 238, 0.92)),
+        linear-gradient(165deg, #fff, var(--wed-blush));
+    box-shadow:
+        0 12px 40px rgba(61, 56, 50, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
 }
 
 .bingo-theme-wedding .mdj-bingo-hero-ball,
 .bingo-theme-wedding .mdj-caller-hero-ball {
-    color: #b45309;
-    text-shadow: 0 2px 0 #fff, 0 0 20px rgba(251, 191, 36, 0.35);
+    color: var(--wed-gold-deep);
+    text-shadow:
+        0 2px 0 #fff,
+        0 0 28px rgba(201, 162, 39, 0.35);
 }
 
 .bingo-theme-wedding .mdj-caller-panel {
-    border-color: rgba(214, 211, 209, 0.8);
-    background: rgba(255, 255, 255, 0.55);
+    border: 1px solid rgba(201, 162, 39, 0.22);
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 10px 36px rgba(61, 56, 50, 0.07);
 }
 
 .bingo-theme-wedding .guest-bingo-ticket {
-    border-color: rgba(251, 191, 36, 0.45);
-    background: linear-gradient(165deg, #fffef9, #fdf2f8);
+    border: 2px solid var(--wed-line);
+    background: linear-gradient(165deg, #fffffe 0%, var(--wed-blush) 55%, #fff 100%);
     box-shadow:
-        0 1px 0 rgba(255, 255, 255, 0.9) inset,
-        0 6px 18px rgba(120, 113, 108, 0.12);
+        0 0 0 1px rgba(255, 255, 255, 0.9) inset,
+        0 8px 28px rgba(61, 56, 50, 0.1);
 }
 
 .bingo-theme-wedding .guest-bingo-ticket__serial {
-    color: rgba(120, 113, 108, 0.85);
+    color: var(--wed-muted);
+    font-weight: 600;
+    letter-spacing: 0.04em;
 }
 
 .bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table th {
-    background: rgba(254, 226, 226, 0.65);
-    color: #78716c;
-    border-color: rgba(251, 191, 36, 0.2);
+    background: linear-gradient(180deg, var(--wed-blush), #fff);
+    color: var(--wed-muted);
+    border-color: rgba(201, 162, 39, 0.18);
+    font-weight: 700;
 }
 
 .bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td {
-    background: #ffffff;
-    color: #44403c;
-    border-color: rgba(231, 229, 228, 0.9);
+    background: #fff;
+    color: var(--wed-ink);
+    border-color: rgba(241, 235, 227, 0.95);
 }
 
 .bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td.is-blank {
-    background: rgba(250, 250, 249, 0.9);
+    background: var(--wed-linen);
 }
 
 .bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td.is-marked .guest-bingo-num,
 .bingo-theme-wedding .guest-bingo-ticket .guest-bingo-table td .guest-bingo-dab {
-    background: linear-gradient(145deg, #fbbf24, #d97706);
+    background: linear-gradient(145deg, var(--wed-gold-light), var(--wed-gold));
     color: #fffef8;
-    box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);
+    box-shadow: 0 2px 8px rgba(154, 123, 26, 0.28);
 }
 
 .bingo-theme-wedding .guest-bingo-tg-spine {
-    background: linear-gradient(180deg, #a8a29e, #78716c);
+    background: linear-gradient(180deg, #b8b0a6, var(--wed-muted));
 }
 
 .bingo-theme-wedding .guest-bingo-tg-spine--win,
 .bingo-theme-wedding .guest-bingo-tg-spine--1 {
-    background: linear-gradient(180deg, #fbbf24, #b45309);
+    background: linear-gradient(180deg, var(--wed-gold-light), var(--wed-gold-deep));
 }
 
 .bingo-theme-wedding .guest-bingo-tg-spine--2 {
-    background: linear-gradient(180deg, #fda4af, #fb7185);
+    background: linear-gradient(180deg, #f0d4d7, var(--wed-rose));
 }
 
 .bingo-theme-wedding .guest-bingo-tg-spine--3 {
-    background: linear-gradient(180deg, #86efac, #4ade80);
+    background: linear-gradient(180deg, #c5d4b8, var(--wed-sage-deep));
 }
 
 .bingo-theme-wedding .guest-bingo-call-btn.guest-bingo-call--ready,
 .bingo-theme-wedding .guest-bingo-call-dock__btn.guest-bingo-call--ready {
-    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.5), 0 8px 24px rgba(180, 83, 9, 0.2);
+    border-color: var(--wed-line) !important;
+    background: linear-gradient(145deg, var(--wed-gold-light), var(--wed-gold)) !important;
+    color: var(--wed-ink) !important;
+    box-shadow: 0 4px 18px rgba(201, 162, 39, 0.35);
 }
 
 .bingo-theme-wedding .bingo-display-last-ball {
-    color: #b45309;
-    text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8), 0 0 24px rgba(251, 191, 36, 0.4);
+    color: var(--wed-gold-deep);
+    text-shadow:
+        0 3px 0 #fff,
+        0 0 32px rgba(201, 162, 39, 0.45);
 }
 
 /* Wedding caller — light skin on dark-mode DJ tools (readable contrast) */
@@ -588,7 +622,7 @@ body.dark-mode.bingo-theme-wedding.mdj-bingo-caller-page .mdj-caller-prize-summa
 }
 
 body.dark-mode.bingo-theme-wedding.mdj-bingo-caller-page .mdj-bingo-field-label {
-  color: #b45309;
+  color: var(--wed-gold-deep);
 }
 
 body.dark-mode.bingo-theme-wedding.mdj-bingo-caller-page .mdj-bingo-run-hero-label {
@@ -687,29 +721,33 @@ body.dark-mode.bingo-theme-wedding.mdj-bingo-caller-page .mdj-caller-admin-grid 
 }
 
 body.dark-mode.bingo-theme-wedding.mdj-bingo-caller-page .mdj-caller-admin-grid .mdj-bingo-admin-cell.is-called {
-  background: #d9f99d;
-  border-color: #65a30d;
-  color: #365314;
+  background: #e8efe3;
+  border-color: var(--wed-sage);
+  color: var(--wed-sage-deep);
 }
 
 body.dark-mode.bingo-theme-wedding.mdj-bingo-caller-page .mdj-caller-admin-grid .mdj-bingo-admin-cell.is-last {
-  background: linear-gradient(145deg, #fbbf24, #d97706);
-  border-color: #b45309;
+  background: linear-gradient(145deg, var(--wed-gold-light), var(--wed-gold));
+  border-color: var(--wed-gold-deep);
   color: #fffef8;
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 14px rgba(201, 162, 39, 0.4);
 }
 
 /* Guest play on wedding — lift out of default dark page chrome */
 body.bingo-theme-wedding.mdj-guest-bingo-page {
-    background: #faf8f5;
-    color: #44403c;
+    background-color: var(--wed-ivory);
+    background-image:
+        radial-gradient(circle at 1px 1px, rgba(201, 162, 39, 0.06) 1px, transparent 0),
+        linear-gradient(175deg, var(--wed-ivory), var(--wed-linen));
+    background-size: 22px 22px, auto;
+    color: var(--wed-ink);
 }
 
 .bingo-theme-wedding .guest-bingo-meta,
 .bingo-theme-wedding .guest-bingo-back-lobby {
-    color: #78716c;
-    border-color: rgba(214, 211, 209, 0.9);
-    background: rgba(255, 255, 255, 0.65);
+    color: var(--wed-muted);
+    border-color: var(--wed-line);
+    background: rgba(255, 255, 255, 0.78);
 }
 
 /* ── Venue display (fullscreen #bingoDisplayLayer) ─────── */
@@ -1147,53 +1185,61 @@ body.bingo-screen-active.bingo-theme-classic {
 
 /* Wedding */
 .bingo-display-layer.bingo-theme-wedding {
-    color: #44403c;
+    color: var(--wed-ink);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-ambient {
     background:
-        radial-gradient(ellipse at 20% 10%, rgba(251, 207, 232, 0.45), transparent 55%),
-        radial-gradient(ellipse at 80% 90%, rgba(209, 213, 219, 0.35), transparent 50%),
-        linear-gradient(165deg, #faf8f5 0%, #fffef9 50%, #fdf2f8 100%);
+        radial-gradient(circle at 1px 1px, rgba(201, 162, 39, 0.09) 1px, transparent 0),
+        radial-gradient(ellipse at 18% 12%, rgba(232, 180, 184, 0.35), transparent 50%),
+        radial-gradient(ellipse at 82% 88%, rgba(156, 175, 136, 0.22), transparent 55%),
+        linear-gradient(165deg, var(--wed-ivory) 0%, #fffef9 48%, var(--wed-blush) 100%);
+    background-size: 26px 26px, auto, auto, auto;
     animation: none;
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-dots {
-    opacity: 0.12;
-    background-image: radial-gradient(rgba(120, 113, 108, 0.25) 1px, transparent 1px);
+    opacity: 0.1;
+    background-image: radial-gradient(rgba(201, 162, 39, 0.35) 1px, transparent 1px);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-brand {
-    color: #b45309;
-    text-shadow: 0 2px 0 #fff, 0 0 16px rgba(251, 191, 36, 0.35);
+    color: var(--wed-gold-deep);
+    text-shadow: 0 2px 0 #fff, 0 0 20px rgba(201, 162, 39, 0.35);
+    font-weight: 800;
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-playing-for {
-    color: #44403c;
+    color: var(--wed-ink);
     text-shadow: none;
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-playing-for-accent {
-    color: #b45309;
+    color: var(--wed-gold-deep);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-meta {
-    color: #78716c;
+    color: var(--wed-muted);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-grid-panel {
-    background: rgba(255, 255, 255, 0.72);
-    border-color: rgba(251, 191, 36, 0.45);
-    box-shadow: 0 8px 32px rgba(120, 113, 108, 0.12);
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid var(--wed-line);
+    box-shadow: 0 12px 48px rgba(61, 56, 50, 0.1);
+}
+
+.bingo-display-layer.bingo-theme-wedding .bingo-fs-ball-ring {
+    border-color: rgba(201, 162, 39, 0.45);
+    box-shadow: 0 0 28px rgba(201, 162, 39, 0.2);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-cell-num {
-    color: rgba(68, 64, 60, 0.35);
+    color: rgba(61, 56, 50, 0.38);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-cell.is-called {
-    background: linear-gradient(145deg, rgba(251, 191, 36, 0.45), rgba(217, 119, 6, 0.5));
-    border-color: rgba(251, 191, 36, 0.55);
+    background: linear-gradient(145deg, rgba(156, 175, 136, 0.55), rgba(95, 111, 82, 0.65));
+    border-color: rgba(156, 175, 136, 0.55);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-cell.is-called .bingo-fs-cell-num {
@@ -1201,19 +1247,24 @@ body.bingo-screen-active.bingo-theme-classic {
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-fs-cell.is-last {
-    background: linear-gradient(145deg, #fbbf24, #d97706);
-    border-color: #fffbeb;
-    box-shadow: 0 4px 20px rgba(180, 83, 9, 0.25);
+    background: linear-gradient(145deg, var(--wed-gold-light), var(--wed-gold));
+    border-color: #fff;
+    box-shadow: 0 6px 28px rgba(201, 162, 39, 0.35);
+}
+
+.bingo-display-layer.bingo-theme-wedding .bingo-fs-cell.is-last .bingo-fs-cell-num {
+    color: var(--wed-ink);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-intro-card {
-    background: rgba(255, 255, 255, 0.88);
-    border-color: rgba(251, 191, 36, 0.45);
-    color: #44403c;
+    background: rgba(255, 255, 255, 0.94);
+    border: 2px solid var(--wed-line);
+    color: var(--wed-ink);
+    box-shadow: 0 16px 48px rgba(61, 56, 50, 0.12);
 }
 
 .bingo-display-layer.bingo-theme-wedding .bingo-intro-countdown {
-    color: #b45309;
+    color: var(--wed-gold-deep);
 }
 
 /* ── Guest hub / play — full-page chrome ─────────────── */
@@ -1277,32 +1328,35 @@ body.gh-spa.bingo-theme-wedding,
 body.gh-spa.bingo-theme-wedding .gh-main,
 .gh-bingo.bingo-theme-wedding,
 body.bingo-theme-wedding.mdj-guest-bingo-page {
-    background-color: #faf8f5;
+    background-color: var(--wed-ivory);
     background-image:
-        radial-gradient(ellipse at 20% 10%, rgba(251, 207, 232, 0.35), transparent 55%),
-        radial-gradient(ellipse at 80% 90%, rgba(209, 213, 219, 0.2), transparent 50%);
-    color: #44403c;
+        radial-gradient(circle at 1px 1px, rgba(201, 162, 39, 0.06) 1px, transparent 0),
+        radial-gradient(ellipse at 15% 8%, rgba(232, 180, 184, 0.22), transparent 48%),
+        linear-gradient(175deg, var(--wed-ivory), var(--wed-linen));
+    background-size: 22px 22px, auto, auto;
+    color: var(--wed-ink);
 }
 
 .bingo-theme-wedding.gh-bingo .guest-bingo-meta,
 .bingo-theme-wedding.gh-bingo .gh-bingo-meta,
 .bingo-theme-wedding .guest-bingo-called-line__count {
-    color: #78716c;
+    color: var(--wed-muted);
 }
 
 .bingo-theme-wedding .guest-bingo-action-bar,
 .bingo-theme-wedding .guest-bingo-call-dock {
-    background: rgba(255, 255, 255, 0.88);
-    border-color: rgba(251, 191, 36, 0.35);
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid var(--wed-line);
+    box-shadow: 0 -8px 32px rgba(61, 56, 50, 0.08);
 }
 
 .bingo-theme-wedding .guest-bingo-intro__card,
 .bingo-theme-wedding .guest-bingo-resume,
 .bingo-theme-wedding .guest-bingo-countdown-bar {
-    background: linear-gradient(165deg, rgba(254, 243, 199, 0.95), rgba(255, 255, 255, 0.98));
-    border-color: rgba(251, 191, 36, 0.45);
-    color: #44403c;
-    box-shadow: 0 8px 24px rgba(120, 113, 108, 0.12);
+    background: linear-gradient(165deg, #fff 0%, var(--wed-blush) 100%);
+    border: 2px solid var(--wed-line);
+    color: var(--wed-ink);
+    box-shadow: 0 10px 32px rgba(61, 56, 50, 0.1);
 }
 
 .bingo-theme-wedding .guest-bingo-intro__eyebrow,
@@ -1311,24 +1365,30 @@ body.bingo-theme-wedding.mdj-guest-bingo-page {
 .bingo-theme-wedding .guest-bingo-countdown-bar__extra,
 .bingo-theme-wedding .guest-bingo-resume__eyebrow,
 .bingo-theme-wedding .guest-bingo-resume__ball {
-    color: #78716c;
+    color: var(--wed-muted);
 }
 
 .bingo-theme-wedding .guest-bingo-intro__prize,
 .bingo-theme-wedding .guest-bingo-intro__sec,
 .bingo-theme-wedding .guest-bingo-countdown-bar__sec,
 .bingo-theme-wedding .guest-bingo-resume__sec {
-    color: #b45309;
+    color: var(--wed-gold-deep);
     text-shadow: none;
 }
 
 .bingo-theme-wedding .guest-bingo-intro__ring-track {
-    stroke: rgba(180, 83, 9, 0.15);
+    stroke: rgba(201, 162, 39, 0.2);
 }
 
 .bingo-theme-wedding .guest-bingo-intro__ring-progress {
-    stroke: #d97706;
-    filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.35));
+    stroke: var(--wed-gold);
+    filter: drop-shadow(0 0 6px rgba(201, 162, 39, 0.35));
+}
+
+.bingo-theme-wedding .guest-bingo-prize-chip.is-active {
+    color: var(--wed-ink);
+    background: linear-gradient(145deg, var(--wed-gold-light), var(--wed-gold));
+    border-color: var(--wed-line);
 }
 
 .bingo-theme-neon-90s .guest-bingo-action-bar,

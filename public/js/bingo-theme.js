@@ -6,6 +6,46 @@
 
     var THEME_IDS = ['default', 'christmas', 'halloween', 'classic', 'neon-90s', 'wedding'];
 
+    /** Labels, descriptions, and picker swatches — keep in sync with lib/bingo.js BINGO_THEMES */
+    var THEME_LIST = [
+        {
+            id: 'default',
+            label: 'Default',
+            description: 'Teal tickets and warm orange ball',
+            swatch: ['#0c1219', '#ff7a1a']
+        },
+        {
+            id: 'christmas',
+            label: 'Christmas',
+            description: 'Red and green with gold highlights',
+            swatch: ['#0d2818', '#c41e3a']
+        },
+        {
+            id: 'halloween',
+            label: 'Halloween',
+            description: 'Orange, purple, and midnight black',
+            swatch: ['#0a0510', '#f97316']
+        },
+        {
+            id: 'classic',
+            label: 'Classic hall',
+            description: 'Cream cards and traditional red dabbers',
+            swatch: ['#1c1410', '#b91c1c']
+        },
+        {
+            id: 'neon-90s',
+            label: '90s neon',
+            description: 'Hot pink, cyan, and arcade glow',
+            swatch: ['#0a0014', '#ec4899']
+        },
+        {
+            id: 'wedding',
+            label: 'Wedding',
+            description: 'Ivory linen, champagne gold, and soft blush',
+            swatch: ['#faf7f2', '#c9a227']
+        }
+    ];
+
     /** Theme-specific ball-call stings (replaces TTS when present). Christmas uses spoken numbers. */
     var CALL_SOUND_BY_THEME = {};
 
@@ -97,10 +137,43 @@
         if (typeof speakTts === 'function') speakTts(num);
     }
 
+    function listThemes() {
+        return THEME_LIST.map(function (t) {
+            return { id: t.id, label: t.label, description: t.description, swatch: t.swatch.slice() };
+        });
+    }
+
+    function themeLabel(themeId) {
+        var id = normalizeBingoTheme(themeId);
+        for (var i = 0; i < THEME_LIST.length; i++) {
+            if (THEME_LIST[i].id === id) return THEME_LIST[i].label;
+        }
+        return id === 'default' ? 'Default' : id;
+    }
+
+    function populateThemeSelect(selectEl, selectedId) {
+        if (!selectEl) return;
+        var html = '';
+        for (var i = 0; i < THEME_LIST.length; i++) {
+            var t = THEME_LIST[i];
+            html +=
+                '<option value="' +
+                t.id +
+                '">' +
+                t.label.replace(/</g, '&lt;').replace(/>/g, '&gt;') +
+                '</option>';
+        }
+        selectEl.innerHTML = html;
+        selectEl.value = normalizeBingoTheme(selectedId != null ? selectedId : selectEl.value);
+    }
+
     global.MdjBingoTheme = {
         normalize: normalizeBingoTheme,
         apply: applyBingoTheme,
         ids: THEME_IDS.slice(),
+        listThemes: listThemes,
+        themeLabel: themeLabel,
+        populateThemeSelect: populateThemeSelect,
         callSoundUrl: callSoundUrl,
         playThemeCallSound: playThemeCallSound,
         announceCalledBall: announceCalledBall,

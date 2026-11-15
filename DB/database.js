@@ -382,6 +382,37 @@ try {
     /* exists */
 }
 try {
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN card_format TEXT NOT NULL DEFAULT 'uk-90'`);
+} catch (e) {
+    /* exists */
+}
+try {
+    const claimsDef = db
+        .prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'bingo_player_claims'`)
+        .get();
+    if (claimsDef?.sql && !claimsDef.sql.includes("'four-corners'")) {
+        db.exec(`
+            CREATE TABLE bingo_player_claims_mig (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                game_id INTEGER NOT NULL,
+                customer_name TEXT NOT NULL,
+                serial TEXT,
+                claim_type TEXT NOT NULL CHECK(claim_type IN ('four-corners', 'line', 'two-lines', 'house')),
+                valid_on_card INTEGER,
+                status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'dismissed')),
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (game_id) REFERENCES bingo_games(id) ON DELETE CASCADE
+            );
+            INSERT INTO bingo_player_claims_mig SELECT * FROM bingo_player_claims;
+            DROP TABLE bingo_player_claims;
+            ALTER TABLE bingo_player_claims_mig RENAME TO bingo_player_claims;
+            CREATE INDEX IF NOT EXISTS idx_bingo_claims_game ON bingo_player_claims(game_id);
+        `);
+    }
+} catch (e) {
+    /* migration failed or already applied */
+}
+try {
     db.exec(`ALTER TABLE bingo_cards ADD COLUMN assigned_to TEXT`);
 } catch (e) {
     /* exists */
@@ -1669,14 +1700,16 @@ const bingoDb = {
     },
 
     assignNextAvailable(gameId, customerName, deviceId, options = {}) {
-        const { generateUK90TicketForBatch } = require('../lib/bingo');
+        const { generateTicketForBatch, normalizeCardFormat } = require('../lib/bingo');
         const name = normalizeGuestName(customerName);
         const device = this._normalizeDevice(deviceId);
         if (!name || !device) return { error: 'invalid_identity' };
         const maxCards = clampBingoMaxVirtualPerGuest(Number(options.maxCards) || 1);
         const eventId = Number(options.eventId);
         const eventSlug = options.eventSlug != null ? String(options.eventSlug) : '';
-        const ballCount = Math.max(9, Math.min(90, Number(options.ballCount) || 90));
+        const cardFormat = normalizeCardFormat(options.cardFormat || 'uk-90');
+        const ballCount =
+            cardFormat === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(options.ballCount) || 90));
         if (!Number.isFinite(eventId) || eventId <= 0) return { error: 'invalid_identity' };
 
         const assigned = this.listAssignedCardsForPlayer(gameId, name);
@@ -1698,7 +1731,7 @@ const bingoDb = {
             ...assigned.map((c) => c.grid).filter(Boolean),
             ...this.recentVirtualGridsForGame(gameId, 50)
         ];
-        const grid = generateUK90TicketForBatch(ballCount, diversityGrids);
+        const grid = generateTicketForBatch(cardFormat, ballCount, diversityGrids);
         const serial = this.buildVirtualSerial(eventSlug, gameId);
         const card = this.insertVirtualCardAssigned(eventId, gameId, serial, grid, name, device);
         if (!card) return { error: 'invalid_identity' };
@@ -1802,8 +1835,14 @@ function parseBingoGamePrizesJson(raw) {
     }
     try {
         const p = JSON.parse(raw);
-        if (!p || typeof p !== 'object') return { line: '', 'two-lines': '', house: '' };
+        if (!p || typeof p !== 'object') return { 'four-corners': '', line: '', 'two-lines': '', house: '' };
         return {
+            'four-corners':
+                p['four-corners'] != null
+                    ? String(p['four-corners']).trim().slice(0, 80)
+                    : p.fourCorners != null
+                      ? String(p.fourCorners).trim().slice(0, 80)
+                      : '',
             line: p.line != null ? String(p.line).trim().slice(0, 80) : '',
             'two-lines':
                 p['two-lines'] != null
@@ -1814,7 +1853,7 @@ function parseBingoGamePrizesJson(raw) {
             house: p.house != null ? String(p.house).trim().slice(0, 80) : ''
         };
     } catch (e) {
-        return { line: '', 'two-lines': '', house: '' };
+        return { 'four-corners': '', line: '', 'two-lines': '', house: '' };
     }
 }
 
@@ -1828,6 +1867,7 @@ const bingoGameDb = {
             batchId: row.batch_id,
             status: row.status,
             ballCount: row.ball_count,
+            cardFormat: row.card_format ? String(row.card_format).trim() || 'uk-90' : 'uk-90',
             maxVirtualCards: row.max_virtual_cards != null ? Number(row.max_virtual_cards) : null,
             advertisedStartAt: row.advertised_start_at || null,
             callIntervalMs:
@@ -1891,6 +1931,7 @@ const bingoGameDb = {
             title,
             batchId,
             ballCount = 90,
+            cardFormat = 'uk-90',
             maxVirtualCards = null,
             advertisedStartAt = null,
             callIntervalMs,
@@ -1902,9 +1943,11 @@ const bingoGameDb = {
             prizes
         } = {}
     ) {
+        const { normalizeCardFormat } = require('../lib/bingo');
         const t = String(title || 'Bingo game').trim().slice(0, 120) || 'Bingo game';
         const batch = String(batchId || `G${Date.now().toString(36)}`).slice(0, 32);
-        const bc = Math.max(9, Math.min(90, Number(ballCount) || 90));
+        const fmt = normalizeCardFormat(cardFormat);
+        const bc = fmt === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(ballCount) || 90));
         let mvc = null;
         if (maxVirtualCards != null && maxVirtualCards !== '') {
             mvc = clampBingoMaxVirtualPerGuest(Number(maxVirtualCards) || 1);
@@ -1927,12 +1970,12 @@ const bingoGameDb = {
         const result = db
             .prepare(
                 `INSERT INTO bingo_games (
-                    event_id, title, batch_id, status, ball_count, max_virtual_cards, advertised_start_at,
+                    event_id, title, batch_id, status, ball_count, card_format, max_virtual_cards, advertised_start_at,
                     call_interval_ms, intro_seconds, claim_break_seconds, bingo_theme, auto_call, voice_call, prizes_json
                  )
-                 VALUES (?, ?, ?, 'preparing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                 VALUES (?, ?, ?, 'preparing', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
-            .run(eventId, t, batch, bc, mvc, startAt, intervalMs, intro, claimBreak, theme, auto, voice, prizesJson);
+            .run(eventId, t, batch, bc, fmt, mvc, startAt, intervalMs, intro, claimBreak, theme, auto, voice, prizesJson);
         return this.getById(result.lastInsertRowid);
     },
 
@@ -1960,9 +2003,26 @@ const bingoGameDb = {
                 gameId
             );
         }
+        if (patch.cardFormat != null) {
+            const { normalizeCardFormat: ncf } = require('../lib/bingo');
+            const fmt = ncf(patch.cardFormat);
+            db.prepare(`UPDATE bingo_games SET card_format = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                fmt,
+                gameId
+            );
+            if (fmt === 'us-75') {
+                db.prepare(`UPDATE bingo_games SET ball_count = 75, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
+                    gameId
+                );
+            }
+        }
         if (patch.ballCount != null) {
+            const cur = this.getById(gameId);
+            const fmt = cur?.cardFormat === 'us-75' ? 'us-75' : 'uk-90';
+            const bc =
+                fmt === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(patch.ballCount) || 90));
             db.prepare(`UPDATE bingo_games SET ball_count = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(
-                Math.max(9, Math.min(90, Number(patch.ballCount) || 90)),
+                bc,
                 gameId
             );
         }

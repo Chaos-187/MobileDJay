@@ -50,13 +50,29 @@
         }
     }
 
-    function emptyManualMarks() {
-        return [
-            [false, false, false, false, false, false, false, false, false],
-            [false, false, false, false, false, false, false, false, false],
-            [false, false, false, false, false, false, false, false, false]
-        ];
+    function emptyManualMarks(rows, cols) {
+        const r = Number(rows) || 3;
+        const c = Number(cols) || 9;
+        return Array.from({ length: r }, function () {
+            return Array(c).fill(false);
+        });
     }
+
+    function isUs75Grid(grid) {
+        return !!(grid && grid.length === 5 && grid[0] && grid[0].length === 5);
+    }
+
+    const PRIZE_BAR_UK = [
+        { id: 'line', label: '1 Line' },
+        { id: 'two-lines', label: '2 Lines' },
+        { id: 'house', label: 'House' }
+    ];
+    const PRIZE_BAR_US = [
+        { id: 'four-corners', label: '4 Corners' },
+        { id: 'line', label: '1 Line' },
+        { id: 'two-lines', label: '2 Lines' },
+        { id: 'house', label: 'House' }
+    ];
 
     const TOGO_CLASSES = [
         'guest-bingo-togo--ready',
@@ -141,9 +157,15 @@
     function bingoGuestPreClaimPlay(data) {
         if (!data || data.showWinnersPopup) return false;
         const phase = String(data.phase || '');
+        const called = Number(data.calledCount) || (data.calledBalls && data.calledBalls.length) || 0;
+
+        if (phase === 'calling' || phase === 'claim_break') return false;
+        if (called > 0) return false;
+        if (data.active) return false;
+        if (data.playInProgress && called > 0) return false;
+
         if (phase === 'intro' || phase === 'resume') return true;
-        if (!data.active) return true;
-        if ((data.calledCount || 0) === 0 && phase !== 'calling' && phase !== 'claim_break') return true;
+        if (!data.active && called === 0) return true;
         return false;
     }
 
@@ -159,8 +181,24 @@
 
     function syncBuyTicketsVisibility(buyEl, data) {
         if (!buyEl) return;
-        buyEl.hidden = true;
-        buyEl.setAttribute('hidden', '');
+        const preClaim = bingoGuestPreClaimPlay(data);
+        const rem = guestTicketRemaining(data);
+        const canBuy = !!(data && data.canGrabMore && rem > 0);
+        const have =
+            data && data.allCards && data.allCards.length
+                ? data.allCards.length
+                : data && data.guestCards
+                  ? data.guestCards.length
+                  : 0;
+        const show = !!(canBuy && have > 0 && preClaim);
+        if (show) {
+            buyEl.hidden = false;
+            buyEl.removeAttribute('hidden');
+            buyEl.textContent = rem > 1 ? 'Buy more · ' + rem + ' left' : 'Buy more tickets';
+        } else {
+            buyEl.hidden = true;
+            buyEl.setAttribute('hidden', '');
+        }
     }
 
     function renderRecentBalls(trackEl, calledBalls, opts) {
@@ -198,13 +236,9 @@
         }
     }
 
-    function renderPrizeBar(barEl, playingFor, prizeWinners) {
+    function renderPrizeBar(barEl, playingFor, prizeWinners, cardFormat) {
         if (!barEl) return;
-        const chips = [
-            { id: 'line', label: '1 Line' },
-            { id: 'two-lines', label: '2 Lines' },
-            { id: 'house', label: 'House' }
-        ];
+        const chips = cardFormat === 'us-75' ? PRIZE_BAR_US : PRIZE_BAR_UK;
         const pf = String(playingFor || 'line');
         const winners = prizeWinners || {};
         barEl.innerHTML = chips
@@ -1067,37 +1101,52 @@
             const preClaim = bingoGuestPreClaimPlay(data);
             const rem = guestTicketRemaining(data);
             const canBuy = !!(data && data.canGrabMore && rem > 0);
-            const buyMode = preClaim || (!list.length && canBuy);
+            const phase = data && data.phase ? String(data.phase) : '';
 
             if (els.playDock) {
-                els.playDock.classList.toggle('guest-bingo--dock-buy', !!buyMode);
+                els.playDock.classList.toggle('guest-bingo--dock-buy', !list.length && !!canBuy);
             }
 
-            if (buyMode) {
+            if (!list.length) {
                 els.callBtn.setAttribute('data-dock-mode', 'buy');
                 els.callBtn.classList.remove('guest-bingo-call--ready');
                 if (canBuy) {
-                    if (!list.length) {
-                        els.callBtn.textContent = rem > 1 ? 'Get tickets · ' + rem + ' left' : 'Get tickets';
-                    } else {
-                        els.callBtn.textContent = rem > 1 ? 'Buy tickets · ' + rem + ' left' : 'Buy tickets';
-                    }
+                    els.callBtn.textContent = rem > 1 ? 'Get tickets · ' + rem + ' left' : 'Get tickets';
                     els.callBtn.disabled = false;
                     els.callBtn.classList.add('guest-bingo-dock-btn--buy');
                 } else {
                     els.callBtn.textContent =
-                        data && data.phase === 'intro'
+                        phase === 'intro'
                             ? 'Starting soon'
-                            : data && data.phase === 'resume'
+                            : phase === 'resume'
                               ? 'Resuming soon'
-                              : 'Waiting to start';
+                              : 'Get tickets first';
                     els.callBtn.disabled = true;
+                    els.callBtn.classList.remove('guest-bingo-dock-btn--buy');
                 }
                 return;
             }
 
             els.callBtn.setAttribute('data-dock-mode', 'claim');
+            els.callBtn.classList.remove('guest-bingo-dock-btn--buy');
             const label = (data && data.playingForLabel) || 'prize';
+            if (preClaim) {
+                if (phase === 'intro') {
+                    const sec =
+                        data.introRemainingSec != null
+                            ? data.introRemainingSec
+                            : Math.max(0, Math.ceil(guestIntroRemainingMs(data) / 1000));
+                    els.callBtn.textContent = 'Claim — starts in ' + sec + 's';
+                } else if (phase === 'resume') {
+                    els.callBtn.textContent = 'Claim — resuming soon';
+                } else {
+                    els.callBtn.textContent = 'Claim — waiting for caller';
+                }
+                els.callBtn.disabled = true;
+                els.callBtn.classList.remove('guest-bingo-call--ready');
+                return;
+            }
+
             els.callBtn.textContent = 'Claim — ' + label;
         }
 
@@ -1129,9 +1178,12 @@
             });
         }
 
-        function manualMarksFor(serial) {
+        function manualMarksFor(serial, grid) {
             const key = String(serial || '');
-            if (!manualMarksBySerial[key]) manualMarksBySerial[key] = emptyManualMarks();
+            const g = grid || null;
+            const rows = g ? g.length : 3;
+            const cols = g && g[0] ? g[0].length : 9;
+            if (!manualMarksBySerial[key]) manualMarksBySerial[key] = emptyManualMarks(rows, cols);
             return manualMarksBySerial[key];
         }
 
@@ -1139,10 +1191,12 @@
             const called = new Set(calledBalls || []);
             if (!item || !item.grid) return [];
             if (autoDab) return calledBalls || [];
-            const manual = manualMarksFor(item.serial);
+            const manual = manualMarksFor(item.serial, item.grid);
             const out = [];
-            for (let r = 0; r < 3; r++) {
-                for (let c = 0; c < 9; c++) {
+            const rows = item.grid.length;
+            const cols = item.grid[0] ? item.grid[0].length : 9;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
                     const n = item.grid[r][c];
                     if (n != null && called.has(n) && manual[r][c]) out.push(n);
                 }
@@ -1150,8 +1204,47 @@
             return out;
         }
 
-        function guestProgressTowardClaim(grid, calledBalls, playingFor, prizeLabel) {
+        function guestProgressTowardClaim(grid, calledBalls, playingFor, prizeLabel, cardFormat) {
             if (!grid) return { toGo: null, label: '' };
+            if (cardFormat === 'us-75' || isUs75Grid(grid)) {
+                const pf = String(playingFor || 'four-corners');
+                const prize =
+                    prizeLabel && String(prizeLabel).trim()
+                        ? String(prizeLabel).trim()
+                        : pf === 'four-corners'
+                          ? 'four corners'
+                          : pf === 'two-lines'
+                            ? 'two lines'
+                            : pf === 'house'
+                              ? 'full house'
+                              : 'a line';
+                const calledSet = new Set(calledBalls || []);
+                const corners = [
+                    [0, 0],
+                    [0, 4],
+                    [4, 0],
+                    [4, 4]
+                ];
+                const marked = function (r, c) {
+                    if (r === 2 && c === 2) return true;
+                    const n = grid[r][c];
+                    return n != null && calledSet.has(n);
+                };
+                if (pf === 'four-corners') {
+                    const need = corners.filter(function (pair) {
+                        return !marked(pair[0], pair[1]);
+                    }).length;
+                    return {
+                        toGo: need,
+                        label:
+                            need === 0
+                                ? (prize !== 'four corners' ? prize + ' — claim!' : 'Four corners — claim!')
+                                : need === 1
+                                  ? '1 to go for ' + prize
+                                  : need + ' to go for ' + prize
+                    };
+                }
+            }
             const calledSet = new Set(calledBalls || []);
             const rowNeeds = [0, 1, 2].map(function (r) {
                 let need = 0;
@@ -1214,9 +1307,10 @@
             if (autoDab || !cards || !cards.length) return cards || [];
             const pf = (data && data.playingFor) || 'line';
             const prizeLabel = (data && data.playingForLabel) || '';
+            const fmt = (data && data.cardFormat) || (data && data.game && data.game.cardFormat) || 'uk-90';
             return cards.map(function (c) {
                 const balls = effectiveMarkedCalledBalls(c, calledBalls);
-                const p = guestProgressTowardClaim(c.grid, balls, pf, prizeLabel);
+                const p = guestProgressTowardClaim(c.grid, balls, pf, prizeLabel, fmt);
                 return Object.assign({}, c, { progress: p, toGo: p.toGo, progressLabel: p.label });
             });
         }
@@ -1234,7 +1328,7 @@
         function marksForCard(item) {
             if (autoDab && item.marks) return item.marks;
             if (!item.grid) return item.marks;
-            const manual = manualMarksFor(item.serial);
+            const manual = manualMarksFor(item.serial, item.grid);
             return item.grid.map((row, r) =>
                 row.map((n, c) => {
                     if (n == null) return null;
@@ -1245,19 +1339,33 @@
 
         function buildCardTableHtml(grid, marks, calledBalls) {
             const called = calledBalls || [];
-            const headers = ['1–9', '10–19', '20–29', '30–39', '40–49', '50–59', '60–69', '70–79', '80–90'];
-            let html = '<table class="guest-bingo-table"><thead><tr>';
+            const us75 = isUs75Grid(grid);
+            const headers = us75
+                ? ['B', 'I', 'N', 'G', 'O']
+                : ['1–9', '10–19', '20–29', '30–39', '40–49', '50–59', '60–69', '70–79', '80–90'];
+            const rows = us75 ? 5 : 3;
+            const cols = us75 ? 5 : 9;
+            let html =
+                '<table class="guest-bingo-table' +
+                (us75 ? ' guest-bingo-table--us75' : '') +
+                '"><thead><tr>';
             headers.forEach(function (h) {
                 html += '<th>' + h + '</th>';
             });
             html += '</tr></thead><tbody>';
-            for (let r = 0; r < 3; r++) {
+            for (let r = 0; r < rows; r++) {
                 html += '<tr>';
-                for (let c = 0; c < 9; c++) {
+                for (let c = 0; c < cols; c++) {
                     const n = grid[r][c];
                     const marked = marks && marks[r] && marks[r][c];
                     if (n == null) {
-                        html += '<td class="is-blank"></td>';
+                        const free = us75 && r === 2 && c === 2;
+                        html +=
+                            '<td class="' +
+                            (free ? 'is-free' : 'is-blank') +
+                            '">' +
+                            (free ? '<span class="guest-bingo-free">FREE</span>' : '') +
+                            '</td>';
                     } else {
                         const dabClass = marked ? ' is-marked' : '';
                         const canTap = !autoDab ? ' guest-bingo-cell--manual' : '';
@@ -1390,7 +1498,7 @@
                     const c = parseInt(td.getAttribute('data-cell-c'), 10);
                     const ball = parseInt(td.getAttribute('data-ball'), 10);
                     if ((calledBalls || []).indexOf(ball) === -1) return;
-                    const manual = manualMarksFor(item.serial);
+                    const manual = manualMarksFor(item.serial, item.grid);
                     manual[r][c] = !manual[r][c];
                     const payload = lastStackPayload;
                     const data = payload && payload.data ? payload.data : null;
@@ -1740,7 +1848,11 @@
                 }
                 showPlay();
                 applyPlayTheme(data);
-                playingFor = data.playingFor || 'line';
+                playingFor =
+                    data.playingFor ||
+                    ((data.cardFormat || (data.game && data.game.cardFormat)) === 'us-75'
+                        ? 'four-corners'
+                        : 'line');
                 if (els.gameTitle) els.gameTitle.textContent = data.game.title;
                 if (els.lastBall) els.lastBall.textContent = data.lastBall != null ? data.lastBall : '—';
                 renderRecentBalls(els.recentBalls, data.calledBalls, {
@@ -1748,7 +1860,12 @@
                     calledCount: data.calledCount,
                     ballCount: data.ballCount
                 });
-                renderPrizeBar(els.prizeBar, data.playingFor, data.prizeWinners);
+                renderPrizeBar(
+                    els.prizeBar,
+                    data.playingFor,
+                    data.prizeWinners,
+                    data.cardFormat || (data.game && data.game.cardFormat)
+                );
                 if (els.playingFor)
                     els.playingFor.textContent = 'Playing for · ' + (data.playingForLabel || '');
                 let stackCards =
@@ -1970,8 +2087,20 @@
                     if (!activeGameId || els.callBtn.disabled) return;
                     const data = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
                     const rem = guestTicketRemaining(data);
-                    if (!data || !data.canGrabMore || rem <= 0) return;
-                    openBuyTicketsModal(activeGameId, rem);
+                    if (!data || !data.canGrabMore || rem <= 0) {
+                        const resultEl = els.claimResult;
+                        if (resultEl) {
+                            resultEl.textContent =
+                                data && data.playInProgress
+                                    ? 'Extra tickets are only available before the game starts'
+                                    : 'No more tickets available for this game';
+                        }
+                        return;
+                    }
+                    const opened = openBuyTicketsModal(activeGameId, rem);
+                    if (opened && opened.ok === false && opened.error && els.claimResult) {
+                        els.claimResult.textContent = opened.error;
+                    }
                     return;
                 }
                 sendClaim(playingFor);

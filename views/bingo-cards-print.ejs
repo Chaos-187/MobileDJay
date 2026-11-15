@@ -30,9 +30,12 @@
                         <svg class="bingo-barcode" role="img" aria-label="Barcode <%= card.serial %>" data-serial="<%= card.serial %>"></svg>
                     </div>
                 </header>
-                <table class="bingo-card-table" aria-label="Bingo card <%= card.serial %>">
+                <table class="bingo-card-table <%= cardFormat === 'us-75' ? 'bingo-card-table--us75' : '' %>" aria-label="Bingo card <%= card.serial %>">
                     <thead>
                         <tr>
+                            <% if (cardFormat === 'us-75') { %>
+                            <th>B</th><th>I</th><th>N</th><th>G</th><th>O</th>
+                            <% } else { %>
                             <th>1–9</th>
                             <th>10–19</th>
                             <th>20–29</th>
@@ -42,19 +45,20 @@
                             <th>60–69</th>
                             <th>70–79</th>
                             <th>80–90</th>
+                            <% } %>
                         </tr>
                     </thead>
                     <tbody>
-                        <% card.grid.forEach(function(row) { %>
+                        <% card.grid.forEach(function(row, rIdx) { %>
                         <tr>
-                            <% row.forEach(function(cell) { %>
-                            <td class="<%= cell == null ? 'bingo-cell-blank' : '' %>"><%= cell == null ? '' : cell %></td>
+                            <% row.forEach(function(cell, cIdx) { %>
+                            <td class="<%= cell == null ? (cardFormat === 'us-75' && rIdx === 2 && cIdx === 2 ? 'bingo-cell-free' : 'bingo-cell-blank') : '' %>"><%= (cardFormat === 'us-75' && rIdx === 2 && cIdx === 2) ? 'FREE' : (cell == null ? '' : cell) %></td>
                             <% }); %>
                         </tr>
                         <% }); %>
                     </tbody>
                 </table>
-                <p class="bingo-print-foot">Mark called numbers · line · two lines · house</p>
+                <p class="bingo-print-foot"><%= cardFormat === 'us-75' ? 'Mark called numbers · four corners · line · two lines · house' : 'Mark called numbers · line · two lines · house' %></p>
             </article>
             <% }); %>
         </div>

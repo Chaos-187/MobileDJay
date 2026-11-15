@@ -50,16 +50,20 @@ const {
     ensureDefaultEvent
 } = require('./db/database');
 const {
-    generateUK90Ticket,
-    generateUK90TicketForBatch,
+    generateTicketForBatch,
     verifyClaim,
     claimLabel,
     progressTowardClaim,
     prizeLabelForPlayingFor,
     normalizePrizes,
     normalizePlayingFor,
+    normalizeCardFormat,
+    inferCardFormat,
     normalizeBingoTheme,
-    listBingoThemes
+    listBingoThemes,
+    prizeTiersForFormat,
+    defaultPlayingFor,
+    BINGO_CARD_FORMATS
 } = require('./lib/bingo');
 const bingoSession = require('./lib/bingo-session');
 const { clampBingoMaxVirtualPerGuest } = require('./lib/bingo-limits');
@@ -751,9 +755,14 @@ function normalizeBingoAdvertisedStart(raw) {
 }
 
 function mergeBingoPrizeWinnersFromDb(gameId, prizeWinners) {
-    const base = { line: null, 'two-lines': null, house: null, ...(prizeWinners || {}) };
+    const game = gameId ? bingoGameDb.getById(gameId) : null;
+    const tiers = prizeTiersForFormat(game?.cardFormat);
+    const base = { ...(prizeWinners || {}) };
+    for (const tier of tiers) {
+        if (!(tier in base)) base[tier] = null;
+    }
     if (!gameId) return base;
-    for (const tier of ['line', 'two-lines', 'house']) {
+    for (const tier of tiers) {
         let cur = base[tier];
         for (const name of bingoClaimDb.listVerifiedWinnerNames(gameId, tier)) {
             cur = bingoSession.appendPrizeWinner(cur, name);
@@ -772,7 +781,18 @@ function bingoPublicState(slug, gameId) {
 function guestBingoCardProgress(card, slug, gameId) {
     const state = bingoPublicState(slug, gameId);
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
-    return progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
+    const fmt = state.cardFormat || inferCardFormatFromGame(gameId);
+    return progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel, fmt);
+}
+
+function inferCardFormatFromGame(gameId) {
+    const game = gameId ? bingoGameDb.getById(gameId) : null;
+    return normalizeCardFormat(game?.cardFormat);
+}
+
+function inferCardFormatFromCards(cards) {
+    const grid = cards && cards[0] && cards[0].grid;
+    return grid ? inferCardFormat(grid) : 'uk-90';
 }
 
 /** Caller started or game is live — no extra virtual cards. */
@@ -2173,6 +2193,7 @@ function makeBingoCaller(slug, gameId) {
 function callerOptionsFromGame(game) {
     if (!game) return {};
     return {
+        cardFormat: normalizeCardFormat(game.cardFormat),
         ballCount: game.ballCount,
         callIntervalMs: game.callIntervalMs,
         introSeconds: game.introSeconds,
@@ -2197,12 +2218,19 @@ function persistGameCallerFromBody(gameId, body) {
     }
     const prizes = normalizePrizes(
         body.prizes || {
+            'four-corners': body.prizeFourCorners,
             line: body.prizeLine,
             'two-lines': body.prizeTwoLines,
             house: body.prizeHouse
         }
     );
-    if (body.prizeLine != null || body.prizeTwoLines != null || body.prizeHouse != null || body.prizes) {
+    if (
+        body.prizeFourCorners != null ||
+        body.prizeLine != null ||
+        body.prizeTwoLines != null ||
+        body.prizeHouse != null ||
+        body.prizes
+    ) {
         patch.prizes = prizes;
     }
     if (body.claimBreakSeconds != null) {
@@ -2269,16 +2297,19 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
             : fromGame.callIntervalMs || 5000
     );
     const ballCount = game?.ballCount || req.body.ballCount;
+    const startFmt = normalizeCardFormat(game?.cardFormat || fromGame.cardFormat);
     const startOpts = {
+        cardFormat: startFmt,
         ballCount,
         callIntervalMs,
         autoCall: req.body.autoCall != null ? !!req.body.autoCall : !!fromGame.autoCall,
         voiceCall: req.body.voiceCall != null ? !!req.body.voiceCall : !!fromGame.voiceCall,
-        playingFor: req.body.playingFor,
+        playingFor: req.body.playingFor || defaultPlayingFor(startFmt),
         introSeconds:
             req.body.introSeconds != null ? req.body.introSeconds : fromGame.introSeconds ?? 30,
         prizes: normalizePrizes(
             req.body.prizes || {
+                'four-corners': req.body.prizeFourCorners,
                 line: req.body.prizeLine,
                 'two-lines': req.body.prizeTwoLines,
                 house: req.body.prizeHouse
@@ -2359,7 +2390,9 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
     const { slug, gameId } = ctx;
     let gid = gameId;
     if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
+    const configGame = gid ? bingoGameDb.getById(gid) : null;
     const state = bingoSession.updateBingoConfig(slug, gid, {
+        cardFormat: configGame?.cardFormat,
         ballCount: req.body.ballCount,
         callIntervalMs: req.body.callIntervalSeconds != null ? Number(req.body.callIntervalSeconds) * 1000 : undefined,
         autoCall: req.body.autoCall,
@@ -2367,6 +2400,7 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
         playingFor: req.body.playingFor,
         introSeconds: req.body.introSeconds,
         prizes: normalizePrizes(req.body.prizes || {
+            'four-corners': req.body.prizeFourCorners,
             line: req.body.prizeLine,
             'two-lines': req.body.prizeTwoLines,
             house: req.body.prizeHouse
@@ -2453,8 +2487,8 @@ app.post('/api/display/:eventSlug/games/bingo/claim-flash', djWebAuth.requireDjA
     let gid = gameId;
     if (req.body?.gameId != null) gid = bingoSession.normalizeGameId(req.body.gameId);
     const claimType = String(req.body.claimType || '').trim();
-    if (!['line', 'two-lines', 'house'].includes(claimType)) {
-        return res.status(400).json({ error: 'claimType must be line, two-lines, or house' });
+    if (!['four-corners', 'line', 'two-lines', 'house'].includes(claimType)) {
+        return res.status(400).json({ error: 'claimType must be four-corners, line, two-lines, or house' });
     }
     const winnerName = req.body.winnerName || req.body.customerName || null;
     const flash = bingoSession.setClaimFlash(slug, gid, claimType, {
@@ -2580,8 +2614,8 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
     if (!serial) {
         return res.status(400).json({ error: 'serial is required' });
     }
-    if (!['line', 'two-lines', 'house'].includes(claimType)) {
-        return res.status(400).json({ error: 'claimType must be line, two-lines, or house' });
+    if (!['four-corners', 'line', 'two-lines', 'house'].includes(claimType)) {
+        return res.status(400).json({ error: 'claimType must be four-corners, line, two-lines, or house' });
     }
     const card = bingoDb.getBySerial(eventId, serial);
     if (!card || !card.grid) {
@@ -2595,7 +2629,9 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
         if (live) gid = live.id;
     }
     const state = bingoSession.getBingoState(slug, gid);
-    const valid = verifyClaim(card.grid, state.calledBalls, claimType);
+    const gameRow = gid ? bingoGameDb.getById(gid) : null;
+    const cardFmt = normalizeCardFormat(state.cardFormat || gameRow?.cardFormat);
+    const valid = verifyClaim(card.grid, state.calledBalls, claimType, cardFmt);
     const winnerName = card.assignedTo ? normalizeGuestNameForApi(card.assignedTo) : null;
     const flash = bingoSession.setClaimFlash(slug, gid, claimType, {
         serial,
@@ -2622,9 +2658,10 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
     });
 });
 
-function generateBingoCardBatch(event, { count, ballCount, batchId, gameId }) {
+function generateBingoCardBatch(event, { count, ballCount, batchId, gameId, cardFormat }) {
     const eventId = event.id;
-    const bc = Math.max(9, Math.min(90, Number(ballCount) || 90));
+    const fmt = normalizeCardFormat(cardFormat);
+    const bc = fmt === 'us-75' ? 75 : Math.max(9, Math.min(90, Number(ballCount) || 90));
     const batch = String(batchId || `B${Date.now().toString(36).toUpperCase()}`).slice(0, 32);
     const prefix = String(event.slug || 'EVT')
         .replace(/[^a-z0-9]/gi, '')
@@ -2636,12 +2673,12 @@ function generateBingoCardBatch(event, { count, ballCount, batchId, gameId }) {
     for (let i = 0; i < count; i++) {
         const seq = String(existingInBatch + i + 1).padStart(4, '0');
         const serial = `${prefix}-${batch}-${seq}`;
-        const grid = generateUK90TicketForBatch(bc, gridsSoFar);
+        const grid = generateTicketForBatch(fmt, bc, gridsSoFar);
         gridsSoFar.push(grid);
         cards.push({ serial, grid });
     }
     bingoDb.addMany(eventId, batch, cards, gameId || null);
-    return { batchId: batch, count: cards.length, ballCount: bc };
+    return { batchId: batch, count: cards.length, ballCount: bc, cardFormat: fmt };
 }
 
 app.post('/api/events/:id/bingo/cards/generate', djWebAuth.requireDjApiAuth, djWebAuth.requireEventAccess, (req, res) => {
@@ -2653,7 +2690,14 @@ app.post('/api/events/:id/bingo/cards/generate', djWebAuth.requireDjApiAuth, djW
     }
     const batchId = game ? game.batchId : req.body.batchId;
     const ballCount = game ? game.ballCount : req.body.ballCount;
-    const result = generateBingoCardBatch(req.event, { count, ballCount, batchId, gameId: game?.id });
+    const cardFormat = game ? game.cardFormat : req.body.cardFormat;
+    const result = generateBingoCardBatch(req.event, {
+        count,
+        ballCount,
+        batchId,
+        gameId: game?.id,
+        cardFormat
+    });
     res.json({
         success: true,
         ...result,
@@ -2741,8 +2785,10 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
     const advertisedStartAt =
         normalizeBingoAdvertisedStart(req.body.advertisedStartAt) ||
         (req.body.advertisedStartAt ? String(req.body.advertisedStartAt).trim().slice(0, 40) : null);
+    const cardFormat = normalizeCardFormat(req.body.cardFormat);
     const prizes = normalizePrizes(
         req.body.prizes || {
+            'four-corners': req.body.prizeFourCorners,
             line: req.body.prizeLine,
             'two-lines': req.body.prizeTwoLines,
             house: req.body.prizeHouse
@@ -2752,6 +2798,7 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
         title: req.body.title,
         batchId: req.body.batchId,
         ballCount: req.body.ballCount,
+        cardFormat,
         maxVirtualCards: req.body.maxVirtualCards,
         advertisedStartAt,
         callIntervalMs: Math.max(2000, (Number(req.body.callIntervalSeconds) || 5) * 1000),
@@ -2766,6 +2813,7 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
         generateBingoCardBatch(req.event, {
             count: cardCount,
             ballCount: game.ballCount,
+            cardFormat: game.cardFormat,
             batchId: game.batchId,
             gameId: game.id
         });
@@ -2817,6 +2865,9 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
     if (game.status === 'live' && req.body.ballCount != null) {
         return res.status(409).json({ error: 'Cannot change ball count while this game is live on the caller.' });
     }
+    if (game.status === 'live' && req.body.cardFormat != null) {
+        return res.status(409).json({ error: 'Cannot change card game while this game is live on the caller.' });
+    }
     const adv =
         req.body.advertisedStartAt !== undefined
             ? normalizeBingoAdvertisedStart(req.body.advertisedStartAt) ||
@@ -2827,6 +2878,9 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
         maxVirtualCards: req.body.maxVirtualCards,
         advertisedStartAt: adv
     };
+    if (req.body.cardFormat != null && game.status !== 'live') {
+        patch.cardFormat = normalizeCardFormat(req.body.cardFormat);
+    }
     if (req.body.ballCount != null && game.status !== 'live') {
         patch.ballCount = req.body.ballCount;
     }
@@ -2841,6 +2895,7 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
     if (req.body.autoCall != null) patch.autoCall = !!req.body.autoCall;
     if (req.body.voiceCall != null) patch.voiceCall = !!req.body.voiceCall;
     if (
+        req.body.prizeFourCorners != null ||
         req.body.prizeLine != null ||
         req.body.prizeTwoLines != null ||
         req.body.prizeHouse != null ||
@@ -2848,6 +2903,7 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
     ) {
         patch.prizes = normalizePrizes(
             req.body.prizes || {
+                'four-corners': req.body.prizeFourCorners,
                 line: req.body.prizeLine,
                 'two-lines': req.body.prizeTwoLines,
                 house: req.body.prizeHouse
@@ -2995,7 +3051,8 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/join', getEventFromSlugJson,
         maxCards,
         eventId: req.event.id,
         eventSlug: req.event.slug,
-        ballCount: game.ballCount
+        ballCount: game.ballCount,
+        cardFormat: game.cardFormat
     };
     const cards = [];
     let lastResult = null;
@@ -3056,12 +3113,19 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
     bingoSession.ensureResumeAdvanced(slug, gameId, caller);
     const state = bingoPublicState(slug, gameId);
     const called = new Set(state.calledBalls || []);
+    const cardFmt = normalizeCardFormat(state.cardFormat || game.cardFormat);
     const prizeLabel = prizeLabelForPlayingFor(state.playingFor, state.prizes);
-    const progress = progressTowardClaim(card.grid, state.calledBalls || [], state.playingFor, prizeLabel);
+    const progress = progressTowardClaim(
+        card.grid,
+        state.calledBalls || [],
+        state.playingFor,
+        prizeLabel,
+        cardFmt
+    );
     const calledList = state.calledBalls || [];
     const allCards = access.cards.map((c) => {
         const p = guestBingoCardProgress(c, slug, gameId);
-        const cardProgress = progressTowardClaim(c.grid, calledList, state.playingFor, prizeLabel);
+        const cardProgress = progressTowardClaim(c.grid, calledList, state.playingFor, prizeLabel, cardFmt);
         return {
             assignOrder: c.id,
             serial: c.serial,
@@ -3073,7 +3137,14 @@ app.get('/api/event/:eventSlug/bingo/games/:gameId/play', getEventFromSlugJson, 
         };
     });
     res.json({
-        game: { id: game.id, title: game.title, status: game.status, bingoTheme: normalizeBingoTheme(game.bingoTheme) },
+        game: {
+            id: game.id,
+            title: game.title,
+            status: game.status,
+            cardFormat: normalizeCardFormat(game.cardFormat),
+            bingoTheme: normalizeBingoTheme(game.bingoTheme)
+        },
+        cardFormat: cardFmt,
         bingoTheme: normalizeBingoTheme(game.bingoTheme),
         cardLimit,
         guestCards,
@@ -3204,7 +3275,8 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
     const state = bingoSession.getBingoState(slug, gameId);
     const requested = normalizePlayingFor(claimType);
     const playingFor = normalizePlayingFor(state.playingFor);
-    const valid = verifyClaim(card.grid, state.calledBalls, claimType);
+    const cardFmt = normalizeCardFormat(state.cardFormat || game.cardFormat);
+    const valid = verifyClaim(card.grid, state.calledBalls, claimType, cardFmt);
 
     function recordGuestClaim(validOnCard) {
         bingoClaimDb.add(gameId, {
@@ -3303,10 +3375,13 @@ app.get('/dj/bingo/:id/print', djWebAuth.requireDjWebAuth, djWebAuth.requireEven
     if (!cards.length) {
         return res.status(404).render('error', { error: 'No bingo cards found for this batch.', eventSlug: req.event.slug });
     }
+    const linkedGame = bingoGameDb.getByBatchId(req.event.id, batchId);
+    const cardFormat = normalizeCardFormat(linkedGame?.cardFormat || inferCardFormatFromCards(cards));
     res.render('bingo-cards-print', {
         event: req.event,
         batchId,
-        cards
+        cards,
+        cardFormat
     });
 });
 

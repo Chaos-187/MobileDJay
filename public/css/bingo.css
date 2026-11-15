@@ -160,6 +160,18 @@ body.mdj-guest-bingo-page {
     background: rgba(0, 0, 0, 0.25);
 }
 
+.guest-bingo-table td.is-free {
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+}
+
+.guest-bingo-table--us75 th {
+    font-weight: 800;
+    letter-spacing: 0.06em;
+}
+
 .guest-bingo-table td.is-marked {
     background: linear-gradient(145deg, #ff7a1a, #e85d00);
     color: #1a0800;
@@ -1564,6 +1576,71 @@ body:not(.dark-mode) .mdj-bingo-wizard-step {
 
 body:not(.dark-mode) .mdj-bingo-wizard-review dd {
     color: rgba(15, 23, 42, 0.72);
+}
+
+.mdj-bingo-theme-picker {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+    gap: 0.55rem;
+}
+
+.mdj-bingo-theme-picker--compact {
+    grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
+}
+
+.mdj-bingo-theme-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.4rem;
+    padding: 0.55rem 0.55rem 0.6rem;
+    border-radius: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.22);
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+
+body:not(.dark-mode) .mdj-bingo-theme-card {
+    border-color: rgba(15, 23, 42, 0.12);
+    background: rgba(255, 255, 255, 0.92);
+}
+
+.mdj-bingo-theme-card:hover {
+    border-color: rgba(255, 122, 26, 0.45);
+}
+
+.mdj-bingo-theme-card.is-active {
+    border-color: #ff7a1a;
+    box-shadow: 0 0 0 2px rgba(255, 122, 26, 0.25);
+}
+
+.mdj-bingo-theme-card__swatch {
+    display: block;
+    height: 2.25rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+body:not(.dark-mode) .mdj-bingo-theme-card__swatch {
+    border-color: rgba(15, 23, 42, 0.08);
+}
+
+.mdj-bingo-theme-card__label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.mdj-bingo-theme-card__desc {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.35;
+    opacity: 0.72;
 }
 
 .mdj-bingo-game-row.is-selected {

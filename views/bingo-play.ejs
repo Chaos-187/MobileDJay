@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=62" rel="stylesheet">
+    <link href="/css/bingo.css?v=63" rel="stylesheet">
     <link href="/css/bingo-themes.css?v=7" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
@@ -94,7 +94,8 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/guest-bingo-play.js?v=71"></script>
+    <script src="/js/bingo-uk-calls.js?v=1"></script>
+    <script src="/js/guest-bingo-play.js?v=72"></script>
     <script src="/js/guest-bingo.js?v=4"></script>
 </body>
 </html>

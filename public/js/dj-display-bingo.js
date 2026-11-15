@@ -438,14 +438,31 @@
         }, hideMs);
     }
 
-    function speakBallNumber(num) {
+    function readDisplayCallerStyle() {
+        try {
+            const v = localStorage.getItem('mdj_bingo_caller_style');
+            if (v && window.MdjBingoUkCalls) return window.MdjBingoUkCalls.normalizeCallerStyle(v);
+            if (v === 'phrase' || v === 'both') return v;
+        } catch (e) {
+            /* ignore */
+        }
+        return 'number';
+    }
+
+    function speakBallNumber(num, state) {
         if (typeof window === 'undefined' || !window.speechSynthesis) return;
         try {
             window.speechSynthesis.cancel();
         } catch (e) {
             /* ignore */
         }
-        const u = new SpeechSynthesisUtterance('Number ' + num);
+        const fmt = state && (state.cardFormat || (state.game && state.game.cardFormat));
+        const style = readDisplayCallerStyle();
+        const text =
+            window.MdjBingoUkCalls && window.MdjBingoUkCalls.announcementText
+                ? window.MdjBingoUkCalls.announcementText(num, style, fmt)
+                : 'Number ' + num;
+        const u = new SpeechSynthesisUtterance(text);
         u.lang = 'en-GB';
         u.rate = 0.92;
         u.pitch = 1;
@@ -475,10 +492,13 @@
         }
         lastSpokenBall = state.lastBall;
         const theme = state.bingoTheme || 'default';
+        const speakFn = function (n) {
+            speakBallNumber(n, state);
+        };
         if (window.MdjBingoTheme && typeof window.MdjBingoTheme.announceCalledBall === 'function') {
-            window.MdjBingoTheme.announceCalledBall(theme, state.lastBall, speakBallNumber);
+            window.MdjBingoTheme.announceCalledBall(theme, state.lastBall, speakFn);
         } else {
-            speakBallNumber(state.lastBall);
+            speakFn(state.lastBall);
         }
     }
 

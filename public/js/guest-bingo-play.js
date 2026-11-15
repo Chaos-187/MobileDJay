@@ -6,6 +6,7 @@
 
     const AUTO_DAB_KEY = 'mdj_bingo_auto_dab';
     const CALLER_SOUND_KEY = 'mdj_bingo_caller_sound';
+    const CALLER_STYLE_KEY = 'mdj_bingo_caller_style';
     const PREFS_PROMPT_KEY = 'mdj_bingo_prefs_prompted';
 
     function prefsPromptedForEvent(eventSlug) {
@@ -69,6 +70,38 @@
         } catch (e) {
             /* ignore */
         }
+    }
+
+    function readCallerStyle() {
+        try {
+            const v = localStorage.getItem(CALLER_STYLE_KEY);
+            if (v && global.MdjBingoUkCalls) return global.MdjBingoUkCalls.normalizeCallerStyle(v);
+            if (v === 'phrase' || v === 'both') return v;
+        } catch (e) {
+            /* ignore */
+        }
+        return 'number';
+    }
+
+    function writeCallerStyle(style) {
+        const normalized =
+            global.MdjBingoUkCalls && global.MdjBingoUkCalls.normalizeCallerStyle
+                ? global.MdjBingoUkCalls.normalizeCallerStyle(style)
+                : style === 'phrase' || style === 'both'
+                  ? style
+                  : 'number';
+        try {
+            localStorage.setItem(CALLER_STYLE_KEY, normalized);
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
+    function callerAnnouncementText(num, style, cardFormat) {
+        if (global.MdjBingoUkCalls && global.MdjBingoUkCalls.announcementText) {
+            return global.MdjBingoUkCalls.announcementText(num, style, cardFormat);
+        }
+        return 'Number ' + num;
     }
 
     function emptyManualMarks(rows, cols) {
@@ -614,6 +647,7 @@
         let lobbyGamesFirstLoad = true;
         let autoDab = readAutoDab();
         let callerSoundOn = readCallerSound();
+        let callerStyle = readCallerStyle();
         const manualMarksBySerial = Object.create(null);
         let lastStackPayload = null;
         let playingFor = 'line';
@@ -687,7 +721,17 @@
                 '<span class="guest-bingo-opt__copy"><span class="guest-bingo-opt__title">Caller sound</span>' +
                 '<span class="guest-bingo-opt__hint">Speak each ball on this phone</span></span>' +
                 '<input class="guest-bingo-opt__input" type="checkbox" data-bingo-caller-sound checked>' +
-                '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label></div>' +
+                '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label>' +
+                '<div class="guest-bingo-opt guest-bingo-opt--stacked" data-bingo-caller-style-wrap>' +
+                '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-bullhorn"></i></span>' +
+                '<span class="guest-bingo-opt__copy guest-bingo-opt__copy--full">' +
+                '<span class="guest-bingo-opt__title">Caller says</span>' +
+                '<span class="guest-bingo-opt__hint">UK 90-ball nicknames on this phone</span>' +
+                '<select class="guest-bingo-caller-style" data-bingo-caller-style aria-label="Caller announcement style">' +
+                '<option value="number">Numbers only</option>' +
+                '<option value="phrase">Phrases only</option>' +
+                '<option value="both">Number and phrase</option>' +
+                '</select></span></div></div>' +
                 '<button type="button" class="guest-bingo-settings-modal__done gh-btn gh-btn--accent" data-bingo-settings-close>Done</button>' +
                 '</div>';
             host.appendChild(wrap);
@@ -729,8 +773,11 @@
             document.documentElement.classList.add('guest-bingo-settings-open');
             const modalAuto = modal.backdrop.querySelector('[data-bingo-auto-dab]');
             const modalSound = modal.backdrop.querySelector('[data-bingo-caller-sound]');
+            const modalStyle = modal.backdrop.querySelector('[data-bingo-caller-style]');
             if (modalAuto) modalAuto.checked = autoDab;
             if (modalSound) modalSound.checked = callerSoundOn;
+            if (modalStyle) modalStyle.value = callerStyle;
+            syncCallerStyleUi(modal.backdrop);
             wireSettingsInputs(modal.backdrop);
         }
 
@@ -740,6 +787,7 @@
                     markPrefsPrompted(slug);
                     writeAutoDab(autoDab);
                     writeCallerSound(callerSoundOn);
+                    writeCallerStyle(callerStyle);
                 }
                 settingsModalEls.backdrop.hidden = true;
                 settingsModalEls.backdrop.setAttribute('hidden', '');
@@ -759,10 +807,31 @@
             }, 280);
         }
 
+        function syncCallerStyleUi(scope) {
+            const host = scope || root;
+            const wrap = host.querySelector('[data-bingo-caller-style-wrap]');
+            const sel = host.querySelector('[data-bingo-caller-style]');
+            const fmt =
+                lastStackPayload && lastStackPayload.data
+                    ? lastStackPayload.data.cardFormat ||
+                      (lastStackPayload.data.game && lastStackPayload.data.game.cardFormat)
+                    : 'uk-90';
+            const us75 = String(fmt || '').toLowerCase() === 'us-75';
+            if (wrap) {
+                wrap.hidden = us75;
+                if (us75) wrap.setAttribute('hidden', '');
+                else wrap.removeAttribute('hidden');
+            }
+            if (sel && !sel.dataset.wired) {
+                sel.value = callerStyle;
+            }
+        }
+
         function wireSettingsInputs(scope) {
             const host = scope || root;
             const autoEl = host.querySelector('[data-bingo-auto-dab]');
             const soundEl = host.querySelector('[data-bingo-caller-sound]');
+            const styleEl = host.querySelector('[data-bingo-caller-style]');
             if (autoEl && !autoEl.dataset.wired) {
                 autoEl.dataset.wired = '1';
                 autoEl.checked = autoDab;
@@ -804,6 +873,21 @@
                     syncSettingsToggles();
                 });
             }
+            if (styleEl && !styleEl.dataset.wired) {
+                styleEl.dataset.wired = '1';
+                styleEl.value = callerStyle;
+                styleEl.addEventListener('change', function () {
+                    callerStyle =
+                        global.MdjBingoUkCalls && global.MdjBingoUkCalls.normalizeCallerStyle
+                            ? global.MdjBingoUkCalls.normalizeCallerStyle(styleEl.value)
+                            : styleEl.value;
+                    writeCallerStyle(callerStyle);
+                    qq('[data-bingo-caller-style]').forEach(function (el) {
+                        if (el !== styleEl) el.value = callerStyle;
+                    });
+                });
+            }
+            syncCallerStyleUi(host);
         }
 
         function syncSettingsToggles() {
@@ -813,6 +897,10 @@
             qq('[data-bingo-caller-sound]').forEach(function (el) {
                 el.checked = callerSoundOn;
             });
+            qq('[data-bingo-caller-style]').forEach(function (el) {
+                el.value = callerStyle;
+            });
+            syncCallerStyleUi(root);
         }
 
         function guestModalHost() {
@@ -1136,14 +1224,14 @@
             }).filter(Boolean);
         }
 
-        function speakBallNumber(num) {
-            if (typeof window === 'undefined' || !window.speechSynthesis) return;
+        function speakAnnouncementText(text) {
+            if (typeof window === 'undefined' || !window.speechSynthesis || !text) return;
             try {
                 window.speechSynthesis.cancel();
             } catch (e) {
                 /* ignore */
             }
-            const u = new SpeechSynthesisUtterance('Number ' + num);
+            const u = new SpeechSynthesisUtterance(String(text));
             u.lang = 'en-GB';
             u.rate = 0.92;
             u.pitch = 1;
@@ -1152,6 +1240,13 @@
             } catch (e) {
                 /* ignore */
             }
+        }
+
+        function speakBallForPlay(num, playData) {
+            const fmt =
+                playData && (playData.cardFormat || (playData.game && playData.game.cardFormat));
+            const text = callerAnnouncementText(num, callerStyle, fmt);
+            speakAnnouncementText(text);
         }
 
         function maybeAnnounceBall(data) {
@@ -1163,10 +1258,13 @@
             lastSpokenBall = data.lastBall;
             const theme =
                 (data && (data.bingoTheme || (data.game && data.game.bingoTheme))) || 'default';
+            const speakFn = function (n) {
+                speakBallForPlay(n, data);
+            };
             if (window.MdjBingoTheme && typeof window.MdjBingoTheme.announceCalledBall === 'function') {
-                window.MdjBingoTheme.announceCalledBall(theme, data.lastBall, speakBallNumber);
+                window.MdjBingoTheme.announceCalledBall(theme, data.lastBall, speakFn);
             } else {
-                speakBallNumber(data.lastBall);
+                speakFn(data.lastBall);
             }
         }
 
@@ -2354,6 +2452,7 @@
                 syncGuestIntro(data);
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
                 syncBuyTicketsVisibility(root, data);
+                syncCallerStyleUi(root);
                 updateCallUi(stackCards, activeSerial, data);
                 maybeAnnounceBall(data);
                 syncWinnersModal(data);

@@ -529,9 +529,15 @@
                         : cardOrderSerials);
                 }
                 if (lastStackPayload) {
-                    const ordered = stabilizeCardOrder(lastStackPayload.cards);
+                    let ordered = stabilizeCardOrder(lastStackPayload.cards);
+                    if (lastStackPayload.data) {
+                        ordered = enrichCardsProgress(ordered, lastStackPayload.calledBalls, lastStackPayload.data);
+                    }
                     lastStackPayload.cards = ordered;
                     renderCardStack(ordered, lastStackPayload.calledBalls, activeSerial);
+                    if (lastStackPayload.data) {
+                        updateCallUi(ordered, activeSerial, lastStackPayload.data);
+                    }
                 }
             });
         }
@@ -667,14 +673,10 @@
         function claimCardSerial(cards) {
             const list = cards && cards.length ? cards : [];
             if (!list.length) return activeSerial;
-            if (autoDab) {
-                const ready = list.find(function (c) {
-                    const t = Number(c.progress && c.progress.toGo != null ? c.progress.toGo : c.toGo);
-                    return t === 0;
-                });
-                if (ready) return ready.serial;
-                return list[0].serial;
-            }
+            const ready = list.find(function (c) {
+                return cardToGo(c) === 0;
+            });
+            if (ready) return ready.serial;
             const focused = list.find(function (c) {
                 return c.serial === activeSerial;
             });
@@ -703,6 +705,97 @@
             const key = String(serial || '');
             if (!manualMarksBySerial[key]) manualMarksBySerial[key] = emptyManualMarks();
             return manualMarksBySerial[key];
+        }
+
+        function effectiveMarkedCalledBalls(item, calledBalls) {
+            const called = new Set(calledBalls || []);
+            if (!item || !item.grid) return [];
+            if (autoDab) return calledBalls || [];
+            const manual = manualMarksFor(item.serial);
+            const out = [];
+            for (let r = 0; r < 3; r++) {
+                for (let c = 0; c < 9; c++) {
+                    const n = item.grid[r][c];
+                    if (n != null && called.has(n) && manual[r][c]) out.push(n);
+                }
+            }
+            return out;
+        }
+
+        function guestProgressTowardClaim(grid, calledBalls, playingFor, prizeLabel) {
+            if (!grid) return { toGo: null, label: '' };
+            const calledSet = new Set(calledBalls || []);
+            const rowNeeds = [0, 1, 2].map(function (r) {
+                let need = 0;
+                for (let c = 0; c < 9; c++) {
+                    const n = grid[r][c];
+                    if (n != null && !calledSet.has(n)) need++;
+                }
+                return need;
+            });
+            const completedRows = rowNeeds.filter(function (n) {
+                return n === 0;
+            }).length;
+            const sorted = rowNeeds.slice().sort(function (a, b) {
+                return a - b;
+            });
+            const pf = String(playingFor || 'line');
+            const prize =
+                prizeLabel && String(prizeLabel).trim()
+                    ? String(prizeLabel).trim()
+                    : pf === 'two-lines'
+                      ? 'two lines'
+                      : pf === 'house'
+                        ? 'full house'
+                        : 'a line';
+            let toGo = 0;
+            let label = '';
+            if (pf === 'line') {
+                toGo = sorted[0];
+                if (completedRows >= 1) {
+                    label = prize !== 'a line' ? prize + ' — claim!' : 'Line — claim!';
+                    toGo = 0;
+                } else if (toGo === 1) label = '1 to go for ' + prize;
+                else label = toGo + ' to go for ' + prize;
+            } else if (pf === 'two-lines') {
+                if (completedRows >= 2) {
+                    toGo = 0;
+                    label = prize !== 'two lines' ? prize + ' — claim!' : 'Two lines — claim!';
+                } else if (completedRows === 1) {
+                    const incompleteNeeds = rowNeeds.filter(function (n) {
+                        return n > 0;
+                    });
+                    toGo = incompleteNeeds.length ? Math.min.apply(null, incompleteNeeds) : 0;
+                    label = toGo === 1 ? '1 to go for ' + prize : toGo + ' to go for ' + prize;
+                } else {
+                    toGo = sorted[0] + sorted[1];
+                    label = toGo === 1 ? '1 to go for ' + prize : toGo + ' to go for ' + prize;
+                }
+            } else {
+                toGo = rowNeeds.reduce(function (a, b) {
+                    return a + b;
+                }, 0);
+                if (toGo === 0) label = prize !== 'full house' ? prize + ' — claim!' : 'Full house — claim!';
+                else if (toGo === 1) label = '1 to go for ' + prize;
+                else label = toGo + ' to go for ' + prize;
+            }
+            return { toGo: toGo, label: label };
+        }
+
+        function enrichCardsProgress(cards, calledBalls, data) {
+            if (autoDab || !cards || !cards.length) return cards || [];
+            const pf = (data && data.playingFor) || 'line';
+            const prizeLabel = (data && data.playingForLabel) || '';
+            return cards.map(function (c) {
+                const balls = effectiveMarkedCalledBalls(c, calledBalls);
+                const p = guestProgressTowardClaim(c.grid, balls, pf, prizeLabel);
+                return Object.assign({}, c, { progress: p, toGo: p.toGo, progressLabel: p.label });
+            });
+        }
+
+        function cardToGo(item) {
+            const t = item.progress && item.progress.toGo != null ? item.progress.toGo : item.toGo;
+            return Number(t);
         }
 
         function serialAttrEsc(serial) {
@@ -764,17 +857,12 @@
         }
 
         function updateCallUi(cards, focusSerial, data) {
-            const item = (cards || []).find((c) => c.serial === focusSerial) || (cards || [])[0];
-            if (!item || !els.callBtn) return;
-            const claimSerial = claimCardSerial(cards);
-            const claimItem =
-                (cards || []).find(function (c) {
-                    return c.serial === claimSerial;
-                }) || item;
-            const toGo = Number(
-                claimItem.progress ? claimItem.progress.toGo : claimItem.toGo
-            );
-            if (toGo === 0 && data.active && !els.callBtn.disabled) {
+            if (!els.callBtn) return;
+            const list = cards && cards.length ? cards : [];
+            const anyReady = list.some(function (c) {
+                return cardToGo(c) === 0;
+            });
+            if (anyReady && data.active) {
                 els.callBtn.classList.add('guest-bingo-call--ready');
             } else {
                 els.callBtn.classList.remove('guest-bingo-call--ready');
@@ -845,7 +933,7 @@
                 if (!gridEl || !item.grid) return;
                 const marks = marksForCard(item);
                 gridEl.innerHTML = buildCardTableHtml(item.grid, marks, calledBalls);
-                if (!autoDab) wireManualCells(gridEl, item, calledBalls);
+                if (!autoDab) wireManualCells(gridEl, item, calledBalls, cards);
             });
 
             els.cardStack.querySelectorAll('[data-bingo-card-wrap]').forEach(function (wrap) {
@@ -863,7 +951,7 @@
             });
         }
 
-        function wireManualCells(gridEl, item, calledBalls) {
+        function wireManualCells(gridEl, item, calledBalls, allCards) {
             if (autoDab || !gridEl) return;
             gridEl.querySelectorAll('[data-cell-r]').forEach(function (td) {
                 td.addEventListener('click', function () {
@@ -873,8 +961,15 @@
                     if ((calledBalls || []).indexOf(ball) === -1) return;
                     const manual = manualMarksFor(item.serial);
                     manual[r][c] = !manual[r][c];
-                    gridEl.innerHTML = buildCardTableHtml(item.grid, marksForCard(item), calledBalls);
-                    wireManualCells(gridEl, item, calledBalls);
+                    const payload = lastStackPayload;
+                    const data = payload && payload.data ? payload.data : null;
+                    const cards = allCards || (payload && payload.cards) || [];
+                    const enriched = enrichCardsProgress(cards, calledBalls, data);
+                    if (payload) {
+                        lastStackPayload.cards = enriched;
+                    }
+                    renderCardStack(enriched, calledBalls, activeSerial);
+                    if (data) updateCallUi(enriched, activeSerial, data);
                 });
             });
         }
@@ -1177,7 +1272,8 @@
                             ]
                           : [];
                 stackCards = stabilizeCardOrder(stackCards);
-                if (autoDab && stackCards.length) {
+                stackCards = enrichCardsProgress(stackCards, data.calledBalls, data);
+                if (stackCards.length) {
                     const readySerial = claimCardSerial(stackCards);
                     if (readySerial) activeSerial = readySerial;
                 }

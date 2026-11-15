@@ -794,8 +794,7 @@ function bingoCompletePrizeWin(slug, gameId, wonTier) {
         });
         return { gameEnded: false, pendingGameEnd: true };
     }
-    bingoSession.advancePlayingForAfterWin(slug, gameId);
-    bingoSession.resumeCalling(slug, gameId, makeBingoCaller(slug, gameId));
+    bingoSession.markPendingAdvanceAfterClaim(slug, gameId);
     return { gameEnded: false };
 }
 
@@ -2173,6 +2172,7 @@ function callerOptionsFromGame(game) {
         introSeconds: game.introSeconds,
         autoCall: game.autoCall,
         voiceCall: game.voiceCall,
+        claimBreakMs: Math.max(1000, (Number(game.claimBreakSeconds) || 10) * 1000),
         prizes: game.prizes
     };
 }
@@ -2197,6 +2197,9 @@ function persistGameCallerFromBody(gameId, body) {
     );
     if (body.prizeLine != null || body.prizeTwoLines != null || body.prizeHouse != null || body.prizes) {
         patch.prizes = prizes;
+    }
+    if (body.claimBreakSeconds != null) {
+        patch.claimBreakSeconds = Math.max(1, Math.min(120, Number(body.claimBreakSeconds) || 10));
     }
     if (Object.keys(patch).length) bingoGameDb.update(gameId, patch);
 }
@@ -2261,7 +2264,13 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
                 'two-lines': req.body.prizeTwoLines,
                 house: req.body.prizeHouse
             }
-        )
+        ),
+        claimBreakMs:
+            req.body.claimBreakSeconds != null
+                ? Math.max(1000, Number(req.body.claimBreakSeconds) * 1000)
+                : fromGame.claimBreakSeconds != null
+                  ? Math.max(1000, Number(fromGame.claimBreakSeconds) * 1000)
+                  : undefined
     };
     if (!req.body.prizes && !req.body.prizeLine && fromGame.prizes) {
         startOpts.prizes = normalizePrizes(fromGame.prizes);
@@ -2335,7 +2344,11 @@ app.put('/api/display/:eventSlug/games/bingo/config', djWebAuth.requireDjApiAuth
             line: req.body.prizeLine,
             'two-lines': req.body.prizeTwoLines,
             house: req.body.prizeHouse
-        })
+        }),
+        claimBreakMs:
+            req.body.claimBreakSeconds != null
+                ? Math.max(1000, Number(req.body.claimBreakSeconds) * 1000)
+                : undefined
     });
     bingoSession.clearAutoTimer(slug, gid);
     if (state.active && state.autoCall && !state.paused && !bingoSession.isInIntro(state)) {
@@ -2717,6 +2730,7 @@ app.post('/api/events/:id/bingo/games', djWebAuth.requireDjApiAuth, djWebAuth.re
         advertisedStartAt,
         callIntervalMs: Math.max(2000, (Number(req.body.callIntervalSeconds) || 5) * 1000),
         introSeconds: req.body.introSeconds != null ? Number(req.body.introSeconds) : 30,
+        claimBreakSeconds: req.body.claimBreakSeconds != null ? Number(req.body.claimBreakSeconds) : 10,
         autoCall: !!req.body.autoCall,
         voiceCall: !!req.body.voiceCall,
         prizes
@@ -2793,6 +2807,9 @@ app.put('/api/events/:id/bingo/games/:gameId', djWebAuth.requireDjApiAuth, djWeb
         patch.callIntervalMs = Math.max(2000, Number(req.body.callIntervalSeconds) * 1000);
     }
     if (req.body.introSeconds != null) patch.introSeconds = req.body.introSeconds;
+    if (req.body.claimBreakSeconds != null) {
+        patch.claimBreakSeconds = Math.max(1, Math.min(120, Number(req.body.claimBreakSeconds) || 10));
+    }
     if (req.body.autoCall != null) patch.autoCall = !!req.body.autoCall;
     if (req.body.voiceCall != null) patch.voiceCall = !!req.body.voiceCall;
     if (

@@ -367,6 +367,12 @@ try {
     db.exec(`ALTER TABLE bingo_games ADD COLUMN auto_call INTEGER DEFAULT 0`);
     db.exec(`ALTER TABLE bingo_games ADD COLUMN voice_call INTEGER DEFAULT 0`);
     db.exec(`ALTER TABLE bingo_games ADD COLUMN prizes_json TEXT`);
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN claim_break_seconds INTEGER DEFAULT 10`);
+} catch (e) {
+    /* exists */
+}
+try {
+    db.exec(`ALTER TABLE bingo_games ADD COLUMN claim_break_seconds INTEGER DEFAULT 10`);
 } catch (e) {
     /* exists */
 }
@@ -1829,6 +1835,10 @@ const bingoGameDb = {
                     : 30,
             autoCall: !!row.auto_call,
             voiceCall: !!row.voice_call,
+            claimBreakSeconds:
+                row.claim_break_seconds != null && Number.isFinite(Number(row.claim_break_seconds))
+                    ? Math.max(1, Math.min(120, Number(row.claim_break_seconds)))
+                    : 10,
             prizes: parseBingoGamePrizesJson(row.prizes_json),
             createdAt: row.created_at,
             updatedAt: row.updated_at
@@ -1879,6 +1889,7 @@ const bingoGameDb = {
             advertisedStartAt = null,
             callIntervalMs,
             introSeconds,
+            claimBreakSeconds,
             autoCall,
             voiceCall,
             prizes
@@ -1897,6 +1908,7 @@ const bingoGameDb = {
                 : null;
         const intervalMs = Math.max(2000, Math.min(120000, Number(callIntervalMs) || 5000));
         const intro = Math.max(0, Math.min(600, Number(introSeconds) ?? 30));
+        const claimBreak = Math.max(1, Math.min(120, Number(claimBreakSeconds) || 10));
         const auto = autoCall ? 1 : 0;
         const voice = voiceCall ? 1 : 0;
         const prizesJson = JSON.stringify(
@@ -1908,11 +1920,11 @@ const bingoGameDb = {
             .prepare(
                 `INSERT INTO bingo_games (
                     event_id, title, batch_id, status, ball_count, max_virtual_cards, advertised_start_at,
-                    call_interval_ms, intro_seconds, auto_call, voice_call, prizes_json
+                    call_interval_ms, intro_seconds, claim_break_seconds, auto_call, voice_call, prizes_json
                  )
-                 VALUES (?, ?, ?, 'preparing', ?, ?, ?, ?, ?, ?, ?, ?)`
+                 VALUES (?, ?, ?, 'preparing', ?, ?, ?, ?, ?, ?, ?, ?, ?)`
             )
-            .run(eventId, t, batch, bc, mvc, startAt, intervalMs, intro, auto, voice, prizesJson);
+            .run(eventId, t, batch, bc, mvc, startAt, intervalMs, intro, claimBreak, auto, voice, prizesJson);
         return this.getById(result.lastInsertRowid);
     },
 
@@ -1974,6 +1986,11 @@ const bingoGameDb = {
                 Math.max(0, Math.min(600, Number(patch.introSeconds) || 0)),
                 gameId
             );
+        }
+        if (patch.claimBreakSeconds != null) {
+            db.prepare(
+                `UPDATE bingo_games SET claim_break_seconds = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+            ).run(Math.max(1, Math.min(120, Number(patch.claimBreakSeconds) || 10)), gameId);
         }
         if (patch.autoCall != null) {
             db.prepare(`UPDATE bingo_games SET auto_call = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(

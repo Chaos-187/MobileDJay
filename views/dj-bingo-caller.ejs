@@ -83,6 +83,12 @@
                             <input type="number" class="form-control mdj-bingo-input" id="bingoCallInterval" min="2" max="120" value="5">
                         </div>
                     </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6 col-md-4">
+                            <label class="mdj-bingo-field-label" for="bingoClaimBreakSeconds">Claim window (s)</label>
+                            <input type="number" class="form-control mdj-bingo-input" id="bingoClaimBreakSeconds" min="1" max="120" value="10" title="After a verified claim, how long others can call the same prize">
+                        </div>
+                    </div>
                     <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
                         <div class="form-check form-switch mb-0">
                             <input class="form-check-input" type="checkbox" id="bingoAutoCall">
@@ -113,7 +119,7 @@
 
             <section class="mdj-caller-panel mdj-caller-panel--claims" aria-label="Claims and verification">
                 <h2 class="mdj-caller-panel-title"><i class="fas fa-bolt text-warning" aria-hidden="true"></i> Claims</h2>
-                <p class="mdj-caller-panel-lede">Flash the screen for a shout. Calling pauses only when a guest <strong>claim</strong> or a verified card is checked.</p>
+                <p class="mdj-caller-panel-lede">Flash the screen for a shout. The <strong>claim window</strong> opens after a verified claim so others can call — not between every ball.</p>
                 <div class="mdj-bingo-claim-btns mdj-caller-claims">
                     <button type="button" class="btn mdj-bingo-touch-claim mdj-bingo-claim-line" id="bingoFlashLineBtn">1 Line</button>
                     <button type="button" class="btn mdj-bingo-touch-claim mdj-bingo-claim-two" id="bingoFlashTwoLinesBtn">2 Lines</button>
@@ -195,6 +201,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=29"></script>
+    <script src="/js/dj-bingo.js?v=30"></script>
 </body>
 </html>

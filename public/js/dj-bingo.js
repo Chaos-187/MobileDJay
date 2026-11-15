@@ -12,6 +12,7 @@
         hubLastBall: document.getElementById('bingoHubLastBall'),
         ballCount: document.getElementById('bingoBallCount'),
         callInterval: document.getElementById('bingoCallInterval'),
+        claimBreakSeconds: document.getElementById('bingoClaimBreakSeconds'),
         introSeconds: document.getElementById('bingoIntroSeconds'),
         autoCall: document.getElementById('bingoAutoCall'),
         voiceCall: document.getElementById('bingoVoiceCall'),
@@ -247,6 +248,9 @@
             els.callInterval.value = String(Math.round((g.callIntervalMs || 5000) / 1000));
         }
         if (els.introSeconds) els.introSeconds.value = String(g.introSeconds != null ? g.introSeconds : 30);
+        if (els.claimBreakSeconds) {
+            els.claimBreakSeconds.value = String(g.claimBreakSeconds != null ? g.claimBreakSeconds : 10);
+        }
         if (els.autoCall) els.autoCall.checked = !!g.autoCall;
         if (els.voiceCall) els.voiceCall.checked = !!g.voiceCall;
         syncPrizeFields(g.prizes);
@@ -258,6 +262,7 @@
         return {
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
+            claimBreakSeconds: Number(els.claimBreakSeconds?.value) || 10,
             introSeconds: Number(els.introSeconds?.value) || 0,
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
@@ -971,6 +976,9 @@
         if (els.introSeconds && state.introSeconds != null && !state.active) {
             els.introSeconds.value = state.introSeconds;
         }
+        if (els.claimBreakSeconds && state.claimBreakMs != null) {
+            els.claimBreakSeconds.value = String(Math.max(1, Math.round(state.claimBreakMs / 1000)));
+        }
         renderCalledBalls(state);
         syncAdminGrid(state);
         if (state.playingFor) syncPlayingForUI(state.playingFor);
@@ -1049,6 +1057,7 @@
         const data = await apiPost('/games/bingo/start', {
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,
+            claimBreakSeconds: Number(els.claimBreakSeconds?.value) || 10,
             autoCall: !!els.autoCall?.checked,
             voiceCall: !!els.voiceCall?.checked,
             playingFor: getSelectedPlayingFor(),

@@ -75,7 +75,7 @@
         <div class="guest-bingo-play-dock" data-bingo-play-dock hidden>
             <div class="guest-bingo-action-bar guest-bingo-call-dock" data-bingo-call-dock>
                 <p id="guestBingoClaimResult" class="guest-bingo-claim-result guest-bingo-call-dock__status small" data-bingo-claim-result role="status"></p>
-                <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="buy">Buy tickets</button>
+                <button type="button" class="btn btn-warning btn-lg w-100 guest-bingo-call-btn guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="claim">Claim</button>
                 <div class="guest-bingo-called-line" aria-label="Recent calls">
                     <span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>
                     <div class="guest-bingo-called-line__track" data-bingo-recent-balls dir="ltr">
@@ -91,7 +91,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/guest-bingo-play.js?v=54"></script>
+    <script src="/js/guest-bingo-play.js?v=55"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

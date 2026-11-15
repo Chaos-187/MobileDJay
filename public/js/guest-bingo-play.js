@@ -188,6 +188,12 @@
         return 0;
     }
 
+    function ticketsRemaining(cardLimit, currentCount) {
+        const limit = Math.max(1, Number(cardLimit) || 1);
+        const have = Math.max(0, Number(currentCount) || 0);
+        return Math.max(0, limit - have);
+    }
+
     function guestTicketRemaining(data) {
         if (!data) return 0;
         const have =
@@ -749,12 +755,6 @@
             qq('[data-bingo-caller-sound]').forEach(function (el) {
                 el.checked = callerSoundOn;
             });
-        }
-
-        function ticketsRemaining(cardLimit, currentCount) {
-            const limit = Math.max(1, Number(cardLimit) || 1);
-            const have = Math.max(0, Number(currentCount) || 0);
-            return Math.max(0, limit - have);
         }
 
         function guestModalHost() {

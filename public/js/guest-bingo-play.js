@@ -116,7 +116,7 @@
     function renderRecentBalls(trackEl, calledBalls, opts) {
         if (!trackEl) return;
         const list = calledBalls || [];
-        const recent = list.slice(-8);
+        const recent = list.slice(-10);
         if (!recent.length) {
             trackEl.innerHTML = '<span class="guest-bingo-recent-empty">—</span>';
             return;
@@ -137,9 +137,10 @@
             .join('');
         if (opts && opts.progressEl && opts.calledCount != null && opts.ballCount) {
             opts.progressEl.hidden = false;
-            opts.progressEl.textContent = opts.calledCount + '/' + opts.ballCount;
+            opts.progressEl.textContent = opts.calledCount + ' / ' + opts.ballCount;
         } else if (opts && opts.progressEl) {
             opts.progressEl.hidden = true;
+            opts.progressEl.textContent = '';
         }
     }
 
@@ -224,6 +225,7 @@
             prizeBar: q('[data-bingo-prize-bar]'),
             cardStack: q('[data-bingo-cards-stack]'),
             buyTickets: q('[data-bingo-buy-tickets]'),
+            settingsOpen: q('[data-bingo-settings-open]'),
             backLobby: q('[data-bingo-back-lobby]'),
             intro: q('[data-bingo-intro]'),
             introPrize: q('[data-bingo-intro-prize]'),
@@ -268,6 +270,7 @@
         let introTickTimer = null;
 
         let buyModalEls = null;
+        let settingsModalEls = null;
         let winnersModalEls = null;
         let winnersModalShown = false;
 
@@ -279,6 +282,124 @@
             if (els.play) window.MdjBingoTheme.apply(els.play, theme);
             const ghRoot = root.closest && root.closest('.gh-bingo');
             if (ghRoot) window.MdjBingoTheme.apply(ghRoot, theme);
+            const ghApp = document.getElementById('ghApp');
+            if (ghApp) window.MdjBingoTheme.apply(ghApp, theme);
+            const ghMain = document.querySelector('.gh-main');
+            if (ghMain) window.MdjBingoTheme.apply(ghMain, theme);
+        }
+
+        function ensurePlaySettingsModal() {
+            if (settingsModalEls) return settingsModalEls;
+            const host =
+                typeof document !== 'undefined' && document.body
+                    ? document.body
+                    : root.querySelector('[data-bingo-root]') ||
+                      root.querySelector('[data-bingo-play]') ||
+                      root;
+            const wrap = document.createElement('div');
+            wrap.className = 'guest-bingo-settings-modal';
+            wrap.setAttribute('data-bingo-settings-backdrop', '');
+            wrap.hidden = true;
+            wrap.innerHTML =
+                '<div class="guest-bingo-settings-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="guestBingoSettingsTitle">' +
+                '<h2 class="guest-bingo-settings-modal__title" id="guestBingoSettingsTitle">Play settings</h2>' +
+                '<div class="guest-bingo-play-options guest-bingo-play-options--modal" role="group" aria-label="Play options">' +
+                '<label class="guest-bingo-opt">' +
+                '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-highlighter"></i></span>' +
+                '<span class="guest-bingo-opt__copy"><span class="guest-bingo-opt__title">Auto-dabber</span>' +
+                '<span class="guest-bingo-opt__hint">Marks called numbers on your cards</span></span>' +
+                '<input class="guest-bingo-opt__input" type="checkbox" data-bingo-auto-dab checked>' +
+                '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label>' +
+                '<label class="guest-bingo-opt">' +
+                '<span class="guest-bingo-opt__icon" aria-hidden="true"><i class="fas fa-volume-low"></i></span>' +
+                '<span class="guest-bingo-opt__copy"><span class="guest-bingo-opt__title">Caller sound</span>' +
+                '<span class="guest-bingo-opt__hint">Speak each ball on this phone</span></span>' +
+                '<input class="guest-bingo-opt__input" type="checkbox" data-bingo-caller-sound checked>' +
+                '<span class="guest-bingo-opt__switch" aria-hidden="true"></span></label></div>' +
+                '<button type="button" class="guest-bingo-settings-modal__done gh-btn gh-btn--accent" data-bingo-settings-close>Done</button>' +
+                '</div>';
+            host.appendChild(wrap);
+            settingsModalEls = {
+                backdrop: wrap,
+                closeBtn: wrap.querySelector('[data-bingo-settings-close]')
+            };
+            settingsModalEls.closeBtn?.addEventListener('click', closePlaySettingsModal);
+            wrap.addEventListener('click', function (ev) {
+                if (ev.target === wrap) closePlaySettingsModal();
+            });
+            return settingsModalEls;
+        }
+
+        function openPlaySettingsModal() {
+            const modal = ensurePlaySettingsModal();
+            modal.backdrop.hidden = false;
+            document.documentElement.classList.add('guest-bingo-settings-open');
+            const modalAuto = modal.backdrop.querySelector('[data-bingo-auto-dab]');
+            const modalSound = modal.backdrop.querySelector('[data-bingo-caller-sound]');
+            if (modalAuto) modalAuto.checked = autoDab;
+            if (modalSound) modalSound.checked = callerSoundOn;
+            wireSettingsInputs(modal.backdrop);
+        }
+
+        function closePlaySettingsModal() {
+            if (settingsModalEls) settingsModalEls.backdrop.hidden = true;
+            document.documentElement.classList.remove('guest-bingo-settings-open');
+        }
+
+        function wireSettingsInputs(scope) {
+            const host = scope || root;
+            const autoEl = host.querySelector('[data-bingo-auto-dab]');
+            const soundEl = host.querySelector('[data-bingo-caller-sound]');
+            if (autoEl && !autoEl.dataset.wired) {
+                autoEl.dataset.wired = '1';
+                autoEl.checked = autoDab;
+                autoEl.addEventListener('change', function () {
+                    autoDab = !!autoEl.checked;
+                    writeAutoDab(autoDab);
+                    syncSettingsToggles();
+                    if (!autoDab) {
+                        manualMarksBySerial = Object.create(null);
+                        cardOrderSerials = (
+                            lastStackPayload && lastStackPayload.cards
+                                ? lastStackPayload.cards.map((c) => c.serial)
+                                : cardOrderSerials
+                        );
+                    }
+                    if (lastStackPayload) {
+                        let ordered = stabilizeCardOrder(lastStackPayload.cards);
+                        if (lastStackPayload.data) {
+                            ordered = enrichCardsProgress(
+                                ordered,
+                                lastStackPayload.calledBalls,
+                                lastStackPayload.data
+                            );
+                        }
+                        lastStackPayload.cards = ordered;
+                        renderCardStack(ordered, lastStackPayload.calledBalls, activeSerial);
+                        if (lastStackPayload.data) {
+                            updateCallUi(ordered, activeSerial, lastStackPayload.data);
+                        }
+                    }
+                });
+            }
+            if (soundEl && !soundEl.dataset.wired) {
+                soundEl.dataset.wired = '1';
+                soundEl.checked = callerSoundOn;
+                soundEl.addEventListener('change', function () {
+                    callerSoundOn = !!soundEl.checked;
+                    writeCallerSound(callerSoundOn);
+                    syncSettingsToggles();
+                });
+            }
+        }
+
+        function syncSettingsToggles() {
+            qq('[data-bingo-auto-dab]').forEach(function (el) {
+                el.checked = autoDab;
+            });
+            qq('[data-bingo-caller-sound]').forEach(function (el) {
+                el.checked = callerSoundOn;
+            });
         }
 
         function ticketsRemaining(cardLimit, currentCount) {
@@ -528,36 +649,9 @@
             });
         }
 
-        if (els.autoDab) {
-            els.autoDab.checked = autoDab;
-            els.autoDab.addEventListener('change', function () {
-                autoDab = !!els.autoDab.checked;
-                writeAutoDab(autoDab);
-                if (!autoDab) {
-                    cardOrderSerials = (lastStackPayload && lastStackPayload.cards
-                        ? lastStackPayload.cards.map((c) => c.serial)
-                        : cardOrderSerials);
-                }
-                if (lastStackPayload) {
-                    let ordered = stabilizeCardOrder(lastStackPayload.cards);
-                    if (lastStackPayload.data) {
-                        ordered = enrichCardsProgress(ordered, lastStackPayload.calledBalls, lastStackPayload.data);
-                    }
-                    lastStackPayload.cards = ordered;
-                    renderCardStack(ordered, lastStackPayload.calledBalls, activeSerial);
-                    if (lastStackPayload.data) {
-                        updateCallUi(ordered, activeSerial, lastStackPayload.data);
-                    }
-                }
-            });
-        }
-
-        if (els.callerSound) {
-            els.callerSound.checked = callerSoundOn;
-            els.callerSound.addEventListener('change', function () {
-                callerSoundOn = !!els.callerSound.checked;
-                writeCallerSound(callerSoundOn);
-            });
+        wireSettingsInputs(root);
+        if (els.settingsOpen) {
+            els.settingsOpen.addEventListener('click', openPlaySettingsModal);
         }
 
         function stabilizeCardOrder(cards) {
@@ -1298,10 +1392,14 @@
                 lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
                 if (els.buyTickets) {
-                    const ballsCalling = data.calledCount != null && data.calledCount > 0;
+                    const gameRunning =
+                        !!data.active &&
+                        (data.phase === 'intro' ||
+                            data.phase === 'claim_break' ||
+                            (data.calledCount != null && data.calledCount > 0));
                     const have = data.allCards ? data.allCards.length : 0;
                     const rem = ticketsRemaining(data.cardLimit, have);
-                    els.buyTickets.hidden = !data.canGrabMore || ballsCalling || rem <= 0;
+                    els.buyTickets.hidden = gameRunning || !data.canGrabMore || rem <= 0;
                 }
                 updateCallUi(stackCards, activeSerial, data);
                 syncGuestIntro(data);

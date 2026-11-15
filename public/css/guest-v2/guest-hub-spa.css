@@ -988,18 +988,24 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     margin: 0 0 0.65rem;
 }
 
-.gh-bingo .guest-bingo-play-head {
+.gh-bingo .guest-bingo-play-toolbar {
     margin-bottom: 0.5rem;
 }
 
-.gh-bingo .guest-bingo-play-head .guest-bingo-meta,
-.gh-bingo .guest-bingo-play-head .gh-bingo-meta {
+.gh-bingo .guest-bingo-play-toolbar .guest-bingo-meta,
+.gh-bingo .guest-bingo-play-toolbar .gh-bingo-meta {
     color: var(--gh-muted);
 }
 
 .gh-bingo .guest-bingo-play-options {
     background: color-mix(in srgb, var(--gh-surface, #14141f) 88%, transparent);
     border-color: var(--gh-border);
+}
+
+.gh-bingo .guest-bingo-toolbar-btn {
+    border-color: var(--gh-border);
+    background: color-mix(in srgb, var(--gh-surface) 92%, transparent);
+    color: var(--gh-text);
 }
 
 .gh-bingo .guest-bingo-opt__icon {
@@ -1020,12 +1026,8 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     border-color: var(--gh-border);
 }
 
-.gh-bingo .guest-bingo-callboard {
-    background: linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--gh-accent, #1a5c66) 85%, #0a2830) 0%,
-        color-mix(in srgb, var(--gh-bg, #0a0a12) 70%, #0f4249) 100%
-    );
+.gh-bingo .guest-bingo-prize-row .guest-bingo-prize-chip {
+    flex: 1 1 0;
 }
 
 .gh-bingo .guest-bingo-prize-chip.is-active {
@@ -1037,13 +1039,13 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
 }
 
 .gh-bingo-panel[data-bingo-play]:not([hidden]) {
-    padding-bottom: calc(
-        var(--guest-bingo-call-dock-h, 5.75rem) + var(--gh-nav-h) + env(safe-area-inset-bottom) + 0.75rem
-    );
+    padding-bottom: 0.35rem;
 }
 
+.gh-bingo .guest-bingo-action-bar,
 .gh-bingo .guest-bingo-call-dock {
-    width: min(520px, calc(100% - 2rem));
+    background: color-mix(in srgb, var(--gh-bg, #0a0a12) 88%, var(--gh-surface));
+    border-color: var(--gh-border);
 }
 
 .gh-bingo .guest-bingo-call-dock__status {
@@ -1125,13 +1127,8 @@ body.gh-spa.gh-no-desc .gh-action__desc { display: none; }
     font-weight: 700;
 }
 
-.gh-bingo-back-lobby {
-    border: none;
-    background: color-mix(in srgb, var(--gh-surface) 92%, transparent);
-    color: var(--gh-text-muted, rgba(255, 255, 255, 0.78));
-}
-
-.gh-bingo-back-lobby:hover {
+.gh-bingo-back-lobby:hover,
+.guest-bingo-toolbar-btn:hover {
     color: var(--gh-accent, var(--event-accent-color, #ff3366));
     border-color: color-mix(in srgb, var(--gh-accent) 40%, transparent);
     background: color-mix(in srgb, var(--gh-accent) 12%, var(--gh-surface));

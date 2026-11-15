@@ -19,26 +19,64 @@ body.mdj-guest-bingo-page {
     font-size: 0.9rem;
 }
 
-.guest-bingo-play-head {
+.guest-bingo-play-head,
+.guest-bingo-play-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.65rem;
-    margin-bottom: 0.55rem;
-    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.65rem;
+    flex-wrap: nowrap;
+}
+
+.guest-bingo-play-toolbar .guest-bingo-meta {
+    margin: 0;
+    margin-left: auto;
+    flex: 0 1 auto;
+    text-align: right;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.55);
+    white-space: nowrap;
+}
+
+.guest-bingo-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.85rem;
+    min-height: 2.5rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.92);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.guest-bingo-toolbar-btn--icon {
+    width: 2.5rem;
+    padding: 0;
 }
 
 .guest-bingo-back-lobby {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.38rem 0.7rem 0.38rem 0.55rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.07);
-    color: rgba(255, 255, 255, 0.88);
+    padding: 0.55rem 0.85rem 0.55rem 0.7rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.92);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     font-weight: 700;
     letter-spacing: 0.02em;
     line-height: 1.2;
@@ -244,6 +282,17 @@ body.mdj-guest-bingo-page {
 }
 
 /* —— Tombola-style callboard + tickets —— */
+.guest-bingo-prize-row,
+.guest-bingo-prize-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.35rem;
+    margin: 0 0 0.65rem;
+    flex-shrink: 0;
+}
+
 .guest-bingo-callboard {
     position: sticky;
     top: 0;
@@ -432,10 +481,12 @@ body.mdj-guest-bingo-page {
     color: rgba(255, 255, 255, 0.58);
 }
 
+[data-bingo-play].guest-bingo--intro .guest-bingo-prize-row,
 [data-bingo-play].guest-bingo--intro .guest-bingo-callboard,
 [data-bingo-play].guest-bingo--intro .guest-bingo-cards-stack,
 [data-bingo-play].guest-bingo--intro .guest-bingo-playing-for,
 [data-bingo-play].guest-bingo--intro .guest-bingo-call-dock,
+[data-bingo-play].guest-bingo--intro .guest-bingo-action-bar,
 [data-bingo-play].guest-bingo--intro .guest-bingo-more-claims {
     opacity: 0.22;
     pointer-events: none;
@@ -571,6 +622,56 @@ body.mdj-guest-bingo-page {
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.guest-bingo-play-options--modal {
+    margin-bottom: 1rem;
+}
+
+.guest-bingo-settings-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom));
+    background: rgba(5, 8, 18, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+.guest-bingo-settings-modal[hidden] {
+    display: none !important;
+}
+
+.guest-bingo-settings-modal__dialog {
+    width: min(100%, 22rem);
+    padding: 1.1rem 1rem 1rem;
+    border-radius: 16px 16px 14px 14px;
+    background: linear-gradient(165deg, rgba(30, 35, 55, 0.98), rgba(12, 14, 28, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+}
+
+.guest-bingo-settings-modal__title {
+    margin: 0 0 0.75rem;
+    font-size: 1.05rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+.guest-bingo-settings-modal__done {
+    width: 100%;
+    min-height: 2.75rem;
+    border-radius: 12px;
+    font-weight: 800;
+}
+
+.guest-bingo-play-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-height: 0;
 }
 
 .guest-bingo-opt {
@@ -901,34 +1002,79 @@ body.mdj-guest-bingo-page {
     margin-top: 0.35rem;
 }
 
-/* Sticky Call — fixed above hub bottom nav or screen safe area */
+/* Claim + recent calls — sticky at bottom of play column (not floating over cards) */
 :root {
-    --guest-bingo-call-dock-h: 5.75rem;
+    --guest-bingo-call-dock-h: 7.5rem;
 }
 
+.guest-bingo-action-bar,
 .guest-bingo-call-dock {
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: max(0.65rem, env(safe-area-inset-bottom));
-    width: min(520px, calc(100% - 2rem));
-    z-index: 60;
-    padding: 0.45rem 0 0.35rem;
-    border-radius: 16px 16px 0 0;
-    background: linear-gradient(
-        180deg,
-        rgba(10, 10, 18, 0.72) 0%,
-        rgba(10, 10, 18, 0.94) 40%,
-        rgba(7, 7, 13, 0.98) 100%
-    );
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    position: sticky;
+    bottom: 0;
+    z-index: 8;
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.55rem 0.65rem 0.5rem;
+    border-radius: 14px;
+    background: rgba(12, 12, 20, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-body.gh-spa .guest-bingo-call-dock {
-    bottom: calc(var(--gh-nav-h, 4.25rem) + 0.35rem + env(safe-area-inset-bottom));
+.guest-bingo-called-line {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.45rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.guest-bingo-called-line__track {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 0.28rem;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.guest-bingo-called-line__track::-webkit-scrollbar {
+    display: none;
+}
+
+.guest-bingo-called-line__track .guest-bingo-callball {
+    flex-shrink: 0;
+    min-width: 1.65rem;
+    height: 1.65rem;
+    padding: 0 0.25rem;
+    font-size: 0.72rem;
+    border-width: 1px;
+}
+
+.guest-bingo-called-line__track .guest-bingo-callball--latest {
+    min-width: 1.85rem;
+    height: 1.85rem;
+    font-size: 0.8rem;
+}
+
+.guest-bingo-called-line__count {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.55);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
+.guest-bingo-called-line__count[hidden] {
+    display: none !important;
 }
 
 .guest-bingo-call-dock__status {
@@ -948,16 +1094,9 @@ body.gh-spa .guest-bingo-call-dock {
     margin-top: 0;
 }
 
-.guest-bingo-panel[data-bingo-play]:not([hidden]) {
-    padding-bottom: calc(
-        var(--guest-bingo-call-dock-h) + max(0.65rem, env(safe-area-inset-bottom)) + 0.5rem
-    );
-}
-
-body.gh-spa .gh-bingo-panel[data-bingo-play]:not([hidden]) {
-    padding-bottom: calc(
-        var(--guest-bingo-call-dock-h) + var(--gh-nav-h, 4.25rem) + env(safe-area-inset-bottom) + 0.75rem
-    );
+.guest-bingo-panel[data-bingo-play]:not([hidden]),
+.gh-bingo-panel[data-bingo-play]:not([hidden]) {
+    padding-bottom: 0.35rem;
 }
 
 .guest-bingo-claim-result.is-ok {

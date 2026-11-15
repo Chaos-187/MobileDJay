@@ -677,3 +677,79 @@ body.bingo-screen-active.bingo-theme-classic {
 .bingo-display-layer.bingo-theme-wedding .bingo-intro-countdown {
     color: #b45309;
 }
+
+/* ── Guest hub / play — full-page chrome ─────────────── */
+
+body.gh-spa.bingo-theme-neon-90s,
+body.gh-spa.bingo-theme-neon-90s .gh-main,
+.gh-bingo.bingo-theme-neon-90s,
+.bingo-theme-neon-90s.guest-bingo-play-shell {
+    background-color: #0a0014;
+    background-image:
+        radial-gradient(ellipse at 15% 0%, rgba(255, 0, 255, 0.12), transparent 50%),
+        radial-gradient(ellipse at 85% 100%, rgba(0, 255, 255, 0.08), transparent 55%);
+}
+
+body.gh-spa.bingo-theme-christmas,
+body.gh-spa.bingo-theme-christmas .gh-main,
+.gh-bingo.bingo-theme-christmas {
+    background-color: #0c1810;
+    background-image:
+        radial-gradient(ellipse at 10% 0%, rgba(220, 38, 38, 0.1), transparent 50%),
+        radial-gradient(ellipse at 90% 100%, rgba(22, 163, 74, 0.1), transparent 50%);
+}
+
+body.gh-spa.bingo-theme-halloween,
+body.gh-spa.bingo-theme-halloween .gh-main,
+.gh-bingo.bingo-theme-halloween {
+    background-color: #0a0510;
+    background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(249, 115, 22, 0.12), transparent 50%),
+        radial-gradient(ellipse at 80% 90%, rgba(147, 51, 234, 0.1), transparent 55%);
+}
+
+body.gh-spa.bingo-theme-wedding,
+body.gh-spa.bingo-theme-wedding .gh-main,
+.gh-bingo.bingo-theme-wedding,
+body.bingo-theme-wedding.mdj-guest-bingo-page {
+    background-color: #faf8f5;
+    background-image:
+        radial-gradient(ellipse at 20% 10%, rgba(251, 207, 232, 0.35), transparent 55%),
+        radial-gradient(ellipse at 80% 90%, rgba(209, 213, 219, 0.2), transparent 50%);
+    color: #44403c;
+}
+
+.bingo-theme-wedding.gh-bingo .guest-bingo-meta,
+.bingo-theme-wedding.gh-bingo .gh-bingo-meta,
+.bingo-theme-wedding .guest-bingo-called-line__count {
+    color: #78716c;
+}
+
+.bingo-theme-wedding .guest-bingo-action-bar,
+.bingo-theme-wedding .guest-bingo-call-dock {
+    background: rgba(255, 255, 255, 0.88);
+    border-color: rgba(251, 191, 36, 0.35);
+}
+
+.bingo-theme-neon-90s .guest-bingo-action-bar,
+.bingo-theme-neon-90s .guest-bingo-call-dock {
+    border-color: rgba(236, 72, 153, 0.35);
+    box-shadow: 0 -6px 28px rgba(236, 72, 153, 0.12);
+}
+
+.bingo-theme-neon-90s .guest-bingo-prize-chip.is-active {
+    color: #0a0014;
+    background: linear-gradient(145deg, #22d3ee, #f472b6);
+    border-color: rgba(34, 211, 238, 0.5);
+}
+
+.bingo-theme-neon-90s .guest-bingo-call-dock__btn.guest-bingo-call--ready,
+.bingo-theme-neon-90s .gh-bingo-call.guest-bingo-call--ready {
+    box-shadow:
+        0 0 0 2px rgba(34, 211, 238, 0.45),
+        0 6px 20px rgba(236, 72, 153, 0.35);
+}
+
+body.mdj-guest-bingo-page.bingo-theme-neon-90s {
+    background-color: #0a0014;
+}

@@ -1478,6 +1478,23 @@
                                 <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoWizardInterval" min="2" max="120" value="5">
                             </div>
                         </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="mdj-bingo-field-label" for="bingoWizardClaimBreak">Claim window (s)</label>
+                                <input type="number" class="form-control form-control-lg mdj-bingo-input" id="bingoWizardClaimBreak" min="1" max="120" value="10" title="After a verified claim, how long others can call the same prize">
+                            </div>
+                            <div class="col-6">
+                                <label class="mdj-bingo-field-label" for="bingoWizardTheme">Theme</label>
+                                <select id="bingoWizardTheme" class="form-select form-select-lg mdj-bingo-input" title="Caller, guest cards, and venue display">
+                                    <option value="default">Default</option>
+                                    <option value="christmas">Christmas</option>
+                                    <option value="halloween">Halloween</option>
+                                    <option value="classic">Classic hall</option>
+                                    <option value="neon-90s">90s neon</option>
+                                    <option value="wedding">Wedding</option>
+                                </select>
+                            </div>
+                        </div>
                         <div class="form-check form-switch mb-2">
                             <input class="form-check-input" type="checkbox" id="bingoWizardAutoCall">
                             <label class="form-check-label" for="bingoWizardAutoCall">Auto-call next ball</label>
@@ -1561,6 +1578,23 @@
                             <input type="number" class="form-control mdj-bingo-input" id="bingoEditInterval" min="2" max="120">
                         </div>
                     </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="mdj-bingo-field-label" for="bingoEditClaimBreak">Claim window (s)</label>
+                            <input type="number" class="form-control mdj-bingo-input" id="bingoEditClaimBreak" min="1" max="120" value="10">
+                        </div>
+                        <div class="col-6">
+                            <label class="mdj-bingo-field-label" for="bingoEditTheme">Theme</label>
+                            <select id="bingoEditTheme" class="form-select mdj-bingo-input">
+                                <option value="default">Default</option>
+                                <option value="christmas">Christmas</option>
+                                <option value="halloween">Halloween</option>
+                                <option value="classic">Classic hall</option>
+                                <option value="neon-90s">90s neon</option>
+                                <option value="wedding">Wedding</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="form-check form-switch mb-2">
                         <input class="form-check-input" type="checkbox" id="bingoEditAutoCall">
                         <label class="form-check-label" for="bingoEditAutoCall">Auto-call next ball</label>
@@ -1618,7 +1652,7 @@
     <script src="/js/dj-api.js?v=1"></script>
     <script src="/js/dj-dashboard.js?v=4"></script>
     <script src="/js/dj-games-picker.js?v=3"></script>
-    <script src="/js/dj-bingo.js?v=20"></script>
+    <script src="/js/dj-bingo.js?v=33"></script>
     <script src="/js/dj-racing.js?v=3"></script>
     <script src="/js/dj-hilo.js?v=2"></script>
 

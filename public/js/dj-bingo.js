@@ -72,6 +72,8 @@
         prizeLine: document.getElementById('bingoWizardPrizeLine'),
         prizeTwo: document.getElementById('bingoWizardPrizeTwo'),
         prizeHouse: document.getElementById('bingoWizardPrizeHouse'),
+        claimBreak: document.getElementById('bingoWizardClaimBreak'),
+        theme: document.getElementById('bingoWizardTheme'),
         review: document.getElementById('bingoWizardReview'),
         error: document.getElementById('bingoWizardError'),
         backBtn: document.getElementById('bingoWizardBackBtn'),
@@ -93,6 +95,8 @@
         prizeLine: document.getElementById('bingoEditPrizeLine'),
         prizeTwo: document.getElementById('bingoEditPrizeTwo'),
         prizeHouse: document.getElementById('bingoEditPrizeHouse'),
+        claimBreak: document.getElementById('bingoEditClaimBreak'),
+        theme: document.getElementById('bingoEditTheme'),
         error: document.getElementById('bingoEditGameError'),
         saveBtn: document.getElementById('bingoEditGameSaveBtn')
     };
@@ -100,6 +104,20 @@
     let adminGridSize = 0;
     let selectedPlayingFor = 'line';
     let adminGridResizeObserver = null;
+
+    const BINGO_THEME_LABELS = {
+        default: 'Default',
+        christmas: 'Christmas',
+        halloween: 'Halloween',
+        classic: 'Classic hall',
+        'neon-90s': '90s neon',
+        wedding: 'Wedding'
+    };
+
+    function bingoThemeLabel(id) {
+        const t = window.MdjBingoTheme ? window.MdjBingoTheme.normalize(id) : id || 'default';
+        return BINGO_THEME_LABELS[t] || t;
+    }
 
     /** Size number text so all cells fit the board area without an inner scrollbar. */
     function fitAdminGridCellFont() {
@@ -1111,11 +1129,27 @@
 
     document.getElementById('bingoApplyConfigBtn')?.addEventListener('click', () => saveGameCallerSetup());
 
+    async function persistBingoThemeOnly() {
+        const eid = eventId();
+        const gid = getActiveGameId();
+        if (!eid || !gid || !els.themeSelect) return;
+        try {
+            await mdjFetch(`/api/events/${eid}/bingo/games/${gid}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bingoTheme: els.themeSelect.value || 'default' })
+            });
+        } catch (e) {
+            /* display picks up theme on next poll when saved via Save to game */
+        }
+    }
+
     if (els.themeSelect) {
         els.themeSelect.addEventListener('change', function () {
             if (window.MdjBingoTheme) {
                 window.MdjBingoTheme.apply(document.body, els.themeSelect.value);
             }
+            void persistBingoThemeOnly();
         });
     }
 
@@ -1418,6 +1452,14 @@
         if (wizardEls.prizeLine) wizardEls.prizeLine.value = els.prizeLine?.value || '';
         if (wizardEls.prizeTwo) wizardEls.prizeTwo.value = els.prizeTwoLines?.value || '';
         if (wizardEls.prizeHouse) wizardEls.prizeHouse.value = els.prizeHouse?.value || '';
+        if (wizardEls.claimBreak) {
+            wizardEls.claimBreak.value = els.claimBreakSeconds?.value || '10';
+        }
+        if (wizardEls.theme) {
+            wizardEls.theme.value = window.MdjBingoTheme
+                ? window.MdjBingoTheme.normalize(els.themeSelect?.value || 'default')
+                : els.themeSelect?.value || 'default';
+        }
         setWizardStep(1);
     }
 
@@ -1454,7 +1496,9 @@
             voiceCall: !!wizardEls.voiceCall?.checked,
             prizeLine: (wizardEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (wizardEls.prizeTwo?.value || '').trim(),
-            prizeHouse: (wizardEls.prizeHouse?.value || '').trim()
+            prizeHouse: (wizardEls.prizeHouse?.value || '').trim(),
+            claimBreakSeconds: Number(wizardEls.claimBreak?.value) || 10,
+            bingoTheme: wizardEls.theme?.value || 'default'
         };
     }
 
@@ -1472,7 +1516,9 @@
             `<dt>Cards to generate</dt><dd>${escapeHtml(String(p.cardCount))}</dd>` +
             `<dt>Balls</dt><dd>${escapeHtml(String(p.ballCount))}</dd>` +
             `<dt>Caller</dt><dd>Intro ${escapeHtml(String(p.introSeconds))}s · every ${escapeHtml(String(p.callIntervalSeconds))}s` +
-            `${p.autoCall ? ' · auto' : ''}${p.voiceCall ? ' · voice' : ''}</dd>`;
+            `${p.autoCall ? ' · auto' : ''}${p.voiceCall ? ' · voice' : ''}</dd>` +
+            `<dt>Claim window</dt><dd>${escapeHtml(String(p.claimBreakSeconds))}s</dd>` +
+            `<dt>Theme</dt><dd>${escapeHtml(bingoThemeLabel(p.bingoTheme))}</dd>`;
     }
 
     function openEditGame(gameId) {
@@ -1495,6 +1541,14 @@
         if (editEls.prizeLine) editEls.prizeLine.value = g.prizes?.line || '';
         if (editEls.prizeTwo) editEls.prizeTwo.value = g.prizes?.['two-lines'] || '';
         if (editEls.prizeHouse) editEls.prizeHouse.value = g.prizes?.house || '';
+        if (editEls.claimBreak) {
+            editEls.claimBreak.value = String(g.claimBreakSeconds != null ? g.claimBreakSeconds : 10);
+        }
+        if (editEls.theme) {
+            editEls.theme.value = window.MdjBingoTheme
+                ? window.MdjBingoTheme.normalize(g.bingoTheme || 'default')
+                : g.bingoTheme || 'default';
+        }
         if (editEls.error) {
             editEls.error.hidden = true;
             editEls.error.textContent = '';
@@ -1525,7 +1579,9 @@
             voiceCall: !!editEls.voiceCall?.checked,
             prizeLine: (editEls.prizeLine?.value || '').trim(),
             prizeTwoLines: (editEls.prizeTwo?.value || '').trim(),
-            prizeHouse: (editEls.prizeHouse?.value || '').trim()
+            prizeHouse: (editEls.prizeHouse?.value || '').trim(),
+            claimBreakSeconds: Number(editEls.claimBreak?.value) || 10,
+            bingoTheme: editEls.theme?.value || 'default'
         };
         try {
             const res = await mdjFetch(`/api/events/${eid}/bingo/games/${gameId}`, {

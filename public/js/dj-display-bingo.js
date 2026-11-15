@@ -52,6 +52,17 @@
     let displayConfigBusy = false;
     let verifiedCallSound = null;
     let lastVerifiedFlashAt = 0;
+    let lastBingoTheme = null;
+
+    function applyDisplayTheme(theme) {
+        const raw = theme || 'default';
+        const t = window.MdjBingoTheme ? window.MdjBingoTheme.normalize(raw) : raw;
+        if (t === lastBingoTheme) return;
+        lastBingoTheme = t;
+        if (!window.MdjBingoTheme) return;
+        if (layer) window.MdjBingoTheme.apply(layer, t);
+        window.MdjBingoTheme.apply(document.body, t);
+    }
 
     /* Keep in sync with lib/bingo.js (remainingBalls, pickRandomDecoy) */
     function ballCap(maxBall) {
@@ -541,10 +552,7 @@
     function renderState(state) {
         lastState = state;
         if (state.gameId) lastGameId = state.gameId;
-        if (window.MdjBingoTheme) {
-            if (layer) window.MdjBingoTheme.apply(layer, state.bingoTheme);
-            window.MdjBingoTheme.apply(document.body, state.bingoTheme);
-        }
+        applyDisplayTheme(state.bingoTheme);
         syncDisplayDjControls(state);
         if (state.voiceCall && !prevVoiceCall) {
             lastSpokenBall = state.lastBall;

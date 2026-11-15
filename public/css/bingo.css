@@ -40,6 +40,13 @@ body.mdj-guest-bingo-page {
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
 }
 
+.guest-bingo-top-buy:disabled,
+.guest-bingo-top-buy.guest-bingo-top-buy--disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
 .guest-bingo-play-head,
 .guest-bingo-play-toolbar {
     display: flex;

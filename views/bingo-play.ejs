@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0a0a12">
     <title>Bingo — <%= event.name %></title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-    <link href="/css/bingo.css?v=55" rel="stylesheet">
+    <link href="/css/bingo.css?v=56" rel="stylesheet">
     <link href="/css/bingo-themes.css?v=7" rel="stylesheet">
     <link href="/css/guest-hub.css?v=5" rel="stylesheet">
     <% if (event) { %><%- include('partials/guest-event-theme', { event: event }) %><% } %>
@@ -25,7 +25,7 @@
         </div>
 
         <div id="guestBingoPlay" class="guest-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>
-            <div class="guest-bingo-play-topbar" data-bingo-play-topbar hidden>
+            <div class="guest-bingo-play-topbar" data-bingo-play-topbar>
                 <button type="button" class="guest-bingo-top-buy btn btn-warning btn-lg w-100" data-bingo-buy-tickets>Buy tickets</button>
             </div>
             <div class="guest-bingo-play-toolbar">
@@ -94,7 +94,7 @@
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
     <script src="/js/bingo-theme.js?v=6"></script>
-    <script src="/js/guest-bingo-play.js?v=61"></script>
+    <script src="/js/guest-bingo-play.js?v=62"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>
 </html>

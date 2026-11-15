@@ -217,47 +217,65 @@
         return false;
     }
 
+    function ensureGuestPlayBuyTopbar(root) {
+        const qRoot = root && typeof root.querySelector === 'function' ? root : document;
+        const play = qRoot.querySelector('[data-bingo-play]');
+        if (!play) return null;
+        let topBar = play.querySelector('[data-bingo-play-topbar]');
+        if (!topBar) {
+            topBar = document.createElement('div');
+            topBar.className = 'guest-bingo-play-topbar';
+            topBar.setAttribute('data-bingo-play-topbar', '');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.setAttribute('data-bingo-buy-tickets', '');
+            btn.textContent = 'Buy tickets';
+            if (play.closest && play.closest('.gh-bingo')) {
+                btn.className = 'guest-bingo-top-buy gh-btn gh-btn--accent';
+            } else {
+                btn.className = 'guest-bingo-top-buy btn btn-warning btn-lg w-100';
+            }
+            topBar.appendChild(btn);
+            play.insertBefore(topBar, play.firstChild);
+        }
+        topBar.removeAttribute('hidden');
+        topBar.hidden = false;
+        return topBar;
+    }
+
     function syncBuyTicketsVisibility(root, data) {
-        if (!root || !data) return;
-        const rem = guestTicketRemaining(data);
-        const canBuy = !!(data.canGrabMore && rem > 0 && !data.playInProgress);
+        const qRoot = root && typeof root.querySelector === 'function' ? root : document;
+        const play = qRoot.querySelector('[data-bingo-play]');
+        if (!play || play.hidden) return;
+        ensureGuestPlayBuyTopbar(qRoot);
+        const rem = data ? guestTicketRemaining(data) : 1;
+        const canBuy = !!(data && data.canGrabMore && rem > 0 && !data.playInProgress);
         const have =
-            data.allCards && data.allCards.length
+            data && data.allCards && data.allCards.length
                 ? data.allCards.length
-                : data.guestCards
+                : data && data.guestCards
                   ? data.guestCards.length
                   : 0;
-        const qRoot = typeof root.querySelector === 'function' ? root : null;
-        const topBar = qRoot ? qRoot.querySelector('[data-bingo-play-topbar]') : null;
-        const label =
-            have === 0
+        const label = canBuy
+            ? have === 0
                 ? rem > 1
                     ? 'Get tickets · ' + rem + ' left'
                     : 'Get tickets'
                 : rem > 1
                   ? 'Buy tickets · ' + rem + ' left'
-                  : 'Buy tickets';
-        const buttons = qRoot ? qRoot.querySelectorAll('[data-bingo-buy-tickets]') : [];
-        buttons.forEach(function (buyEl) {
-            if (canBuy) {
-                buyEl.hidden = false;
-                buyEl.removeAttribute('hidden');
-                buyEl.disabled = false;
-                buyEl.textContent = label;
-            } else {
-                buyEl.hidden = true;
-                buyEl.setAttribute('hidden', '');
-            }
+                  : 'Buy tickets'
+            : data && data.playInProgress
+              ? 'Buy tickets — game started'
+              : have === 0
+                ? 'Get tickets'
+                : 'Buy tickets';
+        qRoot.querySelectorAll('[data-bingo-buy-tickets]').forEach(function (buyEl) {
+            buyEl.hidden = false;
+            buyEl.removeAttribute('hidden');
+            buyEl.disabled = !canBuy;
+            buyEl.textContent = label;
+            buyEl.classList.toggle('guest-bingo-top-buy--disabled', !canBuy);
         });
-        if (topBar) {
-            if (canBuy) {
-                topBar.removeAttribute('hidden');
-                topBar.hidden = false;
-            } else {
-                topBar.setAttribute('hidden', '');
-                topBar.hidden = true;
-            }
-        }
     }
 
     function renderRecentBalls(trackEl, calledBalls, opts) {
@@ -1825,6 +1843,8 @@
             setPanelHidden(els.playDock, false);
             setLobbyPref(false);
             stopLobbyPoll();
+            ensureGuestPlayBuyTopbar(root);
+            syncBuyTicketsVisibility(root, lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null);
         }
 
         function backToLobby() {

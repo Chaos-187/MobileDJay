@@ -225,7 +225,7 @@
             '<div class="gh-bingo-panel" data-bingo-join>' +
             '<div data-bingo-games-list class="gh-bingo-games"></div></div></div>' +
             '<div class="gh-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>' +
-                '<div class="guest-bingo-play-topbar" data-bingo-play-topbar hidden>' +
+                '<div class="guest-bingo-play-topbar" data-bingo-play-topbar>' +
                     '<button type="button" class="guest-bingo-top-buy gh-btn gh-btn--accent" data-bingo-buy-tickets>Buy tickets</button>' +
                 '</div>' +
                 '<div class="guest-bingo-play-toolbar">' +

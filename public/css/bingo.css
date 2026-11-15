@@ -398,6 +398,14 @@ body.mdj-guest-bingo-page {
     display: none !important;
 }
 
+[data-bingo-lobby-chrome][hidden],
+[data-bingo-join][hidden],
+.guest-bingo-panel[data-bingo-play][hidden],
+.gh-bingo-panel[data-bingo-play][hidden],
+.guest-bingo-play-dock[hidden] {
+    display: none !important;
+}
+
 .guest-bingo-countdown-bar {
     display: flex;
     align-items: center;
@@ -586,18 +594,44 @@ body.mdj-guest-bingo-page {
 [data-bingo-play].guest-bingo--intro .guest-bingo-cards-stack,
 [data-bingo-play].guest-bingo--intro .guest-bingo-playing-for,
 [data-bingo-play].guest-bingo--intro .guest-bingo-more-claims,
-.guest-bingo-play-dock.guest-bingo--intro .guest-bingo-call-dock,
+.guest-bingo-play-dock.guest-bingo--intro:not(.guest-bingo--dock-buy) .guest-bingo-call-dock,
 [data-bingo-play].guest-bingo--resume .guest-bingo-prize-row,
 [data-bingo-play].guest-bingo--resume .guest-bingo-cards-stack,
 [data-bingo-play].guest-bingo--resume .guest-bingo-buy-tickets,
-.guest-bingo-play-dock.guest-bingo--resume .guest-bingo-call-dock {
+.guest-bingo-play-dock.guest-bingo--resume:not(.guest-bingo--dock-buy) .guest-bingo-call-dock {
     opacity: 0.22;
     pointer-events: none;
     filter: blur(1px);
 }
 
+.guest-bingo-play-dock.guest-bingo--dock-buy .guest-bingo-call-dock {
+    opacity: 1 !important;
+    filter: none !important;
+    pointer-events: auto;
+}
+
+.guest-bingo-play-dock.guest-bingo--dock-buy .guest-bingo-call-dock__btn[data-dock-mode='buy'],
+.guest-bingo-play-dock.guest-bingo--dock-buy .guest-bingo-call-dock__btn:not(:disabled) {
+    border-color: rgba(255, 200, 120, 0.55) !important;
+    color: #1a1208 !important;
+    background: linear-gradient(145deg, #fde68a, #f59e0b) !important;
+}
+
 [data-bingo-play].guest-bingo--resume .guest-bingo-resume,
 .gh-bingo-panel.guest-bingo--resume .guest-bingo-resume {
+    position: relative;
+    z-index: 2;
+    opacity: 1 !important;
+    filter: none !important;
+    pointer-events: auto;
+}
+
+[data-bingo-play].guest-bingo--intro .guest-bingo-intro,
+.gh-bingo-panel.guest-bingo--intro .guest-bingo-intro,
+[data-bingo-play].guest-bingo--intro .guest-bingo-countdown-bar,
+.gh-bingo-panel.guest-bingo--intro .guest-bingo-countdown-bar,
+[data-bingo-play].guest-bingo--resume .guest-bingo-countdown-bar,
+.gh-bingo-panel.guest-bingo--resume .guest-bingo-countdown-bar {
     position: relative;
     z-index: 2;
     opacity: 1 !important;

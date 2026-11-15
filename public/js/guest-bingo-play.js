@@ -138,12 +138,27 @@
         );
     }
 
+    function bingoGuestPreClaimPlay(data) {
+        if (!data || data.showWinnersPopup) return false;
+        const phase = String(data.phase || '');
+        if (phase === 'intro' || phase === 'resume') return true;
+        if (!data.active) return true;
+        if ((data.calledCount || 0) === 0 && phase !== 'calling' && phase !== 'claim_break') return true;
+        return false;
+    }
+
+    function guestTicketRemaining(data) {
+        if (!data) return 0;
+        const have = data.allCards && data.allCards.length ? data.allCards.length : 0;
+        return ticketsRemaining(data.cardLimit, have);
+    }
+
     function syncBuyTicketsVisibility(buyEl, data) {
         if (!buyEl || !data) return;
+        const preClaim = bingoGuestPreClaimPlay(data);
         const gameRunning = bingoGuestGameRunning(data);
-        const have = data.allCards ? data.allCards.length : 0;
-        const rem = ticketsRemaining(data.cardLimit, have);
-        buyEl.hidden = gameRunning || !data.canGrabMore || rem <= 0;
+        const rem = guestTicketRemaining(data);
+        buyEl.hidden = preClaim || gameRunning || !data.canGrabMore || rem <= 0;
     }
 
     function renderRecentBalls(trackEl, calledBalls, opts) {
@@ -244,6 +259,7 @@
         const qq = (sel) => root.querySelectorAll(sel);
 
         const els = {
+            lobbyChrome: q('[data-bingo-lobby-chrome]'),
             join: q('[data-bingo-join]'),
             play: q('[data-bingo-play]'),
             playDock: q('[data-bingo-play-dock]'),
@@ -271,8 +287,23 @@
             introRing: q('[data-bingo-intro-ring]'),
             resume: q('[data-bingo-resume]'),
             resumeBall: q('[data-bingo-resume-ball]'),
-            resumeSec: q('[data-bingo-resume-sec]')
+            resumeSec: q('[data-bingo-resume-sec]'),
+            countdownBar: q('[data-bingo-countdown]'),
+            countdownKind: q('[data-bingo-countdown-kind]'),
+            countdownSec: q('[data-bingo-countdown-sec]'),
+            countdownExtra: q('[data-bingo-countdown-extra]')
         };
+
+        function setPanelHidden(el, hide) {
+            if (!el) return;
+            if (hide) {
+                el.setAttribute('hidden', '');
+                el.hidden = true;
+            } else {
+                el.removeAttribute('hidden');
+                el.hidden = false;
+            }
+        }
 
         const LOBBY_KEY = 'mdj_bingo_lobby_' + slug;
 
@@ -783,8 +814,48 @@
                 if (lastStackPayload && lastStackPayload.data) {
                     if (introEndsAtLocal) paintGuestIntro(lastStackPayload.data);
                     if (resumeEndsAtLocal) paintGuestResume(lastStackPayload.data);
+                    paintGuestCountdownBar(lastStackPayload.data);
                 }
             }, 250);
+        }
+
+        function paintGuestCountdownBar(data) {
+            if (!els.countdownBar) return;
+            const introOn = !!(
+                data &&
+                data.phase === 'intro' &&
+                (data.active || guestIntroRemainingMs(data) > 0)
+            );
+            const resumeOn = !!(
+                data &&
+                data.phase === 'resume' &&
+                (data.active || guestResumeRemainingMs(data) > 0)
+            );
+            if (!introOn && !resumeOn) {
+                setPanelHidden(els.countdownBar, true);
+                els.countdownBar.classList.remove('guest-bingo-countdown-bar--resume');
+                return;
+            }
+            setPanelHidden(els.countdownBar, false);
+            if (resumeOn) {
+                els.countdownBar.classList.add('guest-bingo-countdown-bar--resume');
+                if (els.countdownKind) els.countdownKind.textContent = 'Resuming';
+                const sec = Math.max(0, Math.ceil(guestResumeRemainingMs(data) / 1000));
+                if (els.countdownSec) els.countdownSec.textContent = String(sec > 0 ? sec : 0);
+                const lb = resolveLastCalledBall(data);
+                if (els.countdownExtra) {
+                    els.countdownExtra.textContent = lb != null ? 'Last call · ' + lb : '';
+                }
+            } else {
+                els.countdownBar.classList.remove('guest-bingo-countdown-bar--resume');
+                if (els.countdownKind) els.countdownKind.textContent = 'Starting soon';
+                const sec = Math.max(0, Math.ceil(guestIntroRemainingMs(data) / 1000));
+                if (els.countdownSec) els.countdownSec.textContent = String(sec > 0 ? sec : 0);
+                if (els.countdownExtra) {
+                    const label = data.playingForLabel || data.playingFor || '';
+                    els.countdownExtra.textContent = label ? 'Playing for · ' + label : '';
+                }
+            }
         }
 
         function setPlayIntroMode(on) {
@@ -838,6 +909,7 @@
             const remainingMs = guestIntroRemainingMs(data);
             const sec = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0;
             if (els.introSec) els.introSec.textContent = String(sec);
+            paintGuestCountdownBar(data);
             if (els.introRing) {
                 if (!els.introRing.getAttribute('data-ring-init')) {
                     els.introRing.style.strokeDasharray = String(GUEST_INTRO_RING_LEN);
@@ -854,7 +926,11 @@
         }
 
         function syncGuestIntro(data) {
-            const showIntro = !!(data && data.active && data.phase === 'intro');
+            const showIntro = !!(
+                data &&
+                data.phase === 'intro' &&
+                (data.active || guestIntroRemainingMs(data) > 0)
+            );
             if (showIntro) {
                 if (data.introSeconds > 0) introTotalSec = data.introSeconds;
                 if (data.introRemainingMs != null && data.introRemainingMs >= 0) {
@@ -871,6 +947,7 @@
                 introEndsAtLocal = null;
                 setPlayIntroMode(false);
                 if (!resumeEndsAtLocal) stopCountdownTick();
+                if (lastStackPayload && lastStackPayload.data) paintGuestCountdownBar(lastStackPayload.data);
             }
         }
 
@@ -885,10 +962,15 @@
                 const sec = remainingMs > 0 ? Math.max(1, Math.ceil(remainingMs / 1000)) : 0;
                 els.resumeSec.textContent = String(sec);
             }
+            paintGuestCountdownBar(data);
         }
 
         function syncGuestResume(data) {
-            const showResume = !!(data && data.active && data.phase === 'resume');
+            const showResume = !!(
+                data &&
+                data.phase === 'resume' &&
+                (data.active || guestResumeRemainingMs(data) > 0)
+            );
             if (showResume) {
                 if (data.resumeRemainingMs != null && data.resumeRemainingMs >= 0) {
                     resumeEndsAtLocal = Date.now() + data.resumeRemainingMs;
@@ -904,6 +986,7 @@
                 resumeEndsAtLocal = null;
                 setPlayResumeMode(false);
                 if (!introEndsAtLocal) stopCountdownTick();
+                if (lastStackPayload && lastStackPayload.data) paintGuestCountdownBar(lastStackPayload.data);
             }
         }
 
@@ -926,8 +1009,39 @@
             return focused ? focused.serial : list[0].serial;
         }
 
+        function syncDockPrimaryAction(data) {
+            if (!els.callBtn) return;
+            const preClaim = bingoGuestPreClaimPlay(data);
+            if (els.playDock) {
+                els.playDock.classList.toggle('guest-bingo--dock-buy', !!preClaim);
+            }
+            if (preClaim) {
+                els.callBtn.setAttribute('data-dock-mode', 'buy');
+                els.callBtn.classList.remove('guest-bingo-call--ready');
+                const rem = guestTicketRemaining(data);
+                const canBuy = !!(data && data.canGrabMore && rem > 0);
+                if (canBuy) {
+                    els.callBtn.textContent = rem > 1 ? 'Buy tickets · ' + rem + ' left' : 'Buy tickets';
+                    els.callBtn.disabled = false;
+                } else {
+                    els.callBtn.textContent =
+                        data && data.phase === 'intro'
+                            ? 'Starting soon'
+                            : data && data.phase === 'resume'
+                              ? 'Resuming soon'
+                              : 'Waiting to start';
+                    els.callBtn.disabled = true;
+                }
+                return;
+            }
+            els.callBtn.setAttribute('data-dock-mode', 'claim');
+            const label = (data && data.playingForLabel) || 'prize';
+            els.callBtn.textContent = 'Claim — ' + label;
+        }
+
         function syncCallButtonDisabled(data) {
             if (!els.callBtn) return;
+            if (els.callBtn.getAttribute('data-dock-mode') === 'buy') return;
             const pf = data.playingFor || playingFor || 'line';
             const claimSerial = claimCardSerial(
                 lastStackPayload && lastStackPayload.cards ? lastStackPayload.cards : []
@@ -935,7 +1049,10 @@
             const tierVerified = selfVerifiedClaimKeys.has(verifiedClaimKey(pf, claimSerial));
             const claimsOpen =
                 data.active &&
+                data.phase !== 'intro' &&
+                data.phase !== 'resume' &&
                 (!data.paused ||
+                    data.pausedReason === 'claim' ||
                     data.pausedReason === 'claim_window' ||
                     data.phase === 'claim_break' ||
                     data.claimWindowOpen ||
@@ -1106,6 +1223,8 @@
 
         function updateCallUi(cards, focusSerial, data) {
             if (!els.callBtn) return;
+            syncDockPrimaryAction(data);
+            if (els.callBtn.getAttribute('data-dock-mode') === 'buy') return;
             const list = cards && cards.length ? cards : [];
             const anyReady = list.some(function (c) {
                 return cardToGo(c) === 0;
@@ -1223,15 +1342,18 @@
         }
 
         function showJoin() {
-            if (els.join) els.join.hidden = false;
-            if (els.play) els.play.hidden = true;
-            if (els.playDock) els.playDock.hidden = true;
+            setPanelHidden(els.lobbyChrome, false);
+            if (!els.lobbyChrome) setPanelHidden(els.join, false);
+            setPanelHidden(els.play, true);
+            setPanelHidden(els.playDock, true);
+            setPanelHidden(els.countdownBar, true);
         }
 
         function showPlay() {
-            if (els.join) els.join.hidden = true;
-            if (els.play) els.play.hidden = false;
-            if (els.playDock) els.playDock.hidden = false;
+            setPanelHidden(els.lobbyChrome, true);
+            if (!els.lobbyChrome) setPanelHidden(els.join, true);
+            setPanelHidden(els.play, false);
+            setPanelHidden(els.playDock, false);
             setLobbyPref(false);
         }
 
@@ -1278,46 +1400,54 @@
                 els.gamesList.innerHTML = data.games
                     .map(function (g) {
                         const hasCards = (g.guestCardCount || 0) > 0;
-                        const slots = hasCards
-                            ? g.bingoPhase === 'resume'
-                                ? 'Resuming · ' + (g.resumeRemainingSec || '…') + 's'
-                                : g.bingoPhase === 'intro'
-                                  ? 'Starting in ' + (g.introRemainingSec || '…') + 's'
-                                  : g.playInProgress
-                                  ? 'Game in progress'
-                                  : g.canGrabMore
-                                    ? 'More tickets available'
-                                    : 'Maximum tickets for this game'
-                            : 'Virtual tickets on your phone';
-                        const introLobby =
-                            (g.bingoPhase === 'intro' || g.bingoPhase === 'resume') && hasCards
-                                ? '<p class="gh-bingo-intro-lobby" aria-live="polite">' +
-                                  (g.bingoPhase === 'resume' ? 'Resuming now' : 'Countdown live') +
-                                  ' · tap <strong>Continue</strong> for the timer</p>'
-                                : '';
+                        const ticketCount = Number(g.guestCardCount || 0);
+                        let badgeMod = 'is-open';
+                        let badgeText = 'Open';
+                        if (g.bingoPhase === 'intro') {
+                            badgeMod = 'is-prep';
+                            badgeText = 'Starting';
+                        } else if (g.bingoPhase === 'resume') {
+                            badgeMod = 'is-prep';
+                            badgeText = 'Resuming';
+                        } else if (g.playInProgress || g.status === 'live') {
+                            badgeMod = 'is-live';
+                            badgeText = 'Live';
+                        }
+                        let subtitle = '';
+                        if (!hasCards) {
+                            subtitle = 'Tap to get tickets on this phone';
+                        } else if (g.bingoPhase === 'intro') {
+                            subtitle = 'Starting in ' + (g.introRemainingSec || '…') + 's · tap to see countdown';
+                        } else if (g.bingoPhase === 'resume') {
+                            subtitle = 'Back in ' + (g.resumeRemainingSec || '…') + 's · tap to continue';
+                        } else if (g.playInProgress) {
+                            subtitle =
+                                ticketCount +
+                                ' ticket' +
+                                (ticketCount === 1 ? '' : 's') +
+                                ' · game in progress';
+                        } else if (g.canGrabMore) {
+                            subtitle = ticketCount + ' ticket' + (ticketCount === 1 ? '' : 's') + ' · you can buy more';
+                        } else {
+                            subtitle = ticketCount + ' ticket' + (ticketCount === 1 ? '' : 's');
+                        }
                         const startLine = g.advertisedStartAt
                             ? formatAdvertisedStart(g.advertisedStartAt) || g.advertisedStartAt
                             : '';
+                        if (startLine && !g.playInProgress && g.bingoPhase !== 'intro' && g.bingoPhase !== 'resume') {
+                            subtitle += (subtitle ? ' · ' : '') + 'Starts ' + startLine;
+                        }
                         const tier = g.guestBestToGo != null ? toGoTierClass(g.guestBestToGo) : '';
                         const progressChip =
-                            g.guestBestToGo != null
-                                ? '<span class="guest-bingo-game-togo ' +
+                            hasCards && g.guestBestToGo != null && g.playInProgress
+                                ? '<span class="gh-bingo-game-pick__chip guest-bingo-game-togo ' +
                                   tier +
                                   '">' +
                                   escapeHtml(g.guestBestLabel || g.guestBestToGo + ' to go') +
                                   '</span>'
                                 : '';
-                        const cta = hasCards
-                            ? g.bingoPhase === 'resume'
-                                ? 'Continue · resuming'
-                                : g.bingoPhase === 'intro'
-                                  ? 'Continue · starting soon'
-                                  : g.playInProgress
-                                  ? 'Continue playing'
-                                  : g.canGrabMore
-                                    ? 'Continue · more tickets'
-                                    : 'Continue playing'
-                            : 'Buy tickets';
+                        const cta = hasCards ? 'Continue' : 'Get tickets';
+                        const ctaIcon = hasCards ? 'fa-circle-play' : 'fa-ticket';
                         return (
                             '<div class="gh-bingo-game-block" data-bingo-game-block="' +
                             g.id +
@@ -1331,40 +1461,39 @@
                             '" data-card-limit="' +
                             Number(g.cardLimit) +
                             '" data-guest-card-count="' +
-                            Number(g.guestCardCount || 0) +
+                            ticketCount +
                             '">' +
+                            '<span class="gh-bingo-game-pick__head">' +
                             '<span class="gh-bingo-game-pick__title">' +
                             escapeHtml(g.title) +
                             '</span>' +
+                            '<span class="gh-bingo-game-pick__badge ' +
+                            badgeMod +
+                            '">' +
+                            escapeHtml(badgeText) +
+                            '</span></span>' +
                             '<span class="gh-bingo-game-pick__meta">' +
-                            escapeHtml(String(g.status).replace('_', ' ')) +
-                            ' · ' +
-                            slots +
-                            (startLine ? ' · Starts ' + escapeHtml(startLine) : '') +
+                            escapeHtml(subtitle) +
                             '</span>' +
-                            (progressChip ? '<span class="gh-bingo-game-pick__progress">' + progressChip + '</span>' : '') +
-                            '<span class="gh-bingo-game-pick__cta"><i class="fas fa-mobile-screen me-1"></i>' +
+                            progressChip +
+                            '<span class="gh-bingo-game-pick__foot">' +
+                            '<span class="gh-bingo-game-pick__cta"><i class="fas ' +
+                            ctaIcon +
+                            '" aria-hidden="true"></i>' +
                             escapeHtml(cta) +
                             '</span>' +
+                            '<i class="fas fa-chevron-right gh-bingo-game-pick__chev" aria-hidden="true"></i></span>' +
                             '</button>' +
-                            introLobby +
                             (hasCards && g.canGrabMore && !g.playInProgress
-                                ? '<button type="button" class="gh-btn gh-btn--outline gh-bingo-lobby-buy w-100 mb-2" data-bingo-lobby-buy="' +
+                                ? '<button type="button" class="gh-bingo-lobby-more" data-bingo-lobby-buy="' +
                                   g.id +
                                   '" data-card-limit="' +
                                   Number(g.cardLimit) +
                                   '" data-guest-card-count="' +
-                                  Number(g.guestCardCount || 0) +
-                                  '">Buy tickets</button>'
+                                  ticketCount +
+                                  '">Buy more tickets</button>'
                                 : '') +
-                            '<div class="gh-bingo-paper-row">' +
-                            '<input type="text" class="gh-input gh-bingo-serial-input" data-paper-for="' +
-                            g.id +
-                            '" placeholder="Paper serial" maxlength="32" autocomplete="off" inputmode="text">' +
-                            '<button type="button" class="gh-btn gh-btn--outline gh-bingo-paper-btn" data-paper-link="' +
-                            g.id +
-                            '">Link paper</button>' +
-                            '</div></div>'
+                            '</div>'
                         );
                     })
                     .join('');
@@ -1401,31 +1530,6 @@
                         openBuyTicketsModal(gid, rem);
                     });
                 });
-                els.gamesList.querySelectorAll('[data-paper-link]').forEach(function (btn) {
-                    btn.addEventListener('click', function () {
-                        const gid = parseInt(btn.getAttribute('data-paper-link'), 10);
-                        const input = els.gamesList.querySelector('[data-paper-for="' + gid + '"]');
-                        linkPaper(gid, input ? input.value : '');
-                    });
-                });
-                if (!readLobbyPref() && els.play && els.play.hidden) {
-                    const livePrep = data.games.find(function (g) {
-                        return (
-                            (g.guestCardCount || 0) > 0 &&
-                            (g.bingoPhase === 'intro' || g.bingoPhase === 'resume')
-                        );
-                    });
-                    if (livePrep) {
-                        activeGameId = livePrep.id;
-                        activeSerial = null;
-                        try {
-                            sessionStorage.setItem('mdj_bingo_game_' + slug, String(livePrep.id));
-                        } catch (err) {
-                            /* ignore */
-                        }
-                        startPlay();
-                    }
-                }
             } catch (e) {
                 els.gamesList.innerHTML = '<p class="gh-bingo-danger">Could not load games.</p>';
             }
@@ -1609,10 +1713,6 @@
                     }
                     els.meta.textContent = t;
                 }
-                if (els.callBtn) {
-                    const label = data.playingForLabel || 'prize';
-                    els.callBtn.textContent = 'Claim — ' + label;
-                }
             } catch (e) {
                 /* ignore transient */
             }
@@ -1638,15 +1738,39 @@
         async function sendClaim(claimType) {
             const name = opts.customerName();
             const resultEl = els.claimResult;
+            const playData = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
             if (!activeGameId || !name) return;
-            const tier = claimType || playingFor;
+            if (els.callBtn && els.callBtn.getAttribute('data-dock-mode') === 'buy') return;
+            if (playData && bingoGuestPreClaimPlay(playData)) {
+                if (resultEl) {
+                    resultEl.textContent = 'Wait for the game to start before claiming';
+                    resultEl.className =
+                        (resultEl.classList.contains('guest-bingo-claim-result')
+                            ? 'guest-bingo-claim-result '
+                            : 'gh-bingo-claim-result ') + 'is-warn';
+                }
+                return;
+            }
+            const dev = opts.deviceId();
+            if (!dev) {
+                if (resultEl) {
+                    resultEl.textContent = 'Refresh the hub and try again';
+                    resultEl.className =
+                        (resultEl.classList.contains('guest-bingo-claim-result')
+                            ? 'guest-bingo-claim-result '
+                            : 'gh-bingo-claim-result ') + 'is-warn';
+                }
+                return;
+            }
+            const tier = claimType || playingFor || (playData && playData.playingFor) || 'line';
             const cardsForClaim =
                 lastStackPayload && lastStackPayload.cards ? lastStackPayload.cards : [];
             const serialForClaim = claimCardSerial(cardsForClaim) || activeSerial;
             if (selfVerifiedClaimKeys.has(verifiedClaimKey(tier, serialForClaim)) || claimInFlight) return;
             claimInFlight = true;
+            const cardsSnap = lastStackPayload && lastStackPayload.cards ? lastStackPayload.cards : [];
             syncCallButtonDisabled(
-                lastStackPayload && lastStackPayload.data ? lastStackPayload.data : { active: true, playingFor: tier }
+                playData || { active: true, playingFor: tier, phase: 'calling' }
             );
             if (resultEl) resultEl.textContent = 'Sending…';
             try {
@@ -1662,12 +1786,28 @@
                         body: JSON.stringify({
                             customerName: name,
                             claimType: tier,
-                            deviceId: opts.deviceId(),
-                            serial: serialForClaim
+                            deviceId: dev,
+                            serial: serialForClaim || undefined
                         })
                     }
                 );
-                const data = await res.json();
+                let data = null;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    if (resultEl) resultEl.textContent = 'Could not send claim — try again';
+                    return;
+                }
+                if (!res.ok) {
+                    if (resultEl) {
+                        resultEl.textContent = data.error || data.message || 'Could not send claim';
+                        resultEl.className =
+                            (resultEl.classList.contains('guest-bingo-claim-result')
+                                ? 'guest-bingo-claim-result '
+                                : 'gh-bingo-claim-result ') + 'is-warn';
+                    }
+                    return;
+                }
                 if (resultEl) {
                     resultEl.textContent =
                         data.message || (data.valid ? 'Claim sent to the DJ!' : 'Not yet — keep dabbing');
@@ -1684,17 +1824,25 @@
                     selfVerifiedClaimKeys.add(verifiedClaimKey(tier, serialForClaim));
                 }
             } catch (e) {
-                if (resultEl) resultEl.textContent = 'Could not send claim';
+                if (resultEl) resultEl.textContent = 'Could not send claim — check your connection';
             } finally {
                 claimInFlight = false;
                 if (lastStackPayload && lastStackPayload.data) {
-                    syncCallButtonDisabled(lastStackPayload.data);
+                    updateCallUi(cardsSnap, activeSerial, lastStackPayload.data);
                 }
             }
         }
 
         if (els.callBtn) {
             els.callBtn.addEventListener('click', function () {
+                if (els.callBtn.getAttribute('data-dock-mode') === 'buy') {
+                    if (!activeGameId || els.callBtn.disabled) return;
+                    const data = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
+                    const rem = guestTicketRemaining(data);
+                    if (!data || !data.canGrabMore || rem <= 0) return;
+                    openBuyTicketsModal(activeGameId, rem);
+                    return;
+                }
                 sendClaim(playingFor);
             });
         }

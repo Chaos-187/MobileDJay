@@ -219,10 +219,11 @@
 
     function bingoPanelHtml() {
         return '<div class="gh-bingo" data-bingo-root>' +
+            '<div data-bingo-lobby-chrome>' +
             '<h2 class="gh-bingo-heading">Bingo</h2>' +
-            '<p class="gh-bingo-lede">Buy virtual tickets on this phone or link a printed card by serial.</p>' +
+            '<p class="gh-bingo-lede">Pick a game and get virtual tickets on this phone.</p>' +
             '<div class="gh-bingo-panel" data-bingo-join>' +
-            '<div data-bingo-games-list class="gh-bingo-games"></div></div>' +
+            '<div data-bingo-games-list class="gh-bingo-games"></div></div></div>' +
             '<div class="gh-bingo-panel guest-bingo-play-shell" data-bingo-play hidden>' +
                 '<div class="guest-bingo-play-toolbar">' +
                     '<button type="button" class="guest-bingo-back-lobby guest-bingo-toolbar-btn gh-bingo-back-lobby" data-bingo-back-lobby>' +

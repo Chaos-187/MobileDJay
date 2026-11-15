@@ -3695,6 +3695,41 @@ body.mdj-bingo-caller-page .mdj-bingo-caller-main {
     min-height: clamp(140px, 22vh, 200px);
 }
 
+.mdj-caller-panel--run.is-claim-paused,
+.mdj-caller-ball-spotlight.is-claim-paused {
+    border-color: rgba(251, 191, 36, 0.55);
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2), inset 0 0 40px rgba(251, 191, 36, 0.08);
+}
+
+.mdj-caller-panel--run.is-claim-break {
+    border-color: rgba(56, 189, 248, 0.35);
+}
+
+#bingoStartBtn.mdj-bingo-btn-pause {
+    background: linear-gradient(145deg, #fde68a, #fbbf24 45%, #d97706);
+    color: #1a1200;
+}
+
+#bingoStartBtn.mdj-bingo-btn-resume {
+    background: linear-gradient(145deg, #6ee7b7, #22c55e 45%, #15803d);
+    color: #031a0a;
+}
+
+.mdj-caller-paused:not([hidden]) {
+    display: block !important;
+    position: relative;
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 0.4rem 0.65rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-align: center;
+    background: rgba(251, 191, 36, 0.15);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #fde68a;
+}
+
 .mdj-caller-paused {
     position: absolute;
     top: 0.65rem;

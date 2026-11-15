@@ -708,15 +708,72 @@
         }
     }
 
+    function syncCallerRunChrome(state) {
+        if (!isCallerPage) return;
+        const active = !!state.active;
+        const paused = !!state.paused;
+        const claimBreak = state.phase === 'claim_break';
+        const claimPause = paused && state.pausedReason === 'claim';
+        const runPanel = document.querySelector('.mdj-caller-panel--run');
+        if (runPanel) {
+            runPanel.classList.toggle('is-claim-paused', !!(active && claimPause));
+            runPanel.classList.toggle('is-claim-break', !!(active && claimBreak && !claimPause));
+        }
+        const ballSpot = document.querySelector('.mdj-caller-ball-spotlight');
+        if (ballSpot) {
+            ballSpot.classList.toggle('is-claim-paused', !!(active && (claimPause || (paused && state.pausedReason === 'manual'))));
+        }
+    }
+
+    function syncStartPauseButton(state) {
+        const startBtn = document.getElementById('bingoStartBtn');
+        if (!startBtn) return;
+        const hasSlug = !!slug();
+        const active = !!state.active;
+        const paused = !!state.paused;
+        const inIntro = state.phase === 'intro';
+        const claimPause = paused && (state.pausedReason === 'claim' || state.pausedReason === 'manual');
+        if (!active) {
+            startBtn.dataset.mode = 'start';
+            startBtn.innerHTML = '<i class="fas fa-play" aria-hidden="true"></i> Start';
+            startBtn.classList.remove('mdj-bingo-btn-pause', 'mdj-bingo-btn-resume');
+            startBtn.classList.add('mdj-bingo-btn-go');
+            startBtn.disabled = !hasSlug;
+        } else if (claimPause) {
+            startBtn.dataset.mode = 'resume';
+            startBtn.innerHTML = '<i class="fas fa-play-circle" aria-hidden="true"></i> Resume';
+            startBtn.classList.remove('mdj-bingo-btn-go', 'mdj-bingo-btn-pause');
+            startBtn.classList.add('mdj-bingo-btn-resume');
+            startBtn.disabled = !hasSlug;
+        } else if (inIntro) {
+            startBtn.dataset.mode = 'idle';
+            startBtn.innerHTML = '<i class="fas fa-play" aria-hidden="true"></i> Start';
+            startBtn.disabled = true;
+        } else {
+            startBtn.dataset.mode = 'pause';
+            startBtn.innerHTML = '<i class="fas fa-pause" aria-hidden="true"></i> Pause';
+            startBtn.classList.remove('mdj-bingo-btn-go', 'mdj-bingo-btn-resume');
+            startBtn.classList.add('mdj-bingo-btn-pause');
+            startBtn.disabled = !hasSlug;
+        }
+        if (isCallerPage) {
+            if (els.pauseBtn) els.pauseBtn.hidden = true;
+            if (els.resumeBtn) els.resumeBtn.hidden = true;
+        }
+    }
+
     function updateActionButtons(state) {
         const hasSlug = !!slug();
         const active = !!state.active;
         const paused = !!state.paused;
         const byId = (id) => document.getElementById(id);
-        if (byId('bingoStartBtn')) byId('bingoStartBtn').disabled = !hasSlug || active;
+        syncStartPauseButton(state);
+        syncCallerRunChrome(state);
         if (byId('bingoStopBtn')) byId('bingoStopBtn').disabled = !hasSlug || !active;
         const inIntro = state.phase === 'intro';
-        if (byId('bingoCallBtn')) byId('bingoCallBtn').disabled = !hasSlug || !active || paused || inIntro;
+        const claimBreak = state.phase === 'claim_break';
+        if (byId('bingoCallBtn'))
+            byId('bingoCallBtn').disabled = !hasSlug || !active || paused || inIntro || claimBreak;
         if (els.skipIntroBtn) els.skipIntroBtn.hidden = !(active && inIntro);
         if (byId('bingoResetCallsBtn')) byId('bingoResetCallsBtn').disabled = !hasSlug || !active;
         if (byId('bingoApplyConfigBtn')) byId('bingoApplyConfigBtn').disabled = !hasSlug;
@@ -726,26 +783,30 @@
         if (byId('bingoVerifyBtn')) byId('bingoVerifyBtn').disabled = !hasSlug;
         if (byId('bingoGenCardsBtn')) byId('bingoGenCardsBtn').disabled = !hasSlug;
         if (els.ballCount) els.ballCount.disabled = active;
-        if (els.pauseBtn) {
+        if (els.pauseBtn && !isCallerPage) {
             els.pauseBtn.hidden = !(active && !paused && !inIntro);
         }
-        const claimBreak = state.phase === 'claim_break' || state.pausedReason === 'claim_window';
-        if (els.resumeBtn) {
-            els.resumeBtn.hidden = !(active && paused && !claimBreak);
+        if (els.resumeBtn && !isCallerPage) {
+            els.resumeBtn.hidden = !(active && paused && (state.pausedReason === 'claim' || state.pausedReason === 'manual'));
         }
         if (els.pausedHint) {
-            els.pausedHint.hidden = !(active && paused);
-            if (active && paused && els.pausedHint) {
+            const claimPause = paused && state.pausedReason === 'claim';
+            const showHint = active && (claimPause || paused || claimBreak);
+            els.pausedHint.hidden = !showHint;
+            if (showHint && els.pausedHint) {
                 const reason = state.pausedReason || 'claim';
-                if (claimBreak) {
+                if (claimBreak && !paused) {
                     const sec = state.claimBreakRemainingSec != null ? state.claimBreakRemainingSec : '…';
                     els.pausedHint.innerHTML =
                         '<i class="fas fa-hourglass-half"></i> Claims open · ' + sec + 's';
-                } else {
+                } else if (claimPause) {
+                    els.pausedHint.innerHTML =
+                        '<i class="fas fa-hand-paper"></i> <strong>Claim check</strong> — press Resume (Start button)';
+                } else if (paused) {
                     els.pausedHint.innerHTML =
                         reason === 'manual'
-                            ? '<i class="fas fa-pause-circle"></i> Game paused'
-                            : '<i class="fas fa-pause-circle"></i> Claim check';
+                            ? '<i class="fas fa-pause-circle"></i> Game paused — press Resume (Start button)'
+                            : '<i class="fas fa-pause-circle"></i> Paused';
                 }
             }
         }
@@ -950,6 +1011,20 @@
     }
 
     document.getElementById('bingoStartBtn')?.addEventListener('click', async () => {
+        const startBtn = document.getElementById('bingoStartBtn');
+        const mode = startBtn?.dataset.mode || 'start';
+        if (mode === 'pause') {
+            const data = await apiPost('/games/bingo/pause');
+            if (data?.success && data.state) renderStatus(data.state);
+            else if (data?.error) alert(data.error);
+            return;
+        }
+        if (mode === 'resume') {
+            const data = await apiPost('/games/bingo/resume');
+            if (data?.success && data.state) renderStatus(data.state);
+            else if (data?.error) alert(data.error);
+            return;
+        }
         const data = await apiPost('/games/bingo/start', {
             ballCount: Number(els.ballCount?.value) || 90,
             callIntervalSeconds: Number(els.callInterval?.value) || 5,

@@ -11,7 +11,7 @@
     <link href="/css/style.css" rel="stylesheet">
     <link href="/css/eyup-site-chrome.css" rel="stylesheet">
     <link href="/css/dj-dash-theme.css?v=1" rel="stylesheet">
-    <link href="/css/bingo.css?v=33" rel="stylesheet">
+    <link href="/css/bingo.css?v=34" rel="stylesheet">
 </head>
 <body class="mdj-eyup-brand mdj-dash-tools dark-mode mdj-bingo-caller-page">
     <header class="mdj-caller-header">
@@ -116,7 +116,7 @@
 
             <section class="mdj-caller-panel mdj-caller-panel--claims" aria-label="Claims and verification">
                 <h2 class="mdj-caller-panel-title"><i class="fas fa-bolt text-warning" aria-hidden="true"></i> Claims</h2>
-                <p class="mdj-caller-panel-lede">Flash the screen — calling pauses until <strong>Resume</strong>.</p>
+                <p class="mdj-caller-panel-lede">Flash the screen for a shout. Calling pauses only when a guest <strong>claim</strong> or a verified card is checked.</p>
                 <div class="mdj-bingo-claim-btns mdj-caller-claims">
                     <button type="button" class="btn mdj-bingo-touch-claim mdj-bingo-claim-line" id="bingoFlashLineBtn">1 Line</button>
                     <button type="button" class="btn mdj-bingo-touch-claim mdj-bingo-claim-two" id="bingoFlashTwoLinesBtn">2 Lines</button>
@@ -178,6 +178,6 @@
         window.mdjGetPromptTargetName = function () { return <%- JSON.stringify(event.name) %>; };
     </script>
     <script src="/js/dj-api.js?v=1"></script>
-    <script src="/js/dj-bingo.js?v=25"></script>
+    <script src="/js/dj-bingo.js?v=27"></script>
 </body>
 </html>

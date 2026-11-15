@@ -591,7 +591,8 @@
 
         function maybeAnnounceBall(data) {
             if (!callerSoundOn || !data) return;
-            if (!data.active || data.phase === 'intro' || data.paused) return;
+            if (!data.active || data.phase === 'intro') return;
+            if (data.paused && data.pausedReason === 'claim') return;
             if (data.lastBall == null) return;
             if (data.lastBall === lastSpokenBall) return;
             lastSpokenBall = data.lastBall;

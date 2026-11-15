@@ -2247,6 +2247,11 @@ app.post('/api/display/:eventSlug/games/bingo/start', djWebAuth.requireDjApiAuth
     if (!req.body.prizes && !req.body.prizeLine && fromGame.prizes) {
         startOpts.prizes = normalizePrizes(fromGame.prizes);
     }
+    const prevRun = bingoSession.getBingoState(slug, gid);
+    if (prevRun.active) {
+        bingoSession.clearAutoTimer(slug, gid);
+        bingoSession.stopBingo(slug, gid);
+    }
     bingoSession.startBingo(slug, gid, startOpts);
     if (gid) persistGameCallerFromBody(gid, req.body);
     const started = bingoSession.getBingoState(slug, gid);
@@ -2398,7 +2403,8 @@ app.post('/api/display/:eventSlug/games/bingo/claim-flash', djWebAuth.requireDjA
         serial: req.body.serial || null,
         valid: req.body.valid,
         winnerName,
-        customerName: winnerName
+        customerName: winnerName,
+        pause: false
     });
     res.json({ success: true, flash, state: bingoSession.publicBingoState(slug, gid), gameId: gid });
 });
@@ -2537,7 +2543,8 @@ app.post('/api/events/:id/bingo/verify', djWebAuth.requireDjApiAuth, djWebAuth.r
         serial,
         valid,
         winnerName: valid && winnerName ? winnerName : null,
-        customerName: winnerName
+        customerName: winnerName,
+        pause: !!valid
     });
     const playingFor = normalizePlayingFor(state.playingFor);
     const requested = normalizePlayingFor(claimType);
@@ -3178,7 +3185,8 @@ app.post('/api/event/:eventSlug/bingo/games/:gameId/claim', getEventFromSlugJson
         serial: card.serial,
         valid: true,
         winnerName: customerName,
-        customerName
+        customerName,
+        pause: true
     });
     const outcome = bingoCompletePrizeWin(slug, gameId, playingFor);
     const nextState = bingoSession.publicBingoState(slug, gameId);

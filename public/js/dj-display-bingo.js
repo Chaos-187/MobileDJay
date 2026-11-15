@@ -440,7 +440,10 @@
             lastSpokenBall = state.lastBall;
             return;
         }
-        if (!state.active || state.phase === 'intro' || state.paused) {
+        if (!state.active || state.phase === 'intro') {
+            return;
+        }
+        if (state.paused && state.pauseReason === 'claim') {
             return;
         }
         if (state.lastBall == null) {
@@ -566,14 +569,14 @@
         const ballCount = state.ballCount || 90;
         if (ballCount !== gridBuiltFor) buildGrid(ballCount);
 
-        if (state.paused) {
+        const claimBreak = state.phase === 'claim_break';
+        if (state.paused || claimBreak) {
             stopDrawing();
             clearTimeout(dwellTimer);
             dwellTimer = null;
             pausedBadge?.removeAttribute('hidden');
             if (pausedBadge) {
                 const manual = state.pausedReason === 'manual';
-                const claimBreak = state.phase === 'claim_break';
                 pausedBadge.innerHTML =
                     '<i class="fas fa-pause-circle me-1" aria-hidden="true"></i>' +
                     (claimBreak
@@ -582,10 +585,12 @@
                           ? 'Game paused'
                           : 'Claim check');
             }
-            layer?.classList.add('is-paused');
+            layer?.classList.toggle('is-paused', !!state.paused && !claimBreak);
+            layer?.classList.toggle('is-claim-break', claimBreak);
         } else {
             pausedBadge?.setAttribute('hidden', '');
             layer?.classList.remove('is-paused');
+            layer?.classList.remove('is-claim-break');
         }
 
         const pf = state.playingFor || 'line';
@@ -618,7 +623,7 @@
                 startDrawing(state);
             }
         } else if (
-            state.phase === 'calling' &&
+            (state.phase === 'calling' || state.phase === 'claim_break') &&
             !state.paused &&
             !isDrawing &&
             !dwellTimer &&

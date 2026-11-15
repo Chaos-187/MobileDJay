@@ -6,15 +6,14 @@
 
     var THEME_IDS = ['default', 'christmas', 'halloween', 'classic', 'neon-90s', 'wedding'];
 
-      /** Theme-specific ball-call sounds (replaces TTS when present). */
-    var CALL_SOUND_BY_THEME = {
-        christmas: '/audio/Xmas-call.mp3'
-    };
+    /** Theme-specific ball-call stings (replaces TTS when present). Christmas uses spoken numbers. */
+    var CALL_SOUND_BY_THEME = {};
 
     var DEFAULT_VERIFIED_CALL_SOUND = '/audio/verified_call.mp3';
 
     /** Theme-specific sounds when a claim is verified on the display. */
     var VERIFIED_CALL_SOUND_BY_THEME = {
+        christmas: '/audio/Xmas-call.mp3',
         halloween: '/audio/halloween-VerfiedCall.mp3'
     };
 

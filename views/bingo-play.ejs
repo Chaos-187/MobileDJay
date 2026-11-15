@@ -35,6 +35,11 @@
                 </button>
                 <p class="guest-bingo-meta" id="guestBingoMeta" data-bingo-meta></p>
             </div>
+            <div class="guest-bingo-countdown-bar" data-bingo-countdown hidden aria-live="polite">
+                <span class="guest-bingo-countdown-bar__kind" data-bingo-countdown-kind">Starting</span>
+                <span class="guest-bingo-countdown-bar__sec"><strong data-bingo-countdown-sec>0</strong><span class="guest-bingo-countdown-bar__s">s</span></span>
+                <span class="guest-bingo-countdown-bar__extra" data-bingo-countdown-extra></span>
+            </div>
             <button type="button" class="btn btn-outline-light guest-bingo-buy-tickets mb-2 w-100" data-bingo-buy-tickets hidden>
                 Buy tickets
             </button>
@@ -88,7 +93,7 @@
         window.eventSlug = '<%= eventSlug %>';
         window.guestBingoGameId = <%= typeof gameId !== 'undefined' && gameId ? gameId : 'null' %>;
     </script>
-    <script src="/js/bingo-theme.js?v=3"></script>
+    <script src="/js/bingo-theme.js?v=4"></script>
     <script src="/js/guest-bingo-play.js?v=46"></script>
     <script src="/js/guest-bingo.js?v=3"></script>
 </body>

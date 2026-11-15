@@ -230,6 +230,10 @@
                     '<button type="button" class="guest-bingo-settings-btn guest-bingo-toolbar-btn guest-bingo-toolbar-btn--icon" data-bingo-settings-open aria-label="Play settings">' +
                         '<i class="fas fa-gear" aria-hidden="true"></i></button>' +
                     '<p class="gh-bingo-meta guest-bingo-meta" data-bingo-meta></p></div>' +
+                '<div class="guest-bingo-countdown-bar" data-bingo-countdown hidden aria-live="polite">' +
+                    '<span class="guest-bingo-countdown-bar__kind" data-bingo-countdown-kind">Starting</span>' +
+                    '<span class="guest-bingo-countdown-bar__sec"><strong data-bingo-countdown-sec>0</strong><span class="guest-bingo-countdown-bar__s">s</span></span>' +
+                    '<span class="guest-bingo-countdown-bar__extra" data-bingo-countdown-extra></span></div>' +
                 '<button type="button" class="gh-btn gh-btn--outline gh-bingo-buy-tickets mb-2" data-bingo-buy-tickets hidden>Buy tickets</button>' +
                 '<div class="guest-bingo-resume" data-bingo-resume hidden aria-live="polite">' +
                     '<p class="guest-bingo-resume__eyebrow"><i class="fas fa-play-circle" aria-hidden="true"></i> Resuming</p>' +

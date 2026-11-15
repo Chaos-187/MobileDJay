@@ -795,13 +795,12 @@ function inferCardFormatFromCards(cards) {
     return grid ? inferCardFormat(grid) : 'uk-90';
 }
 
-/** Caller started or game is live — no extra virtual cards. */
+/** Balls are being called (or claim break) — guests cannot buy more virtual cards. */
 function bingoGuestPlayInProgress(slug, gameId) {
     const state = bingoSession.getBingoState(slug, gameId);
-    if (state.active) return true;
     if (state.calledBalls && state.calledBalls.length > 0) return true;
-    const game = gameId ? bingoGameDb.getById(gameId) : null;
-    if (game && game.status === 'live') return true;
+    const phase = String(state.phase || '');
+    if (phase === 'calling' || phase === 'claim_break') return true;
     return false;
 }
 

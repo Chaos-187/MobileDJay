@@ -259,7 +259,7 @@
             '<div class="guest-bingo-play-dock" data-bingo-play-dock hidden>' +
                 '<div class="guest-bingo-action-bar guest-bingo-call-dock" data-bingo-call-dock>' +
                     '<p class="gh-bingo-claim-result guest-bingo-call-dock__status" data-bingo-claim-result role="status"></p>' +
-                    '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="claim">Claim</button>' +
+                    '<button type="button" class="gh-btn gh-btn--accent gh-bingo-call guest-bingo-call-dock__btn" data-bingo-call data-dock-mode="buy">Buy tickets</button>' +
                     '<div class="guest-bingo-called-line" aria-label="Recent calls">' +
                         '<span class="guest-bingo-called-line__count" data-bingo-call-progress hidden></span>' +
                         '<div class="guest-bingo-called-line__track" data-bingo-recent-balls dir="ltr">' +

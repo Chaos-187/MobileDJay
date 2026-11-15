@@ -610,11 +610,23 @@ body.mdj-guest-bingo-page {
     pointer-events: auto;
 }
 
-.guest-bingo-play-dock.guest-bingo--dock-buy .guest-bingo-call-dock__btn[data-dock-mode='buy'],
-.guest-bingo-play-dock.guest-bingo--dock-buy .guest-bingo-call-dock__btn:not(:disabled) {
+.guest-bingo-play-dock.guest-bingo--dock-buy [data-bingo-call][data-dock-mode='buy'],
+.guest-bingo-play-dock.guest-bingo--dock-buy .guest-bingo-dock-btn--buy:not(:disabled),
+.guest-bingo-play-dock [data-bingo-call].guest-bingo-dock-btn--buy:not(:disabled) {
     border-color: rgba(255, 200, 120, 0.55) !important;
     color: #1a1208 !important;
     background: linear-gradient(145deg, #fde68a, #f59e0b) !important;
+}
+
+.guest-bingo-play-dock [data-bingo-call][data-dock-mode='lobby'],
+.guest-bingo-play-dock .guest-bingo-dock-btn--lobby {
+    background: transparent !important;
+    border-color: rgba(255, 255, 255, 0.35) !important;
+    color: inherit !important;
+}
+
+[data-bingo-buy-tickets] {
+    display: none !important;
 }
 
 [data-bingo-play].guest-bingo--resume .guest-bingo-resume,

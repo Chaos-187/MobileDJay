@@ -23,7 +23,7 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <link href="/css/guest-chat.css?v=2" rel="stylesheet">
 <link href="/css/guest-v2/guest-hub-spa.css?v=16" rel="stylesheet">
-<% if (ghEvent && ghEvent.enable_bingo) { %><link href="/css/bingo.css?v=47" rel="stylesheet"><link href="/css/bingo-themes.css?v=4" rel="stylesheet"><% } %>
+<% if (ghEvent && ghEvent.enable_bingo) { %><link href="/css/bingo.css?v=49" rel="stylesheet"><link href="/css/bingo-themes.css?v=5" rel="stylesheet"><% } %>
 <% if (ghEvent) { %><%- include('../partials/guest-event-theme', { event: ghEvent }) %><% } %>
 </head>
 <body class="gh-spa gh-locked">
@@ -76,9 +76,9 @@ window.GuestHubConfig = {
 };
 </script>
 <script src="/js/guest-session.js"></script>
-<script src="/js/bingo-theme.js?v=4"></script>
-<script src="/js/guest-bingo-play.js?v=50"></script>
+<script src="/js/bingo-theme.js?v=5"></script>
+<script src="/js/guest-bingo-play.js?v=52"></script>
 <% if (ghEvent && ghEvent.enable_bingo) { %><script src="/js/guest-v2/guest-bingo.js?v=2"></script><% } %>
-<script src="/js/guest-v2/guest-hub-spa.js?v=18"></script>
+<script src="/js/guest-v2/guest-hub-spa.js?v=20"></script>
 </body>
 </html>

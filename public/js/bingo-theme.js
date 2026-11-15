@@ -14,7 +14,8 @@
     /** Theme-specific sounds when a claim is verified on the display. */
     var VERIFIED_CALL_SOUND_BY_THEME = {
         christmas: '/audio/Xmas-call.mp3',
-        halloween: '/audio/halloween-VerfiedCall.mp3'
+        halloween: '/audio/halloween-VerfiedCall.mp3',
+        'neon-90s': '/audio/Neon-Verified-Call.mp3'
     };
 
     function normalizeBingoTheme(value) {

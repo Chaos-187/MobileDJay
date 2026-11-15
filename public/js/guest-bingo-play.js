@@ -158,11 +158,9 @@
     }
 
     function syncBuyTicketsVisibility(buyEl, data) {
-        if (!buyEl || !data) return;
-        const preClaim = bingoGuestPreClaimPlay(data);
-        const gameRunning = bingoGuestGameRunning(data);
-        const rem = guestTicketRemaining(data);
-        buyEl.hidden = preClaim || gameRunning || !data.canGrabMore || rem <= 0;
+        if (!buyEl) return;
+        buyEl.hidden = true;
+        buyEl.setAttribute('hidden', '');
     }
 
     function renderRecentBalls(trackEl, calledBalls, opts) {
@@ -331,6 +329,8 @@
         let activeGameId = opts.initialGameId || null;
         let activeSerial = null;
         let pollTimer = null;
+        let pollDelayMs = 2200;
+        let lobbyPollTimer = null;
         let autoDab = readAutoDab();
         let callerSoundOn = readCallerSound();
         const manualMarksBySerial = Object.create(null);
@@ -882,18 +882,32 @@
             }
         }
 
+        function bingoPlayRoot() {
+            if (els.play) return els.play;
+            return root.querySelector('[data-bingo-play]');
+        }
+
         function setPlayIntroMode(on) {
-            if (els.play) els.play.classList.toggle('guest-bingo--intro', !!on);
+            const playRoot = bingoPlayRoot();
+            if (playRoot) playRoot.classList.toggle('guest-bingo--intro', !!on);
             if (els.playDock) els.playDock.classList.toggle('guest-bingo--intro', !!on);
+            const ghRoot = root.querySelector && root.querySelector('[data-bingo-root]');
+            if (ghRoot) ghRoot.classList.toggle('guest-bingo--intro', !!on);
             if (els.intro) {
                 if (on) els.intro.removeAttribute('hidden');
                 else els.intro.setAttribute('hidden', '');
             }
+            if (!on && els.introRing) {
+                els.introRing.removeAttribute('data-ring-init');
+            }
         }
 
         function setPlayResumeMode(on) {
-            if (els.play) els.play.classList.toggle('guest-bingo--resume', !!on);
+            const playRoot = bingoPlayRoot();
+            if (playRoot) playRoot.classList.toggle('guest-bingo--resume', !!on);
             if (els.playDock) els.playDock.classList.toggle('guest-bingo--resume', !!on);
+            const ghRoot = root.querySelector && root.querySelector('[data-bingo-root]');
+            if (ghRoot) ghRoot.classList.toggle('guest-bingo--resume', !!on);
             if (els.resume) {
                 if (on) els.resume.removeAttribute('hidden');
                 else els.resume.setAttribute('hidden', '');
@@ -1033,20 +1047,43 @@
             return focused ? focused.serial : list[0].serial;
         }
 
-        function syncDockPrimaryAction(data) {
+        function syncDockPrimaryAction(data, cards) {
             if (!els.callBtn) return;
-            const preClaim = bingoGuestPreClaimPlay(data);
-            if (els.playDock) {
-                els.playDock.classList.toggle('guest-bingo--dock-buy', !!preClaim);
+            const list = cards && cards.length ? cards : [];
+            els.callBtn.classList.remove('guest-bingo-dock-btn--buy', 'guest-bingo-dock-btn--lobby');
+
+            if (guestShouldShowGameOver(data)) {
+                els.callBtn.setAttribute('data-dock-mode', 'lobby');
+                els.callBtn.textContent = 'Back to lobby';
+                els.callBtn.disabled = false;
+                els.callBtn.classList.add('guest-bingo-dock-btn--lobby');
+                els.callBtn.classList.remove('guest-bingo-call--ready');
+                if (els.playDock) {
+                    els.playDock.classList.add('guest-bingo--dock-buy');
+                }
+                return;
             }
-            if (preClaim) {
+
+            const preClaim = bingoGuestPreClaimPlay(data);
+            const rem = guestTicketRemaining(data);
+            const canBuy = !!(data && data.canGrabMore && rem > 0);
+            const buyMode = preClaim || (!list.length && canBuy);
+
+            if (els.playDock) {
+                els.playDock.classList.toggle('guest-bingo--dock-buy', !!buyMode);
+            }
+
+            if (buyMode) {
                 els.callBtn.setAttribute('data-dock-mode', 'buy');
                 els.callBtn.classList.remove('guest-bingo-call--ready');
-                const rem = guestTicketRemaining(data);
-                const canBuy = !!(data && data.canGrabMore && rem > 0);
                 if (canBuy) {
-                    els.callBtn.textContent = rem > 1 ? 'Buy tickets · ' + rem + ' left' : 'Buy tickets';
+                    if (!list.length) {
+                        els.callBtn.textContent = rem > 1 ? 'Get tickets · ' + rem + ' left' : 'Get tickets';
+                    } else {
+                        els.callBtn.textContent = rem > 1 ? 'Buy tickets · ' + rem + ' left' : 'Buy tickets';
+                    }
                     els.callBtn.disabled = false;
+                    els.callBtn.classList.add('guest-bingo-dock-btn--buy');
                 } else {
                     els.callBtn.textContent =
                         data && data.phase === 'intro'
@@ -1058,6 +1095,7 @@
                 }
                 return;
             }
+
             els.callBtn.setAttribute('data-dock-mode', 'claim');
             const label = (data && data.playingForLabel) || 'prize';
             els.callBtn.textContent = 'Claim — ' + label;
@@ -1065,7 +1103,8 @@
 
         function syncCallButtonDisabled(data) {
             if (!els.callBtn) return;
-            if (els.callBtn.getAttribute('data-dock-mode') === 'buy') return;
+            const mode = els.callBtn.getAttribute('data-dock-mode');
+            if (mode === 'buy' || mode === 'lobby') return;
             const pf = data.playingFor || playingFor || 'line';
             const claimSerial = claimCardSerial(
                 lastStackPayload && lastStackPayload.cards ? lastStackPayload.cards : []
@@ -1247,8 +1286,9 @@
 
         function updateCallUi(cards, focusSerial, data) {
             if (!els.callBtn) return;
-            syncDockPrimaryAction(data);
-            if (els.callBtn.getAttribute('data-dock-mode') === 'buy') return;
+            syncDockPrimaryAction(data, cards);
+            const dockMode = els.callBtn.getAttribute('data-dock-mode');
+            if (dockMode === 'buy' || dockMode === 'lobby') return;
             const list = cards && cards.length ? cards : [];
             const anyReady = list.some(function (c) {
                 return cardToGo(c) === 0;
@@ -1365,12 +1405,31 @@
             });
         }
 
+        function stopLobbyPoll() {
+            if (lobbyPollTimer) {
+                clearInterval(lobbyPollTimer);
+                lobbyPollTimer = null;
+            }
+        }
+
+        function startLobbyPoll() {
+            if (lobbyPollTimer) return;
+            lobbyPollTimer = setInterval(function () {
+                if (els.play && !els.play.hidden) {
+                    stopLobbyPoll();
+                    return;
+                }
+                loadGames();
+            }, 1000);
+        }
+
         function showJoin() {
             setPanelHidden(els.lobbyChrome, false);
             if (!els.lobbyChrome) setPanelHidden(els.join, false);
             setPanelHidden(els.play, true);
             setPanelHidden(els.playDock, true);
             setPanelHidden(els.countdownBar, true);
+            startLobbyPoll();
         }
 
         function showPlay() {
@@ -1379,6 +1438,7 @@
             setPanelHidden(els.play, false);
             setPanelHidden(els.playDock, false);
             setLobbyPref(false);
+            stopLobbyPoll();
         }
 
         function backToLobby() {
@@ -1556,6 +1616,22 @@
                         openBuyTicketsModal(gid, rem);
                     });
                 });
+
+                if (activeGameId) {
+                    const mine = data.games.find(function (g) {
+                        return g.id === activeGameId;
+                    });
+                    if (
+                        mine &&
+                        (mine.bingoPhase === 'intro' || mine.bingoPhase === 'resume') &&
+                        (mine.guestCardCount || 0) > 0
+                    ) {
+                        setLobbyPref(false);
+                        if (els.play && els.play.hidden) {
+                            startPlay();
+                        }
+                    }
+                }
             } catch (e) {
                 els.gamesList.innerHTML = '<p class="gh-bingo-danger">Could not load games.</p>';
             }
@@ -1659,6 +1735,9 @@
                     }
                     return;
                 }
+                if (data.phase === 'intro' || data.phase === 'resume') {
+                    setLobbyPref(false);
+                }
                 showPlay();
                 applyPlayTheme(data);
                 playingFor = data.playingFor || 'line';
@@ -1699,11 +1778,11 @@
                     activeSerial = data.card.serial;
                 }
                 lastStackPayload = { cards: stackCards, calledBalls: data.calledBalls || [], data: data };
+                syncGuestResume(data);
+                syncGuestIntro(data);
                 renderCardStack(stackCards, data.calledBalls, activeSerial);
                 syncBuyTicketsVisibility(els.buyTickets, data);
                 updateCallUi(stackCards, activeSerial, data);
-                syncGuestResume(data);
-                syncGuestIntro(data);
                 maybeAnnounceBall(data);
                 syncWinnersModal(data);
                 if (els.meta) {
@@ -1739,6 +1818,7 @@
                     }
                     els.meta.textContent = t;
                 }
+                updatePollCadence(data);
             } catch (e) {
                 /* ignore transient */
             }
@@ -1753,12 +1833,24 @@
 
         function startPoll() {
             clearInterval(pollTimer);
-            pollTimer = setInterval(refreshPlay, 2200);
+            pollDelayMs = 2200;
+            pollTimer = setInterval(refreshPlay, pollDelayMs);
+        }
+
+        function updatePollCadence(data) {
+            const wantMs =
+                data && (data.phase === 'intro' || data.phase === 'resume') ? 600 : 2200;
+            if (!pollTimer) return;
+            if (wantMs === pollDelayMs) return;
+            pollDelayMs = wantMs;
+            clearInterval(pollTimer);
+            pollTimer = setInterval(refreshPlay, pollDelayMs);
         }
 
         function stopPoll() {
             clearInterval(pollTimer);
             pollTimer = null;
+            pollDelayMs = 2200;
             stopCountdownTick();
         }
 
@@ -1869,7 +1961,12 @@
 
         if (els.callBtn) {
             els.callBtn.addEventListener('click', function () {
-                if (els.callBtn.getAttribute('data-dock-mode') === 'buy') {
+                const mode = els.callBtn.getAttribute('data-dock-mode');
+                if (mode === 'lobby') {
+                    backToLobby();
+                    return;
+                }
+                if (mode === 'buy') {
                     if (!activeGameId || els.callBtn.disabled) return;
                     const data = lastStackPayload && lastStackPayload.data ? lastStackPayload.data : null;
                     const rem = guestTicketRemaining(data);
